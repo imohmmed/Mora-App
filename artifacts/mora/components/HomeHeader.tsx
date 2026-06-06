@@ -1,17 +1,15 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   Platform,
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/useColors";
-import { MoraLogo } from "@/components/MoraLogo";
 
 interface HomeHeaderProps {
   notificationCount?: number;
@@ -40,91 +38,61 @@ export function HomeHeader({
         },
       ]}
     >
-      <View style={styles.topRow}>
-        <MoraLogo size="small" />
-        <View style={styles.actions}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.iconBtn,
-              pressed && styles.pressed,
+      <View style={styles.row}>
+        <Pressable
+          style={[
+            styles.searchBar,
+            { backgroundColor: colors.secondary, borderColor: colors.border },
+          ]}
+          onPress={() => router.push("/(tabs)/search")}
+          testID="search-bar"
+        >
+          <Feather name="search" size={18} color={colors.mutedForeground} />
+          <Text
+            style={[
+              styles.searchPlaceholder,
+              { color: colors.mutedForeground },
             ]}
-            onPress={() => router.push("/(tabs)/search")}
-            testID="search-icon-btn"
           >
-            <Feather name="search" size={22} color={colors.foreground} />
-          </Pressable>
-
+            Search
+          </Text>
           <Pressable
-            style={({ pressed }) => [
-              styles.iconBtn,
-              pressed && styles.pressed,
-            ]}
+            hitSlop={8}
             onPress={() => router.push("/(tabs)/search")}
             testID="camera-btn"
           >
-            <Feather name="camera" size={22} color={colors.foreground} />
+            <Feather name="camera" size={18} color={colors.foreground} />
           </Pressable>
+        </Pressable>
 
-          <View>
-            <Pressable
-              style={({ pressed }) => [
-                styles.iconBtn,
-                pressed && styles.pressed,
-              ]}
-              testID="notifications-btn"
-            >
-              <Feather name="bell" size={22} color={colors.foreground} />
-              {notificationCount > 0 && (
-                <View
-                  style={[
-                    styles.badge,
-                    { backgroundColor: colors.primary },
-                  ]}
-                >
-                  <Text style={styles.badgeText}>
-                    {notificationCount > 9 ? "9+" : notificationCount}
-                  </Text>
-                </View>
-              )}
-            </Pressable>
-          </View>
+        <Pressable
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+          testID="notifications-btn"
+        >
+          <Feather name="bell" size={23} color={colors.foreground} />
+          {notificationCount > 0 && (
+            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+              <Text style={styles.badgeText}>
+                {notificationCount > 9 ? "9+" : notificationCount}
+              </Text>
+            </View>
+          )}
+        </Pressable>
 
-          <View>
-            <Pressable
-              style={({ pressed }) => [
-                styles.iconBtn,
-                pressed && styles.pressed,
-              ]}
-              testID="favorites-btn"
-            >
-              <Feather name="heart" size={22} color={colors.foreground} />
-              {favoritesCount > 0 && (
-                <View
-                  style={[
-                    styles.badge,
-                    { backgroundColor: colors.primary },
-                  ]}
-                >
-                  <Text style={styles.badgeText}>
-                    {favoritesCount > 9 ? "9+" : favoritesCount}
-                  </Text>
-                </View>
-              )}
-            </Pressable>
-          </View>
-        </View>
+        <Pressable
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+          testID="favorites-btn"
+        >
+          <Feather name="heart" size={23} color={colors.foreground} />
+          {favoritesCount > 0 && (
+            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+              <Text style={styles.badgeText}>
+                {favoritesCount > 9 ? "9+" : favoritesCount}
+              </Text>
+            </View>
+          )}
+        </Pressable>
       </View>
-
-      <Pressable
-        style={[styles.searchBar, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-        onPress={() => router.push("/(tabs)/search")}
-        testID="search-bar"
-      >
-        <Feather name="search" size={16} color={colors.mutedForeground} />
-        <Text style={[styles.searchPlaceholder, { color: colors.mutedForeground }]}>
-          Search Mora...
-        </Text>
-      </Pressable>
     </View>
   );
 }
@@ -135,16 +103,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
-  topRow: {
+  row: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
+    gap: 6,
   },
-  actions: {
+  searchBar: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  searchPlaceholder: {
+    flex: 1,
+    fontFamily: "Inter_400Regular",
+    fontSize: 15,
   },
   iconBtn: {
     padding: 8,
@@ -155,8 +132,8 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: "absolute",
-    top: 4,
-    right: 4,
+    top: 2,
+    right: 2,
     minWidth: 16,
     height: 16,
     borderRadius: 8,
@@ -168,18 +145,5 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 10,
     fontFamily: "Inter_700Bold",
-  },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  searchPlaceholder: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
   },
 });

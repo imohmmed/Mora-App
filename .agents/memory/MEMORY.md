@@ -1,0 +1,1 @@
+- [Expo UI SwiftUI on web](expo-ui-swiftui-web.md) — @expo/ui/swift-ui crashes web/Android bundles on import; isolate in `.ios.tsx` files, never just Platform-gate rendering.

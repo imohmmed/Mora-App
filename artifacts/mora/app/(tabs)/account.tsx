@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { MoraLogo } from "@/components/MoraLogo";
+import { AccountExpoUI } from "@/components/AccountExpoUI";
 
 type FeatherIconName = React.ComponentProps<typeof Feather>["name"];
 
@@ -73,6 +74,13 @@ function isToggleItem(item: SectionItem): item is ToggleItem {
 }
 
 export default function AccountScreen() {
+  if (Platform.OS === "ios") {
+    return <AccountExpoUI />;
+  }
+  return <AccountClassic />;
+}
+
+function AccountClassic() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
