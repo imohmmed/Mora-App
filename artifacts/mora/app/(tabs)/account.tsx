@@ -50,7 +50,6 @@ function statusColor(status: string): string {
 }
 
 export default function AccountScreen() {
-  if (Platform.OS === "ios") return <AccountExpoUI />;
   return <AccountClassic />;
 }
 
