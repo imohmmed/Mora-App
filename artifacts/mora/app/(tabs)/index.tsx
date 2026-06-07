@@ -171,7 +171,7 @@ export default function HomeScreen() {
   const [activeBanner, setActiveBanner] = useState(0);
   const { totalItems } = useCart();
   const { count: wishlistCount } = useWishlist();
-  const bottomPadding = isWeb ? 34 : insets.bottom;
+  const bottomPadding = isWeb ? 0 : insets.bottom;
   const categoryKey = CATEGORIES[activeCategory];
   const categoryFilter = CATEGORY_FILTERS[categoryKey ?? "ALL"];
 

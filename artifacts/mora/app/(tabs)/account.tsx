@@ -149,7 +149,7 @@ function AccountClassic() {
   const { count: wishlistCount } = useWishlist();
 
   const topPadding = isWeb ? 0 : insets.top;
-  const bottomPadding = isWeb ? 34 : insets.bottom;
+  const bottomPadding = isWeb ? 0 : insets.bottom;
 
   useEffect(() => {
     AsyncStorage.getItem(EMAIL_KEY).then((val) => {

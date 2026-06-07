@@ -51,6 +51,7 @@ function ClassicTabLayout() {
 
   return (
     <Tabs
+      sceneContainerStyle={{ paddingTop: 0 }}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
@@ -61,8 +62,8 @@ function ClassicTabLayout() {
           borderTopWidth: isWeb ? 1 : 0.5,
           borderTopColor: colors.border,
           elevation: 0,
-          paddingBottom: safeAreaInsets.bottom,
-          ...(isWeb ? { height: 84 } : {}),
+          paddingBottom: isWeb ? 4 : safeAreaInsets.bottom,
+          height: isWeb ? 56 : undefined,
         },
         tabBarLabelStyle: {
           fontFamily: "Inter_500Medium",

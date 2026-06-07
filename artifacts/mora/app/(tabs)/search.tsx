@@ -127,7 +127,7 @@ export default function SearchScreen() {
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const topPadding = isWeb ? 0 : insets.top;
-  const bottomPadding = isWeb ? 34 : insets.bottom;
+  const bottomPadding = isWeb ? 0 : insets.bottom;
 
   const handleChangeText = (text: string) => {
     setQuery(text);

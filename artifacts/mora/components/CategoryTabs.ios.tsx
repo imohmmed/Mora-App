@@ -62,7 +62,7 @@ export function CategoryTabs({
 const styles = StyleSheet.create({
   wrap: {
     borderBottomWidth: 1,
-    paddingVertical: 10,
+    paddingVertical: 6,
   },
   content: {
     paddingHorizontal: 16,

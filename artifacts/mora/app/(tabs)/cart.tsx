@@ -21,7 +21,7 @@ export default function CartScreen() {
   const { items, updateQty, subtotal } = useCart();
 
   const topPadding = isWeb ? 0 : insets.top;
-  const bottomPadding = isWeb ? 34 : insets.bottom;
+  const bottomPadding = isWeb ? 0 : insets.bottom;
 
   const delivery = subtotal > 50 ? 0 : 4.99;
   const total = subtotal + delivery;

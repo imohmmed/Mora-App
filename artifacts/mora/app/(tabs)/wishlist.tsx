@@ -132,7 +132,7 @@ export default function WishlistScreen() {
   const wishlistIds = [...ids];
 
   const topPadding = isWeb ? 0 : insets.top;
-  const bottomPadding = isWeb ? 34 : insets.bottom;
+  const bottomPadding = isWeb ? 0 : insets.bottom;
 
   const results = useQueries({
     queries: wishlistIds.map((productId) => ({
