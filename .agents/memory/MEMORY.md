@@ -1,1 +1,2 @@
 - [Expo UI SwiftUI on web](expo-ui-swiftui-web.md) — @expo/ui/swift-ui crashes web/Android bundles on import; isolate in `.ios.tsx` files, never just Platform-gate rendering.
+- [better-sqlite3 compilation on Replit](better-sqlite3-compilation.md) — No prebuilt binaries for Node v24; compile with node-gyp after `nix-env -iA nixpkgs.python3`. Steps documented.

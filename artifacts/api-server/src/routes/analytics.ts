@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { markets, storeSettings, getAnalyticsSummary, getRevenueByDay, getTopProducts, orders, type Market } from "../lib/db.js";
+import db, { parseRows, getAnalyticsSummary, getRevenueByDay, getTopProducts } from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
+import type { Row } from "../lib/types.js";
 
 const router = Router();
 
@@ -15,112 +16,78 @@ router.get("/admin/analytics/summary", (_req, res) => {
 });
 
 router.get("/admin/analytics/revenue", (req, res) => {
-  const days = parseInt((req.query["days"] as string) ?? "14");
+  const days = Math.min(90, Math.max(1, parseInt((req.query["days"] as string) ?? "14")));
   res.json({ data: getRevenueByDay(days), meta: { days }, error: null });
 });
 
 router.get("/admin/analytics/top-products", (req, res) => {
-  const limit = parseInt((req.query["limit"] as string) ?? "5");
+  const limit = Math.min(20, Math.max(1, parseInt((req.query["limit"] as string) ?? "5")));
   res.json({ data: getTopProducts(limit), meta: {}, error: null });
 });
 
 router.get("/admin/analytics/reports", (_req, res) => {
-  const orderList = [...orders.values()].filter((o) => !o.isDraft && !o.isAbandoned);
+  const summary = getAnalyticsSummary();
   const reports = [
-    { name: "Total Sales", value: `$${orderList.reduce((s, o) => s + o.total, 0).toFixed(2)}`, change: "+12.4%" },
-    { name: "Average Order Value", value: `$${(orderList.reduce((s, o) => s + o.total, 0) / Math.max(orderList.length, 1)).toFixed(2)}`, change: "+3.1%" },
-    { name: "Orders Fulfilled", value: orderList.filter((o) => o.fulfillmentStatus === "fulfilled").length, change: "+8.7%" },
-    { name: "Return Rate", value: "4.2%", change: "-0.5%" },
-    { name: "New Customers", value: 42, change: "+22%" },
-    { name: "Repeat Purchase Rate", value: "31%", change: "+5%" },
+    { name: "Total Sales",           value: `$${summary.revenue.toFixed(2)}`,  change: "+12.4%" },
+    { name: "Average Order Value",   value: `$${summary.avgOrderValue.toFixed(2)}`, change: "+3.1%" },
+    { name: "Orders Fulfilled",      value: (db.prepare(`SELECT COUNT(*) AS n FROM orders WHERE fulfillment_status='fulfilled'`).get() as Row)["n"], change: "+8.7%" },
+    { name: "Return Rate",           value: "4.2%",                            change: "-0.5%" },
+    { name: "New Customers",         value: 42,                                change: "+22%" },
+    { name: "Repeat Purchase Rate",  value: "31%",                             change: "+5%" },
   ];
   res.json({ data: reports, meta: {}, error: null });
 });
 
 router.get("/admin/analytics/live", (_req, res) => {
-  // Last 5 orders as "live" activity
-  const live = [...orders.values()]
-    .filter((o) => !o.isDraft && !o.isAbandoned)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 8);
-  res.json({ data: live, meta: { asOf: new Date().toISOString() }, error: null });
+  const rows = db.prepare(`SELECT * FROM orders WHERE is_draft=0 AND is_abandoned=0 ORDER BY created_at DESC LIMIT 8`).all() as Row[];
+  res.json({ data: parseRows(rows), meta: { asOf: new Date().toISOString() }, error: null });
 });
 
 // ─── Markets ──────────────────────────────────────────────────────────────────
 
 router.get("/admin/markets", (_req, res) => {
-  res.json({ data: [...markets.values()], meta: { total: markets.size }, error: null });
+  const rows = db.prepare(`SELECT * FROM markets ORDER BY created_at DESC`).all() as Row[];
+  res.json({ data: parseRows(rows), meta: { total: rows.length }, error: null });
 });
 
 router.get("/admin/markets/:id", (req, res) => {
-  const m = markets.get(req.params.id!);
-  if (!m) {
-    res.status(404).json({ data: null, meta: {}, error: "Market not found" });
-    return;
-  }
+  const rows = db.prepare(`SELECT * FROM markets`).all() as Row[];
+  const m = parseRows(rows).find((r) => r["id"] === req.params["id"]);
+  if (!m) { res.status(404).json({ data: null, meta: {}, error: "Market not found" }); return; }
   res.json({ data: m, meta: {}, error: null });
 });
 
 router.post("/admin/markets", (req, res) => {
   const id = `mkt_${Date.now()}`;
-  const market: Market = {
-    id,
-    name: "",
-    countries: [],
-    currency: "USD",
-    status: "inactive",
-    createdAt: new Date().toISOString(),
-    ...req.body,
-  };
-  markets.set(id, market);
-  res.status(201).json({ data: market, meta: {}, error: null });
+  const b = req.body as Record<string, unknown>;
+  db.prepare(`INSERT INTO markets (id,name,countries,currency,status,created_at) VALUES (?,?,?,?,?,?)`)
+    .run(id, b["name"] ?? "", JSON.stringify(b["countries"] ?? []), b["currency"] ?? "USD", "inactive", new Date().toISOString());
+  const rows = db.prepare(`SELECT * FROM markets WHERE id=?`).all(id) as Row[];
+  res.status(201).json({ data: parseRows(rows)[0], meta: {}, error: null });
 });
 
 router.put("/admin/markets/:id", (req, res) => {
-  const m = markets.get(req.params.id!);
-  if (!m) {
-    res.status(404).json({ data: null, meta: {}, error: "Market not found" });
-    return;
-  }
-  const updated = { ...m, ...req.body, id: m.id };
-  markets.set(m.id, updated);
-  res.json({ data: updated, meta: {}, error: null });
+  const id = req.params["id"];
+  const b = req.body as Record<string, unknown>;
+  db.prepare(`UPDATE markets SET name=COALESCE(?,name), currency=COALESCE(?,currency), status=COALESCE(?,status) WHERE id=?`).run(b["name"] ?? null, b["currency"] ?? null, b["status"] ?? null, id);
+  const rows = db.prepare(`SELECT * FROM markets WHERE id=?`).all(id) as Row[];
+  res.json({ data: parseRows(rows)[0] ?? null, meta: {}, error: null });
 });
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 router.get("/admin/settings", (_req, res) => {
-  res.json({ data: storeSettings, meta: {}, error: null });
+  const row = db.prepare(`SELECT value FROM settings WHERE key='store'`).get() as Row | undefined;
+  const settings = row ? JSON.parse(row["value"] as string) : {};
+  res.json({ data: settings, meta: {}, error: null });
 });
 
 router.put("/admin/settings", (req, res) => {
-  Object.assign(storeSettings, req.body);
-  res.json({ data: storeSettings, meta: {}, error: null });
-});
-
-// ─── Metaobjects / Files stubs ─────────────────────────────────────────────────
-
-router.get("/admin/content/metaobjects", requireAdmin, (_req, res) => {
-  res.json({
-    data: [
-      { id: "meta1", type: "size_guide", fields: { title: "Women's Size Guide", content: "XS: 6-8, S: 8-10, M: 10-12, L: 12-14, XL: 14-16" } },
-      { id: "meta2", type: "size_guide", fields: { title: "Men's Size Guide", content: "S: 36-38, M: 38-40, L: 40-42, XL: 42-44" } },
-      { id: "meta3", type: "faq", fields: { question: "What is your return policy?", answer: "Free returns within 30 days." } },
-    ],
-    meta: { total: 3 },
-    error: null,
-  });
-});
-
-router.get("/admin/content/files", requireAdmin, (_req, res) => {
-  res.json({
-    data: [
-      { id: "f1", filename: "summer-lookbook.pdf", size: 2_400_000, mimeType: "application/pdf", url: "#", createdAt: new Date().toISOString() },
-      { id: "f2", filename: "size-guide.png", size: 340_000, mimeType: "image/png", url: "#", createdAt: new Date().toISOString() },
-    ],
-    meta: { total: 2 },
-    error: null,
-  });
+  const row = db.prepare(`SELECT value FROM settings WHERE key='store'`).get() as Row | undefined;
+  const current = row ? JSON.parse(row["value"] as string) : {};
+  const updated = { ...current, ...req.body };
+  db.prepare(`INSERT OR REPLACE INTO settings (key,value) VALUES ('store',?)`).run(JSON.stringify(updated));
+  res.json({ data: updated, meta: {}, error: null });
 });
 
 export default router;

@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { products, variants, collections } from "../lib/db.js";
+import db, { parseRows, parseOne } from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
+import type { Row } from "../lib/types.js";
 
 const router = Router();
 
@@ -8,168 +9,152 @@ const router = Router();
 
 router.get("/store/products", (req, res) => {
   const { category, q, limit = "20", page = "1" } = req.query as Record<string, string>;
-  let list = [...products.values()].filter((p) => p.status === "active");
-  if (category) list = list.filter((p) => p.category === category);
-  if (q) {
-    const qlo = q.toLowerCase();
-    list = list.filter((p) => p.title.toLowerCase().includes(qlo) || p.tags.some((t) => t.includes(qlo)));
-  }
-  const total = list.length;
+  let sql = `SELECT * FROM products WHERE status='active'`;
+  const params: unknown[] = [];
+  if (category) { sql += ` AND category=?`; params.push(category); }
+  if (q) { sql += ` AND (title LIKE ? OR tags LIKE ?)`; params.push(`%${q}%`, `%${q}%`); }
+  const all = db.prepare(sql).all(...params) as Row[];
+  const total = all.length;
   const pageNum = Math.max(1, parseInt(page));
   const limitNum = Math.min(50, Math.max(1, parseInt(limit)));
-  const data = list.slice((pageNum - 1) * limitNum, pageNum * limitNum);
-  res.json({ data, meta: { total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum) }, error: null });
+  const sliced = all.slice((pageNum - 1) * limitNum, pageNum * limitNum);
+  res.json({ data: parseRows(sliced), meta: { total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum) }, error: null });
 });
 
 router.get("/store/products/:id", (req, res) => {
-  const product = products.get(req.params.id!);
-  if (!product) {
-    res.status(404).json({ data: null, meta: {}, error: "Product not found" });
-    return;
-  }
-  const productVariants = [...variants.values()].filter((v) => v.productId === product.id);
-  res.json({ data: { ...product, variants: productVariants }, meta: {}, error: null });
+  const product = parseOne(db.prepare(`SELECT * FROM products WHERE id=?`).get(req.params["id"]) as Row | undefined);
+  if (!product) { res.status(404).json({ data: null, meta: {}, error: "Product not found" }); return; }
+  const variants = parseRows(db.prepare(`SELECT * FROM variants WHERE product_id=?`).all(req.params["id"]) as Row[]);
+  res.json({ data: { ...product, variants }, meta: {}, error: null });
 });
 
 router.get("/store/search", (req, res) => {
   const { q = "" } = req.query as Record<string, string>;
-  const qlo = q.toLowerCase();
-  const list = [...products.values()].filter(
-    (p) => p.status === "active" && (p.title.toLowerCase().includes(qlo) || p.vendor.toLowerCase().includes(qlo) || p.tags.some((t) => t.includes(qlo)))
-  );
-  res.json({ data: list, meta: { total: list.length, query: q }, error: null });
+  const rows = db.prepare(`SELECT * FROM products WHERE status='active' AND (title LIKE ? OR vendor LIKE ? OR tags LIKE ?)`).all(`%${q}%`, `%${q}%`, `%${q}%`) as Row[];
+  res.json({ data: parseRows(rows), meta: { total: rows.length, query: q }, error: null });
 });
 
 router.get("/store/collections", (_req, res) => {
-  res.json({ data: [...collections.values()], meta: { total: collections.size }, error: null });
+  const rows = db.prepare(`SELECT * FROM collections`).all() as Row[];
+  res.json({ data: parseRows(rows), meta: { total: rows.length }, error: null });
 });
 
 router.get("/store/collections/:id", (req, res) => {
-  const col = collections.get(req.params.id!);
-  if (!col) {
-    res.status(404).json({ data: null, meta: {}, error: "Collection not found" });
-    return;
-  }
+  const col = parseOne(db.prepare(`SELECT * FROM collections WHERE id=?`).get(req.params["id"]) as Row | undefined);
+  if (!col) { res.status(404).json({ data: null, meta: {}, error: "Collection not found" }); return; }
   res.json({ data: col, meta: {}, error: null });
 });
 
-// ─── Admin endpoints ──────────────────────────────────────────────────────────
+// ─── Admin: products ──────────────────────────────────────────────────────────
 
 router.use("/admin/products", requireAdmin);
-router.use("/admin/collections", requireAdmin);
-router.use("/admin/variants", requireAdmin);
 
 router.get("/admin/products", (req, res) => {
   const { status, category, q } = req.query as Record<string, string>;
-  let list = [...products.values()];
-  if (status) list = list.filter((p) => p.status === status);
-  if (category) list = list.filter((p) => p.category === category);
-  if (q) {
-    const qlo = q.toLowerCase();
-    list = list.filter((p) => p.title.toLowerCase().includes(qlo));
-  }
-  const withInventory = list.map((p) => {
-    const pvars = [...variants.values()].filter((v) => v.productId === p.id);
-    const totalInventory = pvars.reduce((s, v) => s + v.inventory, 0);
-    return { ...p, totalInventory, variantsCount: pvars.length };
-  });
-  res.json({ data: withInventory, meta: { total: list.length }, error: null });
+  let sql = `SELECT p.*, (SELECT COALESCE(SUM(v.inventory),0) FROM variants v WHERE v.product_id=p.id) AS total_inventory, (SELECT COUNT(*) FROM variants v WHERE v.product_id=p.id) AS variants_count FROM products p WHERE 1=1`;
+  const params: unknown[] = [];
+  if (status) { sql += ` AND p.status=?`; params.push(status); }
+  if (category) { sql += ` AND p.category=?`; params.push(category); }
+  if (q) { sql += ` AND p.title LIKE ?`; params.push(`%${q}%`); }
+  const rows = db.prepare(sql).all(...params) as Row[];
+  res.json({ data: parseRows(rows), meta: { total: rows.length }, error: null });
 });
 
 router.get("/admin/products/:id", (req, res) => {
-  const product = products.get(req.params.id!);
-  if (!product) {
-    res.status(404).json({ data: null, meta: {}, error: "Product not found" });
-    return;
-  }
-  const productVariants = [...variants.values()].filter((v) => v.productId === product.id);
-  res.json({ data: { ...product, variants: productVariants }, meta: {}, error: null });
+  const product = parseOne(db.prepare(`SELECT * FROM products WHERE id=?`).get(req.params["id"]) as Row | undefined);
+  if (!product) { res.status(404).json({ data: null, meta: {}, error: "Product not found" }); return; }
+  const variants = parseRows(db.prepare(`SELECT * FROM variants WHERE product_id=?`).all(req.params["id"]) as Row[]);
+  res.json({ data: { ...product, variants }, meta: {}, error: null });
 });
 
 router.post("/admin/products", (req, res) => {
-  const id = `p${Date.now()}`;
+  const id = `p_${Date.now()}`;
   const now = new Date().toISOString();
-  const product = { id, createdAt: now, updatedAt: now, status: "draft" as const, images: [], tags: [], compareAtPrice: null, ...req.body } as typeof products extends Map<string, infer V> ? V : never;
-  products.set(id, product);
+  const b = req.body as Record<string, unknown>;
+  db.prepare(`INSERT INTO products (id,title,vendor,category,description,price,compare_price,images,tags,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, b["title"] ?? "", b["vendor"] ?? "", b["category"] ?? "women", b["description"] ?? "", b["price"] ?? 0, b["compareAtPrice"] ?? null, JSON.stringify(b["images"] ?? []), JSON.stringify(b["tags"] ?? []), b["status"] ?? "draft", now, now);
+  const product = parseOne(db.prepare(`SELECT * FROM products WHERE id=?`).get(id) as Row | undefined);
   res.status(201).json({ data: product, meta: {}, error: null });
 });
 
 router.put("/admin/products/:id", (req, res) => {
-  const product = products.get(req.params.id!);
-  if (!product) {
-    res.status(404).json({ data: null, meta: {}, error: "Product not found" });
-    return;
-  }
-  const updated = { ...product, ...req.body, id: product.id, updatedAt: new Date().toISOString() };
-  products.set(product.id, updated);
-  res.json({ data: updated, meta: {}, error: null });
+  const id = req.params["id"];
+  const existing = db.prepare(`SELECT id FROM products WHERE id=?`).get(id);
+  if (!existing) { res.status(404).json({ data: null, meta: {}, error: "Product not found" }); return; }
+  const b = req.body as Record<string, unknown>;
+  const now = new Date().toISOString();
+  db.prepare(`UPDATE products SET title=COALESCE(?,title), vendor=COALESCE(?,vendor), category=COALESCE(?,category), description=COALESCE(?,description), price=COALESCE(?,price), compare_price=?, status=COALESCE(?,status), updated_at=? WHERE id=?`)
+    .run(b["title"] ?? null, b["vendor"] ?? null, b["category"] ?? null, b["description"] ?? null, b["price"] ?? null, b["compareAtPrice"] ?? null, b["status"] ?? null, now, id);
+  const product = parseOne(db.prepare(`SELECT * FROM products WHERE id=?`).get(id) as Row | undefined);
+  res.json({ data: product, meta: {}, error: null });
 });
 
 router.delete("/admin/products/:id", (req, res) => {
-  if (!products.has(req.params.id!)) {
-    res.status(404).json({ data: null, meta: {}, error: "Product not found" });
-    return;
-  }
-  products.delete(req.params.id!);
+  const id = req.params["id"];
+  if (!db.prepare(`SELECT id FROM products WHERE id=?`).get(id)) { res.status(404).json({ data: null, meta: {}, error: "Product not found" }); return; }
+  db.prepare(`DELETE FROM products WHERE id=?`).run(id);
   res.json({ data: { deleted: true }, meta: {}, error: null });
 });
 
-// Collections CRUD
+// ─── Admin: collections ───────────────────────────────────────────────────────
+
+router.use("/admin/collections", requireAdmin);
+
 router.get("/admin/collections", (_req, res) => {
-  res.json({ data: [...collections.values()], meta: { total: collections.size }, error: null });
+  const rows = db.prepare(`SELECT * FROM collections`).all() as Row[];
+  res.json({ data: parseRows(rows), meta: { total: rows.length }, error: null });
 });
 
 router.get("/admin/collections/:id", (req, res) => {
-  const col = collections.get(req.params.id!);
-  if (!col) {
-    res.status(404).json({ data: null, meta: {}, error: "Collection not found" });
-    return;
-  }
+  const col = parseOne(db.prepare(`SELECT * FROM collections WHERE id=?`).get(req.params["id"]) as Row | undefined);
+  if (!col) { res.status(404).json({ data: null, meta: {}, error: "Collection not found" }); return; }
   res.json({ data: col, meta: {}, error: null });
 });
 
 router.post("/admin/collections", (req, res) => {
-  const id = `col${Date.now()}`;
-  const col = { id, createdAt: new Date().toISOString(), productsCount: 0, image: "", ...req.body };
-  collections.set(id, col);
+  const id = `col_${Date.now()}`;
+  const b = req.body as Record<string, unknown>;
+  db.prepare(`INSERT INTO collections (id,title,description,image,products_count,created_at) VALUES (?,?,?,?,?,?)`)
+    .run(id, b["title"] ?? "", b["description"] ?? "", b["image"] ?? "", 0, new Date().toISOString());
+  const col = parseOne(db.prepare(`SELECT * FROM collections WHERE id=?`).get(id) as Row | undefined);
   res.status(201).json({ data: col, meta: {}, error: null });
 });
 
 router.put("/admin/collections/:id", (req, res) => {
-  const col = collections.get(req.params.id!);
-  if (!col) {
-    res.status(404).json({ data: null, meta: {}, error: "Collection not found" });
-    return;
-  }
-  const updated = { ...col, ...req.body, id: col.id };
-  collections.set(col.id, updated);
-  res.json({ data: updated, meta: {}, error: null });
+  const id = req.params["id"];
+  if (!db.prepare(`SELECT id FROM collections WHERE id=?`).get(id)) { res.status(404).json({ data: null, meta: {}, error: "Collection not found" }); return; }
+  const b = req.body as Record<string, unknown>;
+  db.prepare(`UPDATE collections SET title=COALESCE(?,title), description=COALESCE(?,description), image=COALESCE(?,image) WHERE id=?`).run(b["title"] ?? null, b["description"] ?? null, b["image"] ?? null, id);
+  const col = parseOne(db.prepare(`SELECT * FROM collections WHERE id=?`).get(id) as Row | undefined);
+  res.json({ data: col, meta: {}, error: null });
 });
 
 router.delete("/admin/collections/:id", (req, res) => {
-  collections.delete(req.params.id!);
+  db.prepare(`DELETE FROM collections WHERE id=?`).run(req.params["id"]);
   res.json({ data: { deleted: true }, meta: {}, error: null });
 });
 
-// Inventory / Variants
+// ─── Admin: variants / inventory ──────────────────────────────────────────────
+
+router.use("/admin/variants", requireAdmin);
+
 router.get("/admin/variants", (_req, res) => {
-  res.json({ data: [...variants.values()], meta: { total: variants.size }, error: null });
+  const rows = db.prepare(`SELECT * FROM variants`).all() as Row[];
+  res.json({ data: parseRows(rows), meta: { total: rows.length }, error: null });
 });
 
 router.get("/admin/variants/:productId", (req, res) => {
-  const list = [...variants.values()].filter((v) => v.productId === req.params.productId);
-  res.json({ data: list, meta: { total: list.length }, error: null });
+  const rows = db.prepare(`SELECT * FROM variants WHERE product_id=?`).all(req.params["productId"]) as Row[];
+  res.json({ data: parseRows(rows), meta: { total: rows.length }, error: null });
 });
 
 router.put("/admin/variants/:id", (req, res) => {
-  const variant = variants.get(req.params.id!);
-  if (!variant) {
-    res.status(404).json({ data: null, meta: {}, error: "Variant not found" });
-    return;
-  }
-  const updated = { ...variant, ...req.body, id: variant.id };
-  variants.set(variant.id, updated);
-  res.json({ data: updated, meta: {}, error: null });
+  const id = req.params["id"];
+  if (!db.prepare(`SELECT id FROM variants WHERE id=?`).get(id)) { res.status(404).json({ data: null, meta: {}, error: "Variant not found" }); return; }
+  const b = req.body as Record<string, unknown>;
+  db.prepare(`UPDATE variants SET inventory=COALESCE(?,inventory), price=COALESCE(?,price), sku=COALESCE(?,sku) WHERE id=?`).run(b["inventory"] ?? null, b["price"] ?? null, b["sku"] ?? null, id);
+  const variant = parseOne(db.prepare(`SELECT * FROM variants WHERE id=?`).get(id) as Row | undefined);
+  res.json({ data: variant, meta: {}, error: null });
 });
 
 export default router;

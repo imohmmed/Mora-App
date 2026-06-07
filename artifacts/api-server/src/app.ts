@@ -25,9 +25,25 @@ app.use(
     },
   }),
 );
+const ALLOWED_ORIGINS = [
+  // Replit preview domains (admin + storefront paths on same domain)
+  /^https?:\/\/.*\.replit\.dev$/,
+  /^https?:\/\/.*\.replit\.app$/,
+  /^https?:\/\/.*\.sisko\.replit\.dev$/,
+  /^https?:\/\/.*\.expo\.dev$/,
+  // Local development
+  /^http:\/\/localhost(:\d+)?$/,
+  /^http:\/\/127\.0\.0\.1(:\d+)?$/,
+];
+
 app.use(
   cors({
-    origin: (origin, cb) => cb(null, true), // allow all origins in dev
+    origin: (origin, cb) => {
+      // Allow requests with no origin (mobile apps, curl, server-to-server)
+      if (!origin) return cb(null, true);
+      const allowed = ALLOWED_ORIGINS.some((r) => r.test(origin));
+      cb(allowed ? null : new Error(`CORS blocked: ${origin}`), allowed);
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

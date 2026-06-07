@@ -1,91 +1,67 @@
 import { Router } from "express";
-import { customers, orders, type Customer } from "../lib/db.js";
+import db, { parseRows, parseOne } from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
+import type { Row } from "../lib/types.js";
 
 const router = Router();
 
 router.use("/admin/customers", requireAdmin);
 
-router.get("/admin/customers", (req, res) => {
-  const { q, segment } = req.query as Record<string, string>;
-  let list = [...customers.values()];
-  if (q) {
-    const qlo = q.toLowerCase();
-    list = list.filter(
-      (c) =>
-        c.firstName.toLowerCase().includes(qlo) ||
-        c.lastName.toLowerCase().includes(qlo) ||
-        c.email.toLowerCase().includes(qlo)
-    );
-  }
-  if (segment) list = list.filter((c) => c.segment === segment);
-  res.json({ data: list, meta: { total: list.length }, error: null });
-});
+// ─── Segments & Companies MUST come before /:id ───────────────────────────────
 
-router.get("/admin/customers/:id", (req, res) => {
-  const customer = customers.get(req.params.id!);
-  if (!customer) {
-    res.status(404).json({ data: null, meta: {}, error: "Customer not found" });
-    return;
-  }
-  const customerOrders = [...orders.values()].filter((o) => o.customerId === customer.id);
-  res.json({ data: { ...customer, orders: customerOrders }, meta: {}, error: null });
-});
-
-router.post("/admin/customers", (req, res) => {
-  const id = `cust_${Date.now()}`;
-  const now = new Date().toISOString();
-  const customer: Customer = {
-    id,
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    ordersCount: 0,
-    totalSpent: 0,
-    tags: [],
-    segment: null,
-    company: null,
-    address: {},
-    acceptsMarketing: false,
-    createdAt: now,
-    ...req.body,
-  };
-  customers.set(id, customer);
-  res.status(201).json({ data: customer, meta: {}, error: null });
-});
-
-router.put("/admin/customers/:id", (req, res) => {
-  const customer = customers.get(req.params.id!);
-  if (!customer) {
-    res.status(404).json({ data: null, meta: {}, error: "Customer not found" });
-    return;
-  }
-  const updated = { ...customer, ...req.body, id: customer.id };
-  customers.set(customer.id, updated);
-  res.json({ data: updated, meta: {}, error: null });
-});
-
-// Segments
-router.get("/admin/customers/segments", requireAdmin, (_req, res) => {
+router.get("/admin/customers/segments", (_req, res) => {
+  const all = db.prepare(`SELECT segment, orders_count, accepts_marketing FROM customers`).all() as Row[];
   const segments = [
-    { id: "vip", name: "VIP Customers", count: [...customers.values()].filter((c) => c.segment === "vip").length },
-    { id: "repeat", name: "Repeat Buyers", count: [...customers.values()].filter((c) => c.ordersCount > 2).length },
-    { id: "new", name: "New Customers", count: [...customers.values()].filter((c) => c.ordersCount === 1).length },
-    { id: "marketing", name: "Accepts Marketing", count: [...customers.values()].filter((c) => c.acceptsMarketing).length },
+    { id: "vip",       name: "VIP Customers",     count: all.filter((c) => c["segment"] === "vip").length },
+    { id: "repeat",    name: "Repeat Buyers",      count: all.filter((c) => (c["orders_count"] as number) > 2).length },
+    { id: "new",       name: "New Customers",      count: all.filter((c) => (c["orders_count"] as number) === 1).length },
+    { id: "marketing", name: "Accepts Marketing",  count: all.filter((c) => c["accepts_marketing"] === 1).length },
   ];
   res.json({ data: segments, meta: { total: segments.length }, error: null });
 });
 
-// Companies
-router.get("/admin/customers/companies", requireAdmin, (_req, res) => {
-  const companies = [...new Set([...customers.values()].filter((c) => c.company).map((c) => c.company!))].map(
-    (name) => ({
-      name,
-      customerCount: [...customers.values()].filter((c) => c.company === name).length,
-    })
-  );
-  res.json({ data: companies, meta: { total: companies.length }, error: null });
+router.get("/admin/customers/companies", (_req, res) => {
+  const rows = db.prepare(`SELECT company, COUNT(*) AS customer_count FROM customers WHERE company IS NOT NULL GROUP BY company`).all() as Row[];
+  res.json({ data: parseRows(rows), meta: { total: rows.length }, error: null });
+});
+
+// ─── Customer CRUD (/:id after named sub-routes) ──────────────────────────────
+
+router.get("/admin/customers", (req, res) => {
+  const { q, segment } = req.query as Record<string, string>;
+  let sql = `SELECT * FROM customers WHERE 1=1`;
+  const params: unknown[] = [];
+  if (q) { sql += ` AND (first_name LIKE ? OR last_name LIKE ? OR email LIKE ?)`; params.push(`%${q}%`, `%${q}%`, `%${q}%`); }
+  if (segment) { sql += ` AND segment=?`; params.push(segment); }
+  sql += ` ORDER BY created_at DESC`;
+  const rows = db.prepare(sql).all(...params) as Row[];
+  res.json({ data: parseRows(rows), meta: { total: rows.length }, error: null });
+});
+
+router.get("/admin/customers/:id", (req, res) => {
+  const customer = parseOne(db.prepare(`SELECT * FROM customers WHERE id=?`).get(req.params["id"]) as Row | undefined);
+  if (!customer) { res.status(404).json({ data: null, meta: {}, error: "Customer not found" }); return; }
+  const orders = parseRows(db.prepare(`SELECT * FROM orders WHERE customer_id=? ORDER BY created_at DESC`).all(req.params["id"]) as Row[]);
+  res.json({ data: { ...customer, orders }, meta: {}, error: null });
+});
+
+router.post("/admin/customers", (req, res) => {
+  const id = `cust_${Date.now()}`;
+  const b = req.body as Record<string, unknown>;
+  db.prepare(`INSERT INTO customers (id,first_name,last_name,email,phone,orders_count,total_spent,tags,segment,company,address,accepts_marketing,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, b["firstName"] ?? "", b["lastName"] ?? "", b["email"] ?? "", b["phone"] ?? "", 0, 0, "[]", null, null, JSON.stringify(b["address"] ?? {}), b["acceptsMarketing"] ? 1 : 0, new Date().toISOString());
+  const customer = parseOne(db.prepare(`SELECT * FROM customers WHERE id=?`).get(id) as Row | undefined);
+  res.status(201).json({ data: customer, meta: {}, error: null });
+});
+
+router.put("/admin/customers/:id", (req, res) => {
+  const id = req.params["id"];
+  if (!db.prepare(`SELECT id FROM customers WHERE id=?`).get(id)) { res.status(404).json({ data: null, meta: {}, error: "Customer not found" }); return; }
+  const b = req.body as Record<string, unknown>;
+  db.prepare(`UPDATE customers SET first_name=COALESCE(?,first_name), last_name=COALESCE(?,last_name), email=COALESCE(?,email), phone=COALESCE(?,phone), segment=COALESCE(?,segment), company=COALESCE(?,company) WHERE id=?`)
+    .run(b["firstName"] ?? null, b["lastName"] ?? null, b["email"] ?? null, b["phone"] ?? null, b["segment"] ?? null, b["company"] ?? null, id);
+  const customer = parseOne(db.prepare(`SELECT * FROM customers WHERE id=?`).get(id) as Row | undefined);
+  res.json({ data: customer, meta: {}, error: null });
 });
 
 export default router;
