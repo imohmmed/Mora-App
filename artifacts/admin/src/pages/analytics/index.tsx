@@ -109,30 +109,46 @@ export default function Analytics() {
         </TabsContent>
 
         <TabsContent value="reports" className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {loadingReports ? (
-              [...Array(4)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
-            ) : (
-              reports.map((report, i) => (
-                <Card key={i}>
-                  <CardContent className="pt-6">
-                    <div className="text-sm font-medium text-muted-foreground">{report.name}</div>
-                    <div className="mt-2 flex items-baseline gap-2">
-                      <span className="text-3xl font-bold">{String(report.value)}</span>
-                      <span className={cn(
-                        "text-sm font-medium",
-                        report.change.startsWith("+") ? "text-green-600" :
-                        report.change.startsWith("-") ? "text-red-600" :
-                        "text-muted-foreground"
-                      )}>
-                        {report.change}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
+          <Card>
+            <CardHeader><CardTitle>Store Reports</CardTitle></CardHeader>
+            <CardContent>
+              {loadingReports ? (
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+                </div>
+              ) : (
+                <div className="overflow-hidden border rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/40">
+                        <th className="text-left px-4 py-3 font-medium text-muted-foreground">Report</th>
+                        <th className="text-right px-4 py-3 font-medium text-muted-foreground">Value</th>
+                        <th className="text-right px-4 py-3 font-medium text-muted-foreground">Change</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {reports.map((report, i) => (
+                        <tr key={i} className="hover:bg-muted/20">
+                          <td className="px-4 py-3 font-medium">{report.name}</td>
+                          <td className="px-4 py-3 text-right font-semibold">{String(report.value)}</td>
+                          <td className="px-4 py-3 text-right">
+                            <span className={cn(
+                              "font-medium",
+                              report.change.startsWith("+") ? "text-green-600" :
+                              report.change.startsWith("-") ? "text-red-600" :
+                              "text-muted-foreground"
+                            )}>
+                              {report.change}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="live" className="mt-6">

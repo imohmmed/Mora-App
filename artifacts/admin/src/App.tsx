@@ -9,6 +9,7 @@ import Dashboard from "@/pages/dashboard";
 import Orders from "@/pages/orders";
 import OrderDetail from "@/pages/orders/detail";
 import Products from "@/pages/products";
+import NewProduct from "@/pages/products/new";
 import ProductDetail from "@/pages/products/detail";
 import Inventory from "@/pages/products/inventory";
 import PurchaseOrders from "@/pages/products/purchase-orders";
@@ -20,9 +21,12 @@ import CustomerSegments from "@/pages/customers/segments";
 import Companies from "@/pages/customers/companies";
 import Collections from "@/pages/collections";
 import Discounts from "@/pages/discounts";
+import NewDiscount from "@/pages/discounts/new";
 import Campaigns from "@/pages/campaigns";
 import CampaignDetail from "@/pages/campaigns/detail";
 import ContentHub from "@/pages/content";
+import BlogPostEditor from "@/pages/content/blog-new";
+import MenuEditor from "@/pages/content/menu-editor";
 import Markets from "@/pages/markets";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
@@ -37,23 +41,32 @@ function Router() {
         <Route path="/analytics" component={Analytics} />
         <Route path="/orders" component={Orders} />
         <Route path="/orders/:id" component={OrderDetail} />
-        {/* Products — specific sub-routes before :id */}
+        {/* Products — specific sub-routes BEFORE :id wildcard */}
+        <Route path="/products/new" component={NewProduct} />
         <Route path="/products/inventory" component={Inventory} />
         <Route path="/products/purchase-orders" component={PurchaseOrders} />
         <Route path="/products/transfers" component={Transfers} />
         <Route path="/products/gift-cards" component={GiftCards} />
         <Route path="/products/:id" component={ProductDetail} />
         <Route path="/products" component={Products} />
-        {/* Customers — specific sub-routes before :id */}
+        {/* Customers — specific sub-routes BEFORE :id wildcard */}
         <Route path="/customers/segments" component={CustomerSegments} />
         <Route path="/customers/companies" component={Companies} />
         <Route path="/customers/:id" component={CustomerDetail} />
         <Route path="/customers" component={Customers} />
         <Route path="/collections" component={Collections} />
+        {/* Discounts */}
+        <Route path="/discounts/new" component={NewDiscount} />
         <Route path="/discounts" component={Discounts} />
+        {/* Campaigns */}
         <Route path="/campaigns/:id" component={CampaignDetail} />
         <Route path="/campaigns" component={Campaigns} />
+        {/* Content */}
+        <Route path="/content/blog/new" component={BlogPostEditor} />
+        <Route path="/content/menus/new" component={MenuEditor} />
+        <Route path="/content/menus/:id" component={MenuEditor} />
         <Route path="/content" component={ContentHub} />
+        {/* Other */}
         <Route path="/markets" component={Markets} />
         <Route path="/settings" component={Settings} />
         <Route component={NotFound} />

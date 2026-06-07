@@ -8,10 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, List as ListIcon, Plus, Boxes, File, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
-import { useSearch } from "wouter";
+import { useSearch, useLocation } from "wouter";
 
 export default function ContentHub() {
   const search = useSearch();
+  const [, navigate] = useLocation();
   const params = new URLSearchParams(search);
   const defaultTab = params.get("tab") ?? "blog";
 
@@ -51,7 +52,7 @@ export default function ContentHub() {
         {/* BLOG POSTS */}
         <TabsContent value="blog" className="space-y-4">
           <div className="flex justify-end">
-            <Button data-testid="btn-add-post">
+            <Button data-testid="btn-add-post" onClick={() => navigate("/content/blog/new")}>
               <Plus className="w-4 h-4 mr-2" />
               Write Post
             </Button>
@@ -119,7 +120,7 @@ export default function ContentHub() {
         {/* MENUS */}
         <TabsContent value="menus" className="space-y-4">
           <div className="flex justify-end">
-            <Button data-testid="btn-add-menu">
+            <Button data-testid="btn-add-menu" onClick={() => navigate("/content/menus/new")}>
               <Plus className="w-4 h-4 mr-2" />
               Create Menu
             </Button>
@@ -135,7 +136,11 @@ export default function ContentHub() {
                 </CardContent>
               </Card>
             ) : menus.map((menu) => (
-              <Card key={menu.id} className="cursor-pointer hover:shadow-sm transition-shadow">
+              <Card
+                key={menu.id}
+                className="cursor-pointer hover:shadow-sm transition-shadow"
+                onClick={() => navigate(`/content/menus/${menu.id}`)}
+              >
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between">
                     <div>

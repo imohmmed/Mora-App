@@ -7,8 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tags, Plus } from "lucide-react";
 import { format } from "date-fns";
+import { useLocation } from "wouter";
 
 export default function Discounts() {
+  const [, navigate] = useLocation();
   const { data: response, isLoading } = useAdminListDiscounts();
   const discounts = response?.data ?? [];
 
@@ -19,7 +21,7 @@ export default function Discounts() {
           <h1 className="text-3xl font-bold tracking-tight">Discounts</h1>
           <p className="text-muted-foreground mt-1">Manage discount codes and automatic discounts.</p>
         </div>
-        <Button data-testid="btn-add-discount">
+        <Button data-testid="btn-add-discount" onClick={() => navigate("/discounts/new")}>
           <Plus className="w-4 h-4 mr-2" />
           Create Discount
         </Button>

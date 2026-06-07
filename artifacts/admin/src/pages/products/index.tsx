@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAdminListProducts } from "@workspace/api-client-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -13,6 +13,7 @@ import { Search, Plus, PackageOpen } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 
 export default function Products() {
+  const [, navigate] = useLocation();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("all");
   const [category, setCategory] = useState<string>("all");
@@ -34,7 +35,7 @@ export default function Products() {
           <h1 className="text-3xl font-bold tracking-tight">Products</h1>
           <p className="text-muted-foreground mt-1">Manage your product catalog and inventory.</p>
         </div>
-        <Button data-testid="btn-add-product">
+        <Button data-testid="btn-add-product" onClick={() => navigate("/products/new")}>
           <Plus className="w-4 h-4 mr-2" />
           Add Product
         </Button>

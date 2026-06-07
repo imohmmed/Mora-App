@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Inbox, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Inbox, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
 import { format } from "date-fns";
 import { useDebounce } from "@/hooks/use-debounce";
 
@@ -22,6 +22,7 @@ export default function Orders() {
   const [tab, setTab] = useState<OrderTab>("all");
   const [status, setStatus] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<string>("newest");
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 300);
 
@@ -94,6 +95,18 @@ export default function Orders() {
             <SelectItem value="unfulfilled">Unfulfilled</SelectItem>
             <SelectItem value="fulfilled">Fulfilled</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sort} onValueChange={(v) => { setSort(v); setPage(1); }}>
+          <SelectTrigger className="w-full sm:w-44">
+            <ArrowUpDown className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+            <SelectValue placeholder="Sort" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">Newest First</SelectItem>
+            <SelectItem value="oldest">Oldest First</SelectItem>
+            <SelectItem value="total_desc">Highest Total</SelectItem>
+            <SelectItem value="total_asc">Lowest Total</SelectItem>
           </SelectContent>
         </Select>
       </div>
