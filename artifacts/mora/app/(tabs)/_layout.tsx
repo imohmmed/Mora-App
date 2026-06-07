@@ -10,7 +10,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 import { useCart } from "@/context/CartContext";
-import { useWishlist } from "@/context/WishlistContext";
 
 function NativeTabLayout() {
   return (
@@ -22,10 +21,6 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="search" role="search">
         <Icon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />
         <Label>Search</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="wishlist">
-        <Icon sf={{ default: "heart", selected: "heart.fill" }} />
-        <Label>Saved</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="cart">
         <Icon sf={{ default: "bag", selected: "bag.fill" }} />
@@ -47,8 +42,6 @@ function ClassicTabLayout() {
   const isWeb = Platform.OS === "web";
   const safeAreaInsets = useSafeAreaInsets();
   const { totalItems } = useCart();
-  const { count: wishlistCount } = useWishlist();
-
   return (
     <Tabs
       sceneContainerStyle={{ paddingTop: 0 }}
@@ -120,28 +113,7 @@ function ClassicTabLayout() {
       />
       <Tabs.Screen
         name="wishlist"
-        options={{
-          title: "Saved",
-          tabBarIcon: ({ color, focused }) => (
-            <View>
-              {isIOS ? (
-                <SymbolView name={focused ? "heart.fill" : "heart"} tintColor={color} size={24} />
-              ) : (
-                <Feather name="heart" size={22} color={color} />
-              )}
-              {wishlistCount > 0 && (
-                <View style={[styles.tabBadge, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.tabBadgeText}>{wishlistCount > 9 ? "9+" : wishlistCount}</Text>
-                </View>
-              )}
-            </View>
-          ),
-          tabBarLabel: ({ color, focused }) => (
-            <Text style={{ color, fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium", fontSize: 10, letterSpacing: 0.3 }}>
-              SAVED
-            </Text>
-          ),
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="cart"

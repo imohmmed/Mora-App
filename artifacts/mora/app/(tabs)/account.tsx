@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { MoraLogo } from "@/components/MoraLogo";
 import { AccountExpoUI } from "@/components/AccountExpoUI";
@@ -146,6 +147,7 @@ function AccountClassic() {
   const [emailInput, setEmailInput] = useState("");
   const [savedEmail, setSavedEmail] = useState("");
   const [emailLoaded, setEmailLoaded] = useState(false);
+  const router = useRouter();
   const { count: wishlistCount } = useWishlist();
 
   const topPadding = isWeb ? 0 : insets.top;
@@ -314,7 +316,10 @@ function AccountClassic() {
                         idx === section.items.length - 1 && styles.lastItem,
                         pressed && { backgroundColor: colors.secondary },
                       ]}
-                      onPress={() => { if (item.id === "orders") setShowOrders(true); }}
+                      onPress={() => {
+                        if (item.id === "orders") setShowOrders(true);
+                        else if (item.id === "wishlist") router.push("/(tabs)/wishlist");
+                      }}
                       testID={`menu-${item.id}`}
                     >
                       <View style={styles.menuItemLeft}>
