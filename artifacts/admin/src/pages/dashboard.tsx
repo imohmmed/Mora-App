@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { 
   useAdminGetAnalyticsSummary, 
   useAdminGetRevenueChart, 
@@ -7,10 +8,11 @@ import {
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
-import { Package, ShoppingCart, Users, DollarSign, TrendingUp, TrendingDown, Clock } from "lucide-react";
+import { Package, ShoppingCart, Users, DollarSign, Clock } from "lucide-react";
 import { Link } from "wouter";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const { data: summaryRes, isLoading: loadingSummary } = useAdminGetAnalyticsSummary();
@@ -215,7 +217,7 @@ export default function Dashboard() {
   );
 }
 
-function MetricCard({ title, value, icon, loading }: { title: string, value: string, icon: React.ReactNode, loading: boolean }) {
+function MetricCard({ title, value, icon, loading }: { title: string, value: string, icon: ReactNode, loading: boolean }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
@@ -233,9 +235,3 @@ function MetricCard({ title, value, icon, loading }: { title: string, value: str
   );
 }
 
-// Simple CN polyfill here if needed, or import from utils
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}

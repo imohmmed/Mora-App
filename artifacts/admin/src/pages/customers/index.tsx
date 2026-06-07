@@ -7,17 +7,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Plus, Users as UsersIcon } from "lucide-react";
+import { useDebounce } from "@/hooks/use-debounce";
 
 export default function Customers() {
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  
-  import("react").then((React) => {
-    React.useEffect(() => {
-      const t = setTimeout(() => setDebouncedSearch(search), 300);
-      return () => clearTimeout(t);
-    }, [search]);
-  });
+  const debouncedSearch = useDebounce(search, 300);
 
   const { data: response, isLoading } = useAdminListCustomers({
     q: debouncedSearch || undefined,
@@ -87,7 +81,7 @@ export default function Customers() {
                     {customer.firstName} {customer.lastName}
                   </TableCell>
                   <TableCell>{customer.email}</TableCell>
-                  <TableCell>{(customer.address as any)?.country || "-"}</TableCell>
+                  <TableCell>{(customer.address as { country?: string })?.country || "-"}</TableCell>
                   <TableCell className="text-right">{customer.ordersCount ?? 0}</TableCell>
                   <TableCell className="text-right font-medium">
                     ${(customer.totalSpent ?? 0).toFixed(2)}

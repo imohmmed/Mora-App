@@ -9,21 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Plus, PackageOpen } from "lucide-react";
-import { useDebounce } from "@/hooks/use-debounce"; // We'll assume this exists or implement inline
+import { useDebounce } from "@/hooks/use-debounce";
 
 export default function Products() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("all");
   const [category, setCategory] = useState<string>("all");
   
-  // Custom simple debounce
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  import("react").then((React) => {
-    React.useEffect(() => {
-      const t = setTimeout(() => setDebouncedSearch(search), 300);
-      return () => clearTimeout(t);
-    }, [search]);
-  });
+  const debouncedSearch = useDebounce(search, 300);
 
   const { data: response, isLoading } = useAdminListProducts({
     q: debouncedSearch || undefined,

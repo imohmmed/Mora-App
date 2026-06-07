@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdminGetSettings, useAdminUpdateSettings } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,20 +25,17 @@ export default function Settings() {
     timezone: "",
   });
 
-  // Sync form data when loaded
-  import("react").then((React) => {
-    React.useEffect(() => {
-      if (settings) {
-        setFormData({
-          storeName: settings.storeName || "",
-          storeEmail: settings.storeEmail || "",
-          storePhone: settings.storePhone || "",
-          currency: settings.currency || "USD",
-          timezone: settings.timezone || "UTC",
-        });
-      }
-    }, [settings]);
-  });
+  useEffect(() => {
+    if (settings) {
+      setFormData({
+        storeName: settings.storeName || "",
+        storeEmail: settings.storeEmail || "",
+        storePhone: settings.storePhone || "",
+        currency: settings.currency || "USD",
+        timezone: settings.timezone || "UTC",
+      });
+    }
+  }, [settings]);
 
   const handleSave = () => {
     updateSettings.mutate(

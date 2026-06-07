@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdminGetProduct, useAdminUpdateProduct } from "@workspace/api-client-react";
 import { useParams, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -34,20 +34,18 @@ export default function ProductDetail() {
     status: "",
   });
 
-  import("react").then((React) => {
-    React.useEffect(() => {
-      if (product) {
-        setFormData({
-          title: product.title || "",
-          vendor: product.vendor || "",
-          category: product.category || "",
-          description: product.description || "",
-          price: product.price?.toString() || "",
-          status: product.status || "draft",
-        });
-      }
-    }, [product]);
-  });
+  useEffect(() => {
+    if (product) {
+      setFormData({
+        title: product.title || "",
+        vendor: product.vendor || "",
+        category: product.category || "",
+        description: product.description || "",
+        price: product.price?.toString() || "",
+        status: product.status || "draft",
+      });
+    }
+  }, [product]);
 
   const handleSave = () => {
     if (!id) return;
