@@ -68,6 +68,9 @@ export default function Account() {
             <Link href="/wishlist" className="pb-3 text-sm font-bold uppercase tracking-wider border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-colors">
               <Heart className="h-4 w-4 inline mr-2" />Wishlist
             </Link>
+            <Link href="/account/profile" className="pb-3 text-sm font-bold uppercase tracking-wider border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-colors">
+              <User className="h-4 w-4 inline mr-2" />Profile Settings
+            </Link>
           </div>
 
           {isLoading ? (

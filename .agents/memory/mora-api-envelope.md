@@ -25,4 +25,4 @@ return { products: json.data, total: json.meta.total as number };
 - Collections detail: has `productsCount` (integer), `image`, `title`, `description` — no `slug`
 
 ## Store orders
-The `/api/store/orders` endpoint filters by `lower(email)`. Seed emails follow pattern `firstname.lastname@example.com` (lowercase, no spaces in last name). E.g. `sara.alhassan@example.com`.
+The `/api/store/orders` endpoint filters by `lower(email)`. Seed emails follow pattern `firstname.lastname@example.com` (lowercase, no spaces in last name).

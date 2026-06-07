@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,9 +16,10 @@ import Checkout from "@/pages/checkout";
 import Blog from "@/pages/blog";
 import BlogDetail from "@/pages/blog-detail";
 import Account from "@/pages/account";
+import AccountOrders from "@/pages/account-orders";
+import AccountProfile from "@/pages/account-profile";
 import OrderDetail from "@/pages/order-detail";
 import Wishlist from "@/pages/wishlist";
-import AccountOrders from "@/pages/account-orders";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -27,8 +28,19 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+
+      {/* Primary product routes */}
       <Route path="/products" component={Products} />
       <Route path="/products/:id" component={ProductDetail} />
+
+      {/* Alias routes matching /category/:slug and /product/:id conventions */}
+      <Route path="/category/:slug">
+        {(params) => <Redirect to={`/products?category=${params.slug}`} />}
+      </Route>
+      <Route path="/product/:id">
+        {(params) => <Redirect to={`/products/${params.id}`} />}
+      </Route>
+
       <Route path="/collections" component={Collections} />
       <Route path="/collections/:id" component={CollectionDetail} />
       <Route path="/search" component={Search} />
@@ -36,9 +48,10 @@ function Router() {
       <Route path="/checkout" component={Checkout} />
       <Route path="/blog" component={Blog} />
       <Route path="/blog/:id" component={BlogDetail} />
-      <Route path="/account" component={Account} />
       <Route path="/account/orders" component={AccountOrders} />
       <Route path="/account/orders/:id" component={OrderDetail} />
+      <Route path="/account/profile" component={AccountProfile} />
+      <Route path="/account" component={Account} />
       <Route path="/wishlist" component={Wishlist} />
       <Route component={NotFound} />
     </Switch>

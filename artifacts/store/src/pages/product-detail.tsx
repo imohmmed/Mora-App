@@ -267,6 +267,60 @@ export default function ProductDetail() {
 
             {product.variants.length > 0 && (
               <div className="space-y-6 mb-6">
+                {/* Color selector */}
+                {(() => {
+                  const colors = Array.from(
+                    new Set(product.variants.map((v) => v.option2).filter(Boolean))
+                  );
+                  const selectedColor = selectedVariant?.option2 ?? null;
+                  if (colors.length === 0) return null;
+
+                  const colorMap: Record<string, string> = {
+                    black: "#000000", white: "#FFFFFF", navy: "#1A2B6B",
+                    camel: "#C19A6B", grey: "#9E9E9E", red: "#D32F2F",
+                    green: "#388E3C", blue: "#0274C1", pink: "#E91E8C",
+                    beige: "#F5F0E8", brown: "#795548", orange: "#FF5722",
+                  };
+
+                  return (
+                    <div>
+                      <label className="text-sm font-bold uppercase tracking-wider mb-3 block">
+                        Color:{" "}
+                        <span className="text-primary capitalize">{selectedColor ?? "—"}</span>
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {colors.map((color) => {
+                          const hex = colorMap[color!.toLowerCase()] ?? "#CCCCCC";
+                          const isSelected = selectedColor === color;
+                          const hasStock = product.variants.some(
+                            (v) => v.option2 === color && v.inventory > 0
+                          );
+                          return (
+                            <button
+                              key={color}
+                              title={color!}
+                              disabled={!hasStock}
+                              onClick={() => {
+                                const first = product.variants.find(
+                                  (v) => v.option2 === color && v.inventory > 0
+                                ) ?? product.variants.find((v) => v.option2 === color);
+                                if (first) setSelectedVariantId(first.id);
+                              }}
+                              className={`w-8 h-8 rounded-full border-2 transition-all ${
+                                isSelected
+                                  ? "border-primary scale-110 shadow-md"
+                                  : "border-transparent hover:border-muted-foreground"
+                              } ${!hasStock ? "opacity-40 cursor-not-allowed" : ""}`}
+                              style={{ backgroundColor: hex }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Size selector */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-sm font-bold uppercase tracking-wider">
@@ -281,23 +335,29 @@ export default function ProductDetail() {
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {product.variants.map((v) => (
-                      <button
-                        key={v.id}
-                        onClick={() => setSelectedVariantId(v.id)}
-                        disabled={v.inventory <= 0}
-                        className={`w-12 h-12 border text-sm font-bold transition-colors
-                          ${
-                            selectedVariantId === v.id
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : v.inventory <= 0
-                              ? "border-border text-muted-foreground line-through cursor-not-allowed"
-                              : "border-border hover:border-foreground"
-                          }`}
-                      >
-                        {v.option1}
-                      </button>
-                    ))}
+                    {product.variants
+                      .filter((v) =>
+                        selectedVariant?.option2
+                          ? v.option2 === selectedVariant.option2
+                          : true
+                      )
+                      .map((v) => (
+                        <button
+                          key={v.id}
+                          onClick={() => setSelectedVariantId(v.id)}
+                          disabled={v.inventory <= 0}
+                          className={`w-12 h-12 border text-sm font-bold transition-colors
+                            ${
+                              selectedVariantId === v.id
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : v.inventory <= 0
+                                ? "border-border text-muted-foreground line-through cursor-not-allowed"
+                                : "border-border hover:border-foreground"
+                            }`}
+                        >
+                          {v.option1}
+                        </button>
+                      ))}
                   </div>
                 </div>
               </div>

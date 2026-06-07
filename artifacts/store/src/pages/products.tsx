@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchProducts } from "@/lib/api";
 import { ProductCard } from "@/components/ui/ProductCard";
@@ -397,15 +397,46 @@ export default function Products() {
               </div>
             </div>
 
-            {/* Mobile filter drawer */}
+            {/* Mobile bottom-sheet filter */}
             {showFilters && (
-              <div className="md:hidden mb-6 p-4 border border-border bg-secondary/30">
-                <FilterPanel
-                  filters={filters}
-                  setFilters={(f) => { setFilters(f); setPage(1); }}
-                  category={category}
-                  onClear={clearFilters}
+              <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end">
+                {/* Backdrop */}
+                <div
+                  className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                  onClick={() => setShowFilters(false)}
                 />
+                {/* Sheet */}
+                <div className="relative bg-background rounded-t-2xl shadow-2xl max-h-[80dvh] flex flex-col z-10">
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
+                    <h2 className="font-bold uppercase tracking-wider text-sm flex items-center gap-2">
+                      <SlidersHorizontal className="h-4 w-4" /> Filters
+                      {activeFilterCount > 0 && (
+                        <span className="ml-1 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {activeFilterCount}
+                        </span>
+                      )}
+                    </h2>
+                    <button onClick={() => setShowFilters(false)} className="p-1 rounded-md hover:bg-secondary transition-colors">
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="overflow-y-auto flex-1 px-5 pb-6">
+                    <FilterPanel
+                      filters={filters}
+                      setFilters={(f) => { setFilters(f); setPage(1); }}
+                      category={category}
+                      onClear={clearFilters}
+                    />
+                  </div>
+                  <div className="px-5 py-4 border-t border-border flex-shrink-0">
+                    <Button
+                      className="w-full h-12 uppercase font-bold tracking-wider"
+                      onClick={() => setShowFilters(false)}
+                    >
+                      View Results
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
 
