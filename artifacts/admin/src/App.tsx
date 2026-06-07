@@ -10,9 +10,14 @@ import Orders from "@/pages/orders";
 import OrderDetail from "@/pages/orders/detail";
 import Products from "@/pages/products";
 import ProductDetail from "@/pages/products/detail";
+import Inventory from "@/pages/products/inventory";
+import PurchaseOrders from "@/pages/products/purchase-orders";
+import Transfers from "@/pages/products/transfers";
+import GiftCards from "@/pages/products/gift-cards";
 import Customers from "@/pages/customers";
 import CustomerDetail from "@/pages/customers/detail";
 import CustomerSegments from "@/pages/customers/segments";
+import Companies from "@/pages/customers/companies";
 import Collections from "@/pages/collections";
 import Discounts from "@/pages/discounts";
 import Campaigns from "@/pages/campaigns";
@@ -31,11 +36,18 @@ function Router() {
         <Route path="/analytics" component={Analytics} />
         <Route path="/orders" component={Orders} />
         <Route path="/orders/:id" component={OrderDetail} />
-        <Route path="/products" component={Products} />
+        {/* Products + sub-pages — specific routes first */}
+        <Route path="/products/inventory" component={Inventory} />
+        <Route path="/products/purchase-orders" component={PurchaseOrders} />
+        <Route path="/products/transfers" component={Transfers} />
+        <Route path="/products/gift-cards" component={GiftCards} />
         <Route path="/products/:id" component={ProductDetail} />
+        <Route path="/products" component={Products} />
+        {/* Customers + sub-pages — specific routes first */}
         <Route path="/customers/segments" component={CustomerSegments} />
-        <Route path="/customers" component={Customers} />
+        <Route path="/customers/companies" component={Companies} />
         <Route path="/customers/:id" component={CustomerDetail} />
+        <Route path="/customers" component={Customers} />
         <Route path="/collections" component={Collections} />
         <Route path="/discounts" component={Discounts} />
         <Route path="/campaigns" component={Campaigns} />

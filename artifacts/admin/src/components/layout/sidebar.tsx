@@ -15,30 +15,27 @@ import {
   ChevronDown,
   ChevronRight,
   UserSearch,
+  Building2,
+  ClipboardList,
+  ArrowLeftRight,
+  Gift,
+  Boxes,
+  File,
+  List as ListIcon,
+  Warehouse,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type NavItem = {
-  href: string;
-  label: string;
-  icon: React.ElementType;
-};
-
-type NavGroup = {
+type NavLeaf = { href: string; label: string; icon?: React.ElementType };
+type NavSection = {
   label?: string;
-  items: NavItem[];
-  children?: {
-    href: string;
-    label: string;
-    icon?: React.ElementType;
-  }[];
+  items: (NavLeaf & { icon: React.ElementType })[];
+  sub?: NavLeaf[];
 };
 
-const NAV_GROUPS: NavGroup[] = [
+const NAV: NavSection[] = [
   {
-    items: [
-      { href: "/", label: "Dashboard", icon: LayoutDashboard },
-    ],
+    items: [{ href: "/", label: "Dashboard", icon: LayoutDashboard }],
   },
   {
     label: "Store",
@@ -47,12 +44,21 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/products", label: "Products", icon: Package },
       { href: "/collections", label: "Collections", icon: FolderTree },
     ],
+    sub: [
+      { href: "/products/inventory", label: "Inventory", icon: Warehouse },
+      { href: "/products/purchase-orders", label: "Purchase Orders", icon: ClipboardList },
+      { href: "/products/transfers", label: "Transfers", icon: ArrowLeftRight },
+      { href: "/products/gift-cards", label: "Gift Cards", icon: Gift },
+    ],
   },
   {
     label: "Customers",
     items: [
       { href: "/customers", label: "All Customers", icon: Users },
+    ],
+    sub: [
       { href: "/customers/segments", label: "Segments", icon: UserSearch },
+      { href: "/customers/companies", label: "Companies", icon: Building2 },
     ],
   },
   {
@@ -63,75 +69,86 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Content & Markets",
+    label: "Content",
     items: [
-      { href: "/content", label: "Content", icon: FileText },
-      { href: "/markets", label: "Markets", icon: Globe },
+      { href: "/content", label: "Blog Posts", icon: FileText },
+    ],
+    sub: [
+      { href: "/content?tab=menus", label: "Menus", icon: ListIcon },
+      { href: "/content?tab=metaobjects", label: "Metaobjects", icon: Boxes },
+      { href: "/content?tab=files", label: "Files", icon: File },
     ],
   },
   {
-    label: "Analytics",
+    label: "Markets & Analytics",
     items: [
+      { href: "/markets", label: "Markets", icon: Globe },
       { href: "/analytics", label: "Analytics", icon: BarChart3 },
     ],
   },
 ];
 
-const BOTTOM_ITEMS: NavItem[] = [
+const BOTTOM: (NavLeaf & { icon: React.ElementType })[] = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-export function Sidebar() {
+export function SidebarContent() {
   const [location] = useLocation();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
-  const isActive = (href: string) =>
-    href === "/" ? location === "/" : location.startsWith(href);
+  const isActive = (href: string) => {
+    const path = href.split("?")[0];
+    return path === "/" ? location === "/" : location.startsWith(path);
+  };
 
-  const toggleGroup = (label: string) => {
+  const toggleSection = (label: string) => {
     setCollapsed((prev) => ({ ...prev, [label]: !prev[label] }));
   };
 
-  const renderItem = (item: NavItem) => {
+  const renderLeaf = (item: NavLeaf & { icon?: React.ElementType }, indent = false) => {
     const active = isActive(item.href);
+    const Icon = item.icon;
     return (
       <Link
         key={item.href}
         href={item.href}
         data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
         className={cn(
-          "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+          "flex items-center gap-2.5 rounded-md text-sm font-medium transition-colors",
+          indent ? "py-1.5 px-3 ml-3" : "py-2 px-3",
           active
             ? "bg-primary text-primary-foreground"
             : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         )}
       >
-        <item.icon className="h-4 w-4 flex-shrink-0" />
+        {Icon && <Icon className={cn("flex-shrink-0", indent ? "h-3.5 w-3.5" : "h-4 w-4")} />}
         <span className="truncate">{item.label}</span>
       </Link>
     );
   };
 
   return (
-    <aside className="w-60 border-r bg-sidebar flex-shrink-0 flex flex-col h-screen sticky top-0 overflow-y-auto">
-      <div className="px-4 py-5 flex items-center gap-2 border-b">
+    <>
+      {/* Logo */}
+      <div className="px-4 py-4 flex items-center gap-2 border-b flex-shrink-0">
         <span className="font-bold text-xl text-foreground tracking-tight">Mora</span>
         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase tracking-wider">
           Admin
         </span>
       </div>
 
-      <nav className="flex-1 py-3 px-2 space-y-1">
-        {NAV_GROUPS.map((group, gi) => {
-          const isCollapsed = group.label ? collapsed[group.label] : false;
+      {/* Navigation */}
+      <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
+        {NAV.map((section, si) => {
+          const isCollapsed = section.label ? collapsed[section.label] : false;
           return (
-            <div key={gi} className="space-y-0.5">
-              {group.label && (
+            <div key={si} className={cn("space-y-0.5", si > 0 && "pt-2")}>
+              {section.label && (
                 <button
-                  onClick={() => toggleGroup(group.label!)}
-                  className="w-full flex items-center justify-between px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => toggleSection(section.label!)}
+                  className="w-full flex items-center justify-between px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {group.label}
+                  {section.label}
                   {isCollapsed ? (
                     <ChevronRight className="h-3 w-3" />
                   ) : (
@@ -141,7 +158,12 @@ export function Sidebar() {
               )}
               {!isCollapsed && (
                 <div className="space-y-0.5">
-                  {group.items.map(renderItem)}
+                  {section.items.map((item) => renderLeaf(item))}
+                  {section.sub && (
+                    <div className="space-y-0.5 mt-0.5">
+                      {section.sub.map((item) => renderLeaf(item, true))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -149,9 +171,18 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="p-2 border-t">
-        {BOTTOM_ITEMS.map(renderItem)}
+      {/* Bottom */}
+      <div className="p-2 border-t flex-shrink-0">
+        {BOTTOM.map((item) => renderLeaf(item))}
       </div>
+    </>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <aside className="hidden md:flex w-60 border-r bg-sidebar flex-shrink-0 flex-col h-screen sticky top-0">
+      <SidebarContent />
     </aside>
   );
 }

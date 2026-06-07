@@ -1,4 +1,4 @@
-import { Bell, Search, Store } from "lucide-react";
+import { Bell, Search, Store, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,8 +17,13 @@ const PAGE_TITLES: Record<string, string> = {
   "/": "Dashboard",
   "/orders": "Orders",
   "/products": "Products",
+  "/products/inventory": "Inventory",
+  "/products/purchase-orders": "Purchase Orders",
+  "/products/transfers": "Transfers",
+  "/products/gift-cards": "Gift Cards",
   "/customers": "Customers",
   "/customers/segments": "Customer Segments",
+  "/customers/companies": "Companies",
   "/collections": "Collections",
   "/discounts": "Discounts",
   "/campaigns": "Campaigns",
@@ -32,20 +37,36 @@ function getTitle(path: string): string {
   if (PAGE_TITLES[path]) return PAGE_TITLES[path];
   if (path.startsWith("/orders/")) return "Order Details";
   if (path.startsWith("/products/")) return "Product Details";
-  if (path.startsWith("/customers/")) return "Customer Details";
+  if (path.startsWith("/customers/")) return "Customer Profile";
   return "Mora Admin";
 }
 
-export function TopBar() {
+interface TopBarProps {
+  onMenuClick: () => void;
+}
+
+export function TopBar({ onMenuClick }: TopBarProps) {
   const [location] = useLocation();
   const title = getTitle(location);
 
   return (
-    <header className="h-14 border-b bg-background flex items-center gap-4 px-4 md:px-6 flex-shrink-0 sticky top-0 z-10">
-      <div className="flex-1 flex items-center gap-3">
-        <h2 className="font-semibold text-sm text-muted-foreground hidden md:block">{title}</h2>
-      </div>
+    <header className="h-14 border-b bg-background flex items-center gap-3 px-4 flex-shrink-0 sticky top-0 z-10">
+      {/* Hamburger — mobile only */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="md:hidden h-8 w-8"
+        onClick={onMenuClick}
+        aria-label="Open menu"
+      >
+        <Menu className="h-4 w-4" />
+      </Button>
 
+      <span className="font-semibold text-sm text-muted-foreground hidden md:block">{title}</span>
+
+      <div className="flex-1" />
+
+      {/* Search — desktop */}
       <div className="relative hidden md:block w-56 lg:w-72">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <Input
@@ -54,6 +75,7 @@ export function TopBar() {
         />
       </div>
 
+      {/* Notifications */}
       <Button variant="ghost" size="icon" className="relative h-8 w-8">
         <Bell className="h-4 w-4" />
         <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
@@ -61,6 +83,7 @@ export function TopBar() {
         </Badge>
       </Button>
 
+      {/* User menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
