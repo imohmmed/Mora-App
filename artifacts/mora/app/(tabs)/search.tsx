@@ -1,6 +1,5 @@
 import React, { useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Dimensions,
   Platform,
   Pressable,
@@ -11,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -47,12 +47,26 @@ function cardColor(id: string): string {
   return CARD_COLORS[h % CARD_COLORS.length];
 }
 
+function ResultSkeleton() {
+  return (
+    <View style={{ width: CARD_WIDTH }}>
+      <View style={[{ width: "100%", height: CARD_WIDTH * 1.3, borderRadius: 2, backgroundColor: "#F0F0F0" }]} />
+      <View style={{ paddingTop: 8, gap: 6 }}>
+        <View style={{ height: 10, width: 60, backgroundColor: "#E8E8E8", borderRadius: 4 }} />
+        <View style={{ height: 12, width: 100, backgroundColor: "#E8E8E8", borderRadius: 4 }} />
+        <View style={{ height: 14, width: 50, backgroundColor: "#E8E8E8", borderRadius: 4 }} />
+      </View>
+    </View>
+  );
+}
+
 function SearchResultCard({ item }: { item: Product }) {
   const colors = useColors();
   const router = useRouter();
   const { isWishlisted, toggle } = useWishlist();
   const { addItem } = useCart();
   const liked = isWishlisted(item.id);
+  const imageUri = item.images?.[0];
 
   return (
     <Pressable
@@ -60,6 +74,16 @@ function SearchResultCard({ item }: { item: Product }) {
       onPress={() => router.push(`/product/${item.id}`)}
     >
       <View style={[styles.resultImage, { backgroundColor: cardColor(item.id) }]}>
+        {imageUri ? (
+          <Image
+            source={{ uri: imageUri }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={200}
+          />
+        ) : (
+          <Feather name="shopping-bag" size={32} color={colors.mutedForeground} />
+        )}
         <Pressable
           style={styles.likeBtn}
           onPress={() => {
@@ -69,7 +93,6 @@ function SearchResultCard({ item }: { item: Product }) {
         >
           <Feather name="heart" size={16} color={liked ? "#E53935" : "#1A1A1A"} />
         </Pressable>
-        <Feather name="shopping-bag" size={32} color={colors.mutedForeground} />
       </View>
       <View style={styles.resultInfo}>
         <Text style={[styles.resultBrand, { color: colors.mutedForeground }]}>
@@ -119,26 +142,20 @@ export default function SearchScreen() {
   });
 
   const showResults = query.trim().length > 0;
+  const isSearching = (isLoading || isFetching) && debouncedQuery.trim().length > 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View
         style={[
           styles.header,
-          {
-            paddingTop: topPadding + 8,
-            borderBottomColor: colors.border,
-            backgroundColor: colors.background,
-          },
+          { paddingTop: topPadding + 8, borderBottomColor: colors.border, backgroundColor: colors.background },
         ]}
       >
         <View
           style={[
             styles.searchInputRow,
-            {
-              backgroundColor: colors.secondary,
-              borderColor: focused ? colors.primary : colors.border,
-            },
+            { backgroundColor: colors.secondary, borderColor: focused ? colors.primary : colors.border },
           ]}
         >
           <Feather name="search" size={16} color={colors.mutedForeground} />
@@ -151,20 +168,11 @@ export default function SearchScreen() {
             onChangeText={handleChangeText}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
-            autoFocus={false}
             returnKeyType="search"
             testID="search-input"
           />
-          {(isLoading || isFetching) && query.trim().length > 0 && (
-            <ActivityIndicator size="small" color={colors.primary} />
-          )}
           {query.length > 0 && (
-            <Pressable
-              onPress={() => {
-                setQuery("");
-                setDebouncedQuery("");
-              }}
-            >
+            <Pressable onPress={() => { setQuery(""); setDebouncedQuery(""); }}>
               <Feather name="x" size={16} color={colors.mutedForeground} />
             </Pressable>
           )}
@@ -177,11 +185,7 @@ export default function SearchScreen() {
         keyboardShouldPersistTaps="handled"
         refreshControl={
           showResults ? (
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
-              tintColor={colors.primary}
-            />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
           ) : undefined
         }
       >
@@ -201,7 +205,6 @@ export default function SearchScreen() {
                 ))}
               </View>
             </View>
-
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>BROWSE</Text>
               <View style={styles.categoriesGrid}>
@@ -215,17 +218,16 @@ export default function SearchScreen() {
                     onPress={() => handleChangeText(cat.label)}
                     testID={`category-${cat.label}`}
                   >
-                    <Feather name={cat.icon} size={24} color={colors.foreground} />
-                    <Text style={[styles.categoryLabel, { color: colors.foreground }]}>{cat.label}</Text>
+                    <Feather name={cat.icon} size={24} color="#1A1A1A" />
+                    <Text style={[styles.categoryLabel, { color: "#1A1A1A" }]}>{cat.label}</Text>
                   </Pressable>
                 ))}
               </View>
             </View>
           </>
-        ) : isLoading && debouncedQuery === query ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Searching...</Text>
+        ) : isSearching ? (
+          <View style={styles.grid}>
+            {Array.from({ length: 4 }).map((_, i) => <ResultSkeleton key={i} />)}
           </View>
         ) : isError ? (
           <View style={styles.errorBox}>
@@ -233,10 +235,7 @@ export default function SearchScreen() {
             <Text style={[styles.errorText, { color: colors.mutedForeground }]}>
               Could not search. Check connection.
             </Text>
-            <Pressable
-              onPress={() => refetch()}
-              style={[styles.retryBtn, { borderColor: colors.border }]}
-            >
+            <Pressable onPress={() => refetch()} style={[styles.retryBtn, { borderColor: colors.border }]}>
               <Text style={[styles.retryText, { color: colors.foreground }]}>Retry</Text>
             </Pressable>
           </View>
@@ -271,11 +270,7 @@ export default function SearchScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-  },
+  header: { paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
   searchInputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -285,12 +280,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1.5,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    padding: 0,
-  },
+  searchInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", padding: 0 },
   section: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8 },
   sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 13, letterSpacing: 1, marginBottom: 12 },
   tagsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
@@ -306,15 +296,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   categoryLabel: { fontFamily: "Inter_600SemiBold", fontSize: 14, letterSpacing: 0.5 },
-  loadingBox: { alignItems: "center", justifyContent: "center", paddingVertical: 60, gap: 12 },
-  loadingText: { fontFamily: "Inter_400Regular", fontSize: 14 },
   errorBox: { alignItems: "center", paddingVertical: 60, gap: 12 },
   errorText: { fontFamily: "Inter_400Regular", fontSize: 14, textAlign: "center", paddingHorizontal: 32 },
   retryBtn: { paddingHorizontal: 24, paddingVertical: 10, borderWidth: 1, borderRadius: 4 },
   retryText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
   resultsHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   resultsCount: { fontFamily: "Inter_400Regular", fontSize: 13 },
-  grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 16 },
+  grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 16, paddingTop: 16 },
   resultCard: { width: CARD_WIDTH },
   resultImage: {
     width: "100%",
@@ -323,6 +311,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
+    overflow: "hidden",
   },
   likeBtn: {
     position: "absolute",

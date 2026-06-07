@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Dimensions,
   Platform,
   Pressable,
@@ -10,6 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -29,21 +29,20 @@ const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
 const CATEGORIES = ["ALL", "WOMEN", "MEN", "BEAUTY", "SALE"];
 const CATEGORY_FILTERS: Record<string, string | undefined> = {
   ALL: undefined,
-  WOMEN: "Women",
-  MEN: "Men",
-  BEAUTY: "Beauty",
-  SALE: undefined,
+  WOMEN: "women",
+  MEN: "men",
+  BEAUTY: "beauty",
+  SALE: "sale",
 };
+
+const FALLBACK_BANNERS = [
+  { id: "1", title: "New Season\nArrived", subtitle: "Up to 40% off selected styles", cta: "SHOP NOW", bg: "#0274C1" },
+  { id: "2", title: "Summer\nEdit", subtitle: "Fresh styles for warm days", cta: "EXPLORE", bg: "#1A1A1A" },
+];
 
 const CARD_COLORS = [
   "#E8EDF5", "#F0EBE3", "#E8F0E8", "#F5EDEB",
   "#EBF0F5", "#F5EBF5", "#FFF3E0", "#F0F0F0",
-];
-
-const BANNERS = [
-  { id: "1", title: "New Season\nArrived", subtitle: "Up to 40% off selected styles", cta: "SHOP NOW", bg: "#0274C1" },
-  { id: "2", title: "Summer\nEdit", subtitle: "Fresh styles for warm days", cta: "EXPLORE", bg: "#1A1A1A" },
-  { id: "3", title: "Members\nExclusive", subtitle: "Extra 15% off with code MORA15", cta: "JOIN NOW", bg: "#2E5FA3" },
 ];
 
 function cardColor(id: string): string {
@@ -54,9 +53,8 @@ function cardColor(id: string): string {
 
 function getTag(product: Product): string | null {
   const tags = product.tags ?? [];
-  if (tags.some((t) => t.toLowerCase() === "sale")) return "SALE";
-  if (tags.some((t) => t.toLowerCase() === "limited")) return "LIMITED";
-  if (tags.some((t) => t.toLowerCase() === "new")) return "NEW";
+  if (product.category === "sale" || tags.some((t) => t.toLowerCase() === "sale")) return "SALE";
+  if (tags.some((t) => t.toLowerCase() === "new") || product.category === "new_in") return "NEW";
   return null;
 }
 
@@ -68,6 +66,7 @@ function ProductCard({ item }: { item: Product }) {
   const liked = isWishlisted(item.id);
   const tag = getTag(item);
   const bg = cardColor(item.id);
+  const imageUri = item.images?.[0];
 
   const handleLike = () => {
     toggle(item.id);
@@ -85,6 +84,7 @@ function ProductCard({ item }: { item: Product }) {
       quantity: 1,
       size: variant?.option1,
       color: variant?.option2,
+      image: imageUri,
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
@@ -97,13 +97,23 @@ function ProductCard({ item }: { item: Product }) {
       onLongPress={handleAddToCart}
     >
       <View style={[styles.productImage, { backgroundColor: bg }]}>
+        {imageUri ? (
+          <Image
+            source={{ uri: imageUri }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={200}
+          />
+        ) : (
+          <Feather name="shopping-bag" size={40} color={colors.mutedForeground} />
+        )}
         {tag && (
           <View
             style={[
               styles.productTag,
               {
                 backgroundColor:
-                  tag === "SALE" ? "#E53935" : tag === "LIMITED" ? "#1A1A1A" : colors.primary,
+                  tag === "SALE" ? "#E53935" : tag === "NEW" ? "#0274C1" : "#1A1A1A",
               },
             ]}
           >
@@ -111,24 +121,14 @@ function ProductCard({ item }: { item: Product }) {
           </View>
         )}
         <Pressable style={styles.likeBtn} onPress={handleLike}>
-          <Feather
-            name="heart"
-            size={18}
-            color={liked ? "#E53935" : "#1A1A1A"}
-          />
+          <Feather name="heart" size={18} color={liked ? "#E53935" : "#1A1A1A"} />
         </Pressable>
-        <View style={styles.productImagePlaceholder}>
-          <Feather name="shopping-bag" size={40} color={colors.mutedForeground} />
-        </View>
       </View>
       <View style={styles.productInfo}>
         <Text style={[styles.productBrand, { color: colors.mutedForeground }]}>
           {item.vendor ?? "Mora"}
         </Text>
-        <Text
-          style={[styles.productTitle, { color: colors.foreground }]}
-          numberOfLines={2}
-        >
+        <Text style={[styles.productTitle, { color: colors.foreground }]} numberOfLines={2}>
           {item.title}
         </Text>
         <View style={styles.priceRow}>
@@ -159,6 +159,10 @@ function ProductSkeleton() {
   );
 }
 
+function BannerSkeleton() {
+  return <View style={[styles.banner, { backgroundColor: "#E0E0E0", width: SCREEN_WIDTH }]} />;
+}
+
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -167,9 +171,7 @@ export default function HomeScreen() {
   const [activeBanner, setActiveBanner] = useState(0);
   const { totalItems } = useCart();
   const { count: wishlistCount } = useWishlist();
-
   const bottomPadding = isWeb ? 34 : insets.bottom;
-
   const categoryKey = CATEGORIES[activeCategory];
   const categoryFilter = CATEGORY_FILTERS[categoryKey ?? "ALL"];
 
@@ -181,14 +183,31 @@ export default function HomeScreen() {
     isRefetching,
   } = useQuery({
     queryKey: ["products", categoryKey],
-    queryFn: () =>
-      fetchProducts({
-        category: categoryFilter,
-        limit: 20,
-      }),
+    queryFn: () => fetchProducts({ category: categoryFilter, limit: 20 }),
+  });
+
+  const {
+    data: newInData,
+    isLoading: isNewInLoading,
+  } = useQuery({
+    queryKey: ["products", "new_in"],
+    queryFn: () => fetchProducts({ category: "new_in", limit: 3 }),
+    staleTime: 300_000,
   });
 
   const products = data?.products ?? [];
+  const featuredProducts = newInData?.products ?? [];
+
+  const banners = featuredProducts.length > 0
+    ? featuredProducts.map((p, i) => ({
+        id: p.id,
+        title: p.title.replace(/\s+/g, "\n"),
+        subtitle: p.vendor ?? "Mora Studio",
+        cta: "SHOP NOW",
+        bg: ["#0274C1", "#1A1A1A", "#2E5FA3"][i % 3],
+        image: p.images?.[0],
+      }))
+    : FALLBACK_BANNERS.map((b) => ({ ...b, image: undefined }));
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -219,26 +238,34 @@ export default function HomeScreen() {
             setActiveBanner(idx);
           }}
         >
-          {BANNERS.map((banner) => (
-            <View
-              key={banner.id}
-              style={[styles.banner, { backgroundColor: banner.bg, width: SCREEN_WIDTH }]}
-            >
-              <View style={styles.bannerContent}>
-                <Text style={styles.bannerTitle}>{banner.title}</Text>
-                <Text style={styles.bannerSubtitle}>{banner.subtitle}</Text>
-                <Pressable
-                  style={({ pressed }) => [styles.bannerCta, { opacity: pressed ? 0.85 : 1 }]}
+          {isNewInLoading
+            ? <BannerSkeleton />
+            : banners.map((banner) => (
+                <View
+                  key={banner.id}
+                  style={[styles.banner, { backgroundColor: banner.bg, width: SCREEN_WIDTH }]}
                 >
-                  <Text style={styles.bannerCtaText}>{banner.cta}</Text>
-                </Pressable>
-              </View>
-            </View>
-          ))}
+                  {banner.image && (
+                    <Image
+                      source={{ uri: banner.image }}
+                      style={[StyleSheet.absoluteFill, { opacity: 0.35 }]}
+                      contentFit="cover"
+                    />
+                  )}
+                  <View style={styles.bannerContent}>
+                    <Text style={styles.bannerTitle}>{banner.title}</Text>
+                    <Text style={styles.bannerSubtitle}>{banner.subtitle}</Text>
+                    <Pressable style={({ pressed }) => [styles.bannerCta, { opacity: pressed ? 0.85 : 1 }]}>
+                      <Text style={styles.bannerCtaText}>{banner.cta}</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))
+          }
         </ScrollView>
 
         <View style={styles.dotsRow}>
-          {BANNERS.map((_, i) => (
+          {banners.map((_, i) => (
             <View
               key={i}
               style={[
@@ -298,7 +325,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  banner: { height: 260, justifyContent: "flex-end" },
+  banner: { height: 260, justifyContent: "flex-end", overflow: "hidden" },
   bannerContent: { padding: 24, paddingBottom: 28 },
   bannerTitle: {
     fontFamily: "Inter_700Bold",
@@ -341,22 +368,9 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
   },
-  sectionTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 14,
-    letterSpacing: 1,
-  },
-  seeAll: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 12,
-    letterSpacing: 0.5,
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 16,
-    gap: 16,
-  },
+  sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1 },
+  seeAll: { fontFamily: "Inter_500Medium", fontSize: 12, letterSpacing: 0.5 },
+  grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 16 },
   productCard: { width: CARD_WIDTH },
   productImage: {
     width: "100%",
@@ -365,8 +379,8 @@ const styles = StyleSheet.create({
     position: "relative",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
-  productImagePlaceholder: { alignItems: "center", justifyContent: "center" },
   productTag: {
     position: "absolute",
     top: 10,
@@ -375,12 +389,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     zIndex: 1,
   },
-  productTagText: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.5,
-  },
+  productTagText: { color: "#FFFFFF", fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
   likeBtn: {
     position: "absolute",
     top: 10,
@@ -391,56 +400,15 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   productInfo: { paddingTop: 10, gap: 2 },
-  productBrand: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 11,
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-  },
-  productTitle: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 2,
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 4,
-  },
+  productBrand: { fontFamily: "Inter_500Medium", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase" },
+  productTitle: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18, marginTop: 2 },
+  priceRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
   productPrice: { fontFamily: "Inter_700Bold", fontSize: 14 },
-  originalPrice: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    textDecorationLine: "line-through",
-  },
-  errorBox: {
-    alignItems: "center",
-    paddingVertical: 40,
-    gap: 12,
-  },
-  errorText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-  },
-  retryBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderRadius: 4,
-  },
-  retryText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 13,
-  },
-  emptyBox: {
-    alignItems: "center",
-    paddingVertical: 40,
-    gap: 12,
-  },
-  emptyText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-  },
+  originalPrice: { fontFamily: "Inter_400Regular", fontSize: 12, textDecorationLine: "line-through" },
+  errorBox: { alignItems: "center", paddingVertical: 40, gap: 12 },
+  errorText: { fontFamily: "Inter_400Regular", fontSize: 14 },
+  retryBtn: { paddingHorizontal: 20, paddingVertical: 10, borderWidth: 1, borderRadius: 4 },
+  retryText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  emptyBox: { alignItems: "center", paddingVertical: 40, gap: 12 },
+  emptyText: { fontFamily: "Inter_400Regular", fontSize: 14 },
 });

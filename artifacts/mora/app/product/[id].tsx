@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   RefreshControl,
@@ -9,6 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -29,6 +29,27 @@ function cardColor(id: string): string {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
   return CARD_COLORS[h % CARD_COLORS.length];
+}
+
+function ProductDetailSkeleton({ colors }: { colors: ReturnType<typeof useColors> }) {
+  return (
+    <>
+      <View style={[styles.imageBox, { backgroundColor: "#F0F0F0" }]} />
+      <View style={{ padding: 20, gap: 14 }}>
+        <View style={{ height: 12, width: 80, backgroundColor: "#E8E8E8", borderRadius: 4 }} />
+        <View style={{ height: 20, width: "80%", backgroundColor: "#E8E8E8", borderRadius: 4 }} />
+        <View style={{ height: 20, width: 100, backgroundColor: "#E8E8E8", borderRadius: 4 }} />
+        <View style={{ height: 12, width: "60%", backgroundColor: "#E8E8E8", borderRadius: 4 }} />
+        <View style={{ height: 12, width: "90%", backgroundColor: "#E8E8E8", borderRadius: 4 }} />
+        <View style={{ height: 12, width: "70%", backgroundColor: "#E8E8E8", borderRadius: 4 }} />
+        <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+          {[60, 60, 60, 60].map((w, i) => (
+            <View key={i} style={{ height: 44, width: w, backgroundColor: "#E8E8E8", borderRadius: 4 }} />
+          ))}
+        </View>
+      </View>
+    </>
+  );
 }
 
 export default function ProductDetailScreen() {
@@ -56,6 +77,7 @@ export default function ProductDetailScreen() {
   const price = activeVariant?.price ?? product?.price ?? 0;
   const comparePrice = product?.comparePrice;
   const bg = product ? cardColor(product.id) : "#F0F0F0";
+  const imageUri = product?.images?.[0];
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -69,6 +91,7 @@ export default function ProductDetailScreen() {
       quantity: 1,
       size: variant?.option1,
       color: variant?.option2,
+      image: imageUri,
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setAdded(true);
@@ -110,12 +133,9 @@ export default function ProductDetailScreen() {
       </View>
 
       {isLoading ? (
-        <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
-            Loading product...
-          </Text>
-        </View>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottomPadding + 90 }}>
+          <ProductDetailSkeleton colors={colors} />
+        </ScrollView>
       ) : isError ? (
         <View style={styles.errorBox}>
           <Feather name="wifi-off" size={40} color={colors.border} />
@@ -134,16 +154,21 @@ export default function ProductDetailScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: bottomPadding + 90 }}
           refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
-              tintColor={colors.primary}
-            />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
           }
         >
           {/* Product Image */}
           <View style={[styles.imageBox, { backgroundColor: bg }]}>
-            <Feather name="shopping-bag" size={80} color={colors.mutedForeground} />
+            {imageUri ? (
+              <Image
+                source={{ uri: imageUri }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                transition={300}
+              />
+            ) : (
+              <Feather name="shopping-bag" size={80} color={colors.mutedForeground} />
+            )}
             <Pressable
               style={[styles.wishlistBtn, { backgroundColor: "rgba(255,255,255,0.9)" }]}
               onPress={() => {
@@ -280,11 +305,7 @@ export default function ProductDetailScreen() {
             onPress={handleAddToCart}
             testID="add-to-bag-btn"
           >
-            <Feather
-              name={added ? "check" : "shopping-bag"}
-              size={18}
-              color="#FFFFFF"
-            />
+            <Feather name={added ? "check" : "shopping-bag"} size={18} color="#FFFFFF" />
             <Text style={styles.addBtnText}>
               {added ? "ADDED TO BAG" : "ADD TO BAG"}
             </Text>
@@ -319,32 +340,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
   },
   cartBadgeText: { color: "#FFFFFF", fontSize: 10, fontFamily: "Inter_700Bold" },
-  loadingBox: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  loadingText: { fontFamily: "Inter_400Regular", fontSize: 14 },
-  errorBox: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
+  errorBox: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   errorText: { fontFamily: "Inter_400Regular", fontSize: 14 },
-  retryBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderRadius: 4,
-  },
+  retryBtn: { paddingHorizontal: 24, paddingVertical: 10, borderWidth: 1, borderRadius: 4 },
   retryText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
   imageBox: {
     height: 360,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
+    overflow: "hidden",
   },
   wishlistBtn: {
     position: "absolute",
@@ -352,69 +357,26 @@ const styles = StyleSheet.create({
     right: 16,
     borderRadius: 24,
     padding: 10,
+    zIndex: 1,
   },
-  infoSection: {
-    padding: 20,
-    gap: 12,
-  },
-  vendor: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 12,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  title: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 22,
-    lineHeight: 28,
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 4,
-  },
+  infoSection: { padding: 20, gap: 12 },
+  vendor: { fontFamily: "Inter_500Medium", fontSize: 12, letterSpacing: 1, textTransform: "uppercase" },
+  title: { fontFamily: "Inter_700Bold", fontSize: 22, lineHeight: 28 },
+  priceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 },
   price: { fontFamily: "Inter_700Bold", fontSize: 22 },
-  comparePrice: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 16,
-    textDecorationLine: "line-through",
-  },
-  saleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 2,
-  },
-  saleBadgeText: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    fontSize: 11,
-    letterSpacing: 0.5,
-  },
+  comparePrice: { fontFamily: "Inter_400Regular", fontSize: 16, textDecorationLine: "line-through" },
+  saleBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 2 },
+  saleBadgeText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 0.5 },
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
-  tag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-    borderWidth: 1,
-  },
+  tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4, borderWidth: 1 },
   tagText: { fontFamily: "Inter_400Regular", fontSize: 12 },
   descSection: { gap: 8, marginTop: 4 },
   descLabel: { fontFamily: "Inter_700Bold", fontSize: 12, letterSpacing: 1 },
-  description: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    lineHeight: 22,
-  },
+  description: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 22 },
   variantsSection: { gap: 10, marginTop: 4 },
   variantsLabel: { fontFamily: "Inter_700Bold", fontSize: 12, letterSpacing: 1 },
   variantsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  variantChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 4,
-    borderWidth: 1.5,
-  },
+  variantChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 4, borderWidth: 1.5 },
   variantText: { fontFamily: "Inter_500Medium", fontSize: 14 },
   deliveryRow: {
     flexDirection: "row",
@@ -442,10 +404,5 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 4,
   },
-  addBtnText: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    fontSize: 14,
-    letterSpacing: 1,
-  },
+  addBtnText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1 },
 });

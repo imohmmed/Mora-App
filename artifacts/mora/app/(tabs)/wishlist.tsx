@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  ActivityIndicator,
   Dimensions,
   Platform,
   Pressable,
@@ -10,6 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -36,11 +36,25 @@ function cardColor(id: string): string {
   return CARD_COLORS[h % CARD_COLORS.length];
 }
 
+function WishlistSkeleton() {
+  return (
+    <View style={{ width: CARD_WIDTH }}>
+      <View style={{ width: "100%", height: CARD_WIDTH * 1.3, borderRadius: 2, backgroundColor: "#F0F0F0" }} />
+      <View style={{ paddingTop: 8, gap: 6 }}>
+        <View style={{ height: 10, width: 60, backgroundColor: "#E8E8E8", borderRadius: 4 }} />
+        <View style={{ height: 12, width: 100, backgroundColor: "#E8E8E8", borderRadius: 4 }} />
+        <View style={{ height: 14, width: 50, backgroundColor: "#E8E8E8", borderRadius: 4 }} />
+      </View>
+    </View>
+  );
+}
+
 function WishlistCard({ product }: { product: Product }) {
   const colors = useColors();
   const router = useRouter();
   const { toggle } = useWishlist();
   const { addItem } = useCart();
+  const imageUri = product.images?.[0];
 
   return (
     <Pressable
@@ -48,6 +62,16 @@ function WishlistCard({ product }: { product: Product }) {
       onPress={() => router.push(`/product/${product.id}`)}
     >
       <View style={[styles.cardImage, { backgroundColor: cardColor(product.id) }]}>
+        {imageUri ? (
+          <Image
+            source={{ uri: imageUri }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={200}
+          />
+        ) : (
+          <Feather name="shopping-bag" size={32} color={colors.mutedForeground} />
+        )}
         <Pressable
           style={styles.removeBtn}
           onPress={() => {
@@ -57,7 +81,6 @@ function WishlistCard({ product }: { product: Product }) {
         >
           <Feather name="heart" size={16} color="#E53935" />
         </Pressable>
-        <Feather name="shopping-bag" size={32} color={colors.mutedForeground} />
       </View>
       <View style={styles.cardInfo}>
         <Text style={[styles.cardVendor, { color: colors.mutedForeground }]}>
@@ -89,6 +112,7 @@ function WishlistCard({ product }: { product: Product }) {
               quantity: 1,
               size: variant?.option1,
               color: variant?.option2,
+              image: product.images?.[0],
             });
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           }}
@@ -120,14 +144,8 @@ export default function WishlistScreen() {
 
   const isLoading = results.some((r) => r.isLoading);
   const isAnyError = results.some((r) => r.isError);
-  const products = results
-    .filter((r) => r.data != null)
-    .map((r) => r.data as Product);
-
-  const refetchAll = () => {
-    results.forEach((r) => r.refetch());
-  };
-
+  const products = results.filter((r) => r.data != null).map((r) => r.data as Product);
+  const refetchAll = () => results.forEach((r) => r.refetch());
   const isRefetching = results.some((r) => r.isRefetching);
 
   return (
@@ -161,7 +179,11 @@ export default function WishlistScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: bottomPadding + 80, paddingHorizontal: 16, paddingTop: 16 }}
+          contentContainerStyle={{
+            paddingBottom: bottomPadding + 80,
+            paddingHorizontal: 16,
+            paddingTop: 16,
+          }}
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
@@ -171,11 +193,10 @@ export default function WishlistScreen() {
           }
         >
           {isLoading ? (
-            <View style={styles.loadingBox}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
-                Loading wishlist...
-              </Text>
+            <View style={styles.grid}>
+              {Array.from({ length: wishlistIds.length || 4 }).map((_, i) => (
+                <WishlistSkeleton key={i} />
+              ))}
             </View>
           ) : isAnyError ? (
             <View style={styles.errorBox}>
@@ -236,22 +257,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 22,
   },
-  loadingBox: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 60,
-    gap: 12,
-  },
-  loadingText: { fontFamily: "Inter_400Regular", fontSize: 14 },
-  errorBox: { alignItems: "center", paddingVertical: 40, gap: 12 },
-  errorText: { fontFamily: "Inter_400Regular", fontSize: 14 },
-  retryBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderRadius: 4,
-  },
-  retryText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
   card: { width: CARD_WIDTH },
   cardImage: {
@@ -261,6 +266,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
+    overflow: "hidden",
   },
   removeBtn: {
     position: "absolute",
@@ -286,16 +292,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textDecorationLine: "line-through",
   },
-  addBtn: {
-    paddingVertical: 8,
-    alignItems: "center",
-    borderRadius: 2,
-    marginTop: 4,
-  },
-  addBtnText: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    fontSize: 11,
-    letterSpacing: 0.5,
-  },
+  addBtn: { paddingVertical: 8, alignItems: "center", borderRadius: 2, marginTop: 4 },
+  addBtnText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 0.5 },
+  errorBox: { alignItems: "center", paddingVertical: 40, gap: 12 },
+  errorText: { fontFamily: "Inter_400Regular", fontSize: 14 },
+  retryBtn: { paddingHorizontal: 24, paddingVertical: 10, borderWidth: 1, borderRadius: 4 },
+  retryText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
 });
