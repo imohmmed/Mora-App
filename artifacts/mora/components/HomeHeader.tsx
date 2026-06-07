@@ -14,11 +14,13 @@ import { useColors } from "@/hooks/useColors";
 interface HomeHeaderProps {
   notificationCount?: number;
   favoritesCount?: number;
+  cartCount?: number;
 }
 
 export function HomeHeader({
   notificationCount = 0,
   favoritesCount = 0,
+  cartCount = 0,
 }: HomeHeaderProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -49,10 +51,7 @@ export function HomeHeader({
         >
           <Feather name="search" size={18} color={colors.mutedForeground} />
           <Text
-            style={[
-              styles.searchPlaceholder,
-              { color: colors.mutedForeground },
-            ]}
+            style={[styles.searchPlaceholder, { color: colors.mutedForeground }]}
           >
             Search
           </Text>
@@ -67,20 +66,6 @@ export function HomeHeader({
 
         <Pressable
           style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
-          testID="notifications-btn"
-        >
-          <Feather name="bell" size={23} color={colors.foreground} />
-          {notificationCount > 0 && (
-            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-              <Text style={styles.badgeText}>
-                {notificationCount > 9 ? "9+" : notificationCount}
-              </Text>
-            </View>
-          )}
-        </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
           testID="favorites-btn"
         >
           <Feather name="heart" size={23} color={colors.foreground} />
@@ -88,6 +73,21 @@ export function HomeHeader({
             <View style={[styles.badge, { backgroundColor: colors.primary }]}>
               <Text style={styles.badgeText}>
                 {favoritesCount > 9 ? "9+" : favoritesCount}
+              </Text>
+            </View>
+          )}
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+          onPress={() => router.push("/(tabs)/cart")}
+          testID="cart-btn"
+        >
+          <Feather name="shopping-bag" size={23} color={colors.foreground} />
+          {cartCount > 0 && (
+            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+              <Text style={styles.badgeText}>
+                {cartCount > 9 ? "9+" : cartCount}
               </Text>
             </View>
           )}
@@ -127,9 +127,7 @@ const styles = StyleSheet.create({
     padding: 8,
     position: "relative",
   },
-  pressed: {
-    opacity: 0.6,
-  },
+  pressed: { opacity: 0.6 },
   badge: {
     position: "absolute",
     top: 2,

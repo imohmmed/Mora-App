@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
-  FlatList,
   Platform,
   Pressable,
   ScrollView,
@@ -12,18 +12,18 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
+import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
+import { searchProducts } from "@/lib/api";
+import { useWishlist } from "@/context/WishlistContext";
+import { useCart } from "@/context/CartContext";
+import type { Product } from "@/lib/types";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
+const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
 
-const TRENDING = [
-  "Oversized blazer",
-  "Linen trousers",
-  "Summer dresses",
-  "Leather sandals",
-  "Wide leg jeans",
-  "Silk tops",
-];
+const TRENDING = ["Blazer", "Linen", "Dress", "Sandals", "Jeans", "Silk"];
 
 const CATEGORIES = [
   { label: "Women", icon: "user" as const, color: "#F5EBF5" },
@@ -34,22 +34,90 @@ const CATEGORIES = [
   { label: "Sale", icon: "tag" as const, color: "#FFF3E0" },
 ];
 
-const RECENT_SEARCHES = ["White sneakers", "Midi skirt", "Knit cardigan"];
+const CARD_COLORS = [
+  "#E8EDF5", "#F0EBE3", "#E8F0E8", "#F5EDEB",
+  "#EBF0F5", "#F5EBF5", "#FFF3E0", "#F0F0F0",
+];
+
+function cardColor(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return CARD_COLORS[h % CARD_COLORS.length];
+}
+
+function SearchResultCard({ item }: { item: Product }) {
+  const colors = useColors();
+  const { isWishlisted, toggle } = useWishlist();
+  const { addItem } = useCart();
+  const liked = isWishlisted(item.id);
+
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.resultCard, { opacity: pressed ? 0.95 : 1 }]}
+    >
+      <View style={[styles.resultImage, { backgroundColor: cardColor(item.id) }]}>
+        <Pressable
+          style={styles.likeBtn}
+          onPress={() => {
+            toggle(item.id);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+        >
+          <Feather name="heart" size={16} color={liked ? "#E53935" : "#1A1A1A"} />
+        </Pressable>
+        <Feather name="shopping-bag" size={32} color={colors.mutedForeground} />
+      </View>
+      <View style={styles.resultInfo}>
+        <Text style={[styles.resultBrand, { color: colors.mutedForeground }]}>
+          {item.vendor ?? "Mora"}
+        </Text>
+        <Text style={[styles.resultTitle, { color: colors.foreground }]} numberOfLines={2}>
+          {item.title}
+        </Text>
+        <View style={styles.resultPriceRow}>
+          <Text style={[styles.resultPrice, { color: colors.foreground }]}>
+            ${item.price.toFixed(2)}
+          </Text>
+          {item.comparePrice != null && item.comparePrice > item.price && (
+            <Text style={[styles.resultOriginal, { color: colors.mutedForeground }]}>
+              ${item.comparePrice.toFixed(2)}
+            </Text>
+          )}
+        </View>
+      </View>
+    </Pressable>
+  );
+}
 
 export default function SearchScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const topPadding = isWeb ? 0 : insets.top;
   const bottomPadding = isWeb ? 34 : insets.bottom;
 
+  const handleChangeText = (text: string) => {
+    setQuery(text);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => setDebouncedQuery(text), 400);
+  };
+
+  const { data: results, isLoading, isFetching } = useQuery({
+    queryKey: ["search", debouncedQuery],
+    queryFn: () => searchProducts(debouncedQuery),
+    enabled: debouncedQuery.trim().length > 0,
+  });
+
+  const showResults = query.trim().length > 0;
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Search Header */}
       <View
         style={[
           styles.header,
@@ -76,15 +144,23 @@ export default function SearchScreen() {
             placeholder="Search Mora..."
             placeholderTextColor={colors.mutedForeground}
             value={query}
-            onChangeText={setQuery}
+            onChangeText={handleChangeText}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             autoFocus={false}
             returnKeyType="search"
             testID="search-input"
           />
+          {(isLoading || isFetching) && query.trim().length > 0 && (
+            <ActivityIndicator size="small" color={colors.primary} />
+          )}
           {query.length > 0 && (
-            <Pressable onPress={() => setQuery("")}>
+            <Pressable
+              onPress={() => {
+                setQuery("");
+                setDebouncedQuery("");
+              }}
+            >
               <Feather name="x" size={16} color={colors.mutedForeground} />
             </Pressable>
           )}
@@ -96,57 +172,10 @@ export default function SearchScreen() {
         contentContainerStyle={{ paddingBottom: bottomPadding + 80 }}
         keyboardShouldPersistTaps="handled"
       >
-        {query.length === 0 ? (
+        {!showResults ? (
           <>
-            {/* Recent Searches */}
-            {RECENT_SEARCHES.length > 0 && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <Text
-                    style={[styles.sectionTitle, { color: colors.foreground }]}
-                  >
-                    RECENT
-                  </Text>
-                  <Pressable>
-                    <Text
-                      style={[styles.clearText, { color: colors.primary }]}
-                    >
-                      CLEAR
-                    </Text>
-                  </Pressable>
-                </View>
-                {RECENT_SEARCHES.map((s) => (
-                  <Pressable
-                    key={s}
-                    style={[
-                      styles.recentItem,
-                      { borderBottomColor: colors.border },
-                    ]}
-                    onPress={() => setQuery(s)}
-                  >
-                    <Feather
-                      name="clock"
-                      size={15}
-                      color={colors.mutedForeground}
-                    />
-                    <Text
-                      style={[
-                        styles.recentText,
-                        { color: colors.foreground },
-                      ]}
-                    >
-                      {s}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
-
-            {/* Trending */}
             <View style={styles.section}>
-              <Text
-                style={[styles.sectionTitle, { color: colors.foreground }]}
-              >
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
                 TRENDING
               </Text>
               <View style={styles.tagsWrap}>
@@ -155,31 +184,18 @@ export default function SearchScreen() {
                     key={t}
                     style={[
                       styles.tag,
-                      {
-                        backgroundColor: colors.secondary,
-                        borderColor: colors.border,
-                      },
+                      { backgroundColor: colors.secondary, borderColor: colors.border },
                     ]}
-                    onPress={() => setQuery(t)}
+                    onPress={() => handleChangeText(t)}
                   >
-                    <Text
-                      style={[
-                        styles.tagText,
-                        { color: colors.foreground },
-                      ]}
-                    >
-                      {t}
-                    </Text>
+                    <Text style={[styles.tagText, { color: colors.foreground }]}>{t}</Text>
                   </Pressable>
                 ))}
               </View>
             </View>
 
-            {/* Categories */}
             <View style={styles.section}>
-              <Text
-                style={[styles.sectionTitle, { color: colors.foreground }]}
-              >
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
                 BROWSE
               </Text>
               <View style={styles.categoriesGrid}>
@@ -188,29 +204,38 @@ export default function SearchScreen() {
                     key={cat.label}
                     style={({ pressed }) => [
                       styles.categoryCard,
-                      {
-                        backgroundColor: cat.color,
-                        opacity: pressed ? 0.85 : 1,
-                      },
+                      { backgroundColor: cat.color, opacity: pressed ? 0.85 : 1 },
                     ]}
+                    onPress={() => handleChangeText(cat.label)}
                     testID={`category-${cat.label}`}
                   >
-                    <Feather
-                      name={cat.icon}
-                      size={24}
-                      color={colors.foreground}
-                    />
-                    <Text
-                      style={[
-                        styles.categoryLabel,
-                        { color: colors.foreground },
-                      ]}
-                    >
+                    <Feather name={cat.icon} size={24} color={colors.foreground} />
+                    <Text style={[styles.categoryLabel, { color: colors.foreground }]}>
                       {cat.label}
                     </Text>
                   </Pressable>
                 ))}
               </View>
+            </View>
+          </>
+        ) : isLoading && debouncedQuery === query ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
+              Searching...
+            </Text>
+          </View>
+        ) : results && results.length > 0 ? (
+          <>
+            <View style={styles.resultsHeader}>
+              <Text style={[styles.resultsCount, { color: colors.mutedForeground }]}>
+                {results.length} result{results.length !== 1 ? "s" : ""} for "{debouncedQuery}"
+              </Text>
+            </View>
+            <View style={styles.grid}>
+              {results.map((product) => (
+                <SearchResultCard key={product.id} item={product} />
+              ))}
             </View>
           </>
         ) : (
@@ -219,9 +244,7 @@ export default function SearchScreen() {
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
               No results for "{query}"
             </Text>
-            <Text
-              style={[styles.emptySubtitle, { color: colors.mutedForeground }]}
-            >
+            <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
               Try different keywords or browse categories
             </Text>
           </View>
@@ -258,54 +281,21 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 8,
   },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
   sectionTitle: {
     fontFamily: "Inter_700Bold",
     fontSize: 13,
     letterSpacing: 1,
     marginBottom: 12,
   },
-  clearText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 12,
-    letterSpacing: 0.5,
-  },
-  recentItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 13,
-    borderBottomWidth: 1,
-  },
-  recentText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 15,
-  },
-  tagsWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
+  tagsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   tag: {
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: 4,
     borderWidth: 1,
   },
-  tagText: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 14,
-  },
-  categoriesGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
+  tagText: { fontFamily: "Inter_500Medium", fontSize: 14 },
+  categoriesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   categoryCard: {
     width: (SCREEN_WIDTH - 56) / 2,
     height: 90,
@@ -318,6 +308,62 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     fontSize: 14,
     letterSpacing: 0.5,
+  },
+  loadingBox: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+    gap: 12,
+  },
+  loadingText: { fontFamily: "Inter_400Regular", fontSize: 14 },
+  resultsHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  resultsCount: { fontFamily: "Inter_400Regular", fontSize: 13 },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 16,
+    gap: 16,
+  },
+  resultCard: { width: CARD_WIDTH },
+  resultImage: {
+    width: "100%",
+    height: CARD_WIDTH * 1.3,
+    borderRadius: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  likeBtn: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    borderRadius: 20,
+    padding: 6,
+    zIndex: 1,
+  },
+  resultInfo: { paddingTop: 8, gap: 2 },
+  resultBrand: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 11,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  resultTitle: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  resultPriceRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
+  resultPrice: { fontFamily: "Inter_700Bold", fontSize: 14 },
+  resultOriginal: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    textDecorationLine: "line-through",
   },
   emptyResults: {
     flex: 1,

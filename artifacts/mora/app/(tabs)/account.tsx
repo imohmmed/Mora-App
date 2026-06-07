@@ -1,18 +1,25 @@
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { MoraLogo } from "@/components/MoraLogo";
 import { AccountExpoUI } from "@/components/AccountExpoUI";
+import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
+import { fetchOrders } from "@/lib/api";
+import type { Order } from "@/lib/types";
 
 type FeatherIconName = React.ComponentProps<typeof Feather>["name"];
 
@@ -38,39 +45,28 @@ type Section = {
   items: SectionItem[];
 };
 
-const SECTIONS: Section[] = [
-  {
-    title: "MY ACCOUNT",
-    items: [
-      { id: "orders", icon: "package", label: "My Orders", badge: "3", arrow: true },
-      { id: "wishlist", icon: "heart", label: "Wishlist", badge: "5", arrow: true },
-      { id: "returns", icon: "refresh-cw", label: "Returns", arrow: true },
-      { id: "address", icon: "map-pin", label: "Addresses", arrow: true },
-      { id: "payment", icon: "credit-card", label: "Payment Methods", arrow: true },
-    ],
-  },
-  {
-    title: "PREFERENCES",
-    items: [
-      { id: "notifications", icon: "bell", label: "Push Notifications", toggle: true },
-      { id: "emails", icon: "mail", label: "Email Updates", toggle: true },
-      { id: "country", icon: "globe", label: "Country / Region", arrow: true },
-      { id: "currency", icon: "dollar-sign", label: "Currency", arrow: true },
-    ],
-  },
-  {
-    title: "SUPPORT",
-    items: [
-      { id: "help", icon: "help-circle", label: "Help & FAQs", arrow: true },
-      { id: "contact", icon: "message-circle", label: "Contact Us", arrow: true },
-      { id: "about", icon: "info", label: "About Mora", arrow: true },
-      { id: "privacy", icon: "shield", label: "Privacy Policy", arrow: true },
-    ],
-  },
-];
-
 function isToggleItem(item: SectionItem): item is ToggleItem {
   return (item as ToggleItem).toggle === true;
+}
+
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function statusColor(status: string): string {
+  const s = status.toLowerCase();
+  if (s === "delivered" || s === "fulfilled") return "#43A047";
+  if (s === "shipped" || s === "in_transit") return "#0274C1";
+  if (s === "cancelled" || s === "refunded") return "#E53935";
+  return "#888888";
 }
 
 export default function AccountScreen() {
@@ -78,6 +74,82 @@ export default function AccountScreen() {
     return <AccountExpoUI />;
   }
   return <AccountClassic />;
+}
+
+function OrdersSection({ email }: { email: string }) {
+  const colors = useColors();
+  const { data: orders, isLoading, isError } = useQuery({
+    queryKey: ["orders", email],
+    queryFn: () => fetchOrders(email),
+    enabled: email.trim().length > 0,
+  });
+
+  if (isLoading) {
+    return (
+      <View style={styles.ordersLoading}>
+        <ActivityIndicator size="small" color={colors.primary} />
+        <Text style={[styles.ordersLoadingText, { color: colors.mutedForeground }]}>
+          Loading orders...
+        </Text>
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={styles.ordersEmpty}>
+        <Text style={[styles.ordersEmptyText, { color: colors.mutedForeground }]}>
+          Could not load orders. Check your email and try again.
+        </Text>
+      </View>
+    );
+  }
+
+  if (!orders || orders.length === 0) {
+    return (
+      <View style={styles.ordersEmpty}>
+        <Feather name="package" size={32} color={colors.border} />
+        <Text style={[styles.ordersEmptyText, { color: colors.mutedForeground }]}>
+          No orders found for this email
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ gap: 10 }}>
+      {orders.map((order) => (
+        <View
+          key={order.id}
+          style={[styles.orderCard, { borderColor: colors.border, backgroundColor: colors.background }]}
+        >
+          <View style={styles.orderCardTop}>
+            <View>
+              <Text style={[styles.orderNumber, { color: colors.foreground }]}>
+                Order #{order.orderNumber ?? order.id.slice(0, 8).toUpperCase()}
+              </Text>
+              <Text style={[styles.orderDate, { color: colors.mutedForeground }]}>
+                {formatDate(order.createdAt)}
+              </Text>
+            </View>
+            <View style={[styles.statusBadge, { backgroundColor: statusColor(order.status) + "20" }]}>
+              <Text style={[styles.statusText, { color: statusColor(order.status) }]}>
+                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.orderCardBottom, { borderTopColor: colors.border }]}>
+            <Text style={[styles.orderItems, { color: colors.mutedForeground }]}>
+              {order.lineItems?.length ?? 0} item{(order.lineItems?.length ?? 0) !== 1 ? "s" : ""}
+            </Text>
+            <Text style={[styles.orderTotal, { color: colors.foreground }]}>
+              ${order.total.toFixed(2)}
+            </Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
 }
 
 function AccountClassic() {
@@ -88,12 +160,52 @@ function AccountClassic() {
     notifications: true,
     emails: false,
   });
+  const [showOrders, setShowOrders] = useState(false);
+  const [emailInput, setEmailInput] = useState("");
+  const [submittedEmail, setSubmittedEmail] = useState("");
+  const { totalItems } = useCart();
+  const { count: wishlistCount } = useWishlist();
 
   const topPadding = isWeb ? 0 : insets.top;
   const bottomPadding = isWeb ? 34 : insets.bottom;
 
+  const SECTIONS: Section[] = [
+    {
+      title: "MY ACCOUNT",
+      items: [
+        { id: "orders", icon: "package", label: "My Orders", arrow: true },
+        { id: "wishlist", icon: "heart", label: "Wishlist", badge: wishlistCount > 0 ? String(wishlistCount) : undefined, arrow: true },
+        { id: "returns", icon: "refresh-cw", label: "Returns", arrow: true },
+        { id: "address", icon: "map-pin", label: "Addresses", arrow: true },
+        { id: "payment", icon: "credit-card", label: "Payment Methods", arrow: true },
+      ],
+    },
+    {
+      title: "PREFERENCES",
+      items: [
+        { id: "notifications", icon: "bell", label: "Push Notifications", toggle: true },
+        { id: "emails", icon: "mail", label: "Email Updates", toggle: true },
+        { id: "country", icon: "globe", label: "Country / Region", arrow: true },
+        { id: "currency", icon: "dollar-sign", label: "Currency", arrow: true },
+      ],
+    },
+    {
+      title: "SUPPORT",
+      items: [
+        { id: "help", icon: "help-circle", label: "Help & FAQs", arrow: true },
+        { id: "contact", icon: "message-circle", label: "Contact Us", arrow: true },
+        { id: "about", icon: "info", label: "About Mora", arrow: true },
+        { id: "privacy", icon: "shield", label: "Privacy Policy", arrow: true },
+      ],
+    },
+  ];
+
   const flipToggle = (id: string) => {
     setToggles((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleMenuPress = (id: string) => {
+    if (id === "orders") setShowOrders(true);
   };
 
   return (
@@ -101,10 +213,7 @@ function AccountClassic() {
       <View
         style={[
           styles.header,
-          {
-            paddingTop: topPadding + 8,
-            borderBottomColor: colors.border,
-          },
+          { paddingTop: topPadding + 8, borderBottomColor: colors.border },
         ]}
       >
         <MoraLogo size="small" />
@@ -114,36 +223,24 @@ function AccountClassic() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomPadding + 80 }}
       >
-        {/* Profile Card */}
         <View
           style={[
             styles.profileCard,
             { backgroundColor: colors.secondary, borderColor: colors.border },
           ]}
         >
-          <View
-            style={[
-              styles.avatar,
-              { backgroundColor: colors.primary },
-            ]}
-          >
-            <Text style={styles.avatarText}>AM</Text>
+          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+            <Text style={styles.avatarText}>M</Text>
           </View>
           <View style={styles.profileInfo}>
             <Text style={[styles.profileName, { color: colors.foreground }]}>
-              Ahmad M.
+              Mora Member
             </Text>
-            <Text
-              style={[styles.profileEmail, { color: colors.mutedForeground }]}
-            >
-              ahmad@example.com
+            <Text style={[styles.profileEmail, { color: colors.mutedForeground }]}>
+              {submittedEmail || "Enter email to view orders"}
             </Text>
-            <View
-              style={[styles.memberBadge, { backgroundColor: colors.accent }]}
-            >
-              <Text
-                style={[styles.memberBadgeText, { color: colors.primary }]}
-              >
+            <View style={[styles.memberBadge, { backgroundColor: colors.accent }]}>
+              <Text style={[styles.memberBadgeText, { color: colors.primary }]}>
                 MORA MEMBER
               </Text>
             </View>
@@ -158,147 +255,157 @@ function AccountClassic() {
           </Pressable>
         </View>
 
-        {/* Sections */}
-        {SECTIONS.map((section) => (
-          <View key={section.title} style={styles.section}>
-            <Text
-              style={[styles.sectionTitle, { color: colors.mutedForeground }]}
-            >
-              {section.title}
-            </Text>
-            <View
-              style={[
-                styles.sectionCard,
-                { borderColor: colors.border, backgroundColor: colors.background },
-              ]}
-            >
-              {section.items.map((item, idx) => (
-                <View key={item.id}>
-                  {isToggleItem(item) ? (
-                    <View
-                      style={[
-                        styles.menuItem,
-                        { borderBottomColor: colors.border },
-                        idx === section.items.length - 1 && styles.lastItem,
-                      ]}
-                    >
-                      <View style={styles.menuItemLeft}>
+        {showOrders ? (
+          <View style={styles.ordersContainer}>
+            <View style={styles.ordersHeader}>
+              <Pressable onPress={() => setShowOrders(false)} style={styles.backBtn}>
+                <Feather name="arrow-left" size={18} color={colors.foreground} />
+              </Pressable>
+              <Text style={[styles.ordersTitle, { color: colors.foreground }]}>
+                My Orders
+              </Text>
+            </View>
+
+            {!submittedEmail ? (
+              <View style={styles.emailPrompt}>
+                <Feather name="mail" size={36} color={colors.mutedForeground} />
+                <Text style={[styles.emailPromptTitle, { color: colors.foreground }]}>
+                  Find your orders
+                </Text>
+                <Text style={[styles.emailPromptSub, { color: colors.mutedForeground }]}>
+                  Enter the email you used when placing your order
+                </Text>
+                <TextInput
+                  style={[
+                    styles.emailInput,
+                    { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.secondary },
+                  ]}
+                  placeholder="your@email.com"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={emailInput}
+                  onChangeText={setEmailInput}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.emailSubmit,
+                    { backgroundColor: colors.foreground, opacity: pressed ? 0.85 : 1 },
+                  ]}
+                  onPress={() => {
+                    if (emailInput.trim()) setSubmittedEmail(emailInput.trim());
+                  }}
+                >
+                  <Text style={styles.emailSubmitText}>FIND MY ORDERS</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View>
+                <View style={styles.emailRow}>
+                  <Text style={[styles.emailShown, { color: colors.mutedForeground }]}>
+                    {submittedEmail}
+                  </Text>
+                  <Pressable onPress={() => setSubmittedEmail("")}>
+                    <Text style={[styles.changeEmail, { color: colors.primary }]}>Change</Text>
+                  </Pressable>
+                </View>
+                <OrdersSection email={submittedEmail} />
+              </View>
+            )}
+          </View>
+        ) : (
+          <>
+            {SECTIONS.map((section) => (
+              <View key={section.title} style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
+                  {section.title}
+                </Text>
+                <View
+                  style={[
+                    styles.sectionCard,
+                    { borderColor: colors.border, backgroundColor: colors.background },
+                  ]}
+                >
+                  {section.items.map((item, idx) => (
+                    <View key={item.id}>
+                      {isToggleItem(item) ? (
                         <View
                           style={[
-                            styles.iconBox,
-                            { backgroundColor: colors.secondary },
+                            styles.menuItem,
+                            { borderBottomColor: colors.border },
+                            idx === section.items.length - 1 && styles.lastItem,
                           ]}
                         >
-                          <Feather
-                            name={item.icon}
-                            size={16}
-                            color={colors.primary}
-                          />
-                        </View>
-                        <Text
-                          style={[
-                            styles.menuLabel,
-                            { color: colors.foreground },
-                          ]}
-                        >
-                          {item.label}
-                        </Text>
-                      </View>
-                      <Switch
-                        value={!!toggles[item.id]}
-                        onValueChange={() => flipToggle(item.id)}
-                        trackColor={{
-                          false: colors.border,
-                          true: colors.primary,
-                        }}
-                        thumbColor="#FFFFFF"
-                        testID={`toggle-${item.id}`}
-                      />
-                    </View>
-                  ) : (
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.menuItem,
-                        { borderBottomColor: colors.border },
-                        idx === section.items.length - 1 && styles.lastItem,
-                        pressed && { backgroundColor: colors.secondary },
-                      ]}
-                      testID={`menu-${item.id}`}
-                    >
-                      <View style={styles.menuItemLeft}>
-                        <View
-                          style={[
-                            styles.iconBox,
-                            { backgroundColor: colors.secondary },
-                          ]}
-                        >
-                          <Feather
-                            name={item.icon}
-                            size={16}
-                            color={colors.primary}
-                          />
-                        </View>
-                        <Text
-                          style={[
-                            styles.menuLabel,
-                            { color: colors.foreground },
-                          ]}
-                        >
-                          {item.label}
-                        </Text>
-                      </View>
-                      <View style={styles.menuItemRight}>
-                        {(item as MenuItem).badge && (
-                          <View
-                            style={[
-                              styles.badgePill,
-                              { backgroundColor: colors.primary },
-                            ]}
-                          >
-                            <Text style={styles.badgePillText}>
-                              {(item as MenuItem).badge}
+                          <View style={styles.menuItemLeft}>
+                            <View style={[styles.iconBox, { backgroundColor: colors.secondary }]}>
+                              <Feather name={item.icon} size={16} color={colors.primary} />
+                            </View>
+                            <Text style={[styles.menuLabel, { color: colors.foreground }]}>
+                              {item.label}
                             </Text>
                           </View>
-                        )}
-                        {(item as MenuItem).arrow && (
-                          <Feather
-                            name="chevron-right"
-                            size={16}
-                            color={colors.mutedForeground}
+                          <Switch
+                            value={!!toggles[item.id]}
+                            onValueChange={() => flipToggle(item.id)}
+                            trackColor={{ false: colors.border, true: colors.primary }}
+                            thumbColor="#FFFFFF"
+                            testID={`toggle-${item.id}`}
                           />
-                        )}
-                      </View>
-                    </Pressable>
-                  )}
+                        </View>
+                      ) : (
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.menuItem,
+                            { borderBottomColor: colors.border },
+                            idx === section.items.length - 1 && styles.lastItem,
+                            pressed && { backgroundColor: colors.secondary },
+                          ]}
+                          onPress={() => handleMenuPress(item.id)}
+                          testID={`menu-${item.id}`}
+                        >
+                          <View style={styles.menuItemLeft}>
+                            <View style={[styles.iconBox, { backgroundColor: colors.secondary }]}>
+                              <Feather name={item.icon} size={16} color={colors.primary} />
+                            </View>
+                            <Text style={[styles.menuLabel, { color: colors.foreground }]}>
+                              {item.label}
+                            </Text>
+                          </View>
+                          <View style={styles.menuItemRight}>
+                            {(item as MenuItem).badge && (
+                              <View style={[styles.badgePill, { backgroundColor: colors.primary }]}>
+                                <Text style={styles.badgePillText}>
+                                  {(item as MenuItem).badge}
+                                </Text>
+                              </View>
+                            )}
+                            {(item as MenuItem).arrow && (
+                              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                            )}
+                          </View>
+                        </Pressable>
+                      )}
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
-          </View>
-        ))}
+              </View>
+            ))}
 
-        {/* Sign Out */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.signOutBtn,
-            {
-              borderColor: colors.border,
-              marginHorizontal: 16,
-              opacity: pressed ? 0.7 : 1,
-            },
-          ]}
-          testID="sign-out-btn"
-        >
-          <Feather name="log-out" size={16} color={colors.destructive} />
-          <Text
-            style={[styles.signOutText, { color: colors.destructive }]}
-          >
-            Sign Out
-          </Text>
-        </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.signOutBtn,
+                { borderColor: colors.border, marginHorizontal: 16, opacity: pressed ? 0.7 : 1 },
+              ]}
+              testID="sign-out-btn"
+            >
+              <Feather name="log-out" size={16} color={colors.destructive} />
+              <Text style={[styles.signOutText, { color: colors.destructive }]}>Sign Out</Text>
+            </Pressable>
 
-        <Text style={[styles.version, { color: colors.mutedForeground }]}>
-          Mora v1.0.0
-        </Text>
+            <Text style={[styles.version, { color: colors.mutedForeground }]}>Mora v1.0.0</Text>
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -327,23 +434,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    fontSize: 20,
-  },
-  profileInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  profileName: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 17,
-  },
-  profileEmail: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-  },
+  avatarText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 20 },
+  profileInfo: { flex: 1, gap: 4 },
+  profileName: { fontFamily: "Inter_700Bold", fontSize: 17 },
+  profileEmail: { fontFamily: "Inter_400Regular", fontSize: 13 },
   memberBadge: {
     alignSelf: "flex-start",
     paddingHorizontal: 8,
@@ -351,31 +445,16 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     marginTop: 4,
   },
-  memberBadgeText: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 10,
-    letterSpacing: 0.5,
-  },
-  editBtn: {
-    padding: 8,
-    borderWidth: 1,
-    borderRadius: 20,
-  },
-  section: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
+  memberBadgeText: { fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 0.5 },
+  editBtn: { padding: 8, borderWidth: 1, borderRadius: 20 },
+  section: { paddingHorizontal: 16, marginBottom: 16 },
   sectionTitle: {
     fontFamily: "Inter_700Bold",
     fontSize: 11,
     letterSpacing: 1,
     marginBottom: 8,
   },
-  sectionCard: {
-    borderWidth: 1,
-    borderRadius: 8,
-    overflow: "hidden",
-  },
+  sectionCard: { borderWidth: 1, borderRadius: 8, overflow: "hidden" },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -384,14 +463,8 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     borderBottomWidth: 1,
   },
-  lastItem: {
-    borderBottomWidth: 0,
-  },
-  menuItemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
+  lastItem: { borderBottomWidth: 0 },
+  menuItemLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   iconBox: {
     width: 32,
     height: 32,
@@ -399,25 +472,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  menuLabel: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 15,
-  },
-  menuItemRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  badgePill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  badgePillText: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    fontSize: 11,
-  },
+  menuLabel: { fontFamily: "Inter_500Medium", fontSize: 15 },
+  menuItemRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+  badgePill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  badgePillText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 11 },
   signOutBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -429,14 +487,111 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 16,
   },
-  signOutText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 15,
-  },
+  signOutText: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
   version: {
     fontFamily: "Inter_400Regular",
     fontSize: 12,
     textAlign: "center",
     paddingBottom: 8,
   },
+  ordersContainer: { paddingHorizontal: 16, paddingTop: 8 },
+  ordersHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingBottom: 16,
+  },
+  backBtn: { padding: 4 },
+  ordersTitle: { fontFamily: "Inter_700Bold", fontSize: 18 },
+  emailPrompt: {
+    alignItems: "center",
+    paddingVertical: 32,
+    gap: 12,
+  },
+  emailPromptTitle: { fontFamily: "Inter_700Bold", fontSize: 18 },
+  emailPromptSub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 16,
+  },
+  emailInput: {
+    width: "100%",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    marginTop: 4,
+  },
+  emailSubmit: {
+    width: "100%",
+    paddingVertical: 14,
+    alignItems: "center",
+    borderRadius: 4,
+    marginTop: 4,
+  },
+  emailSubmitText: {
+    color: "#FFFFFF",
+    fontFamily: "Inter_700Bold",
+    fontSize: 13,
+    letterSpacing: 1,
+  },
+  emailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingBottom: 16,
+  },
+  emailShown: { fontFamily: "Inter_400Regular", fontSize: 14 },
+  changeEmail: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  ordersLoading: {
+    alignItems: "center",
+    paddingVertical: 40,
+    gap: 10,
+    flexDirection: "row",
+    justifyContent: "center",
+  },
+  ordersLoadingText: { fontFamily: "Inter_400Regular", fontSize: 14 },
+  ordersEmpty: {
+    alignItems: "center",
+    paddingVertical: 40,
+    gap: 12,
+  },
+  ordersEmptyText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  orderCard: {
+    borderWidth: 1,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  orderCardTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    padding: 14,
+  },
+  orderNumber: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
+  orderDate: { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  statusText: { fontFamily: "Inter_600SemiBold", fontSize: 12 },
+  orderCardBottom: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 14,
+    borderTopWidth: 1,
+  },
+  orderItems: { fontFamily: "Inter_400Regular", fontSize: 13 },
+  orderTotal: { fontFamily: "Inter_700Bold", fontSize: 15 },
 });
