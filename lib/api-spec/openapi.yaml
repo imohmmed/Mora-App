@@ -1,22 +1,31 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Mora e-commerce admin API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: analytics
+  - name: products
+  - name: collections
+  - name: variants
+  - name: orders
+  - name: customers
+  - name: campaigns
+  - name: discounts
+  - name: content
+  - name: markets
+  - name: settings
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +33,1859 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ─── Analytics ───────────────────────────────────────────────────────────────
+
+  /admin/analytics/summary:
+    get:
+      operationId: adminGetAnalyticsSummary
+      tags: [analytics]
+      security: [{ bearerAuth: [] }]
+      summary: Get analytics overview
+      responses:
+        "200":
+          description: Analytics summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsSummaryResponse"
+
+  /admin/analytics/revenue:
+    get:
+      operationId: adminGetRevenueChart
+      tags: [analytics]
+      security: [{ bearerAuth: [] }]
+      summary: Revenue over time
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 14
+      responses:
+        "200":
+          description: Revenue chart data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevenueChartResponse"
+
+  /admin/analytics/top-products:
+    get:
+      operationId: adminGetTopProducts
+      tags: [analytics]
+      security: [{ bearerAuth: [] }]
+      summary: Top selling products
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 5
+      responses:
+        "200":
+          description: Top products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopProductsResponse"
+
+  /admin/analytics/reports:
+    get:
+      operationId: adminGetAnalyticsReports
+      tags: [analytics]
+      security: [{ bearerAuth: [] }]
+      summary: Key metric reports
+      responses:
+        "200":
+          description: Reports
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsReportsResponse"
+
+  /admin/analytics/live:
+    get:
+      operationId: adminGetLiveOrders
+      tags: [analytics]
+      security: [{ bearerAuth: [] }]
+      summary: Recent live orders
+      responses:
+        "200":
+          description: Live orders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderListResponse"
+
+  # ─── Products ────────────────────────────────────────────────────────────────
+
+  /admin/products:
+    get:
+      operationId: adminListProducts
+      tags: [products]
+      security: [{ bearerAuth: [] }]
+      summary: List all products
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+    post:
+      operationId: adminCreateProduct
+      tags: [products]
+      security: [{ bearerAuth: [] }]
+      summary: Create a product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Created product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+
+  /admin/products/{id}:
+    get:
+      operationId: adminGetProduct
+      tags: [products]
+      security: [{ bearerAuth: [] }]
+      summary: Get a product with variants
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetailResponse"
+    put:
+      operationId: adminUpdateProduct
+      tags: [products]
+      security: [{ bearerAuth: [] }]
+      summary: Update a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdate"
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+    delete:
+      operationId: adminDeleteProduct
+      tags: [products]
+      security: [{ bearerAuth: [] }]
+      summary: Delete a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedResponse"
+
+  # ─── Collections ─────────────────────────────────────────────────────────────
+
+  /admin/collections:
+    get:
+      operationId: adminListCollections
+      tags: [collections]
+      security: [{ bearerAuth: [] }]
+      summary: List collections
+      responses:
+        "200":
+          description: Collection list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectionListResponse"
+    post:
+      operationId: adminCreateCollection
+      tags: [collections]
+      security: [{ bearerAuth: [] }]
+      summary: Create a collection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectionInput"
+      responses:
+        "201":
+          description: Created collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectionResponse"
+
+  /admin/collections/{id}:
+    get:
+      operationId: adminGetCollection
+      tags: [collections]
+      security: [{ bearerAuth: [] }]
+      summary: Get a collection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectionResponse"
+    put:
+      operationId: adminUpdateCollection
+      tags: [collections]
+      security: [{ bearerAuth: [] }]
+      summary: Update a collection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectionUpdate"
+      responses:
+        "200":
+          description: Updated collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectionResponse"
+    delete:
+      operationId: adminDeleteCollection
+      tags: [collections]
+      security: [{ bearerAuth: [] }]
+      summary: Delete a collection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedResponse"
+
+  # ─── Variants ────────────────────────────────────────────────────────────────
+
+  /admin/variants:
+    get:
+      operationId: adminListVariants
+      tags: [variants]
+      security: [{ bearerAuth: [] }]
+      summary: List all variants
+      responses:
+        "200":
+          description: Variant list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VariantListResponse"
+
+  /admin/variants/{productId}:
+    get:
+      operationId: adminGetProductVariants
+      tags: [variants]
+      security: [{ bearerAuth: [] }]
+      summary: Get variants for a product
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Variant list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VariantListResponse"
+
+  /admin/variants/{id}/update:
+    put:
+      operationId: adminUpdateVariant
+      tags: [variants]
+      security: [{ bearerAuth: [] }]
+      summary: Update a variant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VariantUpdate"
+      responses:
+        "200":
+          description: Updated variant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VariantResponse"
+
+  # ─── Orders ──────────────────────────────────────────────────────────────────
+
+  /admin/orders:
+    get:
+      operationId: adminListOrders
+      tags: [orders]
+      security: [{ bearerAuth: [] }]
+      summary: List orders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [orders, drafts, abandoned]
+      responses:
+        "200":
+          description: Order list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderListResponse"
+    post:
+      operationId: adminCreateOrder
+      tags: [orders]
+      security: [{ bearerAuth: [] }]
+      summary: Create an order (draft)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderInput"
+      responses:
+        "201":
+          description: Created order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+
+  /admin/orders/{id}:
+    get:
+      operationId: adminGetOrder
+      tags: [orders]
+      security: [{ bearerAuth: [] }]
+      summary: Get an order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+    put:
+      operationId: adminUpdateOrder
+      tags: [orders]
+      security: [{ bearerAuth: [] }]
+      summary: Update an order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderUpdate"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+
+  # ─── Customers ───────────────────────────────────────────────────────────────
+
+  /admin/customers/segments:
+    get:
+      operationId: adminListCustomerSegments
+      tags: [customers]
+      security: [{ bearerAuth: [] }]
+      summary: List customer segments
+      responses:
+        "200":
+          description: Segments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSegmentsResponse"
+
+  /admin/customers/companies:
+    get:
+      operationId: adminListCustomerCompanies
+      tags: [customers]
+      security: [{ bearerAuth: [] }]
+      summary: List B2B companies
+      responses:
+        "200":
+          description: Companies
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerCompaniesResponse"
+
+  /admin/customers:
+    get:
+      operationId: adminListCustomers
+      tags: [customers]
+      security: [{ bearerAuth: [] }]
+      summary: List customers
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: segment
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Customer list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerListResponse"
+    post:
+      operationId: adminCreateCustomer
+      tags: [customers]
+      security: [{ bearerAuth: [] }]
+      summary: Create a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerInput"
+      responses:
+        "201":
+          description: Created customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerResponse"
+
+  /admin/customers/{id}:
+    get:
+      operationId: adminGetCustomer
+      tags: [customers]
+      security: [{ bearerAuth: [] }]
+      summary: Get a customer with orders
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Customer detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerDetailResponse"
+    put:
+      operationId: adminUpdateCustomer
+      tags: [customers]
+      security: [{ bearerAuth: [] }]
+      summary: Update a customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerUpdate"
+      responses:
+        "200":
+          description: Updated customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerResponse"
+
+  # ─── Campaigns ───────────────────────────────────────────────────────────────
+
+  /admin/campaigns:
+    get:
+      operationId: adminListCampaigns
+      tags: [campaigns]
+      security: [{ bearerAuth: [] }]
+      summary: List campaigns
+      responses:
+        "200":
+          description: Campaign list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampaignListResponse"
+    post:
+      operationId: adminCreateCampaign
+      tags: [campaigns]
+      security: [{ bearerAuth: [] }]
+      summary: Create a campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignInput"
+      responses:
+        "201":
+          description: Created campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampaignResponse"
+
+  /admin/campaigns/{id}:
+    get:
+      operationId: adminGetCampaign
+      tags: [campaigns]
+      security: [{ bearerAuth: [] }]
+      summary: Get a campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampaignResponse"
+    put:
+      operationId: adminUpdateCampaign
+      tags: [campaigns]
+      security: [{ bearerAuth: [] }]
+      summary: Update a campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignUpdate"
+      responses:
+        "200":
+          description: Updated campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampaignResponse"
+
+  # ─── Discounts ───────────────────────────────────────────────────────────────
+
+  /admin/discounts:
+    get:
+      operationId: adminListDiscounts
+      tags: [discounts]
+      security: [{ bearerAuth: [] }]
+      summary: List discounts
+      responses:
+        "200":
+          description: Discount list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscountListResponse"
+    post:
+      operationId: adminCreateDiscount
+      tags: [discounts]
+      security: [{ bearerAuth: [] }]
+      summary: Create a discount code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiscountInput"
+      responses:
+        "201":
+          description: Created discount
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscountResponse"
+
+  /admin/discounts/{id}:
+    get:
+      operationId: adminGetDiscount
+      tags: [discounts]
+      security: [{ bearerAuth: [] }]
+      summary: Get a discount
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Discount
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscountResponse"
+    put:
+      operationId: adminUpdateDiscount
+      tags: [discounts]
+      security: [{ bearerAuth: [] }]
+      summary: Update a discount
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiscountUpdate"
+      responses:
+        "200":
+          description: Updated discount
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscountResponse"
+    delete:
+      operationId: adminDeleteDiscount
+      tags: [discounts]
+      security: [{ bearerAuth: [] }]
+      summary: Delete a discount
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedResponse"
+
+  # ─── Content: Blog Posts ──────────────────────────────────────────────────────
+
+  /admin/content/blog-posts:
+    get:
+      operationId: adminListBlogPosts
+      tags: [content]
+      security: [{ bearerAuth: [] }]
+      summary: List blog posts
+      responses:
+        "200":
+          description: Blog post list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlogPostListResponse"
+    post:
+      operationId: adminCreateBlogPost
+      tags: [content]
+      security: [{ bearerAuth: [] }]
+      summary: Create a blog post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BlogPostInput"
+      responses:
+        "201":
+          description: Created blog post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlogPostResponse"
+
+  /admin/content/blog-posts/{id}:
+    get:
+      operationId: adminGetBlogPost
+      tags: [content]
+      security: [{ bearerAuth: [] }]
+      summary: Get a blog post
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Blog post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlogPostResponse"
+    put:
+      operationId: adminUpdateBlogPost
+      tags: [content]
+      security: [{ bearerAuth: [] }]
+      summary: Update a blog post
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BlogPostUpdate"
+      responses:
+        "200":
+          description: Updated blog post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlogPostResponse"
+    delete:
+      operationId: adminDeleteBlogPost
+      tags: [content]
+      security: [{ bearerAuth: [] }]
+      summary: Delete a blog post
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedResponse"
+
+  # ─── Content: Menus ──────────────────────────────────────────────────────────
+
+  /admin/content/menus:
+    get:
+      operationId: adminListMenus
+      tags: [content]
+      security: [{ bearerAuth: [] }]
+      summary: List navigation menus
+      responses:
+        "200":
+          description: Menu list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuListResponse"
+    post:
+      operationId: adminCreateMenu
+      tags: [content]
+      security: [{ bearerAuth: [] }]
+      summary: Create a menu
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MenuInput"
+      responses:
+        "201":
+          description: Created menu
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuResponse"
+
+  /admin/content/menus/{id}:
+    get:
+      operationId: adminGetMenu
+      tags: [content]
+      security: [{ bearerAuth: [] }]
+      summary: Get a menu
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Menu
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuResponse"
+    put:
+      operationId: adminUpdateMenu
+      tags: [content]
+      security: [{ bearerAuth: [] }]
+      summary: Update a menu
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MenuUpdate"
+      responses:
+        "200":
+          description: Updated menu
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuResponse"
+    delete:
+      operationId: adminDeleteMenu
+      tags: [content]
+      security: [{ bearerAuth: [] }]
+      summary: Delete a menu
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedResponse"
+
+  # ─── Markets ─────────────────────────────────────────────────────────────────
+
+  /admin/markets:
+    get:
+      operationId: adminListMarkets
+      tags: [markets]
+      security: [{ bearerAuth: [] }]
+      summary: List markets
+      responses:
+        "200":
+          description: Market list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketListResponse"
+    post:
+      operationId: adminCreateMarket
+      tags: [markets]
+      security: [{ bearerAuth: [] }]
+      summary: Create a market
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarketInput"
+      responses:
+        "201":
+          description: Created market
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketResponse"
+
+  /admin/markets/{id}:
+    get:
+      operationId: adminGetMarket
+      tags: [markets]
+      security: [{ bearerAuth: [] }]
+      summary: Get a market
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Market
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketResponse"
+    put:
+      operationId: adminUpdateMarket
+      tags: [markets]
+      security: [{ bearerAuth: [] }]
+      summary: Update a market
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarketUpdate"
+      responses:
+        "200":
+          description: Updated market
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketResponse"
+
+  # ─── Settings ─────────────────────────────────────────────────────────────────
+
+  /admin/settings:
+    get:
+      operationId: adminGetSettings
+      tags: [settings]
+      security: [{ bearerAuth: [] }]
+      summary: Get store settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
+    put:
+      operationId: adminUpdateSettings
+      tags: [settings]
+      security: [{ bearerAuth: [] }]
+      summary: Update store settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsUpdate"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    # ─── Common ───────────────────────────────────────────────────────────────
+
+    DeletedResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            deleted:
+              type: boolean
+          required: [deleted]
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    ListMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+      required: [total]
+
+    # ─── Product ──────────────────────────────────────────────────────────────
+
+    Product:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        vendor: { type: string }
+        category: { type: string }
+        description: { type: string }
+        price: { type: number }
+        comparePrice: { type: ["number", "null"] }
+        images: { type: array, items: { type: string } }
+        tags: { type: array, items: { type: string } }
+        status: { type: string }
+        totalInventory: { type: ["integer", "null"] }
+        variantsCount: { type: ["integer", "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+      required: [id, title, vendor, category, price, status]
+
+    Variant:
+      type: object
+      properties:
+        id: { type: string }
+        productId: { type: string }
+        title: { type: string }
+        sku: { type: string }
+        price: { type: number }
+        comparePrice: { type: ["number", "null"] }
+        inventory: { type: integer }
+        option1: { type: ["string", "null"] }
+        option2: { type: ["string", "null"] }
+      required: [id, productId, title, sku, price, inventory]
+
+    ProductDetail:
+      allOf:
+        - $ref: "#/components/schemas/Product"
+        - type: object
+          properties:
+            variants:
+              type: array
+              items:
+                $ref: "#/components/schemas/Variant"
+          required: [variants]
+
+    ProductInput:
+      type: object
+      properties:
+        title: { type: string }
+        vendor: { type: string }
+        category: { type: string }
+        description: { type: string }
+        price: { type: number }
+        compareAtPrice: { type: ["number", "null"] }
+        images: { type: array, items: { type: string } }
+        tags: { type: array, items: { type: string } }
+        status: { type: string }
+      required: [title, vendor, category, price]
+
+    ProductUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        vendor: { type: string }
+        category: { type: string }
+        description: { type: string }
+        price: { type: number }
+        compareAtPrice: { type: ["number", "null"] }
+        status: { type: string }
+
+    VariantUpdate:
+      type: object
+      properties:
+        inventory: { type: integer }
+        price: { type: number }
+        sku: { type: string }
+
+    ProductListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        meta:
+          $ref: "#/components/schemas/ListMeta"
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    ProductResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/Product"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    ProductDetailResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/ProductDetail"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    VariantListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Variant"
+        meta:
+          $ref: "#/components/schemas/ListMeta"
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    VariantResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/Variant"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    # ─── Collection ───────────────────────────────────────────────────────────
+
+    Collection:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        image: { type: string }
+        productsCount: { type: integer }
+        createdAt: { type: string }
+      required: [id, title]
+
+    CollectionInput:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        image: { type: string }
+      required: [title]
+
+    CollectionUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        image: { type: string }
+
+    CollectionListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Collection"
+        meta:
+          $ref: "#/components/schemas/ListMeta"
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    CollectionResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/Collection"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    # ─── Order ────────────────────────────────────────────────────────────────
+
+    Order:
+      type: object
+      properties:
+        id: { type: string }
+        orderNumber: { type: string }
+        customerId: { type: ["string", "null"] }
+        email: { type: string }
+        status: { type: string }
+        financialStatus: { type: string }
+        fulfillmentStatus: { type: string }
+        subtotal: { type: number }
+        shipping: { type: number }
+        tax: { type: number }
+        total: { type: number }
+        currency: { type: string }
+        shippingAddress: { type: object }
+        lineItems: { type: array, items: { type: object } }
+        note: { type: string }
+        tags: { type: array, items: { type: string } }
+        isDraft: { type: boolean }
+        isAbandoned: { type: boolean }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+      required: [id, orderNumber, email, status, total]
+
+    OrderInput:
+      type: object
+      properties:
+        email: { type: string }
+        shippingAddress: { type: object }
+        lineItems: { type: array, items: { type: object } }
+        note: { type: string }
+      required: [email]
+
+    OrderUpdate:
+      type: object
+      properties:
+        status: { type: string }
+        financialStatus: { type: string }
+        fulfillmentStatus: { type: string }
+        note: { type: string }
+
+    OrderListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+        meta:
+          $ref: "#/components/schemas/ListMeta"
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    OrderResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/Order"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    # ─── Customer ─────────────────────────────────────────────────────────────
+
+    Customer:
+      type: object
+      properties:
+        id: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        ordersCount: { type: integer }
+        totalSpent: { type: number }
+        tags: { type: array, items: { type: string } }
+        segment: { type: ["string", "null"] }
+        company: { type: ["string", "null"] }
+        address: { type: object }
+        acceptsMarketing: { type: boolean }
+        createdAt: { type: string }
+      required: [id, firstName, lastName, email]
+
+    CustomerDetail:
+      allOf:
+        - $ref: "#/components/schemas/Customer"
+        - type: object
+          properties:
+            orders:
+              type: array
+              items:
+                $ref: "#/components/schemas/Order"
+          required: [orders]
+
+    CustomerSegment:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        count: { type: integer }
+      required: [id, name, count]
+
+    CustomerCompany:
+      type: object
+      properties:
+        company: { type: string }
+        customerCount: { type: integer }
+      required: [company, customerCount]
+
+    CustomerInput:
+      type: object
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        address: { type: object }
+        acceptsMarketing: { type: boolean }
+      required: [firstName, lastName, email]
+
+    CustomerUpdate:
+      type: object
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        segment: { type: string }
+        company: { type: string }
+
+    CustomerListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Customer"
+        meta:
+          $ref: "#/components/schemas/ListMeta"
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    CustomerResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/Customer"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    CustomerDetailResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/CustomerDetail"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    CustomerSegmentsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerSegment"
+        meta:
+          $ref: "#/components/schemas/ListMeta"
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    CustomerCompaniesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerCompany"
+        meta:
+          $ref: "#/components/schemas/ListMeta"
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    # ─── Campaign ─────────────────────────────────────────────────────────────
+
+    Campaign:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        type: { type: string }
+        status: { type: string }
+        budget: { type: number }
+        spent: { type: number }
+        impressions: { type: integer }
+        clicks: { type: integer }
+        conversions: { type: integer }
+        createdAt: { type: string }
+      required: [id, title, type, status]
+
+    CampaignInput:
+      type: object
+      properties:
+        title: { type: string }
+        type: { type: string }
+        budget: { type: number }
+      required: [title, type]
+
+    CampaignUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        status: { type: string }
+        budget: { type: number }
+
+    CampaignListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Campaign"
+        meta:
+          $ref: "#/components/schemas/ListMeta"
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    CampaignResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/Campaign"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    # ─── Discount ─────────────────────────────────────────────────────────────
+
+    Discount:
+      type: object
+      properties:
+        id: { type: string }
+        code: { type: string }
+        type: { type: string }
+        value: { type: number }
+        usageCount: { type: integer }
+        usageLimit: { type: ["integer", "null"] }
+        startsAt: { type: string }
+        endsAt: { type: ["string", "null"] }
+        status: { type: string }
+      required: [id, code, type, value, status]
+
+    DiscountInput:
+      type: object
+      properties:
+        code: { type: string }
+        type: { type: string, enum: [percentage, fixed] }
+        value: { type: number }
+        usageLimit: { type: ["integer", "null"] }
+        endsAt: { type: ["string", "null"] }
+      required: [code, type, value]
+
+    DiscountUpdate:
+      type: object
+      properties:
+        code: { type: string }
+        value: { type: number }
+        status: { type: string }
+        endsAt: { type: ["string", "null"] }
+
+    DiscountListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Discount"
+        meta:
+          $ref: "#/components/schemas/ListMeta"
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    DiscountResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/Discount"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    # ─── Blog Post ────────────────────────────────────────────────────────────
+
+    BlogPost:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        handle: { type: string }
+        author: { type: string }
+        body: { type: string }
+        excerpt: { type: string }
+        tags: { type: array, items: { type: string } }
+        status: { type: string }
+        publishedAt: { type: ["string", "null"] }
+        createdAt: { type: string }
+      required: [id, title, handle, author, status]
+
+    BlogPostInput:
+      type: object
+      properties:
+        title: { type: string }
+        handle: { type: string }
+        author: { type: string }
+        body: { type: string }
+        excerpt: { type: string }
+        tags: { type: array, items: { type: string } }
+        status: { type: string, enum: [draft, published] }
+        publishedAt: { type: ["string", "null"] }
+      required: [title]
+
+    BlogPostUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        body: { type: string }
+        excerpt: { type: string }
+        status: { type: string }
+        publishedAt: { type: ["string", "null"] }
+
+    BlogPostListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlogPost"
+        meta:
+          $ref: "#/components/schemas/ListMeta"
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    BlogPostResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/BlogPost"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    # ─── Menu ─────────────────────────────────────────────────────────────────
+
+    Menu:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        handle: { type: string }
+        items: { type: array, items: { type: object } }
+      required: [id, title, handle]
+
+    MenuInput:
+      type: object
+      properties:
+        title: { type: string }
+        handle: { type: string }
+        items: { type: array, items: { type: object } }
+      required: [title]
+
+    MenuUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        handle: { type: string }
+        items: { type: array, items: { type: object } }
+
+    MenuListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Menu"
+        meta:
+          $ref: "#/components/schemas/ListMeta"
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    MenuResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/Menu"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    # ─── Market ───────────────────────────────────────────────────────────────
+
+    Market:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        countries: { type: array, items: { type: string } }
+        currency: { type: string }
+        status: { type: string }
+        createdAt: { type: string }
+      required: [id, name, currency, status]
+
+    MarketInput:
+      type: object
+      properties:
+        name: { type: string }
+        countries: { type: array, items: { type: string } }
+        currency: { type: string }
+      required: [name, currency]
+
+    MarketUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        currency: { type: string }
+        status: { type: string }
+
+    MarketListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Market"
+        meta:
+          $ref: "#/components/schemas/ListMeta"
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    MarketResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/Market"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    # ─── Settings ─────────────────────────────────────────────────────────────
+
+    StoreSettings:
+      type: object
+      properties:
+        storeName: { type: string }
+        storeEmail: { type: string }
+        storePhone: { type: string }
+        storeAddress: { type: string }
+        currency: { type: string }
+        timezone: { type: string }
+        language: { type: string }
+
+    SettingsUpdate:
+      type: object
+      properties:
+        storeName: { type: string }
+        storeEmail: { type: string }
+        storePhone: { type: string }
+        storeAddress: { type: string }
+        currency: { type: string }
+        timezone: { type: string }
+        language: { type: string }
+
+    SettingsResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/StoreSettings"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    # ─── Analytics ────────────────────────────────────────────────────────────
+
+    AnalyticsSummary:
+      type: object
+      properties:
+        revenue: { type: number }
+        orders: { type: integer }
+        customers: { type: integer }
+        avgOrderValue: { type: number }
+        products: { type: integer }
+      required: [revenue, orders, customers, avgOrderValue, products]
+
+    RevenuePoint:
+      type: object
+      properties:
+        date: { type: string }
+        revenue: { type: number }
+        orders: { type: integer }
+      required: [date, revenue, orders]
+
+    TopProduct:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        revenue: { type: number }
+        unitsSold: { type: integer }
+      required: [id, title, revenue, unitsSold]
+
+    AnalyticsReport:
+      type: object
+      properties:
+        name: { type: string }
+        value: {}
+        change: { type: string }
+      required: [name, value, change]
+
+    AnalyticsSummaryResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/AnalyticsSummary"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    RevenueChartResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/RevenuePoint"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    TopProductsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopProduct"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
+
+    AnalyticsReportsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalyticsReport"
+        meta:
+          type: object
+        error:
+          type: ["string", "null"]
+      required: [data, meta, error]
