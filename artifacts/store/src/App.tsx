@@ -18,6 +18,7 @@ import BlogDetail from "@/pages/blog-detail";
 import Account from "@/pages/account";
 import OrderDetail from "@/pages/order-detail";
 import Wishlist from "@/pages/wishlist";
+import AccountOrders from "@/pages/account-orders";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ function Router() {
       <Route path="/blog" component={Blog} />
       <Route path="/blog/:id" component={BlogDetail} />
       <Route path="/account" component={Account} />
+      <Route path="/account/orders" component={AccountOrders} />
       <Route path="/account/orders/:id" component={OrderDetail} />
       <Route path="/wishlist" component={Wishlist} />
       <Route component={NotFound} />

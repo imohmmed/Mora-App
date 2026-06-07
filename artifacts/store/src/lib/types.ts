@@ -9,6 +9,7 @@ export type Product = {
   status: string;
   images: string[];
   tags: string[];
+  variants: Variant[];
 };
 
 export type Variant = {
