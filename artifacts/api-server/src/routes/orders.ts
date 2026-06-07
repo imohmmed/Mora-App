@@ -9,17 +9,33 @@ const router = Router();
 
 router.get("/store/orders", (req, res) => {
   const { email } = req.query as Record<string, string>;
-  let sql = `SELECT * FROM orders WHERE is_draft=0 AND is_abandoned=0`;
-  const params: unknown[] = [];
-  if (email) { sql += ` AND lower(email)=lower(?)`; params.push(email); }
-  sql += ` ORDER BY created_at DESC`;
-  const rows = db.prepare(sql).all(...params) as Row[];
+  // Require a non-empty email — never return all orders to anonymous callers
+  if (!email || !email.trim()) {
+    res.status(400).json({ data: null, meta: {}, error: "email query parameter is required" });
+    return;
+  }
+  const rows = db.prepare(
+    `SELECT * FROM orders WHERE is_draft=0 AND is_abandoned=0 AND lower(email)=lower(?) ORDER BY created_at DESC`
+  ).all(email.trim()) as Row[];
   res.json({ data: parseRows(rows), meta: { total: rows.length }, error: null });
 });
 
 router.get("/store/orders/:id", (req, res) => {
-  const order = parseOne(db.prepare(`SELECT * FROM orders WHERE id=?`).get(req.params["id"]) as Row | undefined);
-  if (!order) { res.status(404).json({ data: null, meta: {}, error: "Order not found" }); return; }
+  const { email } = req.query as Record<string, string>;
+  // Require ownership verification via email
+  if (!email || !email.trim()) {
+    res.status(400).json({ data: null, meta: {}, error: "email query parameter is required for ownership verification" });
+    return;
+  }
+  const order = parseOne(
+    db.prepare(
+      `SELECT * FROM orders WHERE id=? AND lower(email)=lower(?)`
+    ).get(req.params["id"], email.trim()) as Row | undefined
+  );
+  if (!order) {
+    res.status(404).json({ data: null, meta: {}, error: "Order not found" });
+    return;
+  }
   res.json({ data: order, meta: {}, error: null });
 });
 

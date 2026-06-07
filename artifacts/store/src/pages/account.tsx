@@ -82,7 +82,7 @@ export default function Account() {
               {data.orders.map((order) => (
                 <Link
                   key={order.id}
-                  href={`/account/orders/${order.id}`}
+                  href={`/account/orders/${order.id}?email=${encodeURIComponent(loginForm.email || registerForm.email)}`}
                   className="flex flex-col sm:flex-row sm:items-center justify-between p-5 hover:bg-secondary/30 transition-colors gap-4"
                 >
                   <div className="flex gap-6 items-center">

@@ -58,9 +58,11 @@ export async function fetchOrders(email: string) {
   return { orders: json.data };
 }
 
-export async function fetchOrder(id: string) {
-  const res = await fetch(`${BASE_URL}/store/orders/${id}`);
-  if (!res.ok) throw new Error("Failed to fetch order");
+export async function fetchOrder(id: string, email: string) {
+  const url = new URL(`${BASE_URL}/store/orders/${id}`, window.location.origin);
+  url.searchParams.set("email", email);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Order not found or email does not match");
   const json = await res.json() as ApiResponse<Order & { lineItems?: OrderItem[] }>;
   if (!json.data) throw new Error("Order not found");
   const order = json.data;
