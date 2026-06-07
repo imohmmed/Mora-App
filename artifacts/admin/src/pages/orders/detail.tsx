@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, User, CreditCard, Truck, Calendar, CheckCircle2, Clock, Package, ShoppingCart } from "lucide-react";
 import { format } from "date-fns";
+import { fmt } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 export default function OrderDetail() {
@@ -83,7 +84,7 @@ export default function OrderDetail() {
       label: "Order placed",
       description: "Customer submitted the order",
       done: true,
-      time: order.createdAt ? format(new Date(order.createdAt), "MMM d, yyyy 'at' h:mm a") : undefined,
+      time: order.createdAt ? fmt(order.createdAt, "MMM d, yyyy 'at' h:mm a") : undefined,
     },
     {
       icon: <CreditCard className="w-4 h-4" />,
@@ -124,7 +125,7 @@ export default function OrderDetail() {
           {order.createdAt && (
             <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
               <Calendar className="w-3 h-3" />
-              {format(new Date(order.createdAt), "MMM d, yyyy 'at' h:mm a")}
+              {fmt(order.createdAt, "MMM d, yyyy 'at' h:mm a")}
             </p>
           )}
         </div>

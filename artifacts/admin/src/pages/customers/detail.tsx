@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, User, Mail, MapPin, ShoppingBag } from "lucide-react";
 import { format } from "date-fns";
+import { fmt } from "@/lib/date";
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -36,7 +37,7 @@ export default function CustomerDetail() {
             {customer.firstName} {customer.lastName}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Customer since {customer.createdAt ? format(new Date(customer.createdAt), "MMMM yyyy") : "Unknown"}
+            Customer since {customer.createdAt ? fmt(customer.createdAt, "MMMM yyyy") : "Unknown"}
           </p>
         </div>
       </div>
@@ -167,7 +168,7 @@ export default function CustomerDetail() {
                           </Link>
                         </TableCell>
                         <TableCell>
-                          {order.createdAt ? format(new Date(order.createdAt), "MMM d, yyyy") : "-"}
+                          {order.createdAt ? fmt(order.createdAt, "MMM d, yyyy") : "-"}
                         </TableCell>
                         <TableCell>
                           <Badge variant={order.financialStatus === "paid" ? "default" : "secondary"}>

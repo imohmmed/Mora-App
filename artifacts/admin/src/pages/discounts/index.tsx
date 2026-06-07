@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tags, Plus } from "lucide-react";
 import { format } from "date-fns";
+import { fmt } from "@/lib/date";
 import { useLocation } from "wouter";
 
 export default function Discounts() {
@@ -84,8 +85,8 @@ export default function Discounts() {
                     {discount.usageLimit ? ` / ${discount.usageLimit}` : " used"}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {discount.startsAt ? format(new Date(discount.startsAt), "MMM d") : "—"}
-                    {discount.endsAt ? ` – ${format(new Date(discount.endsAt), "MMM d, yyyy")}` : ""}
+                    {discount.startsAt ? fmt(discount.startsAt, "MMM d") : "—"}
+                    {discount.endsAt ? ` – ${fmt(discount.endsAt, "MMM d, yyyy")}` : ""}
                   </TableCell>
                 </TableRow>
               ))
@@ -130,8 +131,8 @@ export default function Discounts() {
                 </p>
                 {discount.startsAt && (
                   <p className="text-xs text-muted-foreground">
-                    {format(new Date(discount.startsAt), "MMM d")}
-                    {discount.endsAt ? ` – ${format(new Date(discount.endsAt), "MMM d, yyyy")}` : ""}
+                    {fmt(discount.startsAt, "MMM d")}
+                    {discount.endsAt ? ` – ${fmt(discount.endsAt, "MMM d, yyyy")}` : ""}
                   </p>
                 )}
               </CardContent>

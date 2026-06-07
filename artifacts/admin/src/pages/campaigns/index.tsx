@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Megaphone, Plus } from "lucide-react";
 import { format } from "date-fns";
+import { fmt } from "@/lib/date";
 
 export default function Campaigns() {
   const { data: response, isLoading } = useAdminListCampaigns();
@@ -68,7 +69,7 @@ export default function Campaigns() {
                     </Link>
                     <div className="font-medium">{campaign.title}</div>
                     <div className="text-xs text-muted-foreground">
-                      {campaign.createdAt ? format(new Date(campaign.createdAt), "MMM d, yyyy") : "—"}
+                      {campaign.createdAt ? fmt(campaign.createdAt, "MMM d, yyyy") : "—"}
                     </div>
                   </TableCell>
                   <TableCell>

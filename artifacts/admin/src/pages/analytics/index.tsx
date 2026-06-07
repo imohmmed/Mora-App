@@ -14,6 +14,7 @@ import {
   CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { format } from "date-fns";
+import { fmt } from "@/lib/date";
 import { DollarSign, ShoppingCart, Users, Package, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
@@ -183,7 +184,7 @@ export default function Analytics() {
                       <div className="text-right">
                         <div className="font-semibold">${order.total.toFixed(2)}</div>
                         <div className="text-xs text-muted-foreground">
-                          {format(new Date(order.createdAt!), "MMM d, h:mm a")}
+                          {fmt(order.createdAt, "MMM d, h:mm a")}
                         </div>
                       </div>
                     </div>
@@ -265,7 +266,7 @@ function RevenueChart({ data }: { data: Array<{ date: string; revenue: number }>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
           <XAxis
             dataKey="date"
-            tickFormatter={(val) => format(new Date(val), "MMM d")}
+            tickFormatter={(val) => fmt(val, "MMM d")}
             stroke="hsl(var(--muted-foreground))"
             fontSize={12}
             tickLine={false}
@@ -280,7 +281,7 @@ function RevenueChart({ data }: { data: Array<{ date: string; revenue: number }>
           />
           <Tooltip
             formatter={(value: number) => [`$${value.toFixed(2)}`, "Revenue"]}
-            labelFormatter={(label) => format(new Date(label), "MMM d, yyyy")}
+            labelFormatter={(label) => fmt(label, "MMM d, yyyy")}
             contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))" }}
           />
           <Line

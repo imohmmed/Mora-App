@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Megaphone, TrendingUp, MousePointer, Eye, ShoppingCart } from "lucide-react";
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
+import { fmt } from "@/lib/date";
 
 export default function CampaignDetail() {
   const { id } = useParams();
@@ -88,7 +89,7 @@ export default function CampaignDetail() {
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5 capitalize">
             {campaign.type} campaign
-            {campaign.createdAt && ` · Created ${format(new Date(campaign.createdAt), "MMM d, yyyy")}`}
+            {campaign.createdAt && ` · Created ${fmt(campaign.createdAt, "MMM d, yyyy")}`}
           </p>
         </div>
         <Button onClick={handleSave} disabled={updateCampaign.isPending}>

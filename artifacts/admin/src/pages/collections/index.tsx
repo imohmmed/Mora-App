@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { FolderTree, Plus, Image as ImageIcon } from "lucide-react";
 import { format } from "date-fns";
+import { fmt } from "@/lib/date";
 
 export default function Collections() {
   const { data: response, isLoading } = useAdminListCollections();
@@ -76,7 +77,7 @@ export default function Collections() {
                     {collection.productsCount ?? 0} products
                   </TableCell>
                   <TableCell>
-                    {collection.createdAt ? format(new Date(collection.createdAt), "MMM d, yyyy") : "-"}
+                    {collection.createdAt ? fmt(collection.createdAt, "MMM d, yyyy") : "-"}
                   </TableCell>
                 </TableRow>
               ))

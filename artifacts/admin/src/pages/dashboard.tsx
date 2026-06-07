@@ -13,6 +13,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { format } from "date-fns";
+import { fmt } from "@/lib/date";
 import { Package, ShoppingCart, Users, DollarSign, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
@@ -172,7 +173,7 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                   <XAxis
                     dataKey="date"
-                    tickFormatter={(val) => format(new Date(val), "MMM d")}
+                    tickFormatter={(val) => fmt(val, "MMM d")}
                     stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                     tickLine={false}
@@ -187,7 +188,7 @@ export default function Dashboard() {
                   />
                   <Tooltip
                     formatter={(value: number) => [`$${value.toFixed(2)}`, "Revenue"]}
-                    labelFormatter={(label) => format(new Date(label), "MMM d, yyyy")}
+                    labelFormatter={(label) => fmt(label, "MMM d, yyyy")}
                     contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))" }}
                   />
                   <Line
@@ -271,7 +272,7 @@ export default function Dashboard() {
                       <span className="font-medium">{order.email}</span>
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {format(new Date(order.createdAt!), "MMM d, h:mm a")}
+                      {fmt(order.createdAt, "MMM d, h:mm a")}
                     </p>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">

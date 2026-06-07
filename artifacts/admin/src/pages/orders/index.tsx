@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Inbox, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
 import { format } from "date-fns";
+import { fmt } from "@/lib/date";
 import { useDebounce } from "@/hooks/use-debounce";
 
 const PAGE_SIZE = 10;
@@ -162,7 +163,7 @@ export default function Orders() {
                     {order.orderNumber}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {order.createdAt ? format(new Date(order.createdAt), "MMM d, h:mm a") : "—"}
+                    {order.createdAt ? fmt(order.createdAt, "MMM d, h:mm a") : "—"}
                   </TableCell>
                   <TableCell>{order.email}</TableCell>
                   <TableCell>{statusBadge(order.financialStatus, order.fulfillmentStatus)}</TableCell>
@@ -203,7 +204,7 @@ export default function Orders() {
                       </Badge>
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      {order.createdAt ? format(new Date(order.createdAt), "MMM d, h:mm a") : "—"}
+                      {order.createdAt ? fmt(order.createdAt, "MMM d, h:mm a") : "—"}
                     </span>
                   </div>
                 </CardContent>
