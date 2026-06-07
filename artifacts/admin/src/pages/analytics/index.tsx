@@ -1,29 +1,33 @@
-import { 
-  useAdminGetAnalyticsSummary, 
-  useAdminGetRevenueChart, 
+import {
+  useAdminGetAnalyticsSummary,
+  useAdminGetRevenueChart,
   useAdminGetTopProducts,
   useAdminGetAnalyticsReports,
-  useAdminGetLiveOrders
+  useAdminGetLiveOrders,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, 
-  CartesianGrid, Tooltip, ResponsiveContainer 
+import { Badge } from "@/components/ui/badge";
+import {
+  LineChart, Line, BarChart, Bar, XAxis, YAxis,
+  CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { format } from "date-fns";
-import { TrendingUp, DollarSign, ShoppingCart, Users, Package } from "lucide-react";
+import { DollarSign, ShoppingCart, Users, Package, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 
 export default function Analytics() {
   const { data: summaryRes, isLoading: loadingSummary } = useAdminGetAnalyticsSummary();
-  const { data: chartRes14, isLoading: loadingChart14 } = useAdminGetRevenueChart({ days: 14 });
+  const { data: chartRes14 } = useAdminGetRevenueChart({ days: 14 });
   const { data: chartRes30 } = useAdminGetRevenueChart({ days: 30 });
   const { data: topProductsRes, isLoading: loadingTopProducts } = useAdminGetTopProducts({ limit: 10 });
   const { data: reportsRes, isLoading: loadingReports } = useAdminGetAnalyticsReports();
-  const { data: liveOrdersRes, isLoading: loadingLiveOrders } = useAdminGetLiveOrders();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: liveOrdersRes, isLoading: loadingLiveOrders } = useAdminGetLiveOrders({
+    query: { refetchInterval: 30_000 } as any,
+  });
 
   const summary = summaryRes?.data;
   const revenueData14 = chartRes14?.data ?? [];
@@ -70,9 +74,7 @@ export default function Analytics() {
               {card.icon}
             </CardHeader>
             <CardContent>
-              {loadingSummary ? (
-                <Skeleton className="h-8 w-24" />
-              ) : (
+              {loadingSummary ? <Skeleton className="h-8 w-24" /> : (
                 <div className="text-2xl font-bold">{card.value}</div>
               )}
             </CardContent>
@@ -84,32 +86,24 @@ export default function Analytics() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
-          <TabsTrigger value="live">Live Orders</TabsTrigger>
+          <TabsTrigger value="live">
+            <span className="flex items-center gap-1.5">
+              <RefreshCw className="h-3.5 w-3.5" />
+              Live Orders
+            </span>
+          </TabsTrigger>
           <TabsTrigger value="products">Top Products</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Revenue — Last 14 Days</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loadingChart14 ? (
-                  <Skeleton className="h-[280px] w-full" />
-                ) : (
-                  <RevenueChart data={revenueData14} />
-                )}
-              </CardContent>
+              <CardHeader><CardTitle>Revenue — Last 14 Days</CardTitle></CardHeader>
+              <CardContent><RevenueChart data={revenueData14} /></CardContent>
             </Card>
-
             <Card>
-              <CardHeader>
-                <CardTitle>Revenue — Last 30 Days</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <RevenueChart data={revenueData30} />
-              </CardContent>
+              <CardHeader><CardTitle>Revenue — Last 30 Days</CardTitle></CardHeader>
+              <CardContent><RevenueChart data={revenueData30} /></CardContent>
             </Card>
           </div>
         </TabsContent>
@@ -127,8 +121,8 @@ export default function Analytics() {
                       <span className="text-3xl font-bold">{String(report.value)}</span>
                       <span className={cn(
                         "text-sm font-medium",
-                        report.change.startsWith("+") ? "text-green-600" : 
-                        report.change.startsWith("-") ? "text-red-600" : 
+                        report.change.startsWith("+") ? "text-green-600" :
+                        report.change.startsWith("-") ? "text-red-600" :
                         "text-muted-foreground"
                       )}>
                         {report.change}
@@ -143,13 +137,20 @@ export default function Analytics() {
 
         <TabsContent value="live" className="mt-6">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Live Orders Feed</CardTitle>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                </span>
+                Auto-refreshes every 30s
+              </div>
             </CardHeader>
             <CardContent>
               {loadingLiveOrders ? (
                 <div className="space-y-3">
-                  {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                  {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
                 </div>
               ) : liveOrders.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">No orders yet.</div>
@@ -179,9 +180,7 @@ export default function Analytics() {
 
         <TabsContent value="products" className="mt-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Top Products by Revenue</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Top Products by Revenue</CardTitle></CardHeader>
             <CardContent>
               {loadingTopProducts ? (
                 <Skeleton className="h-[400px] w-full" />
@@ -189,19 +188,19 @@ export default function Analytics() {
                 <div className="text-center py-12 text-muted-foreground">No data available.</div>
               ) : (
                 <div className="space-y-4">
-                  <div className="h-[300px]">
+                  <div className="h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={topProducts} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                      <BarChart data={topProducts} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                         <XAxis
                           dataKey="title"
                           stroke="hsl(var(--muted-foreground))"
-                          fontSize={11}
+                          fontSize={10}
                           tickLine={false}
                           axisLine={false}
-                          tick={{ dy: 8 }}
                           interval={0}
-                          width={60}
+                          angle={-30}
+                          textAnchor="end"
                         />
                         <YAxis
                           tickFormatter={(v) => `$${v}`}
@@ -244,7 +243,7 @@ export default function Analytics() {
 
 function RevenueChart({ data }: { data: Array<{ date: string; revenue: number }> }) {
   return (
-    <div className="h-[280px] w-full">
+    <div className="h-[260px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />

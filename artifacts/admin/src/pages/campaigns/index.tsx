@@ -1,17 +1,23 @@
-import { useState } from "react";
 import { useAdminListCampaigns } from "@workspace/api-client-react";
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import { Link } from "wouter";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Megaphone, Plus } from "lucide-react";
 import { format } from "date-fns";
 
 export default function Campaigns() {
   const { data: response, isLoading } = useAdminListCampaigns();
-
   const campaigns = response?.data ?? [];
+
+  const spendPct = (spent: number | undefined, budget: number | undefined) => {
+    if (!budget || !spent) return 0;
+    return Math.min(100, Math.round((spent / budget) * 100));
+  };
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
@@ -26,14 +32,15 @@ export default function Campaigns() {
         </Button>
       </div>
 
-      <div className="bg-card border rounded-lg overflow-hidden">
+      {/* Desktop table */}
+      <div className="hidden md:block bg-card border rounded-lg overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Campaign</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead className="text-right">Spend / Budget</TableHead>
+              <TableHead>Budget</TableHead>
               <TableHead className="text-right">Impressions</TableHead>
               <TableHead className="text-right">Conversions</TableHead>
             </TableRow>
@@ -41,9 +48,7 @@ export default function Campaigns() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
-                  Loading...
-                </TableCell>
+                <TableCell colSpan={6} className="h-24 text-center">Loading...</TableCell>
               </TableRow>
             ) : campaigns.length === 0 ? (
               <TableRow>
@@ -57,10 +62,13 @@ export default function Campaigns() {
             ) : (
               campaigns.map((campaign) => (
                 <TableRow key={campaign.id} className="cursor-pointer group relative">
-                  <TableCell className="font-medium">
-                    {campaign.title}
-                    <div className="text-xs text-muted-foreground font-normal mt-1">
-                      {campaign.createdAt ? format(new Date(campaign.createdAt), "MMM d, yyyy") : "-"}
+                  <TableCell>
+                    <Link href={`/campaigns/${campaign.id}`} className="absolute inset-0">
+                      <span className="sr-only">View {campaign.title}</span>
+                    </Link>
+                    <div className="font-medium">{campaign.title}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {campaign.createdAt ? format(new Date(campaign.createdAt), "MMM d, yyyy") : "—"}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -68,11 +76,19 @@ export default function Campaigns() {
                       {campaign.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="capitalize">
-                    {campaign.type}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    ${(campaign.spent ?? 0).toFixed(2)} / {campaign.budget ? `$${campaign.budget.toFixed(2)}` : "No limit"}
+                  <TableCell className="capitalize">{campaign.type}</TableCell>
+                  <TableCell>
+                    {campaign.budget ? (
+                      <div className="space-y-1 min-w-[100px]">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>${(campaign.spent ?? 0).toFixed(2)}</span>
+                          <span>${campaign.budget.toFixed(2)}</span>
+                        </div>
+                        <Progress value={spendPct(campaign.spent, campaign.budget)} className="h-1.5" />
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">No limit</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     {new Intl.NumberFormat().format(campaign.impressions ?? 0)}
@@ -85,6 +101,55 @@ export default function Campaigns() {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile card list */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? (
+          <p className="text-center text-muted-foreground py-8">Loading...</p>
+        ) : campaigns.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Megaphone className="h-10 w-10 mx-auto mb-3 opacity-40" />
+            <p>No campaigns yet.</p>
+          </div>
+        ) : (
+          campaigns.map((campaign) => (
+            <Link key={campaign.id} href={`/campaigns/${campaign.id}`}>
+              <Card className="cursor-pointer hover:shadow-sm transition-shadow active:opacity-80">
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium">{campaign.title}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{campaign.type}</p>
+                    </div>
+                    <Badge variant={campaign.status === "active" ? "default" : "secondary"}>
+                      {campaign.status}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p className="text-muted-foreground text-xs">Impressions</p>
+                      <p className="font-medium">{new Intl.NumberFormat().format(campaign.impressions ?? 0)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Conversions</p>
+                      <p className="font-medium">{new Intl.NumberFormat().format(campaign.conversions ?? 0)}</p>
+                    </div>
+                  </div>
+                  {campaign.budget && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Spent: ${(campaign.spent ?? 0).toFixed(2)}</span>
+                        <span>Budget: ${campaign.budget.toFixed(2)}</span>
+                      </div>
+                      <Progress value={spendPct(campaign.spent, campaign.budget)} className="h-1.5" />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </Link>
+          ))
+        )}
       </div>
     </div>
   );

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useAdminListProducts } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Plus, PackageOpen } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -15,7 +16,7 @@ export default function Products() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("all");
   const [category, setCategory] = useState<string>("all");
-  
+
   const debouncedSearch = useDebounce(search, 300);
 
   const { data: response, isLoading } = useAdminListProducts({
@@ -39,19 +40,19 @@ export default function Products() {
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 items-center bg-card p-4 rounded-lg border">
+      <div className="flex flex-col sm:flex-row gap-3 items-center bg-card p-4 rounded-lg border">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search products..." 
+          <Input
+            placeholder="Search products..."
             className="pl-9 w-full"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-4 w-full sm:w-auto">
+        <div className="flex gap-3 w-full sm:w-auto">
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="w-full sm:w-[150px]">
+            <SelectTrigger className="w-full sm:w-[140px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -62,7 +63,7 @@ export default function Products() {
             </SelectContent>
           </Select>
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-full sm:w-[150px]">
+            <SelectTrigger className="w-full sm:w-[140px]">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -75,11 +76,12 @@ export default function Products() {
         </div>
       </div>
 
-      <div className="bg-card border rounded-lg overflow-hidden">
+      {/* Desktop table */}
+      <div className="hidden md:block bg-card border rounded-lg overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[80px]">Image</TableHead>
+              <TableHead className="w-[72px]">Image</TableHead>
               <TableHead>Product</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Inventory</TableHead>
@@ -90,9 +92,7 @@ export default function Products() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
-                  Loading...
-                </TableCell>
+                <TableCell colSpan={6} className="h-24 text-center">Loading...</TableCell>
               </TableRow>
             ) : products.length === 0 ? (
               <TableRow>
@@ -107,7 +107,7 @@ export default function Products() {
               products.map((product) => (
                 <TableRow key={product.id} className="cursor-pointer group relative">
                   <TableCell>
-                    <div className="h-12 w-12 rounded-md bg-muted flex items-center justify-center overflow-hidden">
+                    <div className="h-11 w-11 rounded-md bg-muted flex items-center justify-center overflow-hidden">
                       {product.images?.[0] ? (
                         <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover" />
                       ) : (
@@ -133,14 +133,52 @@ export default function Products() {
                     <div className="text-xs text-muted-foreground">{product.variantsCount} variants</div>
                   </TableCell>
                   <TableCell className="capitalize">{product.category}</TableCell>
-                  <TableCell className="text-right font-medium">
-                    ${product.price.toFixed(2)}
-                  </TableCell>
+                  <TableCell className="text-right font-medium">${product.price.toFixed(2)}</TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile card list */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? (
+          <p className="text-center text-muted-foreground py-8">Loading...</p>
+        ) : products.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <PackageOpen className="h-10 w-10 mx-auto mb-3 opacity-40" />
+            <p>No products found.</p>
+          </div>
+        ) : (
+          products.map((product) => (
+            <Link key={product.id} href={`/products/${product.id}`}>
+              <Card className="cursor-pointer hover:shadow-sm transition-shadow active:opacity-80">
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-md bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {product.images?.[0] ? (
+                        <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <PackageOpen className="h-5 w-5 text-muted-foreground/50" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{product.title}</p>
+                      <p className="text-sm text-muted-foreground capitalize">{product.category}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-semibold">${product.price.toFixed(2)}</p>
+                      <Badge variant={product.status === "active" ? "default" : "secondary"} className="text-xs">
+                        {product.status}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))
+        )}
       </div>
     </div>
   );

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Settings as SettingsIcon, Truck, Receipt, MapPin, Bell } from "lucide-react";
+import { Settings as SettingsIcon, Truck, Receipt, MapPin, Bell, CreditCard } from "lucide-react";
 
 export default function Settings() {
   const { data: response, isLoading } = useAdminGetSettings();
@@ -86,6 +86,10 @@ export default function Settings() {
           <TabsTrigger value="notifications" className="gap-2">
             <Bell className="w-4 h-4" />
             Notifications
+          </TabsTrigger>
+          <TabsTrigger value="billing" className="gap-2">
+            <CreditCard className="w-4 h-4" />
+            Billing
           </TabsTrigger>
         </TabsList>
 
@@ -288,6 +292,78 @@ export default function Settings() {
                 <MapPin className="w-4 h-4 mr-2" />
                 Add Location
               </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* BILLING */}
+        <TabsContent value="billing" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Current Plan</CardTitle>
+              <CardDescription>You are on the <strong>Mora Pro</strong> plan.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/40">
+                <div>
+                  <p className="font-semibold">Mora Pro</p>
+                  <p className="text-sm text-muted-foreground">Unlimited products · 3 staff accounts · Advanced analytics</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold">$79<span className="text-base font-normal text-muted-foreground">/mo</span></p>
+                  <p className="text-xs text-muted-foreground">Renews Aug 1, 2026</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline">Change Plan</Button>
+                <Button variant="ghost" className="text-destructive hover:text-destructive">Cancel Plan</Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment Method</CardTitle>
+              <CardDescription>Manage how you pay for your subscription.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  <CreditCard className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">Visa ending in 4242</p>
+                    <p className="text-sm text-muted-foreground">Expires 12/27</p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm">Update</Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Billing History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="divide-y">
+                {[
+                  { date: "Jul 1, 2026", amount: "$79.00", status: "Paid", inv: "INV-2026-07" },
+                  { date: "Jun 1, 2026", amount: "$79.00", status: "Paid", inv: "INV-2026-06" },
+                  { date: "May 1, 2026", amount: "$79.00", status: "Paid", inv: "INV-2026-05" },
+                ].map((row) => (
+                  <div key={row.inv} className="flex items-center justify-between py-3">
+                    <div>
+                      <p className="text-sm font-medium">{row.inv}</p>
+                      <p className="text-xs text-muted-foreground">{row.date}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-medium">{row.amount}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">{row.status}</span>
+                      <Button variant="ghost" size="sm" className="text-xs h-7">Download</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

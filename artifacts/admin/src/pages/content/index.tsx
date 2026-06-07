@@ -8,8 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, List as ListIcon, Plus, Boxes, File, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
+import { useSearch } from "wouter";
 
 export default function ContentHub() {
+  const search = useSearch();
+  const params = new URLSearchParams(search);
+  const defaultTab = params.get("tab") ?? "blog";
+
   const { data: postsRes, isLoading: loadingPosts } = useAdminListBlogPosts();
   const { data: menusRes, isLoading: loadingMenus } = useAdminListMenus();
 
@@ -20,10 +25,10 @@ export default function ContentHub() {
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Content</h1>
-        <p className="text-muted-foreground mt-1">Manage blog posts, navigation menus, custom objects, and files.</p>
+        <p className="text-muted-foreground mt-1">Manage blog posts, menus, custom objects, and files.</p>
       </div>
 
-      <Tabs defaultValue="blog">
+      <Tabs defaultValue={defaultTab}>
         <TabsList className="mb-4">
           <TabsTrigger value="blog" className="gap-2">
             <FileText className="w-4 h-4" />
@@ -79,12 +84,10 @@ export default function ContentHub() {
                   <TableRow key={post.id} className="cursor-pointer">
                     <TableCell className="font-medium">{post.title}</TableCell>
                     <TableCell>
-                      <Badge variant={post.status === "published" ? "default" : "secondary"}>
-                        {post.status}
-                      </Badge>
+                      <Badge variant={post.status === "published" ? "default" : "secondary"}>{post.status}</Badge>
                     </TableCell>
                     <TableCell>{post.author}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
                       {post.publishedAt ? format(new Date(post.publishedAt), "MMM d, yyyy") : "—"}
                     </TableCell>
                   </TableRow>
@@ -102,9 +105,7 @@ export default function ContentHub() {
                 <CardContent className="pt-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium">{post.title}</p>
-                    <Badge variant={post.status === "published" ? "default" : "secondary"}>
-                      {post.status}
-                    </Badge>
+                    <Badge variant={post.status === "published" ? "default" : "secondary"}>{post.status}</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {post.author} · {post.publishedAt ? format(new Date(post.publishedAt), "MMM d, yyyy") : "Draft"}
@@ -142,9 +143,7 @@ export default function ContentHub() {
                       <p className="text-sm font-mono text-muted-foreground">{menu.handle}</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-muted-foreground">
-                        {menu.items?.length ?? 0} links
-                      </span>
+                      <span className="text-sm text-muted-foreground">{menu.items?.length ?? 0} links</span>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
@@ -153,7 +152,7 @@ export default function ContentHub() {
                       {(menu.items as { title: string; url: string }[]).slice(0, 3).map((item, i) => (
                         <div key={i} className="text-sm text-muted-foreground flex items-center gap-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 flex-shrink-0" />
-                          {item.title}
+                          <span>{item.title}</span>
                           <span className="text-xs text-muted-foreground/60">{item.url}</span>
                         </div>
                       ))}
@@ -183,7 +182,7 @@ export default function ContentHub() {
               </div>
               <h3 className="font-semibold">No metaobject definitions</h3>
               <p className="text-muted-foreground text-sm max-w-sm">
-                Metaobjects let you create custom content types — like testimonials, FAQs, or team members — and display them anywhere in your store.
+                Metaobjects let you create custom content types — like testimonials, FAQs, or team members.
               </p>
               <Button className="mt-1">
                 <Plus className="w-4 h-4 mr-2" />
@@ -208,7 +207,7 @@ export default function ContentHub() {
               </div>
               <h3 className="font-semibold">No files uploaded</h3>
               <p className="text-muted-foreground text-sm max-w-sm">
-                Upload images, videos, and documents to use across your store. Files can be referenced in products, blog posts, and custom metaobjects.
+                Upload images, videos, and documents to use across your store.
               </p>
               <Button className="mt-1">
                 <Plus className="w-4 h-4 mr-2" />

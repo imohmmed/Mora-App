@@ -21,6 +21,7 @@ import Companies from "@/pages/customers/companies";
 import Collections from "@/pages/collections";
 import Discounts from "@/pages/discounts";
 import Campaigns from "@/pages/campaigns";
+import CampaignDetail from "@/pages/campaigns/detail";
 import ContentHub from "@/pages/content";
 import Markets from "@/pages/markets";
 import Analytics from "@/pages/analytics";
@@ -36,20 +37,21 @@ function Router() {
         <Route path="/analytics" component={Analytics} />
         <Route path="/orders" component={Orders} />
         <Route path="/orders/:id" component={OrderDetail} />
-        {/* Products + sub-pages — specific routes first */}
+        {/* Products — specific sub-routes before :id */}
         <Route path="/products/inventory" component={Inventory} />
         <Route path="/products/purchase-orders" component={PurchaseOrders} />
         <Route path="/products/transfers" component={Transfers} />
         <Route path="/products/gift-cards" component={GiftCards} />
         <Route path="/products/:id" component={ProductDetail} />
         <Route path="/products" component={Products} />
-        {/* Customers + sub-pages — specific routes first */}
+        {/* Customers — specific sub-routes before :id */}
         <Route path="/customers/segments" component={CustomerSegments} />
         <Route path="/customers/companies" component={Companies} />
         <Route path="/customers/:id" component={CustomerDetail} />
         <Route path="/customers" component={Customers} />
         <Route path="/collections" component={Collections} />
         <Route path="/discounts" component={Discounts} />
+        <Route path="/campaigns/:id" component={CampaignDetail} />
         <Route path="/campaigns" component={Campaigns} />
         <Route path="/content" component={ContentHub} />
         <Route path="/markets" component={Markets} />
