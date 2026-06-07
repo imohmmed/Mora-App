@@ -1,4 +1,5 @@
 import { useAdminListBlogPosts, useAdminListMenus } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -6,9 +7,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, List as ListIcon, Plus, Boxes, File, ChevronRight } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { FileText, List as ListIcon, Plus, Boxes, File, ChevronRight, HardDrive } from "lucide-react";
 import { format } from "date-fns";
 import { useSearch, useLocation } from "wouter";
+
+const AUTH_HEADER = { Authorization: "Bearer dev-token-mora" };
+
+type MetaobjectEntry = { id: string; type: string; fields: Record<string, string> };
+type FileEntry = { id: string; filename: string; size: number; mimeType: string; url: string; createdAt: string };
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export default function ContentHub() {
   const search = useSearch();
@@ -18,6 +31,19 @@ export default function ContentHub() {
 
   const { data: postsRes, isLoading: loadingPosts } = useAdminListBlogPosts();
   const { data: menusRes, isLoading: loadingMenus } = useAdminListMenus();
+
+  const { data: metaobjectsRes, isLoading: loadingMeta } = useQuery<{ data: MetaobjectEntry[] }>({
+    queryKey: ["/api/admin/content/metaobjects"],
+    queryFn: () => fetch("/api/admin/content/metaobjects", { headers: AUTH_HEADER }).then(r => r.json()),
+  });
+
+  const { data: filesRes, isLoading: loadingFiles } = useQuery<{ data: FileEntry[] }>({
+    queryKey: ["/api/admin/content/files"],
+    queryFn: () => fetch("/api/admin/content/files", { headers: AUTH_HEADER }).then(r => r.json()),
+  });
+
+  const metaobjects = metaobjectsRes?.data ?? [];
+  const files = filesRes?.data ?? [];
 
   const posts = postsRes?.data ?? [];
   const menus = menusRes?.data ?? [];
@@ -174,52 +200,122 @@ export default function ContentHub() {
 
         {/* METAOBJECTS */}
         <TabsContent value="metaobjects" className="space-y-4">
-          <div className="flex justify-end">
-            <Button>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Custom content types like FAQs, size guides, and testimonials.
+            </p>
+            <Button size="sm">
               <Plus className="w-4 h-4 mr-2" />
               Create Definition
             </Button>
           </div>
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-                <Boxes className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <h3 className="font-semibold">No metaobject definitions</h3>
-              <p className="text-muted-foreground text-sm max-w-sm">
-                Metaobjects let you create custom content types — like testimonials, FAQs, or team members.
-              </p>
-              <Button className="mt-1">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Definition
-              </Button>
-            </CardContent>
-          </Card>
+
+          {loadingMeta ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+            </div>
+          ) : metaobjects.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                <Boxes className="h-8 w-8 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground text-sm">No metaobject definitions yet.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <thead>
+                  <tr className="border-b bg-muted/40">
+                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Type</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">ID</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Fields</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {metaobjects.map((obj) => (
+                    <tr key={obj.id} className="hover:bg-muted/20">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Boxes className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-mono text-sm font-medium">{obj.type}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{obj.id}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {Object.keys(obj.fields).map(k => (
+                            <Badge key={k} variant="secondary" className="text-xs font-normal">{k}</Badge>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          )}
         </TabsContent>
 
         {/* FILES */}
         <TabsContent value="files" className="space-y-4">
-          <div className="flex justify-end">
-            <Button>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Images, PDFs, and documents used across your store.
+            </p>
+            <Button size="sm">
               <Plus className="w-4 h-4 mr-2" />
               Upload Files
             </Button>
           </div>
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-                <File className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <h3 className="font-semibold">No files uploaded</h3>
-              <p className="text-muted-foreground text-sm max-w-sm">
-                Upload images, videos, and documents to use across your store.
-              </p>
-              <Button className="mt-1">
-                <Plus className="w-4 h-4 mr-2" />
-                Upload Files
-              </Button>
-            </CardContent>
-          </Card>
+
+          {loadingFiles ? (
+            <div className="space-y-3">
+              {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
+            </div>
+          ) : files.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                <File className="h-8 w-8 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground text-sm">No files uploaded yet.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <thead>
+                  <tr className="border-b bg-muted/40">
+                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Filename</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Type</th>
+                    <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">Size</th>
+                    <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">Uploaded</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {files.map((f) => (
+                    <tr key={f.id} className="hover:bg-muted/20">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {f.mimeType.startsWith("image/")
+                            ? <File className="w-4 h-4 text-blue-500" />
+                            : <HardDrive className="w-4 h-4 text-muted-foreground" />}
+                          <span className="font-medium text-sm">{f.filename}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className="text-xs font-mono">{f.mimeType}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm text-muted-foreground">
+                        {formatBytes(f.size)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm text-muted-foreground">
+                        {format(new Date(f.createdAt), "MMM d, yyyy")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

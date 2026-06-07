@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAdminGetProduct, useAdminUpdateProduct } from "@workspace/api-client-react";
+import { useAdminGetProduct, useAdminUpdateProduct, useAdminGetProductVariants } from "@workspace/api-client-react";
 import { useParams, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { 
@@ -11,9 +11,17 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Package } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type VariantRow = {
+  id: string;
+  title: string;
+  sku: string;
+  price: number;
+  inventory: number;
+};
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -21,9 +29,11 @@ export default function ProductDetail() {
   const { toast } = useToast();
   
   const { data: response, isLoading } = useAdminGetProduct(id!);
+  const { data: variantsRes } = useAdminGetProductVariants(id!);
   const updateProduct = useAdminUpdateProduct();
   
   const product = response?.data;
+  const apiVariants = (variantsRes?.data ?? product?.variants ?? []) as unknown as VariantRow[];
   
   const [formData, setFormData] = useState({
     title: "",
@@ -73,6 +83,31 @@ export default function ProductDetail() {
       }
     );
   };
+
+  // Derive option axes from variant titles (e.g. "Red / L" → color=Red, size=L)
+  const variantMatrix = (() => {
+    if (!apiVariants.length) return null;
+
+    const splitTitles = apiVariants.map(v => {
+      const parts = (v.title || "Default Title").split(" / ").map(s => s.trim());
+      return parts;
+    });
+
+    const maxOptions = Math.max(...splitTitles.map(p => p.length));
+    if (maxOptions < 2) return null; // single-option — plain table is fine
+
+    // Axis 0 = rows, Axis 1 = columns
+    const rowValues = [...new Set(splitTitles.map(p => p[0]))];
+    const colValues = [...new Set(splitTitles.map(p => p[1] ?? ""))];
+
+    const lookup: Record<string, VariantRow> = {};
+    apiVariants.forEach((v, i) => {
+      const parts = splitTitles[i];
+      lookup[`${parts[0]}|${parts[1] ?? ""}`] = v;
+    });
+
+    return { rowValues, colValues, lookup };
+  })();
 
   if (isLoading) {
     return <div className="p-6 md:p-8">Loading product details...</div>;
@@ -129,38 +164,88 @@ export default function ProductDetail() {
             </CardContent>
           </Card>
 
+          {/* Variant Matrix / Table */}
           <Card>
             <CardHeader>
               <CardTitle>Variants</CardTitle>
-              <CardDescription>Manage inventory and pricing per variant.</CardDescription>
+              <CardDescription>
+                {apiVariants.length} variant{apiVariants.length !== 1 ? "s" : ""} — sizes and colors from inventory.
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {product.variants && product.variants.length > 0 ? (
-                <div className="border rounded-md overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Variant</TableHead>
-                        <TableHead>SKU</TableHead>
-                        <TableHead className="text-right">Price</TableHead>
-                        <TableHead className="text-right">Inventory</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {product.variants.map((v) => (
-                        <TableRow key={v.id}>
-                          <TableCell className="font-medium">{v.title}</TableCell>
-                          <TableCell className="font-mono text-sm text-muted-foreground">{v.sku}</TableCell>
-                          <TableCell className="text-right">${v.price.toFixed(2)}</TableCell>
-                          <TableCell className="text-right">{v.inventory}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
+              {apiVariants.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground text-sm border rounded-md bg-muted/20">
                   This product has no variants.
+                </div>
+              ) : variantMatrix ? (
+                /* Matrix view: rows = color, columns = size */
+                <div className="space-y-3">
+                  <div className="text-xs text-muted-foreground mb-2">
+                    Showing {variantMatrix.rowValues.length} × {variantMatrix.colValues.length} variant matrix
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm border rounded-lg overflow-hidden">
+                      <thead>
+                        <tr className="bg-muted/40">
+                          <th className="text-left px-3 py-2 font-medium border-b border-r">Color / Size</th>
+                          {variantMatrix.colValues.map(col => (
+                            <th key={col} className="px-3 py-2 font-medium text-center border-b border-r last:border-r-0">{col}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {variantMatrix.rowValues.map(row => (
+                          <tr key={row} className="hover:bg-muted/20">
+                            <td className="px-3 py-2 font-medium border-r text-muted-foreground">{row}</td>
+                            {variantMatrix.colValues.map(col => {
+                              const v = variantMatrix.lookup[`${row}|${col}`];
+                              return (
+                                <td key={col} className={cn("px-3 py-2 text-center border-r last:border-r-0", !v && "bg-muted/30")}>
+                                  {v ? (
+                                    <div className="space-y-0.5">
+                                      <div className="font-semibold">${v.price.toFixed(2)}</div>
+                                      <div className={cn("text-xs", v.inventory <= 0 ? "text-red-500" : "text-muted-foreground")}>
+                                        {v.inventory} in stock
+                                      </div>
+                                      {v.sku && <div className="text-xs font-mono text-muted-foreground/60">{v.sku}</div>}
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground/40 text-xs">—</span>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                /* Fallback plain table for single-option variants */
+                <div className="border rounded-md overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/40">
+                        <th className="text-left px-4 py-2 font-medium">Variant</th>
+                        <th className="text-left px-4 py-2 font-medium">SKU</th>
+                        <th className="text-right px-4 py-2 font-medium">Price</th>
+                        <th className="text-right px-4 py-2 font-medium">Stock</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {apiVariants.map((v) => (
+                        <tr key={v.id} className="hover:bg-muted/20">
+                          <td className="px-4 py-2 font-medium">{v.title}</td>
+                          <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{v.sku}</td>
+                          <td className="px-4 py-2 text-right">${v.price.toFixed(2)}</td>
+                          <td className={cn("px-4 py-2 text-right", v.inventory <= 0 ? "text-red-500 font-medium" : "")}>
+                            {v.inventory}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </CardContent>
@@ -216,7 +301,7 @@ export default function ProductDetail() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label htmlFor="price">Price</Label>
+                <Label htmlFor="price">Base Price</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                   <Input 

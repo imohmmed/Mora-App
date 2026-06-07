@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAdminListOrders } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import {
@@ -33,9 +33,24 @@ export default function Orders() {
   } as Parameters<typeof useAdminListOrders>[0]);
 
   const allOrders = response?.data ?? [];
-  const total = response?.meta?.total ?? allOrders.length;
+
+  const sortedOrders = useMemo(() => {
+    const arr = [...allOrders];
+    switch (sort) {
+      case "oldest":
+        return arr.sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime());
+      case "total_desc":
+        return arr.sort((a, b) => (b.total ?? 0) - (a.total ?? 0));
+      case "total_asc":
+        return arr.sort((a, b) => (a.total ?? 0) - (b.total ?? 0));
+      default: // newest
+        return arr.sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
+    }
+  }, [allOrders, sort]);
+
+  const total = response?.meta?.total ?? sortedOrders.length;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const orders = allOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const orders = sortedOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleTabChange = (value: string) => {
     setTab(value as OrderTab);

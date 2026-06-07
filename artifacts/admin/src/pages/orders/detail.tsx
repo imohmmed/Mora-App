@@ -9,8 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, User, CreditCard, Truck, Calendar } from "lucide-react";
+import { ArrowLeft, User, CreditCard, Truck, Calendar, CheckCircle2, Clock, Package, ShoppingCart } from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 export default function OrderDetail() {
   const { id } = useParams();
@@ -62,6 +63,51 @@ export default function OrderDetail() {
     return <div className="p-6 md:p-8">Order not found.</div>;
   }
 
+  // Build fulfillment timeline from order data
+  const isPaid = order.financialStatus === "paid";
+  const isFulfilled = order.fulfillmentStatus === "fulfilled";
+  const isCancelled = order.status === "cancelled";
+
+  type TimelineStep = {
+    icon: React.ReactNode;
+    label: string;
+    description: string;
+    done: boolean;
+    cancelled?: boolean;
+    time?: string;
+  };
+
+  const timelineSteps: TimelineStep[] = [
+    {
+      icon: <ShoppingCart className="w-4 h-4" />,
+      label: "Order placed",
+      description: "Customer submitted the order",
+      done: true,
+      time: order.createdAt ? format(new Date(order.createdAt), "MMM d, yyyy 'at' h:mm a") : undefined,
+    },
+    {
+      icon: <CreditCard className="w-4 h-4" />,
+      label: "Payment",
+      description: isPaid ? "Payment collected" : "Awaiting payment",
+      done: isPaid,
+      cancelled: isCancelled,
+    },
+    {
+      icon: <Package className="w-4 h-4" />,
+      label: "Fulfillment",
+      description: isFulfilled ? "Order fulfilled and shipped" : "Preparing order for shipment",
+      done: isFulfilled,
+      cancelled: isCancelled,
+    },
+    {
+      icon: <Truck className="w-4 h-4" />,
+      label: "Delivered",
+      description: isFulfilled ? "Order delivered to customer" : "Not yet delivered",
+      done: isFulfilled,
+      cancelled: isCancelled,
+    },
+  ];
+
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
@@ -86,6 +132,7 @@ export default function OrderDetail() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
+          {/* Order Items */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle>Order Items</CardTitle>
@@ -131,6 +178,48 @@ export default function OrderDetail() {
               </div>
             </CardFooter>
           </Card>
+
+          {/* Fulfillment Timeline */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Fulfillment Timeline
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ol className="relative border-l border-muted ml-4 space-y-6">
+                {timelineSteps.map((step, i) => (
+                  <li key={i} className="ml-6">
+                    <span className={cn(
+                      "absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full ring-4 ring-background",
+                      step.cancelled
+                        ? "bg-muted text-muted-foreground"
+                        : step.done
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
+                    )}>
+                      {step.done && !step.cancelled
+                        ? <CheckCircle2 className="w-3.5 h-3.5" />
+                        : step.icon}
+                    </span>
+                    <div className="flex flex-col gap-0.5">
+                      <p className={cn(
+                        "font-medium text-sm",
+                        step.done && !step.cancelled ? "text-foreground" : "text-muted-foreground"
+                      )}>
+                        {step.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{step.description}</p>
+                      {step.time && (
+                        <p className="text-xs text-muted-foreground/70">{step.time}</p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="space-y-6">
@@ -174,8 +263,8 @@ export default function OrderDetail() {
                 Payment Status
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <Badge variant={order.financialStatus === "paid" ? "default" : "secondary"} className="mb-4">
+            <CardContent className="space-y-3">
+              <Badge variant={order.financialStatus === "paid" ? "default" : "secondary"}>
                 {order.financialStatus || "unpaid"}
               </Badge>
               {order.financialStatus !== "paid" && (
@@ -190,24 +279,32 @@ export default function OrderDetail() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Truck className="w-5 h-5" />
-                Fulfillment Status
+                Fulfillment
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <Badge variant={order.fulfillmentStatus === "fulfilled" ? "outline" : "secondary"}>
                 {order.fulfillmentStatus || "unfulfilled"}
               </Badge>
-              <div className="grid gap-2">
-                <Select value={order.fulfillmentStatus || "unfulfilled"} onValueChange={handleFulfillmentChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unfulfilled">Unfulfilled</SelectItem>
-                    <SelectItem value="fulfilled">Fulfilled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select value={order.fulfillmentStatus || "unfulfilled"} onValueChange={handleFulfillmentChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unfulfilled">Unfulfilled</SelectItem>
+                  <SelectItem value="fulfilled">Fulfilled</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={order.status || "open"} onValueChange={handleStatusChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Order status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
             </CardContent>
           </Card>
         </div>
