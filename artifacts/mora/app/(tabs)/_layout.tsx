@@ -9,6 +9,8 @@ import { Platform, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
+import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 
 function NativeTabLayout() {
   return (
@@ -20,6 +22,10 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="search" role="search">
         <Icon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />
         <Label>Search</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="wishlist">
+        <Icon sf={{ default: "heart", selected: "heart.fill" }} />
+        <Label>Saved</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="cart">
         <Icon sf={{ default: "bag", selected: "bag.fill" }} />
@@ -40,6 +46,8 @@ function ClassicTabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const safeAreaInsets = useSafeAreaInsets();
+  const { totalItems } = useCart();
+  const { count: wishlistCount } = useWishlist();
 
   return (
     <Tabs
@@ -70,10 +78,7 @@ function ClassicTabLayout() {
             />
           ) : isWeb ? (
             <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: colors.background },
-              ]}
+              style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
             />
           ) : null,
       }}
@@ -84,23 +89,12 @@ function ClassicTabLayout() {
           title: "Home",
           tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView
-                name={focused ? "house.fill" : "house"}
-                tintColor={color}
-                size={24}
-              />
+              <SymbolView name={focused ? "house.fill" : "house"} tintColor={color} size={24} />
             ) : (
               <Feather name="home" size={22} color={color} />
             ),
           tabBarLabel: ({ color, focused }) => (
-            <Text
-              style={{
-                color,
-                fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium",
-                fontSize: 10,
-                letterSpacing: 0.3,
-              }}
-            >
+            <Text style={{ color, fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium", fontSize: 10, letterSpacing: 0.3 }}>
               HOME
             </Text>
           ),
@@ -112,24 +106,38 @@ function ClassicTabLayout() {
           title: "Search",
           tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView
-                name="magnifyingglass"
-                tintColor={color}
-                size={24}
-              />
+              <SymbolView name="magnifyingglass" tintColor={color} size={24} />
             ) : (
               <Feather name="search" size={22} color={color} />
             ),
           tabBarLabel: ({ color, focused }) => (
-            <Text
-              style={{
-                color,
-                fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium",
-                fontSize: 10,
-                letterSpacing: 0.3,
-              }}
-            >
+            <Text style={{ color, fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium", fontSize: 10, letterSpacing: 0.3 }}>
               SEARCH
+            </Text>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="wishlist"
+        options={{
+          title: "Saved",
+          tabBarIcon: ({ color, focused }) => (
+            <View>
+              {isIOS ? (
+                <SymbolView name={focused ? "heart.fill" : "heart"} tintColor={color} size={24} />
+              ) : (
+                <Feather name="heart" size={22} color={color} />
+              )}
+              {wishlistCount > 0 && (
+                <View style={[styles.tabBadge, { backgroundColor: colors.primary }]}>
+                  <Text style={styles.tabBadgeText}>{wishlistCount > 9 ? "9+" : wishlistCount}</Text>
+                </View>
+              )}
+            </View>
+          ),
+          tabBarLabel: ({ color, focused }) => (
+            <Text style={{ color, fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium", fontSize: 10, letterSpacing: 0.3 }}>
+              SAVED
             </Text>
           ),
         }}
@@ -138,25 +146,22 @@ function ClassicTabLayout() {
         name="cart"
         options={{
           title: "Bag",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
-              <SymbolView
-                name={focused ? "bag.fill" : "bag"}
-                tintColor={color}
-                size={24}
-              />
-            ) : (
-              <Feather name="shopping-bag" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color, focused }) => (
+            <View>
+              {isIOS ? (
+                <SymbolView name={focused ? "bag.fill" : "bag"} tintColor={color} size={24} />
+              ) : (
+                <Feather name="shopping-bag" size={22} color={color} />
+              )}
+              {totalItems > 0 && (
+                <View style={[styles.tabBadge, { backgroundColor: colors.primary }]}>
+                  <Text style={styles.tabBadgeText}>{totalItems > 9 ? "9+" : totalItems}</Text>
+                </View>
+              )}
+            </View>
+          ),
           tabBarLabel: ({ color, focused }) => (
-            <Text
-              style={{
-                color,
-                fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium",
-                fontSize: 10,
-                letterSpacing: 0.3,
-              }}
-            >
+            <Text style={{ color, fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium", fontSize: 10, letterSpacing: 0.3 }}>
               BAG
             </Text>
           ),
@@ -168,23 +173,12 @@ function ClassicTabLayout() {
           title: "Account",
           tabBarIcon: ({ color, focused }) =>
             isIOS ? (
-              <SymbolView
-                name={focused ? "person.fill" : "person"}
-                tintColor={color}
-                size={24}
-              />
+              <SymbolView name={focused ? "person.fill" : "person"} tintColor={color} size={24} />
             ) : (
               <Feather name="user" size={22} color={color} />
             ),
           tabBarLabel: ({ color, focused }) => (
-            <Text
-              style={{
-                color,
-                fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium",
-                fontSize: 10,
-                letterSpacing: 0.3,
-              }}
-            >
+            <Text style={{ color, fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium", fontSize: 10, letterSpacing: 0.3 }}>
               ACCOUNT
             </Text>
           ),
@@ -201,4 +195,21 @@ export default function TabLayout() {
   return <ClassicTabLayout />;
 }
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  tabBadge: {
+    position: "absolute",
+    top: -4,
+    right: -8,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  tabBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+  },
+});

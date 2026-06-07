@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { HomeHeader } from "@/components/HomeHeader";
@@ -61,6 +62,7 @@ function getTag(product: Product): string | null {
 
 function ProductCard({ item }: { item: Product }) {
   const colors = useColors();
+  const router = useRouter();
   const { isWishlisted, toggle } = useWishlist();
   const { addItem } = useCart();
   const liked = isWishlisted(item.id);
@@ -91,6 +93,7 @@ function ProductCard({ item }: { item: Product }) {
     <Pressable
       style={({ pressed }) => [styles.productCard, { opacity: pressed ? 0.95 : 1 }]}
       testID={`product-${item.id}`}
+      onPress={() => router.push(`/product/${item.id}`)}
       onLongPress={handleAddToCart}
     >
       <View style={[styles.productImage, { backgroundColor: bg }]}>

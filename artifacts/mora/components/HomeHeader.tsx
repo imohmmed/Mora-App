@@ -50,9 +50,7 @@ export function HomeHeader({
           testID="search-bar"
         >
           <Feather name="search" size={18} color={colors.mutedForeground} />
-          <Text
-            style={[styles.searchPlaceholder, { color: colors.mutedForeground }]}
-          >
+          <Text style={[styles.searchPlaceholder, { color: colors.mutedForeground }]}>
             Search
           </Text>
           <Pressable
@@ -66,6 +64,7 @@ export function HomeHeader({
 
         <Pressable
           style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+          onPress={() => router.push("/(tabs)/wishlist")}
           testID="favorites-btn"
         >
           <Feather name="heart" size={23} color={colors.foreground} />

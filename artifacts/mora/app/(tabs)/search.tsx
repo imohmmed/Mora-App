@@ -4,6 +4,7 @@ import {
   Dimensions,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
@@ -47,6 +49,7 @@ function cardColor(id: string): string {
 
 function SearchResultCard({ item }: { item: Product }) {
   const colors = useColors();
+  const router = useRouter();
   const { isWishlisted, toggle } = useWishlist();
   const { addItem } = useCart();
   const liked = isWishlisted(item.id);
@@ -54,6 +57,7 @@ function SearchResultCard({ item }: { item: Product }) {
   return (
     <Pressable
       style={({ pressed }) => [styles.resultCard, { opacity: pressed ? 0.95 : 1 }]}
+      onPress={() => router.push(`/product/${item.id}`)}
     >
       <View style={[styles.resultImage, { backgroundColor: cardColor(item.id) }]}>
         <Pressable
@@ -108,7 +112,7 @@ export default function SearchScreen() {
     debounceTimer.current = setTimeout(() => setDebouncedQuery(text), 400);
   };
 
-  const { data: results, isLoading, isFetching } = useQuery({
+  const { data: results, isLoading, isFetching, isError, refetch, isRefetching } = useQuery({
     queryKey: ["search", debouncedQuery],
     queryFn: () => searchProducts(debouncedQuery),
     enabled: debouncedQuery.trim().length > 0,
@@ -171,21 +175,25 @@ export default function SearchScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomPadding + 80 }}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          showResults ? (
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={refetch}
+              tintColor={colors.primary}
+            />
+          ) : undefined
+        }
       >
         {!showResults ? (
           <>
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                TRENDING
-              </Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>TRENDING</Text>
               <View style={styles.tagsWrap}>
                 {TRENDING.map((t) => (
                   <Pressable
                     key={t}
-                    style={[
-                      styles.tag,
-                      { backgroundColor: colors.secondary, borderColor: colors.border },
-                    ]}
+                    style={[styles.tag, { backgroundColor: colors.secondary, borderColor: colors.border }]}
                     onPress={() => handleChangeText(t)}
                   >
                     <Text style={[styles.tagText, { color: colors.foreground }]}>{t}</Text>
@@ -195,9 +203,7 @@ export default function SearchScreen() {
             </View>
 
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                BROWSE
-              </Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>BROWSE</Text>
               <View style={styles.categoriesGrid}>
                 {CATEGORIES.map((cat) => (
                   <Pressable
@@ -210,9 +216,7 @@ export default function SearchScreen() {
                     testID={`category-${cat.label}`}
                   >
                     <Feather name={cat.icon} size={24} color={colors.foreground} />
-                    <Text style={[styles.categoryLabel, { color: colors.foreground }]}>
-                      {cat.label}
-                    </Text>
+                    <Text style={[styles.categoryLabel, { color: colors.foreground }]}>{cat.label}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -221,9 +225,20 @@ export default function SearchScreen() {
         ) : isLoading && debouncedQuery === query ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
-              Searching...
+            <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Searching...</Text>
+          </View>
+        ) : isError ? (
+          <View style={styles.errorBox}>
+            <Feather name="wifi-off" size={40} color={colors.border} />
+            <Text style={[styles.errorText, { color: colors.mutedForeground }]}>
+              Could not search. Check connection.
             </Text>
+            <Pressable
+              onPress={() => refetch()}
+              style={[styles.retryBtn, { borderColor: colors.border }]}
+            >
+              <Text style={[styles.retryText, { color: colors.foreground }]}>Retry</Text>
+            </Pressable>
           </View>
         ) : results && results.length > 0 ? (
           <>
@@ -276,24 +291,10 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     padding: 0,
   },
-  section: {
-    paddingHorizontal: 16,
-    paddingTop: 24,
-    paddingBottom: 8,
-  },
-  sectionTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 13,
-    letterSpacing: 1,
-    marginBottom: 12,
-  },
+  section: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8 },
+  sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 13, letterSpacing: 1, marginBottom: 12 },
   tagsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  tag: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 4,
-    borderWidth: 1,
-  },
+  tag: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 4, borderWidth: 1 },
   tagText: { fontFamily: "Inter_500Medium", fontSize: 14 },
   categoriesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   categoryCard: {
@@ -304,30 +305,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  categoryLabel: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-    letterSpacing: 0.5,
-  },
-  loadingBox: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 60,
-    gap: 12,
-  },
+  categoryLabel: { fontFamily: "Inter_600SemiBold", fontSize: 14, letterSpacing: 0.5 },
+  loadingBox: { alignItems: "center", justifyContent: "center", paddingVertical: 60, gap: 12 },
   loadingText: { fontFamily: "Inter_400Regular", fontSize: 14 },
-  resultsHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
+  errorBox: { alignItems: "center", paddingVertical: 60, gap: 12 },
+  errorText: { fontFamily: "Inter_400Regular", fontSize: 14, textAlign: "center", paddingHorizontal: 32 },
+  retryBtn: { paddingHorizontal: 24, paddingVertical: 10, borderWidth: 1, borderRadius: 4 },
+  retryText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  resultsHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   resultsCount: { fontFamily: "Inter_400Regular", fontSize: 13 },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 16,
-    gap: 16,
-  },
+  grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 16 },
   resultCard: { width: CARD_WIDTH },
   resultImage: {
     width: "100%",
@@ -347,36 +334,13 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   resultInfo: { paddingTop: 8, gap: 2 },
-  resultBrand: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 11,
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-  },
-  resultTitle: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    lineHeight: 18,
-  },
+  resultBrand: { fontFamily: "Inter_500Medium", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase" },
+  resultTitle: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18 },
   resultPriceRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
   resultPrice: { fontFamily: "Inter_700Bold", fontSize: 14 },
-  resultOriginal: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    textDecorationLine: "line-through",
-  },
-  emptyResults: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 80,
-    gap: 12,
-  },
-  emptyTitle: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 18,
-    textAlign: "center",
-  },
+  resultOriginal: { fontFamily: "Inter_400Regular", fontSize: 12, textDecorationLine: "line-through" },
+  emptyResults: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 80, gap: 12 },
+  emptyTitle: { fontFamily: "Inter_600SemiBold", fontSize: 18, textAlign: "center" },
   emptySubtitle: {
     fontFamily: "Inter_400Regular",
     fontSize: 14,
