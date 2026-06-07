@@ -1,0 +1,75 @@
+import { Product, Variant, Collection, Order, OrderItem, BlogPost } from "./types";
+
+const BASE_URL = "/api";
+
+type ApiResponse<T> = { data: T; meta: Record<string, unknown>; error: string | null };
+
+export async function fetchProducts(params?: { category?: string; q?: string; limit?: number; page?: number }) {
+  const url = new URL(`${BASE_URL}/store/products`, window.location.origin);
+  if (params?.category) url.searchParams.set("category", params.category);
+  if (params?.q) url.searchParams.set("q", params.q);
+  if (params?.limit) url.searchParams.set("limit", params.limit.toString());
+  if (params?.page) url.searchParams.set("page", params.page.toString());
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch products");
+  const json = await res.json() as ApiResponse<Product[]>;
+  return {
+    products: json.data,
+    total: (json.meta.total as number) ?? 0,
+    page: (json.meta.page as number) ?? 1,
+    limit: (json.meta.limit as number) ?? 20,
+  };
+}
+
+export async function fetchProduct(id: string) {
+  const res = await fetch(`${BASE_URL}/store/products/${id}`);
+  if (!res.ok) throw new Error("Failed to fetch product");
+  const json = await res.json() as ApiResponse<Product & { variants: Variant[] }>;
+  return { product: json.data };
+}
+
+export async function searchProducts(q: string) {
+  const res = await fetch(`${BASE_URL}/store/search?q=${encodeURIComponent(q)}`);
+  if (!res.ok) throw new Error("Failed to search products");
+  const json = await res.json() as ApiResponse<Product[]>;
+  return { products: json.data };
+}
+
+export async function fetchCollections() {
+  const res = await fetch(`${BASE_URL}/store/collections`);
+  if (!res.ok) throw new Error("Failed to fetch collections");
+  const json = await res.json() as ApiResponse<Collection[]>;
+  return { collections: json.data };
+}
+
+export async function fetchCollection(id: string) {
+  const res = await fetch(`${BASE_URL}/store/collections/${id}`);
+  if (!res.ok) throw new Error("Failed to fetch collection");
+  const json = await res.json() as ApiResponse<Collection | null>;
+  if (!json.data) throw new Error("Collection not found");
+  return { collection: json.data };
+}
+
+export async function fetchOrders(email: string) {
+  const res = await fetch(`${BASE_URL}/store/orders?email=${encodeURIComponent(email)}`);
+  if (!res.ok) throw new Error("Failed to fetch orders");
+  const json = await res.json() as ApiResponse<Order[]>;
+  return { orders: json.data };
+}
+
+export async function fetchOrder(id: string) {
+  const res = await fetch(`${BASE_URL}/store/orders/${id}`);
+  if (!res.ok) throw new Error("Failed to fetch order");
+  const json = await res.json() as ApiResponse<Order & { lineItems?: OrderItem[] }>;
+  if (!json.data) throw new Error("Order not found");
+  const order = json.data;
+  return { order: { ...order, items: order.lineItems ?? [] } };
+}
+
+export async function fetchBlogPosts() {
+  const res = await fetch(`${BASE_URL}/store/blog-posts`);
+  if (!res.ok) throw new Error("Failed to fetch blog posts");
+  const json = await res.json() as ApiResponse<BlogPost[]>;
+  return { posts: json.data };
+}
