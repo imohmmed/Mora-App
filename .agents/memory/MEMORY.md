@@ -2,3 +2,4 @@
 - [better-sqlite3 compilation on Replit](better-sqlite3-compilation.md) — No prebuilt binaries for Node v24; compile with node-gyp after `nix-env -iA nixpkgs.python3`. Steps documented.
 - [Replit port authority only monitors .replit ports](replit-port-authority.md) — New artifact workflows MUST use one of the ports already in .replit [[ports]] or they always fail with DIDNT_OPEN_A_PORT.
 - [Mora API response envelope](mora-api-envelope.md) — All /api/* endpoints return `{ data, meta, error }`. Store api.ts must unwrap and reshape before pages consume.
+- [Collection screen scroll pattern](collection-scroll.md) — Hero in ScrollView; fixed absolute header overlay; Animated.Value for bg opacity; boolean `scrolled` state drives icon color + search bar expansion.

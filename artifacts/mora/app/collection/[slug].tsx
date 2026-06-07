@@ -1,13 +1,15 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
+  Keyboard,
   Platform,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { Image } from "expo-image";
@@ -17,13 +19,14 @@ import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { useCart } from "@/context/CartContext";
-import { fetchSpecialCollection } from "@/lib/api";
+import { fetchSpecialCollection, searchProducts } from "@/lib/api";
 import type { Product } from "@/lib/types";
 
 const { width } = Dimensions.get("window");
-const HERO_H = 220;
+const HERO_H = 260;
 const CARD_W = (width - 16 * 3) / 2;
 const PRIMARY = "#0274C1";
+const SCROLL_THRESHOLD = HERO_H - 70;
 
 function ProductCard({ product }: { product: Product }) {
   const colors = useColors();
@@ -76,6 +79,19 @@ function ProductCard({ product }: { product: Product }) {
   );
 }
 
+function ProductSkeleton() {
+  return (
+    <View style={{ width: CARD_W }}>
+      <View style={{ width: "100%", height: CARD_W * 1.2, borderRadius: 10, backgroundColor: "#F0F0F0" }} />
+      <View style={{ paddingTop: 8, gap: 6 }}>
+        <View style={{ height: 9, width: 50, backgroundColor: "#E8E8E8", borderRadius: 4 }} />
+        <View style={{ height: 12, width: 90, backgroundColor: "#E8E8E8", borderRadius: 4 }} />
+        <View style={{ height: 14, width: 55, backgroundColor: "#E8E8E8", borderRadius: 4 }} />
+      </View>
+    </View>
+  );
+}
+
 export default function CollectionScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
@@ -83,7 +99,21 @@ export default function CollectionScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const { totalItems } = useCart();
+
+  const topPad = isWeb ? 0 : insets.top;
+  const botPad = isWeb ? 0 : insets.bottom;
+
   const [refreshing, setRefreshing] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [query, setQuery] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
+
+  const scrollRef = useRef<any>(null);
+  const searchRef = useRef<TextInput>(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const headerBgAnim = useRef(new Animated.Value(0)).current;
+  const searchBarAnim = useRef(new Animated.Value(0)).current;
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["special-collection", slug],
@@ -92,96 +122,336 @@ export default function CollectionScreen() {
     staleTime: 60_000,
   });
 
+  const { data: searchResults, isLoading: searchLoading } = useQuery({
+    queryKey: ["collection-search", debouncedQ],
+    queryFn: () => searchProducts(debouncedQ),
+    enabled: debouncedQ.trim().length > 0,
+  });
+
+  const collection = data;
+  const allProducts: Product[] = (collection?.products ?? []) as Product[];
+  const displayProducts = debouncedQ.trim().length > 0
+    ? (searchResults ?? [])
+    : allProducts;
+
+  useEffect(() => {
+    Animated.timing(headerBgAnim, {
+      toValue: scrolled ? 1 : 0,
+      duration: 180,
+      useNativeDriver: false,
+    }).start();
+    Animated.spring(searchBarAnim, {
+      toValue: scrolled ? 1 : 0,
+      friction: 9,
+      tension: 80,
+      useNativeDriver: false,
+    }).start();
+  }, [scrolled]);
+
+  const handleChangeText = (text: string) => {
+    setQuery(text);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => setDebouncedQ(text), 380);
+  };
+
+  const handleClearSearch = () => {
+    setQuery("");
+    setDebouncedQ("");
+    searchRef.current?.focus();
+  };
+
+  const handleSearchIconTap = () => {
+    (scrollRef.current as any)?.scrollTo?.({ y: HERO_H, animated: true });
+    setTimeout(() => searchRef.current?.focus(), 350);
+  };
+
+  const handleSearchBarTap = () => {
+    searchRef.current?.focus();
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refetch();
     setRefreshing(false);
   }, [refetch]);
 
-  const topPad = isWeb ? 0 : insets.top;
-  const collection = data;
-  const products: Product[] = (collection?.products ?? []) as Product[];
+  const headerBg = headerBgAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["rgba(0,0,0,0)", colors.background],
+  });
+
+  const searchBarWidth = searchBarAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, width - 120],
+  });
+
+  const iconColor = scrolled ? colors.foreground : "#ffffff";
+  const ICON_BG_SCROLLED = colors.secondary;
+  const ICON_BG_TOP = "rgba(0,0,0,0.30)";
+
+  const HEADER_H = topPad + 56;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.heroBox}>
-        <Image
-          source={{ uri: collection?.heroImage ?? `https://picsum.photos/seed/${slug}/800/500` }}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-        />
-        <View style={styles.heroOverlay} />
+      {/* ───── Fixed header overlay ───── */}
+      <Animated.View
+        style={[styles.fixedHeader, { height: HEADER_H, paddingTop: topPad, backgroundColor: headerBg }]}
+        pointerEvents="box-none"
+      >
+        {/* Back button */}
+        <Pressable
+          style={[styles.iconBtn, { backgroundColor: scrolled ? ICON_BG_SCROLLED : ICON_BG_TOP }]}
+          onPress={() => { Keyboard.dismiss(); router.back(); }}
+          testID="back-btn"
+        >
+          <Feather name="arrow-left" size={20} color={iconColor} />
+        </Pressable>
 
-        <View style={[styles.topBar, { paddingTop: topPad + 8 }]}>
-          <Pressable
-            style={styles.iconBtn}
-            onPress={() => router.back()}
-            testID="back-btn"
-          >
-            <Feather name="arrow-left" size={22} color="#fff" />
-          </Pressable>
-          <Text style={styles.heroTitle} numberOfLines={1}>
-            {collection?.title ?? " "}
-          </Text>
-          <View style={styles.topRight}>
-            <Pressable style={styles.iconBtn} onPress={() => router.push("/(tabs)/search")} testID="search-btn">
-              <Feather name="search" size={22} color="#fff" />
-            </Pressable>
-            <Pressable style={styles.iconBtn} onPress={() => router.push("/(tabs)/cart")} testID="cart-btn">
-              <Feather name="shopping-bag" size={22} color="#fff" />
-              {totalItems > 0 && (
-                <View style={styles.cartBadge}>
-                  <Text style={styles.cartBadgeText}>{totalItems > 9 ? "9+" : totalItems}</Text>
-                </View>
+        {/* Title (shows when scrolled, hidden when on hero) */}
+        <Animated.Text
+          style={[
+            styles.headerTitle,
+            { color: colors.foreground, opacity: headerBgAnim },
+          ]}
+          numberOfLines={1}
+        >
+          {collection?.title ?? ""}
+        </Animated.Text>
+
+        {/* Right side: search icon → search bar + cart */}
+        <View style={styles.headerRight}>
+          {/* Animated search bar that expands when scrolled */}
+          <Animated.View style={[styles.searchBarWrap, { width: searchBarWidth, overflow: "hidden" }]}>
+            <Pressable
+              style={[styles.searchBarInner, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+              onPress={handleSearchBarTap}
+              testID="search-bar-tap"
+            >
+              <Feather name="search" size={14} color={colors.mutedForeground} />
+              <TextInput
+                ref={searchRef}
+                style={[styles.searchBarInput, { color: colors.foreground }]}
+                placeholder="Search..."
+                placeholderTextColor={colors.mutedForeground}
+                value={query}
+                onChangeText={handleChangeText}
+                returnKeyType="search"
+                autoCorrect={false}
+                testID="search-input"
+              />
+              {query.length > 0 && (
+                <Pressable onPress={handleClearSearch} hitSlop={8}>
+                  <Feather name="x" size={14} color={colors.mutedForeground} />
+                </Pressable>
               )}
             </Pressable>
+          </Animated.View>
+
+          {/* Search icon — visible only when NOT scrolled */}
+          {!scrolled && (
+            <Pressable
+              style={[styles.iconBtn, { backgroundColor: ICON_BG_TOP }]}
+              onPress={handleSearchIconTap}
+              testID="search-btn"
+            >
+              <Feather name="search" size={20} color="#fff" />
+            </Pressable>
+          )}
+
+          {/* Cart button */}
+          <Pressable
+            style={[styles.iconBtn, { backgroundColor: scrolled ? ICON_BG_SCROLLED : ICON_BG_TOP }]}
+            onPress={() => router.push("/(tabs)/cart")}
+            testID="cart-btn"
+          >
+            <Feather name="shopping-bag" size={20} color={iconColor} />
+            {totalItems > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{totalItems > 9 ? "9+" : totalItems}</Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
+      </Animated.View>
+
+      {/* ───── Main scrollable content ───── */}
+      <Animated.ScrollView
+        ref={scrollRef as any}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          {
+            useNativeDriver: false,
+            listener: (e: any) => {
+              const y = e.nativeEvent.contentOffset.y;
+              setScrolled(y > SCROLL_THRESHOLD);
+            },
+          }
+        )}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />
+        }
+        contentContainerStyle={{ paddingBottom: botPad + 64 }}
+      >
+        {/* Hero image — scrolls naturally */}
+        <View style={styles.hero}>
+          <Image
+            source={{ uri: collection?.heroImage ?? `https://picsum.photos/seed/${slug}/800/500` }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+          />
+          <View style={styles.heroOverlay} />
+          <View style={[styles.heroContent, { paddingTop: HEADER_H + 8 }]}>
+            <Text style={styles.heroTitle}>{collection?.title ?? " "}</Text>
+            {!!collection?.description && (
+              <Text style={styles.heroDescription}>{collection.description}</Text>
+            )}
           </View>
         </View>
 
-        <View style={styles.heroFooter}>
-          <Text style={styles.heroDescription}>{collection?.description ?? ""}</Text>
-        </View>
-      </View>
+        {/* Search suggestions / results header */}
+        {debouncedQ.trim().length > 0 && (
+          <View style={[styles.resultsHeader, { borderBottomColor: colors.border }]}>
+            <Feather name="search" size={13} color={colors.mutedForeground} />
+            <Text style={[styles.resultsCount, { color: colors.mutedForeground }]}>
+              {searchLoading
+                ? "Searching..."
+                : `${displayProducts.length} result${displayProducts.length !== 1 ? "s" : ""} for "${debouncedQ}"`}
+            </Text>
+            <Pressable onPress={handleClearSearch} style={styles.clearBtn}>
+              <Feather name="x" size={13} color={colors.mutedForeground} />
+              <Text style={[styles.clearBtnTxt, { color: colors.mutedForeground }]}>Clear</Text>
+            </Pressable>
+          </View>
+        )}
 
-      {isLoading && !refreshing ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={PRIMARY} size="large" />
-        </View>
-      ) : error ? (
-        <View style={styles.center}>
-          <Feather name="alert-circle" size={40} color={colors.mutedForeground} />
-          <Text style={[styles.errorText, { color: colors.foreground }]}>Failed to load</Text>
-          <Pressable style={[styles.retryBtn, { backgroundColor: PRIMARY }]} onPress={() => refetch()}>
-            <Text style={styles.retryText}>Retry</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.grid, { paddingBottom: (isWeb ? 0 : insets.bottom) + 64 }]}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />}
-        >
-          {products.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Feather name="package" size={48} color={colors.mutedForeground} />
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No products yet</Text>
-            </View>
-          ) : (
-            <View style={styles.productGrid}>
-              {products.map((p) => (
-                <ProductCard key={p.id} product={p} />
+        {/* Trending chips — show when search bar focused but empty */}
+        {scrolled && query.length === 0 && debouncedQ.length === 0 && (
+          <View style={styles.trendingRow}>
+            <Text style={[styles.trendingLabel, { color: colors.mutedForeground }]}>TRENDING</Text>
+            <View style={styles.chipRow}>
+              {["Blazer", "Dress", "Linen", "Jeans", "Shoes", "Sale"].map((t) => (
+                <Pressable
+                  key={t}
+                  style={[styles.chip, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+                  onPress={() => handleChangeText(t)}
+                >
+                  <Text style={[styles.chipText, { color: colors.foreground }]}>{t}</Text>
+                </Pressable>
               ))}
             </View>
-          )}
-        </ScrollView>
-      )}
+          </View>
+        )}
+
+        {/* Products / search results grid */}
+        {isLoading && !refreshing ? (
+          <View style={styles.productGrid}>
+            {Array.from({ length: 4 }).map((_, i) => <ProductSkeleton key={i} />)}
+          </View>
+        ) : error ? (
+          <View style={styles.center}>
+            <Feather name="alert-circle" size={40} color={colors.mutedForeground} />
+            <Text style={[styles.errorText, { color: colors.foreground }]}>Failed to load</Text>
+            <Pressable style={[styles.retryBtn, { backgroundColor: PRIMARY }]} onPress={() => refetch()}>
+              <Text style={styles.retryText}>Retry</Text>
+            </Pressable>
+          </View>
+        ) : searchLoading && debouncedQ.length > 0 ? (
+          <View style={styles.center}>
+            <ActivityIndicator color={PRIMARY} />
+          </View>
+        ) : displayProducts.length === 0 ? (
+          <View style={styles.center}>
+            <Feather name="package" size={48} color={colors.border} />
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+              {debouncedQ.trim() ? `No results for "${debouncedQ}"` : "No products yet"}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.productGrid}>
+            {displayProducts.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </View>
+        )}
+      </Animated.ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  heroBox: {
+
+  /* ── Fixed header ── */
+  fixedHeader: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+    gap: 6,
+  },
+  headerTitle: {
+    flex: 1,
+    fontFamily: "Inter_700Bold",
+    fontSize: 16,
+    letterSpacing: 0.2,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cartBadge: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    width: 15,
+    height: 15,
+    borderRadius: 8,
+    backgroundColor: PRIMARY,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cartBadgeText: { color: "#fff", fontSize: 8, fontFamily: "Inter_700Bold" },
+
+  /* ── Search bar ── */
+  searchBarWrap: {
+    height: 36,
+    justifyContent: "center",
+  },
+  searchBarInner: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    height: 36,
+  },
+  searchBarInput: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    padding: 0,
+  },
+
+  /* ── Hero ── */
+  hero: {
     height: HERO_H,
     position: "relative",
     overflow: "hidden",
@@ -190,60 +460,63 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.45)",
   },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 8,
-  },
-  iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    alignItems: "center",
-    justifyContent: "center",
+  heroContent: {
+    flex: 1,
+    justifyContent: "flex-end",
+    padding: 20,
+    paddingBottom: 18,
   },
   heroTitle: {
-    flex: 1,
     fontFamily: "Inter_700Bold",
-    fontSize: 18,
+    fontSize: 28,
     color: "#fff",
     letterSpacing: 0.3,
-  },
-  topRight: { flexDirection: "row", gap: 8 },
-  cartBadge: {
-    position: "absolute",
-    top: 1,
-    right: 1,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: PRIMARY,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cartBadgeText: { color: "#fff", fontSize: 9, fontFamily: "Inter_700Bold" },
-  heroFooter: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
+    marginBottom: 6,
   },
   heroDescription: {
     fontFamily: "Inter_400Regular",
     fontSize: 13,
     color: "rgba(255,255,255,0.85)",
+    lineHeight: 18,
   },
-  grid: {
-    paddingTop: 16,
+
+  /* ── Results / trending ── */
+  resultsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
   },
+  resultsCount: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 13 },
+  clearBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
+  clearBtnTxt: { fontFamily: "Inter_500Medium", fontSize: 12 },
+  trendingRow: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+    gap: 10,
+  },
+  trendingLabel: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 11,
+    letterSpacing: 1,
+  },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 4,
+    borderWidth: 1,
+  },
+  chipText: { fontFamily: "Inter_500Medium", fontSize: 13 },
+
+  /* ── Products grid ── */
   productGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
+    padding: 16,
     gap: 12,
   },
   productCard: {
@@ -266,22 +539,10 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 4,
   },
-  discText: {
-    color: "#fff",
-    fontFamily: "Inter_700Bold",
-    fontSize: 10,
-  },
+  discText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 10 },
   productInfo: { padding: 10, gap: 2 },
-  vendor: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 9,
-    letterSpacing: 0.8,
-  },
-  productTitle: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 13,
-    lineHeight: 18,
-  },
+  vendor: { fontFamily: "Inter_500Medium", fontSize: 9, letterSpacing: 0.8 },
+  productTitle: { fontFamily: "Inter_500Medium", fontSize: 13, lineHeight: 18 },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
   price: { fontFamily: "Inter_700Bold", fontSize: 14 },
   comparePrice: {
@@ -289,20 +550,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textDecorationLine: "line-through",
   },
+
+  /* ── States ── */
   center: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 60,
     gap: 12,
-    padding: 24,
+    paddingHorizontal: 24,
   },
   errorText: { fontFamily: "Inter_500Medium", fontSize: 15 },
-  retryBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
+  retryBtn: { paddingHorizontal: 24, paddingVertical: 10, borderRadius: 8 },
   retryText: { color: "#fff", fontFamily: "Inter_600SemiBold", fontSize: 14 },
-  emptyBox: { alignItems: "center", gap: 12, paddingTop: 60 },
-  emptyText: { fontFamily: "Inter_400Regular", fontSize: 15 },
+  emptyText: { fontFamily: "Inter_400Regular", fontSize: 15, textAlign: "center" },
 });
