@@ -89,7 +89,7 @@ function AccountClassic() {
     emails: false,
   });
 
-  const topPadding = isWeb ? 67 : insets.top;
+  const topPadding = isWeb ? 0 : insets.top;
   const bottomPadding = isWeb ? 34 : insets.bottom;
 
   const flipToggle = (id: string) => {

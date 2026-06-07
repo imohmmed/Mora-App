@@ -25,7 +25,7 @@ export function HomeHeader({
   const router = useRouter();
   const isWeb = Platform.OS === "web";
 
-  const topPadding = isWeb ? 67 : insets.top;
+  const topPadding = isWeb ? 0 : insets.top;
 
   return (
     <View

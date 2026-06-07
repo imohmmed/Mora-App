@@ -44,7 +44,7 @@ export default function SearchScreen() {
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
-  const topPadding = isWeb ? 67 : insets.top;
+  const topPadding = isWeb ? 0 : insets.top;
   const bottomPadding = isWeb ? 34 : insets.bottom;
 
   return (

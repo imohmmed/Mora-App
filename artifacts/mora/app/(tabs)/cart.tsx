@@ -53,7 +53,7 @@ export default function CartScreen() {
   const isWeb = Platform.OS === "web";
   const [cartItems, setCartItems] = useState<CartItem[]>(INITIAL_CART);
 
-  const topPadding = isWeb ? 67 : insets.top;
+  const topPadding = isWeb ? 0 : insets.top;
   const bottomPadding = isWeb ? 34 : insets.bottom;
 
   const subtotal = cartItems.reduce(
