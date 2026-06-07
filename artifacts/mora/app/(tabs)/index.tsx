@@ -15,6 +15,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { HomeHeader } from "@/components/HomeHeader";
+import { CategoryTabs } from "@/components/CategoryTabs";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
@@ -184,46 +185,11 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: bottomPadding + 80 }}
       >
         {/* Category Tabs */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={[styles.categoryScroll, { borderBottomColor: colors.border }]}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
-        >
-          {CATEGORIES.map((cat, i) => (
-            <Pressable
-              key={cat}
-              style={styles.categoryTab}
-              onPress={() => setActiveCategory(i)}
-            >
-              <Text
-                style={[
-                  styles.categoryText,
-                  {
-                    color:
-                      activeCategory === i
-                        ? colors.foreground
-                        : colors.mutedForeground,
-                    fontFamily:
-                      activeCategory === i
-                        ? "Inter_700Bold"
-                        : "Inter_500Medium",
-                  },
-                ]}
-              >
-                {cat}
-              </Text>
-              {activeCategory === i && (
-                <View
-                  style={[
-                    styles.categoryUnderline,
-                    { backgroundColor: colors.primary },
-                  ]}
-                />
-              )}
-            </Pressable>
-          ))}
-        </ScrollView>
+        <CategoryTabs
+          categories={CATEGORIES}
+          activeIndex={activeCategory}
+          onChange={setActiveCategory}
+        />
 
         {/* Hero Banner */}
         <ScrollView
@@ -299,26 +265,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  categoryScroll: {
-    borderBottomWidth: 1,
-  },
-  categoryTab: {
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    position: "relative",
-    alignItems: "center",
-  },
-  categoryText: {
-    fontSize: 13,
-    letterSpacing: 0.5,
-  },
-  categoryUnderline: {
-    position: "absolute",
-    bottom: 0,
-    left: 14,
-    right: 14,
-    height: 2,
   },
   banner: {
     height: 260,

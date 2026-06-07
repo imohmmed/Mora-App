@@ -12,3 +12,6 @@ description: Why @expo/ui/swift-ui must be isolated in .ios.tsx files, not just 
 **Why:** Metro bundles the imported module regardless of runtime Platform checks; the native view manager registration executes during module evaluation.
 
 **How to apply:** Put any module that imports `@expo/ui/swift-ui` in a platform-specific file (`Foo.ios.tsx`) and provide a non-native sibling (`Foo.tsx`) that does NOT import `@expo/ui` (return null or a plain RN fallback). Metro resolves `.ios.tsx` only on iOS and the plain `.tsx` everywhere else. The consuming screen can still branch on `Platform.OS` to pick the native vs classic RN implementation. Verify the web preview after adding Expo UI — a clean Metro bundle does not catch this; it crashes at runtime on import.
+
+## NativeTabs (iOS 26) tabs vanish on scroll
+`NativeTabs` from `expo-router/unstable-native-tabs` defaults to `minimizeBehavior="automatic"`, which collapses the Liquid Glass tab bar on scroll — making tabs (e.g. Account) appear to "disappear". Set `minimizeBehavior="never"` to keep all tabs always visible.

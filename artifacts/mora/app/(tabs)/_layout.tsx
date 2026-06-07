@@ -12,7 +12,7 @@ import { useColors } from "@/hooks/useColors";
 
 function NativeTabLayout() {
   return (
-    <NativeTabs>
+    <NativeTabs minimizeBehavior="never">
       <NativeTabs.Trigger name="index">
         <Icon sf={{ default: "house", selected: "house.fill" }} />
         <Label>Home</Label>
