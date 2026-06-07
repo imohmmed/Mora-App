@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,21 +18,17 @@ import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/useColors";
-import { useTheme, type ThemeMode } from "@/context/ThemeContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
 import { fetchOrders } from "@/lib/api";
 
 const PRIMARY = "#0274C1";
 
-type ViewT = "guest" | "sign-in" | "register";
+type View_t = "guest" | "sign-in" | "register" | "account";
 
 function formatDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleDateString("en-US", {
-      year: "numeric", month: "short", day: "numeric",
-    });
-  } catch { return iso; }
+  try { return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }); }
+  catch { return iso; }
 }
 function statusColor(s: string) {
   const l = s.toLowerCase();
@@ -41,145 +38,7 @@ function statusColor(s: string) {
   return "#888";
 }
 
-/* ─────────────────────────────────────────────
-   SETTINGS SCREEN
-   Only shows: Appearance · Language · About · Privacy
-────────────────────────────────────────────── */
-function SettingsScreen({ onBack, insets }: { onBack: () => void; insets: any }) {
-  const colors = useColors();
-  const { mode, setMode } = useTheme();
-  const topPad = Platform.OS === "web" ? 0 : insets.top;
-  const botPad = Platform.OS === "web" ? 0 : insets.bottom;
-
-  const THEME_OPTIONS: { value: ThemeMode; label: string; icon: string }[] = [
-    { value: "light", label: "Light", icon: "sun" },
-    { value: "dark", label: "Dark", icon: "moon" },
-    { value: "system", label: "System", icon: "smartphone" },
-  ];
-
-  return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
-        <Pressable onPress={onBack} style={styles.iconBtn}>
-          <Feather name="arrow-left" size={22} color={colors.foreground} />
-        </Pressable>
-        <Text style={[styles.acctTitle, { color: colors.foreground }]}>SETTINGS</Text>
-        <View style={{ width: 38 }} />
-      </View>
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: botPad + 80 }}
-      >
-        {/* ── Appearance ── */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>APPEARANCE</Text>
-          <View style={[styles.sectionCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
-            <View style={[styles.themeRow, { borderBottomColor: colors.border }]}>
-              {THEME_OPTIONS.map((opt) => {
-                const active = mode === opt.value;
-                return (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => setMode(opt.value)}
-                    style={[
-                      styles.themeOption,
-                      {
-                        backgroundColor: active ? PRIMARY : colors.secondary,
-                        borderColor: active ? PRIMARY : colors.border,
-                      },
-                    ]}
-                  >
-                    <Feather
-                      name={opt.icon as any}
-                      size={17}
-                      color={active ? "#fff" : colors.foreground}
-                    />
-                    <Text
-                      style={[
-                        styles.themeOptionLabel,
-                        { color: active ? "#fff" : colors.foreground },
-                      ]}
-                    >
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        </View>
-
-        {/* ── Language ── */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>LANGUAGE</Text>
-          <View style={[styles.sectionCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
-            <View style={[styles.settingsRow, styles.lastRow, { borderBottomColor: colors.border }]}>
-              <View style={styles.settingsLeft}>
-                <View style={[styles.settingsIcon, { backgroundColor: colors.secondary }]}>
-                  <Feather name="globe" size={16} color={PRIMARY} />
-                </View>
-                <Text style={[styles.settingsLabel, { color: colors.foreground }]}>Language</Text>
-              </View>
-              <View style={styles.settingsRight}>
-                <Text style={[styles.settingsValue, { color: colors.mutedForeground }]}>English</Text>
-                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* ── Information ── */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>INFORMATION</Text>
-          <View style={[styles.sectionCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.settingsRow,
-                { borderBottomColor: colors.border },
-                pressed && { backgroundColor: colors.secondary },
-              ]}
-            >
-              <View style={styles.settingsLeft}>
-                <View style={[styles.settingsIcon, { backgroundColor: colors.secondary }]}>
-                  <Feather name="info" size={16} color={PRIMARY} />
-                </View>
-                <Text style={[styles.settingsLabel, { color: colors.foreground }]}>About Mora</Text>
-              </View>
-              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.settingsRow,
-                styles.lastRow,
-                { borderBottomColor: colors.border },
-                pressed && { backgroundColor: colors.secondary },
-              ]}
-            >
-              <View style={styles.settingsLeft}>
-                <View style={[styles.settingsIcon, { backgroundColor: colors.secondary }]}>
-                  <Feather name="shield" size={16} color={PRIMARY} />
-                </View>
-                <Text style={[styles.settingsLabel, { color: colors.foreground }]}>Privacy Policy</Text>
-              </View>
-              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-            </Pressable>
-          </View>
-        </View>
-
-        <Text style={[styles.version, { color: colors.mutedForeground }]}>Mora v1.0.0</Text>
-      </ScrollView>
-    </View>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   GUEST SCREEN
-────────────────────────────────────────────── */
-function GuestScreen({
-  onSignIn, onJoin, onOpenSettings, insets,
-}: { onSignIn: () => void; onJoin: () => void; onOpenSettings: () => void; insets: any }) {
+function GuestScreen({ onSignIn, onJoin, insets }: { onSignIn: () => void; onJoin: () => void; insets: any }) {
   const colors = useColors();
   const topPad = Platform.OS === "web" ? 0 : insets.top;
   const botPad = Platform.OS === "web" ? 0 : insets.bottom;
@@ -189,7 +48,7 @@ function GuestScreen({
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         <View style={{ width: 38 }} />
         <Text style={[styles.acctTitle, { color: colors.foreground }]}>MY ACCOUNT</Text>
-        <Pressable style={styles.iconBtn} onPress={onOpenSettings} testID="btn-settings">
+        <Pressable style={styles.settingsBtn}>
           <Feather name="settings" size={20} color={colors.mutedForeground} />
         </Pressable>
       </View>
@@ -211,20 +70,14 @@ function GuestScreen({
 
         <View style={styles.authBtns}>
           <Pressable
-            style={({ pressed }) => [
-              styles.signInBtn,
-              { backgroundColor: colors.foreground, opacity: pressed ? 0.85 : 1 },
-            ]}
+            style={({ pressed }) => [styles.signInBtn, { backgroundColor: colors.foreground, opacity: pressed ? 0.85 : 1 }]}
             onPress={onSignIn}
             testID="btn-sign-in"
           >
             <Text style={[styles.signInBtnText, { color: colors.background }]}>SIGN IN</Text>
           </Pressable>
           <Pressable
-            style={({ pressed }) => [
-              styles.joinBtn,
-              { borderColor: colors.foreground, opacity: pressed ? 0.85 : 1 },
-            ]}
+            style={({ pressed }) => [styles.joinBtn, { borderColor: colors.foreground, opacity: pressed ? 0.85 : 1 }]}
             onPress={onJoin}
             testID="btn-join"
           >
@@ -232,7 +85,7 @@ function GuestScreen({
           </Pressable>
         </View>
 
-        <Pressable style={[styles.helpRow, { bottom: botPad + 24 }]}>
+        <Pressable style={styles.helpRow}>
           <Text style={[styles.helpText, { color: colors.mutedForeground }]}>Need help?</Text>
           <Feather name="help-circle" size={18} color={colors.mutedForeground} />
         </Pressable>
@@ -241,9 +94,6 @@ function GuestScreen({
   );
 }
 
-/* ─────────────────────────────────────────────
-   AUTH FORM
-────────────────────────────────────────────── */
 function AuthForm({
   mode, onClose, colors, insets,
 }: { mode: "sign-in" | "register"; onClose: () => void; colors: any; insets: any }) {
@@ -256,6 +106,7 @@ function AuthForm({
   const [error, setError] = useState("");
   const [showPass, setShowPass] = useState(false);
   const topPad = Platform.OS === "web" ? 0 : insets.top;
+
   const isRegister = mode === "register";
 
   const handleSubmit = async () => {
@@ -282,7 +133,7 @@ function AuthForm({
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
-        <Pressable onPress={onClose} style={styles.iconBtn}>
+        <Pressable onPress={onClose} style={styles.settingsBtn}>
           <Feather name="x" size={22} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.acctTitle, { color: colors.foreground }]}>
@@ -364,10 +215,7 @@ function AuthForm({
         )}
 
         <Pressable
-          style={({ pressed }) => [
-            styles.submitBtn,
-            { backgroundColor: colors.foreground, opacity: (pressed || loading) ? 0.75 : 1 },
-          ]}
+          style={({ pressed }) => [styles.submitBtn, { backgroundColor: colors.foreground, opacity: (pressed || loading) ? 0.75 : 1 }]}
           onPress={handleSubmit}
           disabled={loading}
           testID="btn-submit-auth"
@@ -384,10 +232,7 @@ function AuthForm({
   );
 }
 
-/* ─────────────────────────────────────────────
-   ACCOUNT MAIN (logged-in)
-────────────────────────────────────────────── */
-function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: () => void }) {
+function AccountMain({ insets }: { insets: any }) {
   const colors = useColors();
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -411,7 +256,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
-          <Pressable onPress={() => setShowOrders(false)} style={styles.iconBtn}>
+          <Pressable onPress={() => setShowOrders(false)} style={styles.settingsBtn}>
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </Pressable>
           <Text style={[styles.acctTitle, { color: colors.foreground }]}>MY ORDERS</Text>
@@ -467,7 +312,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         <View style={{ width: 38 }} />
         <Text style={[styles.acctTitle, { color: colors.foreground }]}>MY ACCOUNT</Text>
-        <Pressable style={styles.iconBtn} onPress={onOpenSettings} testID="btn-settings">
+        <Pressable style={styles.settingsBtn}>
           <Feather name="settings" size={20} color={colors.mutedForeground} />
         </Pressable>
       </View>
@@ -486,7 +331,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
             </Text>
             <Text style={[styles.profileEmail, { color: colors.mutedForeground }]}>{user?.email}</Text>
             <View style={[styles.memberBadge, { backgroundColor: colors.accent }]}>
-              <Text style={[styles.memberBadgeText, { color: colors.accentForeground }]}>MORA MEMBER</Text>
+              <Text style={[styles.memberBadgeText, { color: PRIMARY }]}>MORA MEMBER</Text>
             </View>
           </View>
         </View>
@@ -524,10 +369,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
                 const isLast = idx === section.items.length - 1;
                 if ((item as any).toggle) {
                   return (
-                    <View
-                      key={item.id}
-                      style={[styles.menuRow, { borderBottomColor: colors.border }, isLast && styles.lastRow]}
-                    >
+                    <View key={item.id} style={[styles.menuRow, { borderBottomColor: colors.border }, isLast && styles.lastRow]}>
                       <View style={styles.menuLeft}>
                         <View style={[styles.iconBox, { backgroundColor: colors.secondary }]}>
                           <Feather name={item.icon as any} size={16} color={PRIMARY} />
@@ -536,7 +378,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
                       </View>
                       <Switch
                         value={!!toggles[item.id]}
-                        onValueChange={() => setToggles((p) => ({ ...p, [item.id]: !p[item.id] }))}
+                        onValueChange={() => setToggles(p => ({ ...p, [item.id]: !p[item.id] }))}
                         trackColor={{ false: colors.border, true: PRIMARY }}
                         thumbColor="#fff"
                       />
@@ -546,12 +388,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
                 return (
                   <Pressable
                     key={item.id}
-                    style={({ pressed }) => [
-                      styles.menuRow,
-                      { borderBottomColor: colors.border },
-                      isLast && styles.lastRow,
-                      pressed && { backgroundColor: colors.secondary },
-                    ]}
+                    style={({ pressed }) => [styles.menuRow, { borderBottomColor: colors.border }, isLast && styles.lastRow, pressed && { backgroundColor: colors.secondary }]}
                     onPress={() => {
                       if (item.id === "orders") setShowOrders(true);
                       else if (item.id === "wishlist") router.push("/(tabs)/wishlist");
@@ -570,9 +407,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
                           <Text style={styles.badgePillTxt}>{(item as any).badge}</Text>
                         </View>
                       )}
-                      {(item as any).arrow && (
-                        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-                      )}
+                      {(item as any).arrow && <Feather name="chevron-right" size={16} color={colors.mutedForeground} />}
                     </View>
                   </Pressable>
                 );
@@ -582,10 +417,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
         ))}
 
         <Pressable
-          style={({ pressed }) => [
-            styles.signOutRow,
-            { borderColor: colors.border, marginHorizontal: 16, opacity: pressed ? 0.7 : 1 },
-          ]}
+          style={({ pressed }) => [styles.signOutRow, { borderColor: colors.border, marginHorizontal: 16, opacity: pressed ? 0.7 : 1 }]}
           onPress={logout}
           testID="btn-sign-out"
         >
@@ -598,15 +430,11 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
   );
 }
 
-/* ─────────────────────────────────────────────
-   ROOT SCREEN (orchestrator)
-────────────────────────────────────────────── */
 export default function AccountScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user, isLoading } = useAuth();
-  const [view, setView] = useState<ViewT>("guest");
-  const [showSettings, setShowSettings] = useState(false);
+  const [view, setView] = useState<View_t>("guest");
 
   if (isLoading) {
     return (
@@ -616,18 +444,14 @@ export default function AccountScreen() {
     );
   }
 
-  if (showSettings) {
-    return <SettingsScreen onBack={() => setShowSettings(false)} insets={insets} />;
-  }
-
   if (user) {
-    return <AccountMain insets={insets} onOpenSettings={() => setShowSettings(true)} />;
+    return <AccountMain insets={insets} />;
   }
 
   if (view === "sign-in" || view === "register") {
     return (
       <AuthForm
-        mode={view}
+        mode={view === "sign-in" ? "sign-in" : "register"}
         onClose={() => setView("guest")}
         colors={colors}
         insets={insets}
@@ -639,19 +463,14 @@ export default function AccountScreen() {
     <GuestScreen
       onSignIn={() => setView("sign-in")}
       onJoin={() => setView("register")}
-      onOpenSettings={() => setShowSettings(true)}
       insets={insets}
     />
   );
 }
 
-/* ─────────────────────────────────────────────
-   STYLES
-────────────────────────────────────────────── */
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { alignItems: "center", justifyContent: "center" },
-
   acctHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -661,50 +480,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   acctTitle: { fontFamily: "Inter_700Bold", fontSize: 15, letterSpacing: 1 },
-  iconBtn: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
-
-  /* ── Settings ── */
-  themeRow: {
-    flexDirection: "row",
-    padding: 12,
-    gap: 10,
-  },
-  themeOption: {
-    flex: 1,
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1.5,
-  },
-  themeOptionLabel: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 12,
-    letterSpacing: 0.3,
-  },
-  settingsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-  },
-  settingsLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
-  settingsRight: { flexDirection: "row", alignItems: "center", gap: 6 },
-  settingsIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  settingsLabel: { fontFamily: "Inter_500Medium", fontSize: 15 },
-  settingsValue: { fontFamily: "Inter_400Regular", fontSize: 14 },
-
-  /* ── Guest ── */
+  settingsBtn: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
   guestBody: {
     flex: 1,
     alignItems: "center",
@@ -725,14 +501,23 @@ const styles = StyleSheet.create({
   comeOnIn: { fontFamily: "Inter_700Bold", fontSize: 22, letterSpacing: 1, textAlign: "center" },
   comeOnInSub: { fontFamily: "Inter_400Regular", fontSize: 14, textAlign: "center", lineHeight: 20 },
   authBtns: { width: "100%", gap: 12, marginTop: 8 },
-  signInBtn: { width: "100%", paddingVertical: 16, alignItems: "center", borderRadius: 2 },
+  signInBtn: {
+    width: "100%",
+    paddingVertical: 16,
+    alignItems: "center",
+    borderRadius: 2,
+  },
   signInBtnText: { fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1 },
-  joinBtn: { width: "100%", paddingVertical: 15, alignItems: "center", borderRadius: 2, borderWidth: 1 },
+  joinBtn: {
+    width: "100%",
+    paddingVertical: 15,
+    alignItems: "center",
+    borderRadius: 2,
+    borderWidth: 1,
+  },
   joinBtnText: { fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1 },
-  helpRow: { flexDirection: "row", alignItems: "center", gap: 6, position: "absolute" },
+  helpRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 24, position: "absolute", bottom: 24 },
   helpText: { fontFamily: "Inter_400Regular", fontSize: 14 },
-
-  /* ── Auth form ── */
   formScroll: { padding: 20, gap: 0 },
   formRow: { marginBottom: 16 },
   label: { fontFamily: "Inter_500Medium", fontSize: 13, marginBottom: 6 },
@@ -747,104 +532,46 @@ const styles = StyleSheet.create({
   passWrap: { position: "relative" },
   passInput: { paddingRight: 46 },
   eyeBtn: { position: "absolute", right: 12, top: 12 },
-  errorBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    padding: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    marginBottom: 16,
-  },
+  errorBox: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 6, borderWidth: 1, marginBottom: 16 },
   errorMsg: { color: "#DC2626", fontFamily: "Inter_400Regular", fontSize: 13, flex: 1 },
-  submitBtn: { paddingVertical: 16, alignItems: "center", borderRadius: 2, marginTop: 8 },
-  submitBtnText: { fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1 },
-
-  /* ── Account main ── */
-  profileCard: {
-    margin: 16,
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: "row",
+  submitBtn: {
+    paddingVertical: 16,
     alignItems: "center",
-    gap: 14,
+    borderRadius: 2,
+    marginTop: 8,
   },
+  submitBtnText: { fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1 },
+  profileCard: { margin: 16, padding: 16, borderRadius: 8, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 14 },
   avatar: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center" },
   avatarText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 20 },
   profileInfo: { flex: 1, gap: 4 },
   profileName: { fontFamily: "Inter_700Bold", fontSize: 17 },
   profileEmail: { fontFamily: "Inter_400Regular", fontSize: 13 },
-  memberBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 2,
-    marginTop: 4,
-  },
+  memberBadge: { alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 2, marginTop: 4 },
   memberBadgeText: { fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 0.5 },
-
   section: { paddingHorizontal: 16, marginBottom: 16 },
   sectionLabel: { fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 1, marginBottom: 8 },
-  sectionCard: { borderRadius: 8, borderWidth: 1, overflow: "hidden" },
-  menuRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    borderBottomWidth: 1,
-  },
+  sectionCard: { borderWidth: 1, borderRadius: 8, overflow: "hidden" },
+  menuRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 13, borderBottomWidth: 1 },
   lastRow: { borderBottomWidth: 0 },
   menuLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  menuRight: { flexDirection: "row", alignItems: "center", gap: 8 },
-  iconBox: { width: 32, height: 32, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  iconBox: { width: 32, height: 32, borderRadius: 6, alignItems: "center", justifyContent: "center" },
   menuLabel: { fontFamily: "Inter_500Medium", fontSize: 15 },
-  badgePill: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 20,
-    alignItems: "center",
-  },
-  badgePillTxt: { color: "#fff", fontSize: 11, fontFamily: "Inter_700Bold" },
-
-  /* ── Orders ── */
+  menuRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+  badgePill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  badgePillTxt: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 11 },
+  signOutRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, borderWidth: 1, borderRadius: 8, paddingVertical: 14, marginTop: 8, marginBottom: 16 },
+  signOutTxt: { fontFamily: "Inter_600SemiBold", fontSize: 15, color: "#DC2626" },
+  version: { fontFamily: "Inter_400Regular", fontSize: 12, textAlign: "center", paddingBottom: 8 },
+  centeredBox: { alignItems: "center", paddingVertical: 60, gap: 12 },
+  centeredText: { fontFamily: "Inter_400Regular", fontSize: 14, textAlign: "center" },
   orderCard: { borderWidth: 1, borderRadius: 8, overflow: "hidden" },
-  orderCardTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 14,
-  },
-  orderNum: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
+  orderCardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14 },
+  orderNum: { fontFamily: "Inter_700Bold", fontSize: 14 },
   orderDate: { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 },
   statusTxt: { fontFamily: "Inter_600SemiBold", fontSize: 12 },
-  orderCardBottom: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-  },
+  orderCardBottom: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 10, borderTopWidth: 1 },
   orderItems: { fontFamily: "Inter_400Regular", fontSize: 13 },
-  orderTotal: { fontFamily: "Inter_700Bold", fontSize: 14 },
-
-  signOutRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    padding: 14,
-    borderWidth: 1,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  signOutTxt: { color: "#DC2626", fontFamily: "Inter_600SemiBold", fontSize: 14 },
-  version: { textAlign: "center", fontFamily: "Inter_400Regular", fontSize: 12, paddingBottom: 8 },
-
-  centeredBox: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 60, gap: 12 },
-  centeredText: { fontFamily: "Inter_400Regular", fontSize: 15 },
+  orderTotal: { fontFamily: "Inter_700Bold", fontSize: 15 },
 });
