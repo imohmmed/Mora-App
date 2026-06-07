@@ -9,27 +9,34 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 
-const HERO_SLIDES = [
+type ApiBanner = {
+  id: string;
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  bgColor: string;
+  linkUrl: string;
+  hasButton: boolean;
+  buttonText: string;
+  buttonAlign: string;
+};
+
+const FALLBACK_SLIDES = [
   {
     image: "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop",
-    title: "The Fall Collection",
-    subtitle: "Minimalism meets warmth.",
+    title: "New Season Arrived",
+    subtitle: "Up to 40% off selected styles.",
     cta: "Shop Women",
     href: "/products?category=women",
+    bg: "#0274C1",
   },
   {
     image: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=2070&auto=format&fit=crop",
-    title: "New In",
-    subtitle: "Fresh arrivals every week.",
-    cta: "Explore New",
+    title: "Summer Edit",
+    subtitle: "Fresh styles for warm days.",
+    cta: "Explore",
     href: "/products",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070&auto=format&fit=crop",
-    title: "Year-End Sale",
-    subtitle: "Up to 40% off selected styles.",
-    cta: "Shop Sale",
-    href: "/products",
+    bg: "#1A1A1A",
   },
 ];
 
@@ -45,6 +52,29 @@ function Hero() {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
   const [current, setCurrent] = React.useState(0);
 
+  const { data: apiBanners } = useQuery<{ data: ApiBanner[] }>({
+    queryKey: ["/api/store/banners"],
+    queryFn: () => fetch("/api/store/banners").then(r => r.json()),
+    staleTime: 300_000,
+  });
+
+  const slides = React.useMemo(() => {
+    const raw = apiBanners?.data ?? [];
+    if (raw.length > 0) {
+      return raw.map(b => ({
+        image: b.imageUrl,
+        title: b.title.replace(/\\n/g, "\n"),
+        subtitle: b.subtitle,
+        cta: b.hasButton ? b.buttonText : "",
+        href: b.linkUrl || "/products",
+        bg: b.bgColor,
+        hasButton: b.hasButton,
+        buttonAlign: b.buttonAlign,
+      }));
+    }
+    return FALLBACK_SLIDES.map(s => ({ ...s, hasButton: true, buttonAlign: "center" }));
+  }, [apiBanners]);
+
   React.useEffect(() => {
     if (!emblaApi) return;
     emblaApi.on("select", () => setCurrent(emblaApi.selectedScrollSnap()));
@@ -52,48 +82,59 @@ function Hero() {
     return () => clearInterval(id);
   }, [emblaApi]);
 
+  const ctaJustify: Record<string, string> = { left: "flex-start", center: "center", right: "flex-end" };
+
   return (
     <div className="relative overflow-hidden w-full h-[75vh]" ref={emblaRef}>
       <div className="flex h-full">
-        {HERO_SLIDES.map((slide, i) => (
-          <div key={i} className="flex-[0_0_100%] min-w-0 relative">
-            <img src={slide.image} alt={slide.title} className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex flex-col items-center justify-center text-white p-4">
+        {slides.map((slide, i) => (
+          <div key={i} className="flex-[0_0_100%] min-w-0 relative" style={{ backgroundColor: slide.bg }}>
+            {slide.image && (
+              <img src={slide.image} alt={slide.title} className="w-full h-full object-cover absolute inset-0 opacity-40" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex flex-col justify-center text-white p-8 md:p-16">
               <motion.h1
                 key={`${i}-title`}
                 initial={{ y: 24, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.2, duration: 0.6 }}
-                className="text-5xl md:text-7xl font-bold tracking-tighter mb-4 text-center"
+                className="text-5xl md:text-7xl font-bold tracking-tighter mb-4 whitespace-pre-line"
+                style={{ textAlign: slide.buttonAlign === "center" ? "center" : slide.buttonAlign === "right" ? "right" : "left" }}
               >
                 {slide.title}
               </motion.h1>
-              <motion.p
-                key={`${i}-sub`}
-                initial={{ y: 24, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.4, duration: 0.6 }}
-                className="text-xl md:text-2xl mb-8 text-center text-white/90"
-              >
-                {slide.subtitle}
-              </motion.p>
-              <motion.div
-                key={`${i}-cta`}
-                initial={{ y: 24, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.6, duration: 0.6 }}
-              >
-                <Button size="lg" asChild className="bg-white text-black hover:bg-white/90 uppercase font-bold tracking-wider">
-                  <Link href={slide.href}>{slide.cta}</Link>
-                </Button>
-              </motion.div>
+              {slide.subtitle && (
+                <motion.p
+                  key={`${i}-sub`}
+                  initial={{ y: 24, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.4, duration: 0.6 }}
+                  className="text-xl md:text-2xl mb-8 text-white/90"
+                  style={{ textAlign: slide.buttonAlign === "center" ? "center" : slide.buttonAlign === "right" ? "right" : "left" }}
+                >
+                  {slide.subtitle}
+                </motion.p>
+              )}
+              {slide.hasButton && slide.cta && (
+                <motion.div
+                  key={`${i}-cta`}
+                  initial={{ y: 24, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.6, duration: 0.6 }}
+                  style={{ display: "flex", justifyContent: ctaJustify[slide.buttonAlign] ?? "flex-start" }}
+                >
+                  <Button size="lg" asChild className="bg-white text-black hover:bg-white/90 uppercase font-bold tracking-wider">
+                    <Link href={slide.href}>{slide.cta}</Link>
+                  </Button>
+                </motion.div>
+              )}
             </div>
           </div>
         ))}
       </div>
       {/* Dot indicators */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-        {HERO_SLIDES.map((_, i) => (
+        {slides.map((_, i) => (
           <button
             key={i}
             onClick={() => emblaApi?.scrollTo(i)}

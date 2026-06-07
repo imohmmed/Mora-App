@@ -60,6 +60,7 @@ db.exec(`
     first_name        TEXT NOT NULL,
     last_name         TEXT NOT NULL,
     email             TEXT NOT NULL UNIQUE,
+    password_hash     TEXT,
     phone             TEXT NOT NULL DEFAULT '',
     orders_count      INTEGER NOT NULL DEFAULT 0,
     total_spent       REAL NOT NULL DEFAULT 0,
@@ -69,6 +70,28 @@ db.exec(`
     address           TEXT NOT NULL DEFAULT '{}',
     accepts_marketing INTEGER NOT NULL DEFAULT 0,
     created_at        TEXT NOT NULL
+  );
+
+  CREATE TABLE sessions (
+    token       TEXT PRIMARY KEY,
+    customer_id TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    created_at  TEXT NOT NULL
+  );
+
+  CREATE TABLE banners (
+    id           TEXT PRIMARY KEY,
+    title        TEXT NOT NULL DEFAULT '',
+    subtitle     TEXT NOT NULL DEFAULT '',
+    image_url    TEXT NOT NULL DEFAULT '',
+    bg_color     TEXT NOT NULL DEFAULT '#0274C1',
+    link_url     TEXT NOT NULL DEFAULT '',
+    has_button   INTEGER NOT NULL DEFAULT 1,
+    button_text  TEXT NOT NULL DEFAULT 'SHOP NOW',
+    button_align TEXT NOT NULL DEFAULT 'left',
+    sort_order   INTEGER NOT NULL DEFAULT 0,
+    status       TEXT NOT NULL DEFAULT 'active',
+    updated_at   TEXT,
+    created_at   TEXT NOT NULL
   );
 
   CREATE TABLE orders (
@@ -225,6 +248,19 @@ for (const p of seedProducts) {
     });
   });
 }
+
+// ─── Seed: Banners ────────────────────────────────────────────────────────────
+
+const insertBanner = db.prepare(`
+  INSERT INTO banners (id,title,subtitle,image_url,bg_color,link_url,has_button,button_text,button_align,sort_order,status,created_at)
+  VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+`);
+
+[
+  { id: "ban001", title: "New Season\nArrived", subtitle: "Up to 40% off selected styles", image: "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=800&auto=format&fit=crop", bg: "#0274C1", link: "/products?category=women", hasBtn: 1, btnText: "SHOP WOMEN", align: "left" },
+  { id: "ban002", title: "Summer Edit",         subtitle: "Fresh styles for warm days",   image: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=800&auto=format&fit=crop", bg: "#1A1A1A", link: "/products", hasBtn: 1, btnText: "EXPLORE",    align: "center" },
+  { id: "ban003", title: "Beauty Week",          subtitle: "20% off all beauty products",  image: "https://images.unsplash.com/photo-1596462502278-27bf85033e5a?q=80&w=800&auto=format&fit=crop", bg: "#6A1B9A", link: "/products?category=beauty", hasBtn: 0, btnText: "", align: "left" },
+].forEach((b, i) => insertBanner.run(b.id, b.title, b.subtitle, b.image, b.bg, b.link, b.hasBtn, b.btnText, b.align, i, "active", new Date().toISOString()));
 
 // ─── Seed: Special Collection Items ───────────────────────────────────────────
 

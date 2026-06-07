@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   RefreshControl,
@@ -21,8 +23,8 @@ import { CategoryTabs } from "@/components/CategoryTabs";
 import { SpecialCollectionsGrid } from "@/components/SpecialCollectionsGrid";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
-import { fetchProducts, fetchSpecialCollections } from "@/lib/api";
-import type { Product } from "@/lib/types";
+import { fetchProducts, fetchSpecialCollections, fetchBanners } from "@/lib/api";
+import type { Product, Banner } from "@/lib/types";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
@@ -35,11 +37,6 @@ const CATEGORY_FILTERS: Record<string, string | undefined> = {
   BEAUTY: "beauty",
   SALE: "sale",
 };
-
-const FALLBACK_BANNERS = [
-  { id: "1", title: "New Season\nArrived", subtitle: "Up to 40% off selected styles", cta: "SHOP NOW", bg: "#0274C1" },
-  { id: "2", title: "Summer\nEdit", subtitle: "Fresh styles for warm days", cta: "EXPLORE", bg: "#1A1A1A" },
-];
 
 const CARD_COLORS = [
   "#E8EDF5", "#F0EBE3", "#E8F0E8", "#F5EDEB",
@@ -164,6 +161,52 @@ function BannerSkeleton() {
   return <View style={[styles.banner, { backgroundColor: "#E0E0E0", width: SCREEN_WIDTH }]} />;
 }
 
+function BannerSlide({ banner }: { banner: Banner }) {
+  const router = useRouter();
+  const ctaAlign: Record<string, "flex-start" | "center" | "flex-end"> = {
+    left: "flex-start",
+    center: "center",
+    right: "flex-end",
+  };
+  const align = ctaAlign[banner.buttonAlign] ?? "flex-start";
+
+  const handlePress = () => {
+    if (!banner.hasButton && banner.linkUrl) {
+      router.push(banner.linkUrl as any);
+    }
+  };
+
+  return (
+    <Pressable
+      style={[styles.banner, { backgroundColor: banner.bgColor, width: SCREEN_WIDTH }]}
+      onPress={handlePress}
+      disabled={banner.hasButton}
+    >
+      {!!banner.imageUrl && (
+        <Image
+          source={{ uri: banner.imageUrl }}
+          style={[StyleSheet.absoluteFill, { opacity: 0.4 }]}
+          contentFit="cover"
+        />
+      )}
+      <View style={styles.bannerContent}>
+        <Text style={styles.bannerTitle}>{banner.title}</Text>
+        {!!banner.subtitle && (
+          <Text style={styles.bannerSubtitle}>{banner.subtitle}</Text>
+        )}
+        {banner.hasButton && banner.buttonText ? (
+          <Pressable
+            style={({ pressed }) => [styles.bannerCta, { alignSelf: align, opacity: pressed ? 0.85 : 1 }]}
+            onPress={() => banner.linkUrl && router.push(banner.linkUrl as any)}
+          >
+            <Text style={styles.bannerCtaText}>{banner.buttonText}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </Pressable>
+  );
+}
+
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -187,12 +230,9 @@ export default function HomeScreen() {
     queryFn: () => fetchProducts({ category: categoryFilter, limit: 20 }),
   });
 
-  const {
-    data: newInData,
-    isLoading: isNewInLoading,
-  } = useQuery({
-    queryKey: ["products", "new_in"],
-    queryFn: () => fetchProducts({ category: "new_in", limit: 3 }),
+  const { data: banners, isLoading: isBannersLoading } = useQuery({
+    queryKey: ["banners"],
+    queryFn: fetchBanners,
     staleTime: 300_000,
   });
 
@@ -206,18 +246,12 @@ export default function HomeScreen() {
   });
 
   const products = data?.products ?? [];
-  const featuredProducts = newInData?.products ?? [];
+  const displayBanners = banners ?? [];
 
-  const banners = featuredProducts.length > 0
-    ? featuredProducts.map((p, i) => ({
-        id: p.id,
-        title: p.title.replace(/\s+/g, "\n"),
-        subtitle: p.vendor ?? "Mora Studio",
-        cta: "SHOP NOW",
-        bg: ["#0274C1", "#1A1A1A", "#2E5FA3"][i % 3],
-        image: p.images?.[0],
-      }))
-    : FALLBACK_BANNERS.map((b) => ({ ...b, image: undefined }));
+  const handleBannerScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+    if (idx !== activeBanner) setActiveBanner(idx);
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -233,11 +267,6 @@ export default function HomeScreen() {
           />
         }
       >
-        <SpecialCollectionsGrid
-          collections={specialCollections ?? []}
-          loading={isCollectionsLoading}
-        />
-
         <CategoryTabs
           categories={CATEGORIES}
           activeIndex={activeCategory}
@@ -248,51 +277,51 @@ export default function HomeScreen() {
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(e) => {
-            const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-            setActiveBanner(idx);
-          }}
+          scrollEventThrottle={16}
+          onScroll={handleBannerScroll}
+          onMomentumScrollEnd={handleBannerScroll}
         >
-          {isNewInLoading
+          {isBannersLoading
             ? <BannerSkeleton />
-            : banners.map((banner) => (
-                <View
-                  key={banner.id}
-                  style={[styles.banner, { backgroundColor: banner.bg, width: SCREEN_WIDTH }]}
-                >
-                  {banner.image && (
-                    <Image
-                      source={{ uri: banner.image }}
-                      style={[StyleSheet.absoluteFill, { opacity: 0.35 }]}
-                      contentFit="cover"
-                    />
-                  )}
+            : displayBanners.length === 0
+              ? (
+                <View style={[styles.banner, { backgroundColor: "#0274C1", width: SCREEN_WIDTH }]}>
                   <View style={styles.bannerContent}>
-                    <Text style={styles.bannerTitle}>{banner.title}</Text>
-                    <Text style={styles.bannerSubtitle}>{banner.subtitle}</Text>
-                    <Pressable style={({ pressed }) => [styles.bannerCta, { opacity: pressed ? 0.85 : 1 }]}>
-                      <Text style={styles.bannerCtaText}>{banner.cta}</Text>
-                    </Pressable>
+                    <Text style={styles.bannerTitle}>{"New Season\nArrived"}</Text>
+                    <Text style={styles.bannerSubtitle}>Explore the latest arrivals</Text>
+                    <View style={styles.bannerCta}>
+                      <Text style={styles.bannerCtaText}>SHOP NOW</Text>
+                    </View>
                   </View>
                 </View>
-              ))
+              )
+              : displayBanners.map((banner) => (
+                  <BannerSlide key={banner.id} banner={banner} />
+                ))
           }
         </ScrollView>
 
-        <View style={styles.dotsRow}>
-          {banners.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.dot,
-                {
-                  backgroundColor: activeBanner === i ? colors.primary : colors.border,
-                  width: activeBanner === i ? 20 : 6,
-                },
-              ]}
-            />
-          ))}
-        </View>
+        {displayBanners.length > 1 && (
+          <View style={styles.dotsRow}>
+            {displayBanners.map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.dot,
+                  {
+                    backgroundColor: activeBanner === i ? colors.primary : colors.border,
+                    width: activeBanner === i ? 20 : 6,
+                  },
+                ]}
+              />
+            ))}
+          </View>
+        )}
+
+        <SpecialCollectionsGrid
+          collections={specialCollections ?? []}
+          loading={isCollectionsLoading}
+        />
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>

@@ -65,6 +65,20 @@ export type Order = {
   createdAt: string;
 };
 
+export type Banner = {
+  id: string;
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  bgColor: string;
+  linkUrl: string;
+  hasButton: boolean;
+  buttonText: string;
+  buttonAlign: "left" | "center" | "right";
+  sortOrder: number;
+  status: string;
+};
+
 export type SpecialCollection = {
   slug: string;
   title: string;

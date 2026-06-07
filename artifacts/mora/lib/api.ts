@@ -1,4 +1,4 @@
-import type { Product, Order, OrderItem, Collection, SpecialCollection } from "./types";
+import type { Product, Order, OrderItem, Collection, SpecialCollection, Banner } from "./types";
 
 type ApiResponse<T> = { data: T; meta: Record<string, unknown>; error: string | null };
 
@@ -84,6 +84,10 @@ export async function fetchOrder(
     `/store/orders/${id}?email=${encodeURIComponent(email)}`
   );
   return { ...order, items: order.lineItems ?? [] };
+}
+
+export async function fetchBanners(): Promise<Banner[]> {
+  return apiFetch<Banner[]>("/store/banners");
 }
 
 export async function fetchSpecialCollections(): Promise<SpecialCollection[]> {
