@@ -65,6 +65,16 @@ export type Order = {
   createdAt: string;
 };
 
+export type SpecialCollection = {
+  slug: string;
+  title: string;
+  description: string;
+  heroImage: string;
+  accentColor: string;
+  total: number;
+  products: Product[];
+};
+
 export type CartItem = {
   productId: string;
   variantId: string;

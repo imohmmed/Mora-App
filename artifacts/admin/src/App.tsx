@@ -20,6 +20,7 @@ import CustomerDetail from "@/pages/customers/detail";
 import CustomerSegments from "@/pages/customers/segments";
 import Companies from "@/pages/customers/companies";
 import Collections from "@/pages/collections";
+import SpecialCollections from "@/pages/collections/special";
 import Discounts from "@/pages/discounts";
 import NewDiscount from "@/pages/discounts/new";
 import Campaigns from "@/pages/campaigns";
@@ -54,6 +55,7 @@ function Router() {
         <Route path="/customers/companies" component={Companies} />
         <Route path="/customers/:id" component={CustomerDetail} />
         <Route path="/customers" component={Customers} />
+        <Route path="/collections/special" component={SpecialCollections} />
         <Route path="/collections" component={Collections} />
         {/* Discounts */}
         <Route path="/discounts/new" component={NewDiscount} />

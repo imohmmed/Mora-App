@@ -18,9 +18,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { HomeHeader } from "@/components/HomeHeader";
 import { CategoryTabs } from "@/components/CategoryTabs";
+import { SpecialCollectionsGrid } from "@/components/SpecialCollectionsGrid";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
-import { fetchProducts } from "@/lib/api";
+import { fetchProducts, fetchSpecialCollections } from "@/lib/api";
 import type { Product } from "@/lib/types";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -195,6 +196,15 @@ export default function HomeScreen() {
     staleTime: 300_000,
   });
 
+  const {
+    data: specialCollections,
+    isLoading: isCollectionsLoading,
+  } = useQuery({
+    queryKey: ["special-collections"],
+    queryFn: fetchSpecialCollections,
+    staleTime: 120_000,
+  });
+
   const products = data?.products ?? [];
   const featuredProducts = newInData?.products ?? [];
 
@@ -223,6 +233,11 @@ export default function HomeScreen() {
           />
         }
       >
+        <SpecialCollectionsGrid
+          collections={specialCollections ?? []}
+          loading={isCollectionsLoading}
+        />
+
         <CategoryTabs
           categories={CATEGORIES}
           activeIndex={activeCategory}

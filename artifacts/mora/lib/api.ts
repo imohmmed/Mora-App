@@ -1,4 +1,4 @@
-import type { Product, Order, OrderItem, Collection } from "./types";
+import type { Product, Order, OrderItem, Collection, SpecialCollection } from "./types";
 
 type ApiResponse<T> = { data: T; meta: Record<string, unknown>; error: string | null };
 
@@ -84,4 +84,25 @@ export async function fetchOrder(
     `/store/orders/${id}?email=${encodeURIComponent(email)}`
   );
   return { ...order, items: order.lineItems ?? [] };
+}
+
+export async function fetchSpecialCollections(): Promise<SpecialCollection[]> {
+  return apiFetch<SpecialCollection[]>("/store/special-collections");
+}
+
+export async function fetchSpecialCollection(
+  slug: string,
+  page = 1
+): Promise<SpecialCollection & { meta?: { total: number; pages: number } }> {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/store/special-collections/${slug}?page=${page}&limit=20`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch collection ${slug}`);
+  const json = (await res.json()) as {
+    data: SpecialCollection;
+    meta: Record<string, unknown>;
+    error: string | null;
+  };
+  return { ...json.data, meta: json.meta as { total: number; pages: number } };
 }

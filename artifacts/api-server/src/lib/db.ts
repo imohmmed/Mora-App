@@ -21,8 +21,17 @@ db.exec(`
     images        TEXT NOT NULL DEFAULT '[]',
     tags          TEXT NOT NULL DEFAULT '[]',
     status        TEXT NOT NULL DEFAULT 'active',
+    sold_count    INTEGER NOT NULL DEFAULT 0,
     created_at    TEXT NOT NULL,
     updated_at    TEXT NOT NULL
+  );
+
+  CREATE TABLE special_collection_items (
+    collection_slug TEXT NOT NULL,
+    product_id      TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    sort_order      INTEGER NOT NULL DEFAULT 0,
+    created_at      TEXT NOT NULL,
+    PRIMARY KEY (collection_slug, product_id)
   );
 
   CREATE TABLE variants (
@@ -155,33 +164,33 @@ const j = (v: unknown) => JSON.stringify(v);
 // ─── Seed: Products ───────────────────────────────────────────────────────────
 
 const seedProducts = [
-  { id: "p001", title: "Oversized Blazer",        vendor: "Mora Studio",    category: "women",  price: 89.99, compare_price: null,   tags: ["blazer","office"] },
-  { id: "p002", title: "Slim Fit Trousers",        vendor: "Mora Essentials",category: "women",  price: 55.00, compare_price: 75.00,  tags: ["trousers","sale"] },
-  { id: "p003", title: "Ribbed Knit Dress",        vendor: "Mora Studio",    category: "women",  price: 72.00, compare_price: null,   tags: ["dress","knit"] },
-  { id: "p004", title: "Linen Shirt",              vendor: "Mora Essentials",category: "women",  price: 44.99, compare_price: null,   tags: ["shirt","linen"] },
-  { id: "p005", title: "High Waist Jeans",         vendor: "Mora Denim",     category: "women",  price: 68.00, compare_price: null,   tags: ["jeans","denim"] },
-  { id: "p006", title: "Satin Midi Skirt",         vendor: "Mora Studio",    category: "women",  price: 59.99, compare_price: 85.00,  tags: ["skirt","satin","sale"] },
-  { id: "p007", title: "Cropped Leather Jacket",   vendor: "Mora Studio",    category: "women",  price: 149.00,compare_price: null,   tags: ["jacket","leather"] },
-  { id: "p008", title: "Cashmere Sweater",         vendor: "Mora Essentials",category: "women",  price: 95.00, compare_price: null,   tags: ["sweater","cashmere"] },
-  { id: "p009", title: "Slim Fit Chinos",          vendor: "Mora Mens",      category: "men",    price: 52.00, compare_price: null,   tags: ["chinos","slim"] },
-  { id: "p010", title: "Oxford Shirt",             vendor: "Mora Mens",      category: "men",    price: 48.00, compare_price: null,   tags: ["shirt","oxford"] },
-  { id: "p011", title: "Wool Coat",                vendor: "Mora Mens",      category: "men",    price: 189.00,compare_price: 250.00, tags: ["coat","wool","sale"] },
-  { id: "p012", title: "Track Jacket",             vendor: "Mora Sport",     category: "men",    price: 65.00, compare_price: null,   tags: ["jacket","sport"] },
-  { id: "p013", title: "Relaxed Denim",            vendor: "Mora Denim",     category: "men",    price: 72.00, compare_price: null,   tags: ["jeans","denim"] },
-  { id: "p014", title: "Piqué Polo Shirt",         vendor: "Mora Mens",      category: "men",    price: 38.00, compare_price: null,   tags: ["polo"] },
-  { id: "p015", title: "Vitamin C Serum",          vendor: "Mora Beauty",    category: "beauty", price: 34.99, compare_price: null,   tags: ["serum","skincare"] },
-  { id: "p016", title: "Hydra-Glow Moisturiser",   vendor: "Mora Beauty",    category: "beauty", price: 28.00, compare_price: null,   tags: ["moisturiser","skincare"] },
-  { id: "p017", title: "Volumising Mascara",       vendor: "Mora Beauty",    category: "beauty", price: 18.50, compare_price: null,   tags: ["mascara","makeup"] },
-  { id: "p018", title: "Matte Lip Set",            vendor: "Mora Beauty",    category: "beauty", price: 22.00, compare_price: 30.00,  tags: ["lipstick","makeup","sale"] },
-  { id: "p019", title: "Silk Slip Dress",          vendor: "Mora Studio",    category: "new_in", price: 99.00, compare_price: null,   tags: ["dress","silk","new"] },
-  { id: "p020", title: "Tailored Waistcoat",       vendor: "Mora Studio",    category: "new_in", price: 79.00, compare_price: null,   tags: ["waistcoat","new"] },
-  { id: "p021", title: "Cargo Trousers",           vendor: "Mora Mens",      category: "sale",   price: 35.00, compare_price: 65.00,  tags: ["cargo","sale"] },
-  { id: "p022", title: "Wrap Midi Dress",          vendor: "Mora Studio",    category: "sale",   price: 39.99, compare_price: 75.00,  tags: ["dress","wrap","sale"] },
+  { id: "p001", title: "Oversized Blazer",        vendor: "Mora Studio",    category: "women",  price: 89.99, compare_price: null,   sold_count: 142, tags: ["blazer","office"] },
+  { id: "p002", title: "Slim Fit Trousers",        vendor: "Mora Essentials",category: "women",  price: 55.00, compare_price: 75.00,  sold_count: 98,  tags: ["trousers","sale"] },
+  { id: "p003", title: "Ribbed Knit Dress",        vendor: "Mora Studio",    category: "women",  price: 72.00, compare_price: null,   sold_count: 87,  tags: ["dress","knit"] },
+  { id: "p004", title: "Linen Shirt",              vendor: "Mora Essentials",category: "women",  price: 44.99, compare_price: null,   sold_count: 63,  tags: ["shirt","linen"] },
+  { id: "p005", title: "High Waist Jeans",         vendor: "Mora Denim",     category: "women",  price: 68.00, compare_price: null,   sold_count: 110, tags: ["jeans","denim"] },
+  { id: "p006", title: "Satin Midi Skirt",         vendor: "Mora Studio",    category: "women",  price: 59.99, compare_price: 85.00,  sold_count: 76,  tags: ["skirt","satin","sale"] },
+  { id: "p007", title: "Cropped Leather Jacket",   vendor: "Mora Studio",    category: "women",  price: 149.00,compare_price: null,   sold_count: 54,  tags: ["jacket","leather"] },
+  { id: "p008", title: "Cashmere Sweater",         vendor: "Mora Essentials",category: "women",  price: 95.00, compare_price: null,   sold_count: 91,  tags: ["sweater","cashmere"] },
+  { id: "p009", title: "Slim Fit Chinos",          vendor: "Mora Mens",      category: "men",    price: 52.00, compare_price: null,   sold_count: 79,  tags: ["chinos","slim"] },
+  { id: "p010", title: "Oxford Shirt",             vendor: "Mora Mens",      category: "men",    price: 48.00, compare_price: null,   sold_count: 103, tags: ["shirt","oxford"] },
+  { id: "p011", title: "Wool Coat",                vendor: "Mora Mens",      category: "men",    price: 189.00,compare_price: 250.00, sold_count: 45,  tags: ["coat","wool","sale"] },
+  { id: "p012", title: "Track Jacket",             vendor: "Mora Sport",     category: "men",    price: 65.00, compare_price: null,   sold_count: 67,  tags: ["jacket","sport"] },
+  { id: "p013", title: "Relaxed Denim",            vendor: "Mora Denim",     category: "men",    price: 72.00, compare_price: null,   sold_count: 82,  tags: ["jeans","denim"] },
+  { id: "p014", title: "Piqué Polo Shirt",         vendor: "Mora Mens",      category: "men",    price: 38.00, compare_price: null,   sold_count: 118, tags: ["polo"] },
+  { id: "p015", title: "Vitamin C Serum",          vendor: "Mora Beauty",    category: "beauty", price: 34.99, compare_price: null,   sold_count: 156, tags: ["serum","skincare"] },
+  { id: "p016", title: "Hydra-Glow Moisturiser",   vendor: "Mora Beauty",    category: "beauty", price: 28.00, compare_price: null,   sold_count: 129, tags: ["moisturiser","skincare"] },
+  { id: "p017", title: "Volumising Mascara",       vendor: "Mora Beauty",    category: "beauty", price: 18.50, compare_price: null,   sold_count: 171, tags: ["mascara","makeup"] },
+  { id: "p018", title: "Matte Lip Set",            vendor: "Mora Beauty",    category: "beauty", price: 22.00, compare_price: 30.00,  sold_count: 93,  tags: ["lipstick","makeup","sale"] },
+  { id: "p019", title: "Silk Slip Dress",          vendor: "Mora Studio",    category: "new_in", price: 99.00, compare_price: null,   sold_count: 38,  tags: ["dress","silk","new"] },
+  { id: "p020", title: "Tailored Waistcoat",       vendor: "Mora Studio",    category: "new_in", price: 79.00, compare_price: null,   sold_count: 29,  tags: ["waistcoat","new"] },
+  { id: "p021", title: "Cargo Trousers",           vendor: "Mora Mens",      category: "sale",   price: 35.00, compare_price: 65.00,  sold_count: 134, tags: ["cargo","sale"] },
+  { id: "p022", title: "Wrap Midi Dress",          vendor: "Mora Studio",    category: "sale",   price: 39.99, compare_price: 75.00,  sold_count: 147, tags: ["dress","wrap","sale"] },
 ];
 
 const insertProduct = db.prepare(`
-  INSERT INTO products (id,title,vendor,category,description,price,compare_price,images,tags,status,created_at,updated_at)
-  VALUES (@id,@title,@vendor,@category,@description,@price,@compare_price,@images,@tags,@status,@created_at,@updated_at)
+  INSERT INTO products (id,title,vendor,category,description,price,compare_price,images,tags,status,sold_count,created_at,updated_at)
+  VALUES (@id,@title,@vendor,@category,@description,@price,@compare_price,@images,@tags,@status,@sold_count,@created_at,@updated_at)
 `);
 const insertVariant = db.prepare(`
   INSERT INTO variants (id,product_id,title,sku,price,compare_price,inventory,option1,option2)
@@ -197,6 +206,7 @@ for (const p of seedProducts) {
     images: j([`https://picsum.photos/seed/${p.id}/600/800`]),
     tags: j(p.tags),
     compare_price: p.compare_price ?? null,
+    sold_count: p.sold_count,
     status: "active",
     created_at: iso(Math.floor(Math.random() * 90)),
     updated_at: iso(Math.floor(Math.random() * 7)),
@@ -215,6 +225,21 @@ for (const p of seedProducts) {
     });
   });
 }
+
+// ─── Seed: Special Collection Items ───────────────────────────────────────────
+
+const insertSCI = db.prepare(`
+  INSERT OR IGNORE INTO special_collection_items (collection_slug, product_id, sort_order, created_at)
+  VALUES (?, ?, ?, ?)
+`);
+
+const now = new Date().toISOString();
+[
+  { slug: "brand-deals",  products: ["p019","p020","p007","p008"] },
+  { slug: "hot-seller",   products: ["p001","p015","p017","p022"] },
+].forEach(({ slug, products }) => {
+  products.forEach((pid, i) => insertSCI.run(slug, pid, i, now));
+});
 
 // ─── Seed: Collections ────────────────────────────────────────────────────────
 
