@@ -180,7 +180,7 @@ function BannerSlide({ banner }: { banner: Banner }) {
     <Pressable
       style={[styles.banner, { backgroundColor: banner.bgColor, width: SCREEN_WIDTH }]}
       onPress={handlePress}
-      disabled={banner.hasButton}
+      disabled={!!banner.hasButton}
     >
       {!!banner.imageUrl && (
         <Image
