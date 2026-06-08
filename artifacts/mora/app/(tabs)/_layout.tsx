@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 import { useCart } from "@/context/CartContext";
+import { WebLiquidTabBar } from "@/components/WebLiquidTabBar";
 
 // expo-glass-effect and expo-router/unstable-native-tabs require a custom
 // dev build. We load them dynamically so the app still runs in Expo Go.
@@ -31,6 +32,7 @@ try {
   SymbolView = sym.SymbolView;
 } catch {}
 
+// ─── iOS 26+ Liquid Glass native tab bar (custom dev build only) ───────────
 function NativeTabLayout() {
   return (
     <NativeTabs minimizeBehavior="never">
@@ -54,6 +56,7 @@ function NativeTabLayout() {
   );
 }
 
+// ─── Classic layout (Expo Go / Android / Web) ─────────────────────────────
 function ClassicTabLayout() {
   const colors = useColors();
   const colorScheme = useColorScheme();
@@ -65,20 +68,24 @@ function ClassicTabLayout() {
 
   return (
     <Tabs
-      sceneContainerStyle={{ paddingTop: 0 }}
+      sceneContainerStyle={{ paddingTop: 0, paddingBottom: isWeb ? 84 : 0 }}
+      // ── Web: use the CSS Liquid Glass tab bar ──────────────────────────
+      tabBar={isWeb ? (props) => <WebLiquidTabBar {...props} /> : undefined}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
-        tabBarStyle: {
-          position: "absolute",
-          backgroundColor: isIOS ? "transparent" : colors.background,
-          borderTopWidth: isWeb ? 1 : 0.5,
-          borderTopColor: colors.border,
-          elevation: 0,
-          paddingBottom: isWeb ? 4 : safeAreaInsets.bottom,
-          height: isWeb ? 56 : undefined,
-        },
+        // Web uses WebLiquidTabBar above, so hide the default bar on web
+        tabBarStyle: isWeb
+          ? { display: "none" }
+          : {
+              position: "absolute",
+              backgroundColor: isIOS ? "transparent" : colors.background,
+              borderTopWidth: 0.5,
+              borderTopColor: colors.border,
+              elevation: 0,
+              paddingBottom: safeAreaInsets.bottom,
+            },
         tabBarLabelStyle: {
           fontFamily: "Inter_500Medium",
           fontSize: 10,
@@ -90,10 +97,6 @@ function ClassicTabLayout() {
               intensity={100}
               tint={isDark ? "dark" : "light"}
               style={StyleSheet.absoluteFill}
-            />
-          ) : isWeb ? (
-            <View
-              style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
             />
           ) : null,
       }}
@@ -109,7 +112,14 @@ function ClassicTabLayout() {
               <Feather name="home" size={22} color={color} />
             ),
           tabBarLabel: ({ color, focused }) => (
-            <Text style={{ color, fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium", fontSize: 10, letterSpacing: 0.3 }}>
+            <Text
+              style={{
+                color,
+                fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium",
+                fontSize: 10,
+                letterSpacing: 0.3,
+              }}
+            >
               HOME
             </Text>
           ),
@@ -126,7 +136,14 @@ function ClassicTabLayout() {
               <Feather name="search" size={22} color={color} />
             ),
           tabBarLabel: ({ color, focused }) => (
-            <Text style={{ color, fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium", fontSize: 10, letterSpacing: 0.3 }}>
+            <Text
+              style={{
+                color,
+                fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium",
+                fontSize: 10,
+                letterSpacing: 0.3,
+              }}
+            >
               SEARCH
             </Text>
           ),
@@ -143,19 +160,32 @@ function ClassicTabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <View>
               {isIOS && SymbolView ? (
-                <SymbolView name={focused ? "bag.fill" : "bag"} tintColor={color} size={24} />
+                <SymbolView
+                  name={focused ? "bag.fill" : "bag"}
+                  tintColor={color}
+                  size={24}
+                />
               ) : (
                 <Feather name="shopping-bag" size={22} color={color} />
               )}
               {totalItems > 0 && (
                 <View style={[styles.tabBadge, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.tabBadgeText}>{totalItems > 9 ? "9+" : totalItems}</Text>
+                  <Text style={styles.tabBadgeText}>
+                    {totalItems > 9 ? "9+" : totalItems}
+                  </Text>
                 </View>
               )}
             </View>
           ),
           tabBarLabel: ({ color, focused }) => (
-            <Text style={{ color, fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium", fontSize: 10, letterSpacing: 0.3 }}>
+            <Text
+              style={{
+                color,
+                fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium",
+                fontSize: 10,
+                letterSpacing: 0.3,
+              }}
+            >
               BAG
             </Text>
           ),
@@ -167,12 +197,23 @@ function ClassicTabLayout() {
           title: "Account",
           tabBarIcon: ({ color, focused }) =>
             isIOS && SymbolView ? (
-              <SymbolView name={focused ? "person.fill" : "person"} tintColor={color} size={24} />
+              <SymbolView
+                name={focused ? "person.fill" : "person"}
+                tintColor={color}
+                size={24}
+              />
             ) : (
               <Feather name="user" size={22} color={color} />
             ),
           tabBarLabel: ({ color, focused }) => (
-            <Text style={{ color, fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium", fontSize: 10, letterSpacing: 0.3 }}>
+            <Text
+              style={{
+                color,
+                fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium",
+                fontSize: 10,
+                letterSpacing: 0.3,
+              }}
+            >
               ACCOUNT
             </Text>
           ),
