@@ -26,6 +26,10 @@ app.use(
   }),
 );
 const ALLOWED_ORIGINS = [
+  // Production domains
+  /^https?:\/\/(www\.)?moramoda\.tech$/,
+  /^https?:\/\/app\.moramoda\.tech$/,
+  /^https?:\/\/admin\.moramoda\.tech$/,
   // Replit preview domains (admin + storefront paths on same domain)
   /^https?:\/\/.*\.replit\.dev$/,
   /^https?:\/\/.*\.replit\.app$/,
