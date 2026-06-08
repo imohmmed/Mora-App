@@ -1,18 +1,35 @@
 import React, { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Host, HStack, Image, TextField } from "@expo/ui/swift-ui";
-import { frame, glassEffect, padding } from "@expo/ui/swift-ui/modifiers";
 import * as Haptics from "expo-haptics";
-
 import { useColors } from "@/hooks/useColors";
 
 const PRIMARY = "#0274C1";
 
+// @expo/ui requires a custom dev build — not available in Expo Go.
+// We try to load it at runtime so Expo Go still works.
+let glassAvailable = false;
+let Host: any, HStack: any, ExpoImage: any, ExpoTextField: any;
+let frameM: any, glassEffectM: any, paddingM: any;
+try {
+  const ui = require("@expo/ui/swift-ui");
+  const mods = require("@expo/ui/swift-ui/modifiers");
+  Host = ui.Host;
+  HStack = ui.HStack;
+  ExpoImage = ui.Image;
+  ExpoTextField = ui.TextField;
+  frameM = mods.frame;
+  glassEffectM = mods.glassEffect;
+  paddingM = mods.padding;
+  glassAvailable = true;
+} catch {}
+
 interface HomeHeaderProps {
   notificationCount?: number;
   favoritesCount?: number;
+  cartCount?: number;
 }
 
 function Badge({ count }: { count: number }) {
@@ -23,10 +40,7 @@ function Badge({ count }: { count: number }) {
   );
 }
 
-export function HomeHeader({
-  notificationCount = 0,
-  favoritesCount = 0,
-}: HomeHeaderProps) {
+function GlassHeader({ notificationCount = 0, favoritesCount = 0 }: HomeHeaderProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -49,29 +63,28 @@ export function HomeHeader({
       ]}
     >
       <View style={styles.row}>
-        {/* Liquid Glass search field */}
         <View style={styles.searchWrap}>
           <Host style={{ height: 48 }}>
             <HStack
               spacing={8}
               modifiers={[
-                frame({ height: 46, maxWidth: 10000 }),
-                padding({ horizontal: 14 }),
-                glassEffect({
+                frameM({ height: 46, maxWidth: 10000 }),
+                paddingM({ horizontal: 14 }),
+                glassEffectM({
                   glass: { variant: "regular", interactive: true },
                   shape: "capsule",
                 }),
               ]}
             >
-              <Image systemName="magnifyingglass" size={18} color="#8E8E93" />
-              <TextField
+              <ExpoImage systemName="magnifyingglass" size={18} color="#8E8E93" />
+              <ExpoTextField
                 placeholder="Search Mora"
                 defaultValue={query}
                 onChangeText={setQuery}
                 onSubmit={goSearch}
-                modifiers={[frame({ maxWidth: 10000 })]}
+                modifiers={[frameM({ maxWidth: 10000 })]}
               />
-              <Image
+              <ExpoImage
                 systemName="camera.fill"
                 size={18}
                 color={PRIMARY}
@@ -81,44 +94,32 @@ export function HomeHeader({
           </Host>
         </View>
 
-        {/* Liquid Glass notifications button */}
         <View style={styles.iconWrap}>
           <Host style={{ width: 46, height: 46 }}>
-            <Image
+            <ExpoImage
               systemName="bell"
               size={20}
               color={colors.foreground}
-              onPress={() =>
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              }
+              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
               modifiers={[
-                frame({ width: 46, height: 46 }),
-                glassEffect({
-                  glass: { variant: "regular", interactive: true },
-                  shape: "circle",
-                }),
+                frameM({ width: 46, height: 46 }),
+                glassEffectM({ glass: { variant: "regular", interactive: true }, shape: "circle" }),
               ]}
             />
           </Host>
           {notificationCount > 0 && <Badge count={notificationCount} />}
         </View>
 
-        {/* Liquid Glass favorites button */}
         <View style={styles.iconWrap}>
           <Host style={{ width: 46, height: 46 }}>
-            <Image
+            <ExpoImage
               systemName="heart"
               size={20}
               color={colors.foreground}
-              onPress={() =>
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              }
+              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
               modifiers={[
-                frame({ width: 46, height: 46 }),
-                glassEffect({
-                  glass: { variant: "regular", interactive: true },
-                  shape: "circle",
-                }),
+                frameM({ width: 46, height: 46 }),
+                glassEffectM({ glass: { variant: "regular", interactive: true }, shape: "circle" }),
               ]}
             />
           </Host>
@@ -127,6 +128,67 @@ export function HomeHeader({
       </View>
     </View>
   );
+}
+
+function FallbackHeader({ notificationCount = 0, favoritesCount = 0, cartCount = 0 }: HomeHeaderProps) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+
+  return (
+    <View
+      style={[
+        styles.wrapper,
+        {
+          paddingTop: insets.top + 8,
+          backgroundColor: colors.background,
+          borderBottomColor: colors.border,
+        },
+      ]}
+    >
+      <View style={styles.row}>
+        <Pressable
+          style={[styles.searchBar, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+          onPress={() => router.push("/(tabs)/search")}
+        >
+          <Feather name="search" size={18} color={colors.mutedForeground} />
+          <Text style={[styles.searchPlaceholder, { color: colors.mutedForeground }]}>
+            Search Mora
+          </Text>
+          <Feather name="camera" size={18} color={colors.foreground} />
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+          onPress={() => router.push("/(tabs)/wishlist")}
+        >
+          <Feather name="heart" size={23} color={colors.foreground} />
+          {favoritesCount > 0 && (
+            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+              <Text style={styles.badgeText}>{favoritesCount > 9 ? "9+" : favoritesCount}</Text>
+            </View>
+          )}
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+          onPress={() => router.push("/(tabs)/cart")}
+        >
+          <Feather name="shopping-bag" size={23} color={colors.foreground} />
+          {cartCount > 0 && (
+            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+              <Text style={styles.badgeText}>{cartCount > 9 ? "9+" : cartCount}</Text>
+            </View>
+          )}
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+export function HomeHeader(props: HomeHeaderProps) {
+  if (!glassAvailable) return <FallbackHeader {...props} />;
+  return <GlassHeader {...props} />;
 }
 
 const styles = StyleSheet.create({
@@ -140,14 +202,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  searchWrap: {
-    flex: 1,
-  },
-  iconWrap: {
-    width: 46,
-    height: 46,
-    position: "relative",
-  },
+  searchWrap: { flex: 1 },
+  iconWrap: { width: 46, height: 46, position: "relative" },
   badge: {
     position: "absolute",
     top: 0,
@@ -161,9 +217,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     zIndex: 10,
   },
-  badgeText: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontFamily: "Inter_700Bold",
+  badgeText: { color: "#FFFFFF", fontSize: 10, fontFamily: "Inter_700Bold" },
+  searchBar: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 10,
+    borderWidth: 1,
   },
+  searchPlaceholder: {
+    flex: 1,
+    fontFamily: "Inter_400Regular",
+    fontSize: 15,
+  },
+  iconBtn: { padding: 8, position: "relative" },
+  pressed: { opacity: 0.6 },
 });

@@ -1,8 +1,5 @@
 import { BlurView } from "expo-blur";
-import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
-import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
-import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, Text, View, useColorScheme } from "react-native";
@@ -11,24 +8,47 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useCart } from "@/context/CartContext";
 
+// expo-glass-effect and expo-router/unstable-native-tabs require a custom
+// dev build. We load them dynamically so the app still runs in Expo Go.
+let isLiquidGlassAvailable: () => boolean = () => false;
+let NativeTabs: any, TabIcon: any, TabLabel: any;
+let SymbolView: any;
+
+try {
+  const glassModule = require("expo-glass-effect");
+  isLiquidGlassAvailable = glassModule.isLiquidGlassAvailable;
+} catch {}
+
+try {
+  const nt = require("expo-router/unstable-native-tabs");
+  NativeTabs = nt.NativeTabs;
+  TabIcon = nt.Icon;
+  TabLabel = nt.Label;
+} catch {}
+
+try {
+  const sym = require("expo-symbols");
+  SymbolView = sym.SymbolView;
+} catch {}
+
 function NativeTabLayout() {
   return (
     <NativeTabs minimizeBehavior="never">
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "house", selected: "house.fill" }} />
-        <Label>Home</Label>
+        <TabIcon sf={{ default: "house", selected: "house.fill" }} />
+        <TabLabel>Home</TabLabel>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="search" role="search">
-        <Icon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />
-        <Label>Search</Label>
+        <TabIcon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />
+        <TabLabel>Search</TabLabel>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="cart">
-        <Icon sf={{ default: "bag", selected: "bag.fill" }} />
-        <Label>Bag</Label>
+        <TabIcon sf={{ default: "bag", selected: "bag.fill" }} />
+        <TabLabel>Bag</TabLabel>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="account">
-        <Icon sf={{ default: "person", selected: "person.fill" }} />
-        <Label>Account</Label>
+        <TabIcon sf={{ default: "person", selected: "person.fill" }} />
+        <TabLabel>Account</TabLabel>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -42,6 +62,7 @@ function ClassicTabLayout() {
   const isWeb = Platform.OS === "web";
   const safeAreaInsets = useSafeAreaInsets();
   const { totalItems } = useCart();
+
   return (
     <Tabs
       sceneContainerStyle={{ paddingTop: 0 }}
@@ -82,7 +103,7 @@ function ClassicTabLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
+            isIOS && SymbolView ? (
               <SymbolView name={focused ? "house.fill" : "house"} tintColor={color} size={24} />
             ) : (
               <Feather name="home" size={22} color={color} />
@@ -99,7 +120,7 @@ function ClassicTabLayout() {
         options={{
           title: "Search",
           tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
+            isIOS && SymbolView ? (
               <SymbolView name="magnifyingglass" tintColor={color} size={24} />
             ) : (
               <Feather name="search" size={22} color={color} />
@@ -121,7 +142,7 @@ function ClassicTabLayout() {
           title: "Bag",
           tabBarIcon: ({ color, focused }) => (
             <View>
-              {isIOS ? (
+              {isIOS && SymbolView ? (
                 <SymbolView name={focused ? "bag.fill" : "bag"} tintColor={color} size={24} />
               ) : (
                 <Feather name="shopping-bag" size={22} color={color} />
@@ -145,7 +166,7 @@ function ClassicTabLayout() {
         options={{
           title: "Account",
           tabBarIcon: ({ color, focused }) =>
-            isIOS ? (
+            isIOS && SymbolView ? (
               <SymbolView name={focused ? "person.fill" : "person"} tintColor={color} size={24} />
             ) : (
               <Feather name="user" size={22} color={color} />
@@ -162,7 +183,7 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
-  if (isLiquidGlassAvailable()) {
+  if (isLiquidGlassAvailable() && NativeTabs) {
     return <NativeTabLayout />;
   }
   return <ClassicTabLayout />;
