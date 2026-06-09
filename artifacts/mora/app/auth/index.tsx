@@ -1,12 +1,11 @@
 /**
  * Auth Screen — Phone OTP + Google + Apple sign-in.
- *
+ * Single unified screen for both sign-in and registration.
  * Phone: fixed +964 (Iraq) prefix, accepts 07XXXXXXXXX or 7XXXXXXXXX.
- * After Continue: navigates to /auth/verify for OTP entry.
- * Google / Apple: uses Firebase popup auth → creates session via API.
+ * Bottom: language selector (like SHEIN's country picker).
  */
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -23,6 +22,8 @@ import { useRouter } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage, LANGUAGES } from "@/context/LanguageContext";
+import { AppleActionSheet } from "@/components/AppleActionSheet";
 import {
   isFirebaseConfigured,
   normalizeIraqiPhone,
@@ -40,17 +41,18 @@ export default function AuthScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { loginWithSocial } = useAuth();
+  const { lang, language, setLang } = useLanguage();
 
   const [phone, setPhone]       = useState("");
   const [loading, setLoading]   = useState(false);
   const [gLoading, setGLoading] = useState(false);
   const [aLoading, setALoading] = useState(false);
   const [error, setError]       = useState("");
+  const [showLangPicker, setShowLangPicker] = useState(false);
 
   const inputRef = useRef<TextInput>(null);
   const configured = isFirebaseConfigured();
 
-  // ── colours ──────────────────────────────────────────────────────────────
   const bg       = isDark ? "#0D0D0D" : "#FFFFFF";
   const fg       = isDark ? "#FFFFFF" : "#000000";
   const muted    = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.44)";
@@ -58,9 +60,8 @@ export default function AuthScreen() {
   const inputBg  = isDark ? "rgba(255,255,255,0.06)" : "#F8F8F8";
   const divColor = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.10)";
 
-  // ── phone ─────────────────────────────────────────────────────────────────
-  const e164     = normalizeIraqiPhone(phone);
-  const canCont  = isValidIraqiPhone(e164);
+  const e164    = normalizeIraqiPhone(phone);
+  const canCont = isValidIraqiPhone(e164);
 
   const handleContinue = async () => {
     if (!canCont) { setError("أدخل رقماً عراقياً صحيحاً — مثال: 07766699669"); return; }
@@ -77,7 +78,6 @@ export default function AuthScreen() {
     }
   };
 
-  // ── Google ────────────────────────────────────────────────────────────────
   const handleGoogle = async () => {
     if (!configured) { setError("Firebase غير مهيأ بعد."); return; }
     setGLoading(true);
@@ -93,7 +93,6 @@ export default function AuthScreen() {
     }
   };
 
-  // ── Apple ─────────────────────────────────────────────────────────────────
   const handleApple = async () => {
     if (!configured) { setError("Firebase غير مهيأ بعد."); return; }
     setALoading(true);
@@ -110,10 +109,18 @@ export default function AuthScreen() {
   };
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;
+  const botPad = Platform.OS === "web" ? 0 : insets.bottom;
+
+  const langOptions = LANGUAGES.map((l) => ({
+    value: l.code,
+    label: l.nativeLabel,
+    sublabel: l.label,
+    flag: l.flag,
+  }));
 
   return (
     <View style={[styles.root, { backgroundColor: bg }]}>
-      {/* ── Close button ─────────────────────────────────────────────────── */}
+      {/* Close button */}
       <Pressable
         style={[styles.closeBtn, { top: topPad + 12 }]}
         onPress={() => router.back()}
@@ -128,14 +135,17 @@ export default function AuthScreen() {
         <ScrollView
           contentContainerStyle={[
             styles.scroll,
-            { paddingTop: topPad + 60, paddingBottom: insets.bottom + 40 },
+            { paddingTop: topPad + 60, paddingBottom: botPad + 16 },
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* ── Logo ───────────────────────────────────────────────────── */}
+          {/* ── Logo ── */}
           <View style={styles.logoWrap}>
-            <Text style={[styles.logoText, { color: fg }]}>MORA</Text>
+            <Text style={styles.logoText}>
+              <Text style={{ color: PRIMARY }}>M</Text>
+              <Text style={{ color: fg }}>ora</Text>
+            </Text>
             <View style={styles.protectedRow}>
               <Feather name="lock" size={13} color="#27AE60" />
               <Text style={[styles.protectedTxt, { color: "#27AE60" }]}>
@@ -144,20 +154,16 @@ export default function AuthScreen() {
             </View>
           </View>
 
-          {/* ── Phone input ────────────────────────────────────────────── */}
+          {/* ── Phone input ── */}
           <View style={styles.section}>
-            <Text style={[styles.fieldLabel, { color: muted }]}>رقم الهاتف</Text>
             <Pressable
               style={[styles.phoneRow, { backgroundColor: inputBg, borderColor: border }]}
               onPress={() => inputRef.current?.focus()}
             >
-              {/* Flag + country code (fixed) */}
               <View style={[styles.prefixWrap, { borderRightColor: border }]}>
                 <Text style={styles.flagEmoji}>🇮🇶</Text>
                 <Text style={[styles.prefixText, { color: fg }]}>+964</Text>
               </View>
-
-              {/* Number input */}
               <TextInput
                 ref={inputRef}
                 style={[styles.phoneInput, { color: fg }]}
@@ -170,20 +176,18 @@ export default function AuthScreen() {
                 returnKeyType="done"
                 onSubmitEditing={handleContinue}
               />
-
               {phone.length > 0 && (
                 <Pressable onPress={() => setPhone("")} style={{ padding: 8 }}>
                   <Feather name="x-circle" size={16} color={muted} />
                 </Pressable>
               )}
             </Pressable>
-
             <Text style={[styles.hintTxt, { color: muted }]}>
               مثال: 07766699669 أو 7766699669
             </Text>
           </View>
 
-          {/* ── Error ──────────────────────────────────────────────────── */}
+          {/* ── Error ── */}
           {!!error && (
             <View style={[styles.errorBox, { backgroundColor: "#FEE2E2", borderColor: "#FECACA" }]}>
               <Feather name="alert-circle" size={14} color="#DC2626" />
@@ -191,7 +195,7 @@ export default function AuthScreen() {
             </View>
           )}
 
-          {/* ── CONTINUE ───────────────────────────────────────────────── */}
+          {/* ── Continue button ── */}
           <Pressable
             style={({ pressed }) => [
               styles.continueBtn,
@@ -211,14 +215,14 @@ export default function AuthScreen() {
             }
           </Pressable>
 
-          {/* ── Divider ────────────────────────────────────────────────── */}
+          {/* ── Divider ── */}
           <View style={styles.dividerRow}>
             <View style={[styles.dividerLine, { backgroundColor: divColor }]} />
             <Text style={[styles.dividerTxt, { color: muted }]}>أو</Text>
             <View style={[styles.dividerLine, { backgroundColor: divColor }]} />
           </View>
 
-          {/* ── Google ─────────────────────────────────────────────────── */}
+          {/* ── Google ── */}
           <Pressable
             style={({ pressed }) => [
               styles.socialBtn,
@@ -232,13 +236,13 @@ export default function AuthScreen() {
               : <>
                   <Ionicons name="logo-google" size={20} color="#4285F4" />
                   <Text style={[styles.socialTxt, { color: fg }]}>
-                    تسجيل الدخول عبر Google
+                    Continue with Google
                   </Text>
                 </>
             }
           </Pressable>
 
-          {/* ── Apple ──────────────────────────────────────────────────── */}
+          {/* ── Apple ── */}
           <Pressable
             style={({ pressed }) => [
               styles.socialBtn,
@@ -253,21 +257,46 @@ export default function AuthScreen() {
               : <>
                   <Ionicons name="logo-apple" size={22} color="#fff" />
                   <Text style={[styles.socialTxt, { color: "#fff" }]}>
-                    تسجيل الدخول عبر Apple
+                    Continue with Apple
                   </Text>
                 </>
             }
           </Pressable>
 
-          {/* ── Terms ──────────────────────────────────────────────────── */}
+          {/* ── Terms ── */}
           <Text style={[styles.termsTxt, { color: muted }]}>
             بالمتابعة توافق على{" "}
             <Text style={{ color: PRIMARY }}>سياسة الخصوصية</Text>
             {" "}و{" "}
             <Text style={{ color: PRIMARY }}>الشروط والأحكام</Text>
           </Text>
+
+          {/* ── Language selector (like "Kuwait" in SHEIN) ── */}
+          <Pressable
+            style={styles.langBtn}
+            onPress={() => setShowLangPicker(true)}
+          >
+            <Feather name="globe" size={14} color={muted} />
+            <Text style={[styles.langTxt, { color: muted }]}>
+              {language.flag} {language.nativeLabel}
+            </Text>
+            <Feather name="chevron-down" size={13} color={muted} />
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* ── Language picker sheet ── */}
+      <AppleActionSheet
+        visible={showLangPicker}
+        title="Choose Language"
+        options={langOptions}
+        selectedValue={lang}
+        onSelect={(val) => {
+          setLang(val as any);
+          setShowLangPicker(false);
+        }}
+        onCancel={() => setShowLangPicker(false)}
+      />
     </View>
   );
 }
@@ -295,8 +324,8 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontFamily: "Inter_700Bold",
-    fontSize: 36,
-    letterSpacing: 6,
+    fontSize: 38,
+    letterSpacing: 2,
     marginBottom: 8,
   },
   protectedRow: {
@@ -309,16 +338,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  /* ── Phone input ── */
-  section: {
-    marginBottom: 20,
-  },
-  fieldLabel: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 12,
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
+  /* ── Phone ── */
+  section: { marginBottom: 20 },
   phoneRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -335,14 +356,8 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRightWidth: 1,
   },
-  flagEmoji: {
-    fontSize: 20,
-    lineHeight: 26,
-  },
-  prefixText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 15,
-  },
+  flagEmoji: { fontSize: 20, lineHeight: 26 },
+  prefixText: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
   phoneInput: {
     flex: 1,
     height: "100%",
@@ -374,7 +389,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  /* ── CONTINUE ── */
+  /* ── Continue ── */
   continueBtn: {
     height: 52,
     borderRadius: 10,
@@ -395,16 +410,10 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 20,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  dividerTxt: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 13,
-  },
+  dividerLine: { flex: 1, height: 1 },
+  dividerTxt: { fontFamily: "Inter_500Medium", fontSize: 13 },
 
-  /* ── Social buttons ── */
+  /* ── Social ── */
   socialBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -415,14 +424,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     marginBottom: 12,
   },
-  appleBtn: {
-    backgroundColor: "#000",
-    borderColor: "#000",
-  },
-  socialTxt: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-  },
+  appleBtn: { backgroundColor: "#000", borderColor: "#000" },
+  socialTxt: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
 
   /* ── Terms ── */
   termsTxt: {
@@ -430,6 +433,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: "center",
     lineHeight: 18,
-    marginTop: 16,
+    marginTop: 8,
+    marginBottom: 20,
+  },
+
+  /* ── Language button ── */
+  langBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+    alignSelf: "center",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.12)",
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  langTxt: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
   },
 });
