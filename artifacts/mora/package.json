@@ -56,6 +56,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
-    "@expo/ui": "0.2.0-canary-20260121-a63c0dd"
+    "@expo/ui": "0.2.0-canary-20260121-a63c0dd",
+    "firebase": "^12.14.0"
   }
 }

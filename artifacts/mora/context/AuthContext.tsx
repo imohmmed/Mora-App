@@ -20,12 +20,18 @@ type AuthCtx = {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (firstName: string, lastName: string, email: string, password: string) => Promise<void>;
+  loginWithPhone: (phone: string, firebaseUid: string) => Promise<void>;
+  loginWithSocial: (firebaseUid: string, name: string, email: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthCtx>({
   user: null, token: null, isLoading: true,
-  login: async () => {}, register: async () => {}, logout: async () => {},
+  login: async () => {},
+  register: async () => {},
+  loginWithPhone: async () => {},
+  loginWithSocial: async () => {},
+  logout: async () => {},
 });
 
 function getBaseUrl(): string {
@@ -68,25 +74,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const _saveSession = useCallback(async (result: { token: string; user: AuthUser }) => {
+    await AsyncStorage.setItem(TOKEN_KEY, result.token);
+    setToken(result.token);
+    setUser(result.user);
+  }, []);
+
   const login = useCallback(async (email: string, password: string) => {
     const result = await authFetch<{ token: string; user: AuthUser }>("/store/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
-    await AsyncStorage.setItem(TOKEN_KEY, result.token);
-    setToken(result.token);
-    setUser(result.user);
-  }, []);
+    await _saveSession(result);
+  }, [_saveSession]);
 
   const register = useCallback(async (firstName: string, lastName: string, email: string, password: string) => {
     const result = await authFetch<{ token: string; user: AuthUser }>("/store/auth/register", {
       method: "POST",
       body: JSON.stringify({ firstName, lastName, email, password }),
     });
-    await AsyncStorage.setItem(TOKEN_KEY, result.token);
-    setToken(result.token);
-    setUser(result.user);
-  }, []);
+    await _saveSession(result);
+  }, [_saveSession]);
+
+  /** Called after Firebase phone OTP is verified */
+  const loginWithPhone = useCallback(async (phone: string, firebaseUid: string) => {
+    const result = await authFetch<{ token: string; user: AuthUser }>("/store/auth/firebase", {
+      method: "POST",
+      body: JSON.stringify({ phone, firebaseUid, provider: "phone" }),
+    });
+    await _saveSession(result);
+  }, [_saveSession]);
+
+  /** Called after Firebase Google or Apple sign-in */
+  const loginWithSocial = useCallback(async (firebaseUid: string, name: string, email: string) => {
+    const result = await authFetch<{ token: string; user: AuthUser }>("/store/auth/firebase", {
+      method: "POST",
+      body: JSON.stringify({ firebaseUid, name, email, provider: "social" }),
+    });
+    await _saveSession(result);
+  }, [_saveSession]);
 
   const logout = useCallback(async () => {
     try {
@@ -98,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [token]);
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, loginWithPhone, loginWithSocial, logout }}>
       {children}
     </AuthContext.Provider>
   );

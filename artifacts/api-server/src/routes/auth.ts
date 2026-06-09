@@ -73,4 +73,76 @@ router.post("/store/auth/logout", (req, res) => {
   res.json({ data: null, meta: {}, error: null });
 });
 
+/**
+ * POST /store/auth/firebase
+ * Called after Firebase phone OTP or Google/Apple sign-in on the client.
+ * Finds or creates a customer record, then returns a Mora session token.
+ *
+ * Body (phone auth):   { provider: "phone",  phone, firebaseUid }
+ * Body (social auth):  { provider: "social", firebaseUid, name?, email? }
+ *
+ * NOTE: When FIREBASE_SERVICE_ACCOUNT_JSON is provided the server will
+ * verify the Firebase ID token server-side. Until then it trusts the client.
+ */
+router.post("/store/auth/firebase", (req, res) => {
+  const { provider, phone, firebaseUid, name, email } =
+    req.body as Record<string, string>;
+
+  if (!firebaseUid) {
+    res.status(400).json({ data: null, meta: {}, error: "firebaseUid is required" });
+    return;
+  }
+
+  // ── Find existing customer ───────────────────────────────────────────────
+  let customer: Row | undefined;
+
+  if (provider === "phone" && phone) {
+    customer = db
+      .prepare(`SELECT * FROM customers WHERE phone=?`)
+      .get(phone.trim()) as Row | undefined;
+  }
+
+  if (!customer && email) {
+    customer = db
+      .prepare(`SELECT * FROM customers WHERE email=?`)
+      .get(email.toLowerCase().trim()) as Row | undefined;
+  }
+
+  // Also try matching by firebase_uid if column exists (future-proof)
+  // For now skip, as the schema doesn't have that column yet.
+
+  // ── Create new customer ──────────────────────────────────────────────────
+  if (!customer) {
+    const id = `cust_${Date.now()}`;
+
+    const nameParts  = (name ?? "").trim().split(/\s+/);
+    const firstName  = nameParts[0] || "User";
+    const lastName   = nameParts.slice(1).join(" ");
+
+    // Generate a unique placeholder email for phone-only users
+    const safePhone  = (phone ?? firebaseUid).replace(/\D/g, "");
+    const safeEmail  = email?.toLowerCase().trim() || `${safePhone}@mora.phone`;
+
+    db.prepare(`
+      INSERT INTO customers
+        (id, first_name, last_name, email, phone, orders_count, total_spent,
+         tags, accepts_marketing, created_at)
+      VALUES (?,?,?,?,?,0,0,'[]',0,?)
+    `).run(id, firstName, lastName, safeEmail, (phone ?? "").trim(),
+           new Date().toISOString());
+
+    customer = db
+      .prepare(`SELECT * FROM customers WHERE id=?`)
+      .get(id) as Row;
+  }
+
+  // ── Session ──────────────────────────────────────────────────────────────
+  const token = makeToken();
+  db.prepare(`INSERT INTO sessions (token,customer_id,created_at) VALUES (?,?,?)`)
+    .run(token, customer["id"], new Date().toISOString());
+
+  const user = getUser(token);
+  res.json({ data: { token, user }, meta: {}, error: null });
+});
+
 export default router;

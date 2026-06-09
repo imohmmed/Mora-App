@@ -1,1 +1,2 @@
 - [Web Liquid Glass Tab Bar](web-liquid-glass.md) — CSS backdrop-filter approach for Expo web; className prop trick for RN Web
+- [Firebase Auth Setup](firebase-auth.md) — phone/Google/Apple auth built, waiting on Firebase credentials (6 env vars needed)

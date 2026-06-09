@@ -642,7 +642,7 @@ export default function AccountScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user, isLoading } = useAuth();
-  const [view, setView] = useState<ViewT>("guest");
+  const router = useRouter();
   const [showSettings, setShowSettings] = useState(false);
 
   if (isLoading) {
@@ -661,21 +661,10 @@ export default function AccountScreen() {
     return <AccountMain insets={insets} onOpenSettings={() => setShowSettings(true)} />;
   }
 
-  if (view === "sign-in" || view === "register") {
-    return (
-      <AuthForm
-        mode={view}
-        onClose={() => setView("guest")}
-        colors={colors}
-        insets={insets}
-      />
-    );
-  }
-
   return (
     <GuestScreen
-      onSignIn={() => setView("sign-in")}
-      onJoin={() => setView("register")}
+      onSignIn={() => router.push("/auth")}
+      onJoin={() => router.push("/auth")}
       onOpenSettings={() => setShowSettings(true)}
       insets={insets}
     />
