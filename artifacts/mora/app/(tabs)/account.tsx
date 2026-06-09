@@ -18,6 +18,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useTheme, type ThemeMode } from "@/context/ThemeContext";
+import { useLanguage, LANGUAGES } from "@/context/LanguageContext";
+import { AppleActionSheet } from "@/components/AppleActionSheet";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
 import { fetchOrders } from "@/lib/api";
@@ -48,6 +50,8 @@ function statusColor(s: string) {
 function SettingsScreen({ onBack, insets }: { onBack: () => void; insets: any }) {
   const colors = useColors();
   const { mode, setMode } = useTheme();
+  const { lang, language, setLang } = useLanguage();
+  const [showLangPicker, setShowLangPicker] = useState(false);
   const topPad = Platform.OS === "web" ? 0 : insets.top;
   const botPad = Platform.OS === "web" ? 0 : insets.bottom;
 
@@ -56,6 +60,13 @@ function SettingsScreen({ onBack, insets }: { onBack: () => void; insets: any })
     { value: "dark", label: "Dark", icon: "moon" },
     { value: "system", label: "System", icon: "smartphone" },
   ];
+
+  const langOptions = LANGUAGES.map((l) => ({
+    value: l.code,
+    label: l.nativeLabel,
+    sublabel: l.label,
+    flag: l.flag,
+  }));
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -114,7 +125,17 @@ function SettingsScreen({ onBack, insets }: { onBack: () => void; insets: any })
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>LANGUAGE</Text>
           <View style={[styles.sectionCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
-            <View style={[styles.settingsRow, styles.lastRow, { borderBottomColor: colors.border }]}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.settingsRow,
+                styles.lastRow,
+                { borderBottomColor: colors.border },
+                pressed && { backgroundColor: colors.secondary },
+              ]}
+              onPress={() => setShowLangPicker(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Select language"
+            >
               <View style={styles.settingsLeft}>
                 <View style={[styles.settingsIcon, { backgroundColor: colors.secondary }]}>
                   <Feather name="globe" size={16} color={PRIMARY} />
@@ -122,12 +143,27 @@ function SettingsScreen({ onBack, insets }: { onBack: () => void; insets: any })
                 <Text style={[styles.settingsLabel, { color: colors.foreground }]}>Language</Text>
               </View>
               <View style={styles.settingsRight}>
-                <Text style={[styles.settingsValue, { color: colors.mutedForeground }]}>English</Text>
+                <Text style={[styles.settingsValue, { color: colors.mutedForeground }]}>
+                  {language.flag} {language.nativeLabel}
+                </Text>
                 <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
               </View>
-            </View>
+            </Pressable>
           </View>
         </View>
+
+        {/* ── Apple-style language picker ── */}
+        <AppleActionSheet
+          visible={showLangPicker}
+          title="Choose Language"
+          options={langOptions}
+          selectedValue={lang}
+          onSelect={(val) => {
+            setLang(val as any);
+            setShowLangPicker(false);
+          }}
+          onCancel={() => setShowLangPicker(false)}
+        />
 
         {/* ── Information ── */}
         <View style={styles.section}>
