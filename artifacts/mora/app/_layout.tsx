@@ -29,6 +29,18 @@ function useChatwoot() {
     if (Platform.OS !== "web" || typeof document === "undefined") return;
     const BASE_URL = "https://chat.moramoda.tech";
     if ((window as any).chatwootSDK) return;
+
+    // CSS to permanently hide the floating launcher bubble
+    const style = document.createElement("style");
+    style.id = "mora-chatwoot-hide-bubble";
+    style.textContent = `
+      .woot-widget-bubble,
+      .woot--bubble-holder,
+      #chatwoot-holder .woot-widget-bubble,
+      .chatwoot-widget__bubble { display: none !important; opacity: 0 !important; }
+    `;
+    document.head.appendChild(style);
+
     const script = document.createElement("script");
     script.src = BASE_URL + "/packs/js/sdk.js";
     script.async = true;
@@ -40,6 +52,10 @@ function useChatwoot() {
         position: "right",
         locale: "ar",
         type: "standard",
+      });
+      // Belt-and-suspenders: also call the API to hide the bubble
+      window.addEventListener("chatwoot:ready", () => {
+        (window as any).$chatwoot?.toggleBubbleVisibility("hide");
       });
     };
     document.head.appendChild(script);
