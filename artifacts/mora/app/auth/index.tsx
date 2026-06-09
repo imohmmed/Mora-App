@@ -4,7 +4,7 @@
  * Phone: fixed +964 (Iraq) prefix. Supports en/ar via LanguageContext.
  */
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -97,6 +97,13 @@ export default function AuthScreen() {
 
   const inputRef = useRef<TextInput>(null);
   const configured = isFirebaseConfigured();
+
+  // Hide "auth" from browser title bar on web
+  useEffect(() => {
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      document.title = "Mora";
+    }
+  }, []);
 
   const bg       = isDark ? "#0D0D0D" : "#FFFFFF";
   const fg       = isDark ? "#FFFFFF" : "#000000";
