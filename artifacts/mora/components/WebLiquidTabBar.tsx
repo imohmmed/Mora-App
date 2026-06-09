@@ -82,49 +82,49 @@ function useGlassCSS() {
     el.textContent = `
       /* ── bar shell — light mode ─────────────────────────────────────────── */
       .mora-lg-bar {
-        backdrop-filter: blur(40px) saturate(180%) brightness(1.04);
-        -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.04);
+        backdrop-filter: blur(72px) saturate(220%) brightness(1.06);
+        -webkit-backdrop-filter: blur(72px) saturate(220%) brightness(1.06);
         transition: background 0.3s ease, box-shadow 0.3s ease;
         box-shadow:
-          0 16px 48px rgba(0,0,0,0.22),
-          0 4px 16px  rgba(0,0,0,0.14),
-          inset 0 1.5px 0 rgba(255,255,255,0.80),
-          inset 0 -0.5px 0 rgba(0,0,0,0.06);
+          0 20px 60px rgba(0,0,0,0.18),
+          0 4px 20px  rgba(0,0,0,0.10),
+          inset 0 1.5px 0 rgba(255,255,255,0.90),
+          inset 0 -0.5px 0 rgba(0,0,0,0.05);
       }
       /* ── bar shell — dark mode ──────────────────────────────────────────── */
       @media (prefers-color-scheme: dark) {
         .mora-lg-bar {
-          backdrop-filter: blur(40px) saturate(200%) brightness(1.15);
-          -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.15);
+          backdrop-filter: blur(72px) saturate(240%) brightness(1.20);
+          -webkit-backdrop-filter: blur(72px) saturate(240%) brightness(1.20);
           box-shadow:
-            0 16px 48px rgba(0,0,0,0.55),
-            0 4px 16px  rgba(0,0,0,0.40),
-            inset 0 1.5px 0 rgba(255,255,255,0.18),
-            inset 0 -0.5px 0 rgba(0,0,0,0.30);
+            0 20px 60px rgba(0,0,0,0.60),
+            0 4px 20px  rgba(0,0,0,0.45),
+            inset 0 1.5px 0 rgba(255,255,255,0.22),
+            inset 0 -0.5px 0 rgba(0,0,0,0.35);
         }
       }
 
       /* ── active pill — light ────────────────────────────────────────────── */
       .mora-lg-pill {
-        backdrop-filter: blur(20px) saturate(180%) brightness(1.08);
-        -webkit-backdrop-filter: blur(20px) saturate(180%) brightness(1.08);
+        backdrop-filter: blur(40px) saturate(200%) brightness(1.10);
+        -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.10);
         transition: background 0.28s ease, box-shadow 0.28s ease;
         box-shadow:
-          0 4px 18px rgba(0,0,0,0.14),
-          0 1px 4px  rgba(0,0,0,0.08),
-          inset 0 1px 0 rgba(255,255,255,0.90),
+          0 4px 20px rgba(0,0,0,0.12),
+          0 1px 4px  rgba(0,0,0,0.07),
+          inset 0 1px 0 rgba(255,255,255,0.95),
           inset 0 -0.5px 0 rgba(0,0,0,0.04);
       }
       /* ── active pill — dark ─────────────────────────────────────────────── */
       @media (prefers-color-scheme: dark) {
         .mora-lg-pill {
-          backdrop-filter: blur(20px) saturate(200%) brightness(1.4);
-          -webkit-backdrop-filter: blur(20px) saturate(200%) brightness(1.4);
+          backdrop-filter: blur(40px) saturate(220%) brightness(1.50);
+          -webkit-backdrop-filter: blur(40px) saturate(220%) brightness(1.50);
           box-shadow:
-            0 4px 18px rgba(0,0,0,0.35),
-            0 1px 4px  rgba(0,0,0,0.22),
-            inset 0 1px 0 rgba(255,255,255,0.30),
-            inset 0 -0.5px 0 rgba(0,0,0,0.18);
+            0 4px 20px rgba(0,0,0,0.40),
+            0 1px 4px  rgba(0,0,0,0.25),
+            inset 0 1px 0 rgba(255,255,255,0.35),
+            inset 0 -0.5px 0 rgba(0,0,0,0.20);
         }
       }
 
@@ -212,12 +212,12 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
     }).start();
   }, [pillTarget]);
 
-  // Glass colours — Apple-style: opaque enough to be seen on white
-  const barBg    = isDark ? "rgba(22,22,26,0.82)"  : "rgba(234,235,240,0.88)";
-  const barBorder = isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.85)";
-  const pillBg   = isDark ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.96)";
-  const pillBorder = isDark ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,1.0)";
-  const inactiveTint = isDark ? "rgba(255,255,255,0.50)" : "rgba(0,0,0,0.42)";
+  // Glass colours — low alpha so backdrop-filter blur is clearly visible
+  const barBg    = isDark ? "rgba(20,20,24,0.52)"   : "rgba(255,255,255,0.48)";
+  const barBorder = isDark ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.90)";
+  const pillBg   = isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.82)";
+  const pillBorder = isDark ? "rgba(255,255,255,0.30)" : "rgba(255,255,255,1.0)";
+  const inactiveTint = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)";
 
   const TAB_W = 72;  // width per tab
   const BAR_PADDING = 6;
