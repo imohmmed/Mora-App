@@ -38,10 +38,11 @@ const HIDDEN = new Set(["wishlist"]);
 
 type IconName = React.ComponentProps<typeof Feather>["name"];
 const ROUTE_META: Record<string, { label: string; icon: IconName; iconFocused: IconName }> = {
-  index:   { label: "HOME",    icon: "home",         iconFocused: "home" },
-  search:  { label: "SEARCH",  icon: "search",       iconFocused: "search" },
-  cart:    { label: "BAG",     icon: "shopping-bag", iconFocused: "shopping-bag" },
-  account: { label: "ACCOUNT", icon: "user",         iconFocused: "user" },
+  index:   { label: "HOME",    icon: "home",           iconFocused: "home" },
+  search:  { label: "SEARCH",  icon: "search",         iconFocused: "search" },
+  chat:    { label: "CHAT",    icon: "message-circle", iconFocused: "message-circle" },
+  cart:    { label: "BAG",     icon: "shopping-bag",   iconFocused: "shopping-bag" },
+  account: { label: "ACCOUNT", icon: "user",           iconFocused: "user" },
 };
 
 // ─── SVG refraction filter (injected once into <body>) ─────────────────────

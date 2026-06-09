@@ -123,6 +123,15 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="chat"
+        options={{
+          title: "Chat",
+          tabBarIcon: ({ color }) => (
+            <Feather name="message-circle" size={22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="wishlist"
         options={{ href: null }}
       />
