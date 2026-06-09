@@ -38,19 +38,15 @@ function NativeTabLayout() {
     <NativeTabs minimizeBehavior="never">
       <NativeTabs.Trigger name="index">
         <TabIcon sf={{ default: "house", selected: "house.fill" }} />
-        <TabLabel>Home</TabLabel>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="search" role="search">
         <TabIcon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />
-        <TabLabel>Search</TabLabel>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="cart">
         <TabIcon sf={{ default: "bag", selected: "bag.fill" }} />
-        <TabLabel>Bag</TabLabel>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="account">
         <TabIcon sf={{ default: "person", selected: "person.fill" }} />
-        <TabLabel>Account</TabLabel>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -73,6 +69,7 @@ function ClassicTabLayout() {
       tabBar={isWeb ? (props) => <WebLiquidTabBar {...props} /> : undefined}
       screenOptions={{
         headerShown: false,
+        tabBarShowLabel: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         // Web uses WebLiquidTabBar above, so hide the default bar on web
@@ -111,18 +108,6 @@ function ClassicTabLayout() {
             ) : (
               <Feather name="home" size={22} color={color} />
             ),
-          tabBarLabel: ({ color, focused }) => (
-            <Text
-              style={{
-                color,
-                fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium",
-                fontSize: 10,
-                letterSpacing: 0.3,
-              }}
-            >
-              HOME
-            </Text>
-          ),
         }}
       />
       <Tabs.Screen
@@ -135,18 +120,6 @@ function ClassicTabLayout() {
             ) : (
               <Feather name="search" size={22} color={color} />
             ),
-          tabBarLabel: ({ color, focused }) => (
-            <Text
-              style={{
-                color,
-                fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium",
-                fontSize: 10,
-                letterSpacing: 0.3,
-              }}
-            >
-              SEARCH
-            </Text>
-          ),
         }}
       />
       <Tabs.Screen
@@ -177,18 +150,6 @@ function ClassicTabLayout() {
               )}
             </View>
           ),
-          tabBarLabel: ({ color, focused }) => (
-            <Text
-              style={{
-                color,
-                fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium",
-                fontSize: 10,
-                letterSpacing: 0.3,
-              }}
-            >
-              BAG
-            </Text>
-          ),
         }}
       />
       <Tabs.Screen
@@ -205,18 +166,6 @@ function ClassicTabLayout() {
             ) : (
               <Feather name="user" size={22} color={color} />
             ),
-          tabBarLabel: ({ color, focused }) => (
-            <Text
-              style={{
-                color,
-                fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium",
-                fontSize: 10,
-                letterSpacing: 0.3,
-              }}
-            >
-              ACCOUNT
-            </Text>
-          ),
         }}
       />
     </Tabs>

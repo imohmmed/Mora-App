@@ -327,9 +327,9 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
   const pillBorder = isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,1.0)";
   const inactiveTint = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.44)";
 
-  const TAB_W = 72;  // width per tab
+  const TAB_W = 64;  // width per tab (icons only — no label)
   const BAR_PADDING = 6;
-  const PILL_H = 52;
+  const PILL_H = 48;
 
   // Interpolate pill left position
   const pillLeft = pillAnim.interpolate({
@@ -424,19 +424,6 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
                 )}
               </View>
 
-              {/* Label */}
-              <Text
-                style={[
-                  styles.label,
-                  {
-                    color: focused ? PRIMARY : inactiveTint,
-                    fontFamily: focused ? "Inter_700Bold" : "Inter_500Medium",
-                    opacity: focused ? 1 : 0.85,
-                  },
-                ]}
-              >
-                {meta.label}
-              </Text>
             </Pressable>
           );
         })}
@@ -472,11 +459,10 @@ const styles = StyleSheet.create({
     overflow: "visible",
   },
   tab: {
-    width: 72,
-    height: 52,
+    width: 64,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
-    gap: 3,
     zIndex: 1,
   },
   iconWrap: {
