@@ -123,82 +123,121 @@ function useGlassCSS() {
       document.head.appendChild(el);
     }
     el.textContent = `
-      /* ══ LAYER 1 — backdrop colour amplification (all browsers) ════════════ */
 
-      /* Light mode */
-      .mora-lg-bar {
-        isolation: isolate;
-        backdrop-filter:          blur(8px) saturate(280%) brightness(1.06);
-        -webkit-backdrop-filter:  blur(8px) saturate(280%) brightness(1.06);
-        transition: background 0.35s ease, box-shadow 0.35s ease;
-        box-shadow:
-          0 16px 48px rgba(0,0,0,0.15),
-          0 4px  16px rgba(0,0,0,0.08),
-          inset 0 1.5px 0 rgba(255,255,255,0.88),
-          inset 0 -0.5px 0 rgba(0,0,0,0.05);
+      /* ══ GRADIENT FADE — blurs content into tab bar from above ═════════════
+         A tall gradient mask sits above the floating bar so the page content
+         softly dissolves before reaching the glass.  Light/dark are toggled
+         by adding .mora-lg-dark to the wrapper via JS (isDark prop).        */
+
+      .mora-lg-wrapper {
+        /* clip so ::before stays inside the wrapper */
+        overflow: visible;
+      }
+      .mora-lg-wrapper::before {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: -40px;
+        right: -40px;
+        height: 110px;
+        pointer-events: none;
+        z-index: 0;
+        /* Light: fade to white */
+        background: linear-gradient(
+          to bottom,
+          transparent          0%,
+          rgba(255,255,255,0.55) 45%,
+          rgba(255,255,255,0.90) 80%,
+          rgba(255,255,255,0.97) 100%
+        );
+      }
+      /* Dark: fade to black */
+      .mora-lg-wrapper.mora-lg-dark::before {
+        background: linear-gradient(
+          to bottom,
+          transparent       0%,
+          rgba(0,0,0,0.50)  45%,
+          rgba(0,0,0,0.85)  80%,
+          rgba(0,0,0,0.94)  100%
+        );
       }
 
-      /* Dark mode */
+      /* ══ LAYER 1 — backdrop colour amplification ════════════════════════════ */
+
+      /* ── Light mode bar ─────────────────────────────────────────────────── */
+      .mora-lg-bar {
+        isolation: isolate;
+        backdrop-filter:         blur(14px) saturate(200%) brightness(1.05);
+        -webkit-backdrop-filter: blur(14px) saturate(200%) brightness(1.05);
+        transition: background 0.35s ease, box-shadow 0.35s ease;
+        box-shadow:
+          0 16px 48px rgba(0,0,0,0.13),
+          0 4px  16px rgba(0,0,0,0.07),
+          inset 0 1.5px 0 rgba(255,255,255,0.92),
+          inset 0 -0.5px 0 rgba(0,0,0,0.04);
+      }
+
+      /* ── Dark mode bar ──────────────────────────────────────────────────── */
       @media (prefers-color-scheme: dark) {
         .mora-lg-bar {
-          backdrop-filter:          blur(8px) saturate(320%) brightness(1.22);
-          -webkit-backdrop-filter:  blur(8px) saturate(320%) brightness(1.22);
+          backdrop-filter:         blur(14px) saturate(240%) brightness(1.18);
+          -webkit-backdrop-filter: blur(14px) saturate(240%) brightness(1.18);
           box-shadow:
-            0 16px 48px rgba(0,0,0,0.55),
-            0 4px  16px rgba(0,0,0,0.38),
-            inset 0 1.5px 0 rgba(255,255,255,0.20),
-            inset 0 -0.5px 0 rgba(0,0,0,0.32);
+            0 16px 48px rgba(0,0,0,0.60),
+            0 4px  16px rgba(0,0,0,0.42),
+            inset 0 1.5px 0 rgba(255,255,255,0.18),
+            inset 0 -0.5px 0 rgba(0,0,0,0.35);
         }
       }
 
-      /* ── LAYER 3 upgrade — SVG refraction (Chrome / Edge only) ──────────── */
+      /* ── LAYER 3 — SVG refraction upgrade (Chrome / Edge only) ─────────── */
       @supports (backdrop-filter: url("#mora-glass-filter")) {
         .mora-lg-bar {
           backdrop-filter:
-            url("#mora-glass-filter") blur(4px) saturate(240%) brightness(1.06);
+            url("#mora-glass-filter") blur(6px) saturate(180%) brightness(1.05);
           -webkit-backdrop-filter:
-            url("#mora-glass-filter") blur(4px) saturate(240%) brightness(1.06);
+            url("#mora-glass-filter") blur(6px) saturate(180%) brightness(1.05);
         }
         @media (prefers-color-scheme: dark) {
           .mora-lg-bar {
             backdrop-filter:
-              url("#mora-glass-filter") blur(4px) saturate(280%) brightness(1.22);
+              url("#mora-glass-filter") blur(6px) saturate(220%) brightness(1.18);
             -webkit-backdrop-filter:
-              url("#mora-glass-filter") blur(4px) saturate(280%) brightness(1.22);
+              url("#mora-glass-filter") blur(6px) saturate(220%) brightness(1.18);
           }
         }
       }
 
-      /* ── active pill ────────────────────────────────────────────────────── */
+      /* ── Active pill ────────────────────────────────────────────────────── */
       .mora-lg-pill {
-        backdrop-filter:         blur(6px) saturate(240%) brightness(1.08);
-        -webkit-backdrop-filter: blur(6px) saturate(240%) brightness(1.08);
+        backdrop-filter:         blur(10px) saturate(180%) brightness(1.08);
+        -webkit-backdrop-filter: blur(10px) saturate(180%) brightness(1.08);
         transition: background 0.28s ease, box-shadow 0.28s ease;
         box-shadow:
-          0 4px 18px rgba(0,0,0,0.10),
-          0 1px 4px  rgba(0,0,0,0.06),
-          inset 0 1px 0 rgba(255,255,255,0.95),
+          0 4px 18px rgba(0,0,0,0.09),
+          0 1px 4px  rgba(0,0,0,0.05),
+          inset 0 1px 0 rgba(255,255,255,0.96),
           inset 0 -0.5px 0 rgba(0,0,0,0.04);
       }
       @media (prefers-color-scheme: dark) {
         .mora-lg-pill {
-          backdrop-filter:         blur(6px) saturate(260%) brightness(1.45);
-          -webkit-backdrop-filter: blur(6px) saturate(260%) brightness(1.45);
+          backdrop-filter:         blur(10px) saturate(220%) brightness(1.40);
+          -webkit-backdrop-filter: blur(10px) saturate(220%) brightness(1.40);
           box-shadow:
-            0 4px 18px rgba(0,0,0,0.36),
-            0 1px 4px  rgba(0,0,0,0.22),
-            inset 0 1px 0 rgba(255,255,255,0.32),
-            inset 0 -0.5px 0 rgba(0,0,0,0.18);
+            0 4px 18px rgba(0,0,0,0.40),
+            0 1px 4px  rgba(0,0,0,0.24),
+            inset 0 1px 0 rgba(255,255,255,0.28),
+            inset 0 -0.5px 0 rgba(0,0,0,0.20);
         }
       }
 
-      /* ── press state ────────────────────────────────────────────────────── */
+      /* ── Press state ────────────────────────────────────────────────────── */
       .mora-lg-tab:active { opacity: 0.68; transform: scale(0.93); }
       .mora-lg-tab { transition: opacity 0.14s ease, transform 0.14s ease; cursor: pointer; }
 
-      /* ══ LAYER 2 — specular sheen (::before) — all browsers ════════════════ */
-      /* Simulates light catching the curved glass edge */
+      /* ══ LAYER 2 — specular sheen ::before (all browsers) ══════════════════ */
 
+      /* Light: bright top-left catch, strong top rim */
       .mora-lg-bar::before {
         content: '';
         position: absolute;
@@ -206,37 +245,36 @@ function useGlassCSS() {
         border-radius: inherit;
         pointer-events: none;
         z-index: 1;
-        /* Top-left specular catch */
         background: linear-gradient(
           145deg,
-          rgba(255,255,255,0.52) 0%,
-          rgba(255,255,255,0.06) 38%,
-          transparent 54%
+          rgba(255,255,255,0.60) 0%,
+          rgba(255,255,255,0.08) 40%,
+          transparent 58%
         );
-        /* Four-side rim: bright top, subtle sides and bottom */
         box-shadow:
-          inset 0  1.5px 0 rgba(255,255,255,0.82),
-          inset 0 -1px   0 rgba(255,255,255,0.14),
-          inset  1px 0   0 rgba(255,255,255,0.18),
-          inset -1px 0   0 rgba(255,255,255,0.10);
+          inset 0  1.5px 0 rgba(255,255,255,0.90),
+          inset 0 -1px   0 rgba(255,255,255,0.18),
+          inset  1px 0   0 rgba(255,255,255,0.22),
+          inset -1px 0   0 rgba(255,255,255,0.12);
       }
+      /* Dark: dimmer catch, cool-tinted rim */
       @media (prefers-color-scheme: dark) {
         .mora-lg-bar::before {
           background: linear-gradient(
             145deg,
-            rgba(255,255,255,0.16) 0%,
-            rgba(255,255,255,0.02) 38%,
-            transparent 54%
+            rgba(255,255,255,0.14) 0%,
+            rgba(255,255,255,0.02) 40%,
+            transparent 58%
           );
           box-shadow:
-            inset 0  1.5px 0 rgba(255,255,255,0.22),
-            inset 0 -1px   0 rgba(255,255,255,0.05),
+            inset 0  1.5px 0 rgba(255,255,255,0.20),
+            inset 0 -1px   0 rgba(100,140,255,0.08),
             inset  1px 0   0 rgba(255,255,255,0.08),
             inset -1px 0   0 rgba(255,255,255,0.05);
         }
       }
 
-      /* Pill specular sheen */
+      /* Pill sheen */
       .mora-lg-pill::before {
         content: '';
         position: absolute;
@@ -245,18 +283,18 @@ function useGlassCSS() {
         pointer-events: none;
         background: linear-gradient(
           150deg,
-          rgba(255,255,255,0.82) 0%,
-          rgba(255,255,255,0.10) 50%,
-          transparent 65%
+          rgba(255,255,255,0.88) 0%,
+          rgba(255,255,255,0.12) 52%,
+          transparent 68%
         );
       }
       @media (prefers-color-scheme: dark) {
         .mora-lg-pill::before {
           background: linear-gradient(
             150deg,
-            rgba(255,255,255,0.20) 0%,
-            rgba(255,255,255,0.02) 50%,
-            transparent 65%
+            rgba(255,255,255,0.18) 0%,
+            rgba(255,255,255,0.02) 52%,
+            transparent 68%
           );
         }
       }
@@ -294,14 +332,13 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
     }).start();
   }, [pillTarget]);
 
-  // Glass colours — very low alpha so saturate() picks up background colours.
-  // The high CSS saturation (280–320%) amplifies what shows through the glass,
-  // making the bar shift colour as different page sections scroll beneath it.
-  const barBg    = isDark ? "rgba(14,14,18,0.18)"   : "rgba(255,255,255,0.16)";
-  const barBorder = isDark ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.85)";
-  const pillBg   = isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.72)";
-  const pillBorder = isDark ? "rgba(255,255,255,0.26)" : "rgba(255,255,255,0.95)";
-  const inactiveTint = isDark ? "rgba(255,255,255,0.58)" : "rgba(0,0,0,0.46)";
+  // Glass colours — readable but translucent.
+  // Light: warm white glass. Dark: deep charcoal glass — clearly different.
+  const barBg      = isDark ? "rgba(22,22,30,0.62)"   : "rgba(255,255,255,0.68)";
+  const barBorder  = isDark ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.92)";
+  const pillBg     = isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.88)";
+  const pillBorder = isDark ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,1.0)";
+  const inactiveTint = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.44)";
 
   const TAB_W = 72;  // width per tab
   const BAR_PADDING = 6;
@@ -315,6 +352,8 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
 
   return (
     <View
+      // @ts-ignore className valid on web
+      className={`mora-lg-wrapper${isDark ? " mora-lg-dark" : ""}`}
       style={[
         styles.wrapper,
         { paddingBottom: insets.bottom > 0 ? insets.bottom : 12 },
