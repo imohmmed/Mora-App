@@ -16,6 +16,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
+import { MoraLogo } from "@/components/MoraLogo";
 import { fetchProduct } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
@@ -119,6 +120,7 @@ export default function ProductDetailScreen() {
         >
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </Pressable>
+        <MoraLogo size="small" />
         <Pressable
           onPress={() => router.push("/(tabs)/cart")}
           style={styles.cartHeaderBtn}
