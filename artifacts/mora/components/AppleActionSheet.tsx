@@ -24,8 +24,8 @@ import {
   StyleSheet,
   Text,
   View,
-  useColorScheme,
 } from "react-native";
+import { useTheme } from "@/context/ThemeContext";
 
 const PRIMARY = "#0274C1";
 
@@ -55,7 +55,8 @@ export function AppleActionSheet({
 }: Props) {
   const slideAnim = useRef(new Animated.Value(400)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
-  const isDark = useColorScheme() === "dark";
+  const { resolvedScheme } = useTheme();
+  const isDark = resolvedScheme === "dark";
 
   useEffect(() => {
     if (visible) {

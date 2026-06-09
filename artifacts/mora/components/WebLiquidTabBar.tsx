@@ -26,40 +26,15 @@ import {
   StyleSheet,
   Text,
   View,
-  useColorScheme,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useCart } from "@/context/CartContext";
+import { useTheme } from "@/context/ThemeContext";
 
 const PRIMARY = "#0274C1";
 const HIDDEN = new Set(["wishlist"]);
-
-// ─── Reliable dark-mode hook ───────────────────────────────────────────────
-// React Native's useColorScheme() is unreliable on Safari iOS / web.
-// On web we use window.matchMedia and listen for changes.
-function useDarkMode(): boolean {
-  const rnScheme = useColorScheme();
-  const [webDark, setWebDark] = useState<boolean>(() => {
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      return window.matchMedia("(prefers-color-scheme: dark)").matches;
-    }
-    return rnScheme === "dark";
-  });
-
-  useEffect(() => {
-    if (Platform.OS !== "web" || typeof window === "undefined") return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e: MediaQueryListEvent) => setWebDark(e.matches);
-    mq.addEventListener("change", handler);
-    // Sync on mount in case it changed before listener attached
-    setWebDark(mq.matches);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-
-  return Platform.OS === "web" ? webDark : rnScheme === "dark";
-}
 
 type IconName = React.ComponentProps<typeof Feather>["name"];
 const ROUTE_META: Record<string, { label: string; icon: IconName; iconFocused: IconName }> = {
@@ -298,7 +273,8 @@ function useGlassCSS() {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBarProps) {
-  const isDark = useDarkMode();
+  const { resolvedScheme } = useTheme();
+  const isDark = resolvedScheme === "dark";
   const insets = useSafeAreaInsets();
   const { totalItems } = useCart();
 

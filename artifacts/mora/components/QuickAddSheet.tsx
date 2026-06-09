@@ -13,9 +13,9 @@ import {
   StyleSheet,
   Text,
   View,
-  useColorScheme,
 } from "react-native";
 import { Image } from "expo-image";
+import { useTheme } from "@/context/ThemeContext";
 import type { Product, Variant } from "@/lib/types";
 
 const PRIMARY = "#0274C1";
@@ -28,8 +28,8 @@ interface Props {
 }
 
 export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
-  const scheme = useColorScheme();
-  const isDark = scheme === "dark";
+  const { resolvedScheme } = useTheme();
+  const isDark = resolvedScheme === "dark";
 
   const slideAnim = useRef(new Animated.Value(500)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
