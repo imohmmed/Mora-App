@@ -78,9 +78,8 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
     }
   }, [visible]);
 
-  if (!product) return null;
-
-  const variants = product.variants ?? [];
+  // ── All hooks must run before any conditional return (Rules of Hooks) ────
+  const variants = product?.variants ?? [];
 
   // ── Compute option axes ───────────────────────────────────────────────────
   const opt1Values = useMemo(() => (
@@ -106,6 +105,9 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
       (!hasOpt2 || v.option2 === selectedOpt2)
     ) ?? null;
   }, [selectedOpt1, selectedOpt2, variants, hasOpt1, hasOpt2]);
+
+  // Early return AFTER all hooks
+  if (!product) return null;
 
   // Is an option1 value entirely out of stock across all option2s?
   const isOpt1OOS = (val: string) =>
