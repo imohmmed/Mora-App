@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useColorScheme,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,6 +23,7 @@ import { useCart } from "@/context/CartContext";
 import { fetchProduct } from "@/lib/api";
 import type { Product } from "@/lib/types";
 
+const PRIMARY = "#0274C1";
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
 
@@ -51,6 +53,8 @@ function WishlistSkeleton() {
 
 function WishlistCard({ product }: { product: Product }) {
   const colors = useColors();
+  const scheme = useColorScheme();
+  const isDark = scheme === "dark";
   const router = useRouter();
   const { toggle } = useWishlist();
   const { addItem } = useCart();
@@ -100,7 +104,7 @@ function WishlistCard({ product }: { product: Product }) {
           )}
         </View>
         <Pressable
-          style={[styles.addBtn, { backgroundColor: colors.foreground }]}
+          style={[styles.addBtn, { backgroundColor: PRIMARY }]}
           onPress={() => {
             const variant = product.variants?.[0];
             addItem({
@@ -117,7 +121,7 @@ function WishlistCard({ product }: { product: Product }) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           }}
         >
-          <Text style={styles.addBtnText}>ADD TO BAG</Text>
+          <Text style={[styles.addBtnText, { color: isDark ? "#FFFFFF" : "#000000" }]}>ADD TO BAG</Text>
         </Pressable>
       </View>
     </Pressable>

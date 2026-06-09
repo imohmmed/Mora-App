@@ -198,14 +198,19 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
     (r) => r.key === state.routes[state.index]?.key
   );
 
+  // When on a hidden route (e.g. wishlist), activeVisibleIndex is -1.
+  // Clamp to 0 so the pill doesn't animate off-screen, and hide it via opacity.
+  const isHiddenRoute = activeVisibleIndex === -1;
+  const pillTarget = isHiddenRoute ? 0 : activeVisibleIndex;
+
   useEffect(() => {
     Animated.spring(pillAnim, {
-      toValue: activeVisibleIndex,
+      toValue: pillTarget,
       useNativeDriver: false,
       tension: 260,
       friction: 22,
     }).start();
-  }, [activeVisibleIndex]);
+  }, [pillTarget]);
 
   // Glass colours — Apple-style: opaque enough to be seen on white
   const barBg    = isDark ? "rgba(22,22,26,0.82)"  : "rgba(234,235,240,0.88)";
@@ -256,6 +261,7 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
               height: PILL_H,
               backgroundColor: pillBg,
               borderColor: pillBorder,
+              opacity: isHiddenRoute ? 0 : 1,
             },
           ]}
         />
