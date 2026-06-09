@@ -55,54 +55,59 @@ function useGlassCSS(isDark: boolean) {
     }
     // language=CSS
     el.textContent = `
-      /* ── bar shell ─────────────────────────────────────────────────────── */
+      /* ── bar shell — Apple-style frosted glass ──────────────────────────── */
       .mora-lg-bar {
-        backdrop-filter: blur(28px) saturate(220%) brightness(${isDark ? "1.12" : "1.06"});
-        -webkit-backdrop-filter: blur(28px) saturate(220%) brightness(${isDark ? "1.12" : "1.06"});
+        backdrop-filter: blur(40px) saturate(180%) brightness(${isDark ? "1.15" : "1.04"});
+        -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(${isDark ? "1.15" : "1.04"});
         transition: background 0.3s ease;
-        box-shadow: 0 8px 32px rgba(0,0,0,${isDark ? "0.35" : "0.14"}),
-                    0 2px 8px rgba(0,0,0,${isDark ? "0.25" : "0.08"}),
-                    inset 0 1px 0 rgba(255,255,255,${isDark ? "0.12" : "0.55"});
+        box-shadow:
+          0 16px 48px rgba(0,0,0,${isDark ? "0.50" : "0.22"}),
+          0 4px 16px  rgba(0,0,0,${isDark ? "0.35" : "0.14"}),
+          inset 0 1.5px 0 rgba(255,255,255,${isDark ? "0.18" : "0.80"}),
+          inset 0 -0.5px 0 rgba(0,0,0,${isDark ? "0.20" : "0.06"});
       }
       /* ── active pill ────────────────────────────────────────────────────── */
       .mora-lg-pill {
-        backdrop-filter: blur(8px) saturate(200%) brightness(${isDark ? "1.3" : "1.15"});
-        -webkit-backdrop-filter: blur(8px) saturate(200%) brightness(${isDark ? "1.3" : "1.15"});
-        transition: background 0.25s ease, box-shadow 0.25s ease;
-        box-shadow: 0 2px 12px rgba(0,0,0,${isDark ? "0.25" : "0.10"}),
-                    inset 0 1px 0 rgba(255,255,255,${isDark ? "0.20" : "0.70"});
+        backdrop-filter: blur(20px) saturate(180%) brightness(${isDark ? "1.4" : "1.08"});
+        -webkit-backdrop-filter: blur(20px) saturate(180%) brightness(${isDark ? "1.4" : "1.08"});
+        transition: background 0.28s ease, box-shadow 0.28s ease;
+        box-shadow:
+          0 4px 18px rgba(0,0,0,${isDark ? "0.30" : "0.14"}),
+          0 1px 4px  rgba(0,0,0,${isDark ? "0.20" : "0.08"}),
+          inset 0 1px 0 rgba(255,255,255,${isDark ? "0.30" : "0.90"}),
+          inset 0 -0.5px 0 rgba(0,0,0,${isDark ? "0.15" : "0.04"});
       }
       /* ── press state ────────────────────────────────────────────────────── */
-      .mora-lg-tab:active { opacity: 0.75; transform: scale(0.96); }
-      .mora-lg-tab { transition: opacity 0.15s ease, transform 0.15s ease; cursor: pointer; }
+      .mora-lg-tab:active { opacity: 0.70; transform: scale(0.94); }
+      .mora-lg-tab { transition: opacity 0.14s ease, transform 0.14s ease; cursor: pointer; }
 
-      /* ── glass sheen overlay (pseudo-element on bar) ────────────────────── */
+      /* ── glass sheen on bar (top-edge light catch) ───────────────────────── */
       .mora-lg-bar::before {
         content: '';
         position: absolute;
         inset: 0;
         border-radius: inherit;
         background: linear-gradient(
-          160deg,
+          170deg,
           ${isDark
-            ? "rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0.05) 100%"
-            : "rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.20) 100%"
+            ? "rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.01) 40%, rgba(255,255,255,0.04) 100%"
+            : "rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.05) 48%, rgba(255,255,255,0.18) 100%"
           }
         );
         pointer-events: none;
       }
 
-      /* ── glass sheen overlay (pseudo-element on pill) ───────────────────── */
+      /* ── glass sheen on pill ────────────────────────────────────────────── */
       .mora-lg-pill::before {
         content: '';
         position: absolute;
         inset: 0;
         border-radius: inherit;
         background: linear-gradient(
-          150deg,
+          155deg,
           ${isDark
-            ? "rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.03) 60%"
-            : "rgba(255,255,255,0.70) 0%, rgba(255,255,255,0.10) 60%"
+            ? "rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 55%"
+            : "rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.12) 55%"
           }
         );
         pointer-events: none;
@@ -135,12 +140,12 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
     }).start();
   }, [activeVisibleIndex]);
 
-  // Glass colours — more opaque so visible on any background (including white)
-  const barBg    = isDark ? "rgba(18,18,22,0.72)"  : "rgba(248,249,252,0.78)";
-  const barBorder = isDark ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.90)";
-  const pillBg   = isDark ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.70)";
-  const pillBorder = isDark ? "rgba(255,255,255,0.30)" : "rgba(255,255,255,0.95)";
-  const inactiveTint = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.50)";
+  // Glass colours — Apple-style: opaque enough to be seen on white
+  const barBg    = isDark ? "rgba(22,22,26,0.82)"  : "rgba(234,235,240,0.88)";
+  const barBorder = isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.85)";
+  const pillBg   = isDark ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.96)";
+  const pillBorder = isDark ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,1.0)";
+  const inactiveTint = isDark ? "rgba(255,255,255,0.50)" : "rgba(0,0,0,0.42)";
 
   const TAB_W = 72;  // width per tab
   const BAR_PADDING = 6;
@@ -269,8 +274,8 @@ const styles = StyleSheet.create({
   },
   bar: {
     flexDirection: "row",
-    borderRadius: 22,
-    borderWidth: 1,
+    borderRadius: 28,
+    borderWidth: 1.5,
     overflow: "visible",
     paddingHorizontal: 6,
     paddingVertical: 6,
@@ -279,7 +284,7 @@ const styles = StyleSheet.create({
   pill: {
     position: "absolute",
     top: 6,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     overflow: "visible",
   },

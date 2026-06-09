@@ -182,7 +182,8 @@ function GuestScreen({
 }: { onSignIn: () => void; onJoin: () => void; onOpenSettings: () => void; insets: any }) {
   const colors = useColors();
   const topPad = Platform.OS === "web" ? 0 : insets.top;
-  const botPad = Platform.OS === "web" ? 0 : insets.bottom;
+  // On web the floating tab bar is ~90px tall, so push content above it
+  const botPad = Platform.OS === "web" ? 90 : insets.bottom;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
