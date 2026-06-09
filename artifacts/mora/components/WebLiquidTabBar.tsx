@@ -390,6 +390,14 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
           const isBag = route.name === "cart";
 
           const onPress = () => {
+            // Chat tab — toggle Chatwoot widget on web instead of navigating
+            if (route.name === "chat") {
+              const cw = (window as any).$chatwoot;
+              if (cw) {
+                cw.toggle();
+              }
+              return;
+            }
             const event = navigation.emit({
               type: "tabPress",
               target: route.key,
