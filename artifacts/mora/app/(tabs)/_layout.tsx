@@ -70,8 +70,8 @@ function ClassicTabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.mutedForeground,
+        tabBarActiveTintColor: isDark ? "#FFFFFF" : "#000000",
+        tabBarInactiveTintColor: isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.40)",
         // Web uses WebLiquidTabBar above, so hide the default bar on web
         tabBarStyle: isWeb
           ? { display: "none" }

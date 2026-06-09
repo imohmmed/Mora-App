@@ -325,7 +325,8 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
   const barBorder  = isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.92)";
   const pillBg     = isDark ? "rgba(50,50,60,0.80)"   : "rgba(255,255,255,0.88)";
   const pillBorder = isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,1.0)";
-  const inactiveTint = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.44)";
+  const activeTint   = isDark ? "#FFFFFF" : "#000000";
+  const inactiveTint = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.40)";
 
   const TAB_W = 64;  // width per tab (icons only — no label)
   const BAR_PADDING = 6;
@@ -412,7 +413,7 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
                 <Feather
                   name={focused ? meta.iconFocused : meta.icon}
                   size={21}
-                  color={focused ? PRIMARY : inactiveTint}
+                  color={focused ? activeTint : inactiveTint}
                 />
                 {/* Cart badge */}
                 {isBag && totalItems > 0 && (
