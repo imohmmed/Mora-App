@@ -214,22 +214,22 @@ function GuestScreen({
           <Pressable
             style={({ pressed }) => [
               styles.signInBtn,
-              { backgroundColor: colors.foreground, opacity: pressed ? 0.85 : 1 },
+              { backgroundColor: PRIMARY, opacity: pressed ? 0.85 : 1 },
             ]}
             onPress={onSignIn}
             testID="btn-sign-in"
           >
-            <Text style={[styles.signInBtnText, { color: colors.background }]}>SIGN IN</Text>
+            <Text style={[styles.signInBtnText, { color: "#FFFFFF" }]}>SIGN IN</Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [
               styles.joinBtn,
-              { borderColor: colors.foreground, opacity: pressed ? 0.85 : 1 },
+              { borderColor: PRIMARY, opacity: pressed ? 0.85 : 1 },
             ]}
             onPress={onJoin}
             testID="btn-join"
           >
-            <Text style={[styles.joinBtnText, { color: colors.foreground }]}>JOIN</Text>
+            <Text style={[styles.joinBtnText, { color: PRIMARY }]}>JOIN</Text>
           </Pressable>
         </View>
 

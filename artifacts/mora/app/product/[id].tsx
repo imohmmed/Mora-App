@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+const PRIMARY = "#0274C1";
 import {
   Platform,
   Pressable,
@@ -300,7 +301,7 @@ export default function ProductDetailScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.addBtn,
-              { backgroundColor: added ? "#43A047" : colors.foreground, opacity: pressed ? 0.9 : 1 },
+              { backgroundColor: added ? "#43A047" : PRIMARY, opacity: pressed ? 0.9 : 1 },
             ]}
             onPress={handleAddToCart}
             testID="add-to-bag-btn"

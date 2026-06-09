@@ -1,4 +1,5 @@
 import React from "react";
+const PRIMARY = "#0274C1";
 import {
   Platform,
   Pressable,
@@ -195,7 +196,7 @@ export default function CartScreen() {
           style={({ pressed }) => [
             styles.checkoutBtn,
             {
-              backgroundColor: colors.foreground,
+              backgroundColor: PRIMARY,
               marginHorizontal: 16,
               marginTop: 16,
               opacity: pressed ? 0.85 : 1,
