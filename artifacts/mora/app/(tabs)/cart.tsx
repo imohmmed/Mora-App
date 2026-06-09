@@ -58,7 +58,7 @@ export default function CartScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.shopBtn,
-              { backgroundColor: colors.foreground, opacity: pressed ? 0.85 : 1 },
+              { backgroundColor: "#0274C1", opacity: pressed ? 0.85 : 1 },
             ]}
           >
             <Text style={styles.shopBtnText}>CONTINUE SHOPPING</Text>
