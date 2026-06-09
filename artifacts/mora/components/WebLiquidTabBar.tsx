@@ -157,17 +157,17 @@ function useGlassCSS() {
          ALL dark-mode rules use .mora-lg-dark class (set via JS isDark prop),
          NOT @media prefers-color-scheme, because the app controls theme itself. */
 
-      /* ── Light mode bar ─────────────────────────────────────────────────── */
+      /* ── Light mode bar — inverted mirror of dark ───────────────────────── */
       .mora-lg-bar {
         isolation: isolate;
-        backdrop-filter:         blur(14px) saturate(180%) brightness(1.04);
-        -webkit-backdrop-filter: blur(14px) saturate(180%) brightness(1.04);
+        backdrop-filter:         blur(14px) saturate(200%) brightness(1.10);
+        -webkit-backdrop-filter: blur(14px) saturate(200%) brightness(1.10);
         transition: background 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
         box-shadow:
-          0 16px 48px rgba(0,0,0,0.13),
-          0 4px  16px rgba(0,0,0,0.07),
-          inset 0 1.5px 0 rgba(255,255,255,0.92),
-          inset 0 -0.5px 0 rgba(0,0,0,0.04);
+          0 16px 48px rgba(0,0,0,0.22),
+          0 4px  16px rgba(0,0,0,0.14),
+          inset 0 1.5px 0 rgba(0,0,0,0.16),
+          inset 0 -0.5px 0 rgba(255,255,255,0.70);
       }
 
       /* ── Dark mode bar (.mora-lg-dark overrides) ────────────────────────── */
@@ -197,16 +197,16 @@ function useGlassCSS() {
         }
       }
 
-      /* ── Active pill — light ────────────────────────────────────────────── */
+      /* ── Active pill — light (inverted mirror of dark) ─────────────────── */
       .mora-lg-pill {
-        backdrop-filter:         blur(10px) saturate(160%) brightness(1.06);
-        -webkit-backdrop-filter: blur(10px) saturate(160%) brightness(1.06);
+        backdrop-filter:         blur(10px) saturate(180%) brightness(1.20);
+        -webkit-backdrop-filter: blur(10px) saturate(180%) brightness(1.20);
         transition: background 0.28s ease, box-shadow 0.28s ease;
         box-shadow:
-          0 4px 18px rgba(0,0,0,0.09),
-          0 1px 4px  rgba(0,0,0,0.05),
-          inset 0 1px 0 rgba(255,255,255,0.96),
-          inset 0 -0.5px 0 rgba(0,0,0,0.04);
+          0 4px 18px rgba(0,0,0,0.20),
+          0 1px 4px  rgba(0,0,0,0.12),
+          inset 0 1px 0 rgba(0,0,0,0.14),
+          inset 0 -0.5px 0 rgba(255,255,255,0.80);
       }
       /* ── Active pill — dark ─────────────────────────────────────────────── */
       .mora-lg-dark .mora-lg-pill {
@@ -225,7 +225,7 @@ function useGlassCSS() {
 
       /* ══ LAYER 2 — specular sheen ::before ══════════════════════════════════ */
 
-      /* Light: bright catch + strong rim */
+      /* Light: inverted dark — dim black catch + dark rim */
       .mora-lg-bar::before {
         content: '';
         position: absolute;
@@ -235,15 +235,15 @@ function useGlassCSS() {
         z-index: 1;
         background: linear-gradient(
           145deg,
-          rgba(255,255,255,0.60) 0%,
-          rgba(255,255,255,0.08) 40%,
+          rgba(0,0,0,0.08) 0%,
+          rgba(0,0,0,0.01) 40%,
           transparent 58%
         );
         box-shadow:
-          inset 0  1.5px 0 rgba(255,255,255,0.90),
-          inset 0 -1px   0 rgba(255,255,255,0.18),
-          inset  1px 0   0 rgba(255,255,255,0.22),
-          inset -1px 0   0 rgba(255,255,255,0.12);
+          inset 0  1.5px 0 rgba(0,0,0,0.16),
+          inset 0 -1px   0 rgba(0,0,0,0.06),
+          inset  1px 0   0 rgba(0,0,0,0.07),
+          inset -1px 0   0 rgba(0,0,0,0.04);
       }
       /* Dark: dim catch + cool rim */
       .mora-lg-dark .mora-lg-bar::before {
@@ -260,7 +260,7 @@ function useGlassCSS() {
           inset -1px 0   0 rgba(255,255,255,0.04);
       }
 
-      /* Pill sheen — light */
+      /* Pill sheen — light (inverted dark: dim black catch) */
       .mora-lg-pill::before {
         content: '';
         position: absolute;
@@ -269,8 +269,8 @@ function useGlassCSS() {
         pointer-events: none;
         background: linear-gradient(
           150deg,
-          rgba(255,255,255,0.88) 0%,
-          rgba(255,255,255,0.12) 52%,
+          rgba(0,0,0,0.10) 0%,
+          rgba(0,0,0,0.01) 52%,
           transparent 68%
         );
       }
@@ -321,10 +321,11 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
   // Glass colours.
   // Dark: high alpha so charcoal colour dominates over backdrop blur.
   // Light: slightly transparent — 52% so content shows through frosted glass.
-  const barBg      = isDark ? "rgba(18,18,24,0.78)"   : "rgba(255,255,255,0.52)";
-  const barBorder  = isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.92)";
-  const pillBg     = isDark ? "rgba(50,50,60,0.80)"   : "rgba(255,255,255,0.88)";
-  const pillBorder = isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,1.0)";
+  // Light: inverted mirror of dark — solid light bg + dark borders + grey pill
+  const barBg      = isDark ? "rgba(18,18,24,0.82)"    : "rgba(245,245,248,0.82)";
+  const barBorder  = isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.14)";
+  const pillBg     = isDark ? "rgba(50,50,60,0.82)"    : "rgba(208,208,215,0.88)";
+  const pillBorder = isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.18)";
   const activeTint   = isDark ? "#FFFFFF" : "#000000";
   const inactiveTint = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.40)";
 
