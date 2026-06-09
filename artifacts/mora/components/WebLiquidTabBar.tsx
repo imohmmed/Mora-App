@@ -135,12 +135,12 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
     }).start();
   }, [activeVisibleIndex]);
 
-  // Glass colours
-  const barBg    = isDark ? "rgba(18,18,22,0.45)"  : "rgba(255,255,255,0.22)";
-  const barBorder = isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.65)";
-  const pillBg   = isDark ? "rgba(255,255,255,0.13)" : "rgba(255,255,255,0.45)";
-  const pillBorder = isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.80)";
-  const inactiveTint = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.45)";
+  // Glass colours — more opaque so visible on any background (including white)
+  const barBg    = isDark ? "rgba(18,18,22,0.72)"  : "rgba(248,249,252,0.78)";
+  const barBorder = isDark ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.90)";
+  const pillBg   = isDark ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.70)";
+  const pillBorder = isDark ? "rgba(255,255,255,0.30)" : "rgba(255,255,255,0.95)";
+  const inactiveTint = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.50)";
 
   const TAB_W = 72;  // width per tab
   const BAR_PADDING = 6;
