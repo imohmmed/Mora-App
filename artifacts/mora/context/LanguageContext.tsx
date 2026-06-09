@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export type LangCode = "en" | "ar" | "fr";
+export type LangCode = "en" | "ar";
 
 export interface Language {
   code: LangCode;
@@ -13,7 +13,6 @@ export interface Language {
 export const LANGUAGES: Language[] = [
   { code: "en", label: "English",  nativeLabel: "English",  flag: "🇺🇸" },
   { code: "ar", label: "Arabic",   nativeLabel: "العربية",  flag: "🇸🇦" },
-  { code: "fr", label: "French",   nativeLabel: "Français", flag: "🇫🇷" },
 ];
 
 interface LanguageContextType {
@@ -35,7 +34,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((val) => {
-      if (val === "en" || val === "ar" || val === "fr") {
+      if (val === "en" || val === "ar") {
         setLangState(val);
       }
     });

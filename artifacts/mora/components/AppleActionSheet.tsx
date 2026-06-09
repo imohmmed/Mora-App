@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 12,
-    paddingBottom: 32,
+    paddingBottom: 12,
     gap: 8,
   },
   card: {
