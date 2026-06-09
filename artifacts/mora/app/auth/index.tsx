@@ -18,7 +18,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
@@ -163,6 +163,9 @@ export default function AuthScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: bg }]}>
+      {/* Remove route name from browser title bar */}
+      <Stack.Screen options={{ title: "", headerShown: false }} />
+
       {/* ── Close (X) only — no back arrow ── */}
       <Pressable
         style={[styles.closeBtn, { top: topPad + 12 }]}
