@@ -14,7 +14,7 @@
  * since React Native Web passes unknown CSS properties straight to the DOM.
  */
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -33,6 +33,31 @@ import { useCart } from "@/context/CartContext";
 const PRIMARY = "#0274C1";
 const HIDDEN = new Set(["wishlist"]);
 
+// ─── Reliable dark-mode hook ───────────────────────────────────────────────
+// React Native's useColorScheme() is unreliable on Safari iOS / web.
+// On web we use window.matchMedia and listen for changes.
+function useDarkMode(): boolean {
+  const rnScheme = useColorScheme();
+  const [webDark, setWebDark] = useState<boolean>(() => {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    return rnScheme === "dark";
+  });
+
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) => setWebDark(e.matches);
+    mq.addEventListener("change", handler);
+    // Sync on mount in case it changed before listener attached
+    setWebDark(mq.matches);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  return Platform.OS === "web" ? webDark : rnScheme === "dark";
+}
+
 type IconName = React.ComponentProps<typeof Feather>["name"];
 const ROUTE_META: Record<string, { label: string; icon: IconName; iconFocused: IconName }> = {
   index:   { label: "HOME",    icon: "home",         iconFocused: "home" },
@@ -41,9 +66,10 @@ const ROUTE_META: Record<string, { label: string; icon: IconName; iconFocused: I
   account: { label: "ACCOUNT", icon: "user",         iconFocused: "user" },
 };
 
-// ─── CSS injection ────────────────────────────────────────────────────────────
-// We need backdrop-filter + transitions that can't live in RN StyleSheet.
-function useGlassCSS(isDark: boolean) {
+// ─── CSS injection ─────────────────────────────────────────────────────────
+// Uses @media (prefers-color-scheme: dark) so the bar adapts automatically
+// even before JS state updates. Inline RN styles handle backgroundColor.
+function useGlassCSS() {
   useEffect(() => {
     if (typeof document === "undefined") return;
     const id = "mora-web-liquid-glass";
@@ -53,35 +79,60 @@ function useGlassCSS(isDark: boolean) {
       el.id = id;
       document.head.appendChild(el);
     }
-    // language=CSS
     el.textContent = `
-      /* ── bar shell — Apple-style frosted glass ──────────────────────────── */
+      /* ── bar shell — light mode ─────────────────────────────────────────── */
       .mora-lg-bar {
-        backdrop-filter: blur(40px) saturate(180%) brightness(${isDark ? "1.15" : "1.04"});
-        -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(${isDark ? "1.15" : "1.04"});
-        transition: background 0.3s ease;
+        backdrop-filter: blur(40px) saturate(180%) brightness(1.04);
+        -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.04);
+        transition: background 0.3s ease, box-shadow 0.3s ease;
         box-shadow:
-          0 16px 48px rgba(0,0,0,${isDark ? "0.50" : "0.22"}),
-          0 4px 16px  rgba(0,0,0,${isDark ? "0.35" : "0.14"}),
-          inset 0 1.5px 0 rgba(255,255,255,${isDark ? "0.18" : "0.80"}),
-          inset 0 -0.5px 0 rgba(0,0,0,${isDark ? "0.20" : "0.06"});
+          0 16px 48px rgba(0,0,0,0.22),
+          0 4px 16px  rgba(0,0,0,0.14),
+          inset 0 1.5px 0 rgba(255,255,255,0.80),
+          inset 0 -0.5px 0 rgba(0,0,0,0.06);
       }
-      /* ── active pill ────────────────────────────────────────────────────── */
+      /* ── bar shell — dark mode ──────────────────────────────────────────── */
+      @media (prefers-color-scheme: dark) {
+        .mora-lg-bar {
+          backdrop-filter: blur(40px) saturate(200%) brightness(1.15);
+          -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.15);
+          box-shadow:
+            0 16px 48px rgba(0,0,0,0.55),
+            0 4px 16px  rgba(0,0,0,0.40),
+            inset 0 1.5px 0 rgba(255,255,255,0.18),
+            inset 0 -0.5px 0 rgba(0,0,0,0.30);
+        }
+      }
+
+      /* ── active pill — light ────────────────────────────────────────────── */
       .mora-lg-pill {
-        backdrop-filter: blur(20px) saturate(180%) brightness(${isDark ? "1.4" : "1.08"});
-        -webkit-backdrop-filter: blur(20px) saturate(180%) brightness(${isDark ? "1.4" : "1.08"});
+        backdrop-filter: blur(20px) saturate(180%) brightness(1.08);
+        -webkit-backdrop-filter: blur(20px) saturate(180%) brightness(1.08);
         transition: background 0.28s ease, box-shadow 0.28s ease;
         box-shadow:
-          0 4px 18px rgba(0,0,0,${isDark ? "0.30" : "0.14"}),
-          0 1px 4px  rgba(0,0,0,${isDark ? "0.20" : "0.08"}),
-          inset 0 1px 0 rgba(255,255,255,${isDark ? "0.30" : "0.90"}),
-          inset 0 -0.5px 0 rgba(0,0,0,${isDark ? "0.15" : "0.04"});
+          0 4px 18px rgba(0,0,0,0.14),
+          0 1px 4px  rgba(0,0,0,0.08),
+          inset 0 1px 0 rgba(255,255,255,0.90),
+          inset 0 -0.5px 0 rgba(0,0,0,0.04);
       }
+      /* ── active pill — dark ─────────────────────────────────────────────── */
+      @media (prefers-color-scheme: dark) {
+        .mora-lg-pill {
+          backdrop-filter: blur(20px) saturate(200%) brightness(1.4);
+          -webkit-backdrop-filter: blur(20px) saturate(200%) brightness(1.4);
+          box-shadow:
+            0 4px 18px rgba(0,0,0,0.35),
+            0 1px 4px  rgba(0,0,0,0.22),
+            inset 0 1px 0 rgba(255,255,255,0.30),
+            inset 0 -0.5px 0 rgba(0,0,0,0.18);
+        }
+      }
+
       /* ── press state ────────────────────────────────────────────────────── */
       .mora-lg-tab:active { opacity: 0.70; transform: scale(0.94); }
       .mora-lg-tab { transition: opacity 0.14s ease, transform 0.14s ease; cursor: pointer; }
 
-      /* ── glass sheen on bar (top-edge light catch) ───────────────────────── */
+      /* ── glass sheen on bar — light ─────────────────────────────────────── */
       .mora-lg-bar::before {
         content: '';
         position: absolute;
@@ -89,15 +140,24 @@ function useGlassCSS(isDark: boolean) {
         border-radius: inherit;
         background: linear-gradient(
           170deg,
-          ${isDark
-            ? "rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.01) 40%, rgba(255,255,255,0.04) 100%"
-            : "rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.05) 48%, rgba(255,255,255,0.18) 100%"
-          }
+          rgba(255,255,255,0.72) 0%,
+          rgba(255,255,255,0.05) 48%,
+          rgba(255,255,255,0.18) 100%
         );
         pointer-events: none;
       }
+      @media (prefers-color-scheme: dark) {
+        .mora-lg-bar::before {
+          background: linear-gradient(
+            170deg,
+            rgba(255,255,255,0.13) 0%,
+            rgba(255,255,255,0.01) 40%,
+            rgba(255,255,255,0.05) 100%
+          );
+        }
+      }
 
-      /* ── glass sheen on pill ────────────────────────────────────────────── */
+      /* ── glass sheen on pill — light ────────────────────────────────────── */
       .mora-lg-pill::before {
         content: '';
         position: absolute;
@@ -105,24 +165,31 @@ function useGlassCSS(isDark: boolean) {
         border-radius: inherit;
         background: linear-gradient(
           155deg,
-          ${isDark
-            ? "rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.02) 55%"
-            : "rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.12) 55%"
-          }
+          rgba(255,255,255,0.88) 0%,
+          rgba(255,255,255,0.12) 55%
         );
         pointer-events: none;
       }
+      @media (prefers-color-scheme: dark) {
+        .mora-lg-pill::before {
+          background: linear-gradient(
+            155deg,
+            rgba(255,255,255,0.22) 0%,
+            rgba(255,255,255,0.02) 55%
+          );
+        }
+      }
     `;
-  }, [isDark]);
+  }, []);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBarProps) {
-  const isDark = useColorScheme() === "dark";
+  const isDark = useDarkMode();
   const insets = useSafeAreaInsets();
   const { totalItems } = useCart();
 
-  useGlassCSS(isDark);
+  useGlassCSS();
 
   // Animate pill position on tab switch
   const pillAnim = useRef(new Animated.Value(0)).current;
@@ -274,7 +341,7 @@ const styles = StyleSheet.create({
   },
   bar: {
     flexDirection: "row",
-    borderRadius: 28,
+    borderRadius: 36,
     borderWidth: 1.5,
     overflow: "visible",
     paddingHorizontal: 6,
@@ -284,7 +351,7 @@ const styles = StyleSheet.create({
   pill: {
     position: "absolute",
     top: 6,
-    borderRadius: 20,
+    borderRadius: 26,
     borderWidth: 1,
     overflow: "visible",
   },
