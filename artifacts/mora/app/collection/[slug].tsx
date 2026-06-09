@@ -208,15 +208,16 @@ export default function CollectionScreen() {
         </Pressable>
 
         {/* Title (shows when scrolled, hidden when on hero) */}
-        <Animated.Text
-          style={[
-            styles.headerTitle,
-            { color: colors.foreground, opacity: headerBgAnim },
-          ]}
-          numberOfLines={1}
-        >
-          {collection?.title ?? ""}
-        </Animated.Text>
+        <Animated.View style={{ flex: 1, overflow: "hidden", opacity: headerBgAnim }}>
+          {scrolled && (
+            <Text
+              style={[styles.headerTitle, { color: colors.foreground }]}
+              numberOfLines={1}
+            >
+              {collection?.title ?? ""}
+            </Text>
+          )}
+        </Animated.View>
 
         {/* Right side: search icon → search bar + cart */}
         <View style={styles.headerRight}>
