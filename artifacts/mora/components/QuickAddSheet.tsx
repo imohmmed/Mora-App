@@ -1,10 +1,16 @@
 /**
  * QuickAddSheet — slides up when user taps ADD TO BAG.
- * Shows available sizes from product variants and lets the user pick one.
- * After picking, the caller receives the selected Variant via onConfirm().
+ *
+ * Dynamically renders a row of chips for every option axis
+ * (option1, option2) found on the product's variants.
+ * Labels are inferred: size-like values → "SIZE", otherwise
+ * the raw axis position is used ("COLOR", "OPTION").
+ *
+ * Chips that are out-of-stock for the current combination are
+ * shown struck-through and disabled.
  */
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Modal,
@@ -27,37 +33,47 @@ interface Props {
   onConfirm: (variant: Variant) => void;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const SIZE_TOKENS = new Set([
+  "xxs","xs","s","m","l","xl","xxl","2xl","3xl","4xl","5xl",
+  "one size","os","free size",
+]);
+function inferLabel(values: string[]): string {
+  const lower = values.map((v) => v.toLowerCase().trim());
+  if (lower.every((v) => SIZE_TOKENS.has(v) || /^\d{2,3}(cm|mm|in|")?$/.test(v))) return "SIZE";
+  if (lower.every((v) => /^(red|blue|green|black|white|pink|grey|gray|navy|beige|ivory|camel|tan|brown|purple|yellow|orange|teal|cream|khaki|mint|coral|rose|nude|sand)$/.test(v))) return "COLOR";
+  return "OPTION";
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   const { resolvedScheme } = useTheme();
   const isDark = resolvedScheme === "dark";
 
   const slideAnim = useRef(new Animated.Value(500)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 
-  // Reset selection when product changes
+  const [selectedOpt1, setSelectedOpt1] = useState<string | null>(null);
+  const [selectedOpt2, setSelectedOpt2] = useState<string | null>(null);
+
+  // Reset selections whenever the product changes
   useEffect(() => {
-    setSelectedVariantId(null);
+    setSelectedOpt1(null);
+    setSelectedOpt2(null);
   }, [product?.id]);
 
   useEffect(() => {
     if (visible) {
       Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1, duration: 220, useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0, tension: 60, friction: 14, useNativeDriver: true,
-        }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.spring(slideAnim, { toValue: 0, tension: 60, friction: 14, useNativeDriver: true }),
       ]).start();
     } else {
       Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0, duration: 180, useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 500, duration: 180, useNativeDriver: true,
-        }),
+        Animated.timing(fadeAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 500, duration: 180, useNativeDriver: true }),
       ]).start();
     }
   }, [visible]);
@@ -66,32 +82,60 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
 
   const variants = product.variants ?? [];
 
-  // Deduplicate sizes by option1
-  const hasSizes = variants.some((v) => v.option1 && v.option1 !== "Default Title");
-  const sizeVariants: Variant[] = hasSizes
-    ? variants.filter((v, idx, arr) =>
-        v.option1 && arr.findIndex((x) => x.option1 === v.option1) === idx
-      )
-    : [];
+  // ── Compute option axes ───────────────────────────────────────────────────
+  const opt1Values = useMemo(() => (
+    [...new Set(variants.map((v) => v.option1).filter((v): v is string => !!v && v !== "Default Title"))]
+  ), [variants]);
 
-  const selectedVariant = selectedVariantId
-    ? (variants.find((v) => v.id === selectedVariantId) ?? null)
-    : null;
+  const opt2Values = useMemo(() => (
+    [...new Set(variants.map((v) => v.option2).filter((v): v is string => !!v && v !== "Default Title"))]
+  ), [variants]);
 
-  const canAdd = !hasSizes || selectedVariant !== null;
+  const hasOpt1 = opt1Values.length > 0;
+  const hasOpt2 = opt2Values.length > 0;
 
-  const handleSizePress = (variant: Variant) => {
-    setSelectedVariantId(variant.id);
+  const label1 = useMemo(() => inferLabel(opt1Values), [opt1Values]);
+  const label2 = useMemo(() => inferLabel(opt2Values), [opt2Values]);
+
+  // ── Find matching variant ─────────────────────────────────────────────────
+  const selectedVariant: Variant | null = useMemo(() => {
+    if (hasOpt1 && !selectedOpt1) return null;
+    if (hasOpt2 && !selectedOpt2) return null;
+    return variants.find((v) =>
+      (!hasOpt1 || v.option1 === selectedOpt1) &&
+      (!hasOpt2 || v.option2 === selectedOpt2)
+    ) ?? null;
+  }, [selectedOpt1, selectedOpt2, variants, hasOpt1, hasOpt2]);
+
+  // Is an option1 value entirely out of stock across all option2s?
+  const isOpt1OOS = (val: string) =>
+    variants.filter((v) => v.option1 === val).every((v) => v.inventory === 0);
+
+  // Is an option2 value out of stock given the currently selected option1?
+  const isOpt2OOS = (val: string) => {
+    const related = variants.filter(
+      (v) => v.option2 === val && (!selectedOpt1 || v.option1 === selectedOpt1)
+    );
+    return related.length === 0 || related.every((v) => v.inventory === 0);
   };
 
-  const handleAddToBag = () => {
-    const variantToAdd = selectedVariant ?? variants[0];
-    if (!variantToAdd) return;
-    onConfirm(variantToAdd);
+  const canAdd = (!hasOpt1 || !!selectedOpt1) && (!hasOpt2 || !!selectedOpt2);
+
+  const handleAdd = () => {
+    const toAdd = selectedVariant ?? variants[0];
+    if (!toAdd) return;
+    onConfirm(toAdd);
     onClose();
   };
 
-  // ── colours ──────────────────────────────────────────────────────────────
+  // ── Button label ─────────────────────────────────────────────────────────
+  const btnLabel = (() => {
+    if (hasOpt1 && !selectedOpt1) return `SELECT ${label1}`;
+    if (hasOpt2 && !selectedOpt2) return `SELECT ${label2}`;
+    return "ADD TO BAG";
+  })();
+
+  // ── Colours ──────────────────────────────────────────────────────────────
   const bg         = isDark ? "#1C1C1E" : "#FFFFFF";
   const handleCol  = isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.18)";
   const textPri    = isDark ? "#FFFFFF" : "#000000";
@@ -99,6 +143,52 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   const chipBg     = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.05)";
   const chipBorder = isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.12)";
   const imageBg    = isDark ? "#2C2C2E" : "#F2F2F7";
+  const divider    = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
+
+  // ── Chip renderer ─────────────────────────────────────────────────────────
+  const renderChips = (
+    values: string[],
+    selected: string | null,
+    onSelect: (v: string) => void,
+    isOOS: (v: string) => boolean,
+    label: string,
+  ) => (
+    <View style={styles.axisWrap}>
+      <Text style={[styles.axisLabel, { color: textMuted }]}>
+        {selected ? `${label} — ${selected}` : `SELECT ${label}`}
+      </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipRow}
+      >
+        {values.map((val) => {
+          const active = selected === val;
+          const oos    = isOOS(val);
+          return (
+            <Pressable
+              key={val}
+              style={({ pressed }) => [
+                styles.chip,
+                {
+                  backgroundColor: active ? PRIMARY : chipBg,
+                  borderColor: active ? PRIMARY : chipBorder,
+                  opacity: oos ? 0.35 : pressed ? 0.75 : 1,
+                },
+              ]}
+              onPress={() => !oos && onSelect(val)}
+              disabled={oos}
+            >
+              <Text style={[styles.chipText, { color: active ? "#FFF" : textPri }]}>
+                {val}
+              </Text>
+              {oos && <View style={styles.strikeThrough} />}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
 
   return (
     <Modal transparent animationType="none" visible={visible} onRequestClose={onClose}>
@@ -112,15 +202,12 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
 
       {/* Sheet */}
       <Animated.View
-        style={[
-          styles.sheet,
-          { backgroundColor: bg, transform: [{ translateY: slideAnim }] },
-        ]}
+        style={[styles.sheet, { backgroundColor: bg, transform: [{ translateY: slideAnim }] }]}
       >
         {/* Handle */}
         <View style={[styles.handle, { backgroundColor: handleCol }]} />
 
-        {/* ── Product mini header ────────────────────────────────────── */}
+        {/* ── Product mini-header ──────────────────────────────────────── */}
         <View style={styles.productRow}>
           <View style={[styles.thumbBox, { backgroundColor: imageBg }]}>
             {product.images?.[0] ? (
@@ -145,71 +232,42 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
           </View>
         </View>
 
-        {/* ── Size picker ────────────────────────────────────────────── */}
-        {hasSizes && (
-          <>
-            <Text style={[styles.sectionLabel, { color: textMuted }]}>
-              {selectedVariant ? `SIZE — ${selectedVariant.option1}` : "SELECT SIZE"}
-            </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.sizeRow}
-            >
-              {sizeVariants.map((v) => {
-                const isSelected = selectedVariantId === v.id;
-                const outOfStock = v.inventory === 0;
-                return (
-                  <Pressable
-                    key={v.id}
-                    style={({ pressed }) => [
-                      styles.sizeChip,
-                      {
-                        backgroundColor: isSelected ? PRIMARY : chipBg,
-                        borderColor: isSelected ? PRIMARY : chipBorder,
-                        opacity: outOfStock ? 0.38 : pressed ? 0.75 : 1,
-                      },
-                    ]}
-                    onPress={() => !outOfStock && handleSizePress(v)}
-                    disabled={outOfStock}
-                  >
-                    <Text
-                      style={[
-                        styles.sizeChipText,
-                        { color: isSelected ? "#FFFFFF" : textPri },
-                      ]}
-                    >
-                      {v.option1}
-                    </Text>
-                    {outOfStock && (
-                      <View style={styles.strikeThrough} />
-                    )}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </>
+        {/* ── Option axes ──────────────────────────────────────────────── */}
+        {(hasOpt1 || hasOpt2) && (
+          <View style={[styles.optionsWrap, { borderTopColor: divider }]}>
+            {hasOpt1 && renderChips(
+              opt1Values,
+              selectedOpt1,
+              (v) => { setSelectedOpt1(v); setSelectedOpt2(null); },
+              isOpt1OOS,
+              label1,
+            )}
+            {hasOpt2 && renderChips(
+              opt2Values,
+              selectedOpt2,
+              setSelectedOpt2,
+              isOpt2OOS,
+              label2,
+            )}
+          </View>
         )}
 
-        {/* ── Add button ─────────────────────────────────────────────── */}
+        {/* ── Add button ───────────────────────────────────────────────── */}
         <Pressable
           style={({ pressed }) => [
             styles.addBtn,
             {
-              backgroundColor: canAdd ? PRIMARY : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)"),
+              backgroundColor: canAdd
+                ? PRIMARY
+                : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
               opacity: pressed ? 0.85 : 1,
             },
           ]}
-          onPress={handleAddToBag}
+          onPress={handleAdd}
           disabled={!canAdd}
         >
-          <Text
-            style={[
-              styles.addBtnText,
-              { color: canAdd ? "#FFFFFF" : textMuted },
-            ]}
-          >
-            {hasSizes && !selectedVariant ? "SELECT A SIZE" : "ADD TO BAG"}
+          <Text style={[styles.addBtnText, { color: canAdd ? "#FFF" : textMuted }]}>
+            {btnLabel}
           </Text>
         </Pressable>
       </Animated.View>
@@ -248,7 +306,7 @@ const styles = StyleSheet.create({
   productRow: {
     flexDirection: "row",
     gap: 14,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   thumbBox: {
     width: 72,
@@ -277,30 +335,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 2,
   },
-  sectionLabel: {
+  optionsWrap: {
+    borderTopWidth: 1,
+    paddingTop: 16,
+    gap: 18,
+    marginBottom: 20,
+  },
+  axisWrap: {
+    gap: 10,
+  },
+  axisLabel: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 11,
     letterSpacing: 1,
-    marginBottom: 12,
   },
-  sizeRow: {
+  chipRow: {
     flexDirection: "row",
     gap: 8,
-    paddingBottom: 4,
-    marginBottom: 24,
+    paddingBottom: 2,
   },
-  sizeChip: {
+  chip: {
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 6,
-    borderWidth: 1,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
     minWidth: 52,
     position: "relative",
     overflow: "hidden",
   },
-  sizeChipText: {
+  chipText: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 13,
   },
@@ -316,7 +381,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 16,
     alignItems: "center",
-    marginTop: 4,
   },
   addBtnText: {
     fontFamily: "Inter_700Bold",
