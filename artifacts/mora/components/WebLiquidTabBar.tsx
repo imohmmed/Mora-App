@@ -114,26 +114,42 @@ function useGlassCSS() {
         bottom: 0;
         left: -40px;
         right: -40px;
-        height: 110px;
+        height: 130px;
         pointer-events: none;
         z-index: 0;
-        /* Light: fade to white */
+        /* Graduated blur: fades in from top → stronger at bar edge */
+        backdrop-filter:         blur(16px) saturate(160%);
+        -webkit-backdrop-filter: blur(16px) saturate(160%);
+        /* Mask drives BOTH the blur and the colour fade — transparent at top, opaque at bottom */
+        -webkit-mask-image: linear-gradient(to bottom,
+          transparent          0%,
+          rgba(0,0,0,0.25)    35%,
+          rgba(0,0,0,0.75)    70%,
+          black               100%
+        );
+        mask-image: linear-gradient(to bottom,
+          transparent          0%,
+          rgba(0,0,0,0.25)    35%,
+          rgba(0,0,0,0.75)    70%,
+          black               100%
+        );
+        /* Light: colour fill beneath the blur */
         background: linear-gradient(
           to bottom,
           transparent          0%,
-          rgba(255,255,255,0.55) 45%,
-          rgba(255,255,255,0.90) 80%,
-          rgba(255,255,255,0.97) 100%
+          rgba(255,255,255,0.45) 45%,
+          rgba(255,255,255,0.88) 80%,
+          rgba(255,255,255,0.96) 100%
         );
       }
-      /* Dark: fade to black */
+      /* Dark: colour fill beneath the blur */
       .mora-lg-wrapper.mora-lg-dark::before {
         background: linear-gradient(
           to bottom,
           transparent       0%,
-          rgba(0,0,0,0.50)  45%,
-          rgba(0,0,0,0.85)  80%,
-          rgba(0,0,0,0.94)  100%
+          rgba(0,0,0,0.45)  45%,
+          rgba(0,0,0,0.82)  80%,
+          rgba(0,0,0,0.93)  100%
         );
       }
 
