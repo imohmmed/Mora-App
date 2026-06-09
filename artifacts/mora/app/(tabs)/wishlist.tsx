@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Dimensions,
   Platform,
@@ -21,7 +21,8 @@ import { MoraLogo } from "@/components/MoraLogo";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { fetchProduct } from "@/lib/api";
-import type { Product } from "@/lib/types";
+import { QuickAddSheet } from "@/components/QuickAddSheet";
+import type { Product, Variant } from "@/lib/types";
 
 const PRIMARY = "#0274C1";
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -51,13 +52,16 @@ function WishlistSkeleton() {
   );
 }
 
-function WishlistCard({ product }: { product: Product }) {
+function WishlistCard({
+  product,
+  onAddToBag,
+}: {
+  product: Product;
+  onAddToBag: (product: Product) => void;
+}) {
   const colors = useColors();
-  const scheme = useColorScheme();
-  const isDark = scheme === "dark";
   const router = useRouter();
   const { toggle } = useWishlist();
-  const { addItem } = useCart();
   const imageUri = product.images?.[0];
 
   return (
@@ -106,22 +110,11 @@ function WishlistCard({ product }: { product: Product }) {
         <Pressable
           style={[styles.addBtn, { backgroundColor: PRIMARY }]}
           onPress={() => {
-            const variant = product.variants?.[0];
-            addItem({
-              productId: product.id,
-              variantId: variant?.id ?? product.id,
-              title: product.title,
-              vendor: product.vendor ?? "Mora",
-              price: variant?.price ?? product.price,
-              quantity: 1,
-              size: variant?.option1,
-              color: variant?.option2,
-              image: product.images?.[0],
-            });
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onAddToBag(product);
           }}
         >
-          <Text style={[styles.addBtnText, { color: isDark ? "#FFFFFF" : "#000000" }]}>ADD TO BAG</Text>
+          <Text style={styles.addBtnText}>ADD TO BAG</Text>
         </Pressable>
       </View>
     </Pressable>
@@ -133,7 +126,30 @@ export default function WishlistScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const { ids } = useWishlist();
+  const { addItem } = useCart();
   const wishlistIds = [...ids];
+
+  const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
+
+  const handleAddToBag = (product: Product) => {
+    setQuickAddProduct(product);
+  };
+
+  const handleQuickAddConfirm = (variant: Variant) => {
+    if (!quickAddProduct) return;
+    addItem({
+      productId: quickAddProduct.id,
+      variantId: variant.id,
+      title: quickAddProduct.title,
+      vendor: quickAddProduct.vendor ?? "Mora",
+      price: variant.price,
+      quantity: 1,
+      size: variant.option1,
+      color: variant.option2,
+      image: quickAddProduct.images?.[0],
+    });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
 
   const topPadding = isWeb ? 0 : insets.top;
   const bottomPadding = isWeb ? 0 : insets.bottom;
@@ -218,12 +234,19 @@ export default function WishlistScreen() {
           ) : (
             <View style={styles.grid}>
               {products.map((product) => (
-                <WishlistCard key={product.id} product={product} />
+                <WishlistCard key={product.id} product={product} onAddToBag={handleAddToBag} />
               ))}
             </View>
           )}
         </ScrollView>
       )}
+
+      <QuickAddSheet
+        visible={quickAddProduct !== null}
+        product={quickAddProduct}
+        onClose={() => setQuickAddProduct(null)}
+        onConfirm={handleQuickAddConfirm}
+      />
     </View>
   );
 }

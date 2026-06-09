@@ -21,10 +21,11 @@ import { useColors } from "@/hooks/useColors";
 import { HomeHeader } from "@/components/HomeHeader";
 import { CategoryTabs } from "@/components/CategoryTabs";
 import { SpecialCollectionsGrid } from "@/components/SpecialCollectionsGrid";
+import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { fetchProducts, fetchSpecialCollections, fetchBanners } from "@/lib/api";
-import type { Product, Banner } from "@/lib/types";
+import type { Product, Banner, Variant } from "@/lib/types";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
@@ -56,11 +57,16 @@ function getTag(product: Product): string | null {
   return null;
 }
 
-function ProductCard({ item }: { item: Product }) {
+function ProductCard({
+  item,
+  onAddToBag,
+}: {
+  item: Product;
+  onAddToBag: (product: Product) => void;
+}) {
   const colors = useColors();
   const router = useRouter();
   const { isWishlisted, toggle } = useWishlist();
-  const { addItem } = useCart();
   const liked = isWishlisted(item.id);
   const tag = getTag(item);
   const bg = cardColor(item.id);
@@ -71,28 +77,11 @@ function ProductCard({ item }: { item: Product }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const handleAddToCart = () => {
-    const variant = item.variants?.[0];
-    addItem({
-      productId: item.id,
-      variantId: variant?.id ?? item.id,
-      title: item.title,
-      vendor: item.vendor ?? "Mora",
-      price: variant?.price ?? item.price,
-      quantity: 1,
-      size: variant?.option1,
-      color: variant?.option2,
-      image: imageUri,
-    });
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  };
-
   return (
     <Pressable
       style={({ pressed }) => [styles.productCard, { opacity: pressed ? 0.95 : 1 }]}
       testID={`product-${item.id}`}
       onPress={() => router.push(`/product/${item.id}`)}
-      onLongPress={handleAddToCart}
     >
       <View style={[styles.productImage, { backgroundColor: bg }]}>
         {imageUri ? (
@@ -139,6 +128,15 @@ function ProductCard({ item }: { item: Product }) {
             </Text>
           )}
         </View>
+        <Pressable
+          style={styles.addToCartBtn}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onAddToBag(item);
+          }}
+        >
+          <Text style={styles.addToCartText}>ADD TO BAG</Text>
+        </Pressable>
       </View>
     </Pressable>
   );
@@ -213,8 +211,29 @@ export default function HomeScreen() {
   const isWeb = Platform.OS === "web";
   const [activeCategory, setActiveCategory] = useState(0);
   const [activeBanner, setActiveBanner] = useState(0);
-  const { totalItems } = useCart();
+  const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
+  const { totalItems, addItem } = useCart();
   const { count: wishlistCount } = useWishlist();
+
+  const handleAddToBag = (product: Product) => {
+    setQuickAddProduct(product);
+  };
+
+  const handleQuickAddConfirm = (variant: Variant) => {
+    if (!quickAddProduct) return;
+    addItem({
+      productId: quickAddProduct.id,
+      variantId: variant.id,
+      title: quickAddProduct.title,
+      vendor: quickAddProduct.vendor ?? "Mora",
+      price: variant.price,
+      quantity: 1,
+      size: variant.option1,
+      color: variant.option2,
+      image: quickAddProduct.images?.[0],
+    });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
   const bottomPadding = isWeb ? 0 : insets.bottom;
   const categoryKey = CATEGORIES[activeCategory];
   const categoryFilter = CATEGORY_FILTERS[categoryKey ?? "ALL"];
@@ -350,7 +369,7 @@ export default function HomeScreen() {
           {isLoading
             ? Array.from({ length: 6 }).map((_, i) => <ProductSkeleton key={i} />)
             : products.map((product) => (
-                <ProductCard key={product.id} item={product} />
+                <ProductCard key={product.id} item={product} onAddToBag={handleAddToBag} />
               ))}
         </View>
 
@@ -363,6 +382,13 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+
+      <QuickAddSheet
+        visible={quickAddProduct !== null}
+        product={quickAddProduct}
+        onClose={() => setQuickAddProduct(null)}
+        onConfirm={handleQuickAddConfirm}
+      />
     </View>
   );
 }
@@ -455,4 +481,17 @@ const styles = StyleSheet.create({
   retryText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
   emptyBox: { alignItems: "center", paddingVertical: 40, gap: 12 },
   emptyText: { fontFamily: "Inter_400Regular", fontSize: 14 },
+  addToCartBtn: {
+    backgroundColor: "#0274C1",
+    paddingVertical: 8,
+    alignItems: "center",
+    borderRadius: 2,
+    marginTop: 6,
+  },
+  addToCartText: {
+    color: "#FFFFFF",
+    fontFamily: "Inter_700Bold",
+    fontSize: 11,
+    letterSpacing: 0.5,
+  },
 });
