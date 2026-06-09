@@ -1,17 +1,20 @@
 /**
- * WebLiquidTabBar — Liquid Glass tab bar for Expo web.
+ * WebLiquidTabBar — True Liquid Glass tab bar for Expo web.
  *
- * Technique:
- *  • backdrop-filter: blur(24px) saturate(200%) — the frosted glass core
- *  • Layered semi-transparent gradient for the glass "sheen" (light refraction)
- *  • Inset highlight border (top edge) to simulate glass catching light
- *  • Active pill: brighter glass layer + primary accent icon
- *  • Smooth CSS transitions for the press-state and active-tab switch
+ * Three-layer architecture (WWDC 2025 technique):
+ *  • Layer 1 — backdrop-filter: blur(8px) saturate(280%)
+ *      Low blur keeps content readable; high saturation amplifies the
+ *      colours beneath the bar so it "picks up" the page as you scroll.
+ *  • Layer 2 — ::before specular sheen
+ *      Linear gradient + inset box-shadow simulate light catching the
+ *      glass edge (top bright rim, side catches).
+ *  • Layer 3 — SVG feDisplacementMap refraction (Chrome/Edge only)
+ *      Organic feTurbulence noise drives a feDisplacementMap that bends
+ *      the pixels behind the bar — real glass refraction.
+ *      Safari / Firefox fall back to Layer 1 silently.
  *
- * We inject a <style> tag for properties that can't be set via React Native
- * Web's inline styles (e.g. ::before pseudo-element sheens, transitions).
- * For backdrop-filter we use the well-known @ts-ignore inline style trick
- * since React Native Web passes unknown CSS properties straight to the DOM.
+ * Dark-mode variants via @media (prefers-color-scheme: dark).
+ * SVG filter injected once into <body> and referenced by CSS.
  */
 
 import React, { useEffect, useRef, useState } from "react";
@@ -66,9 +69,49 @@ const ROUTE_META: Record<string, { label: string; icon: IconName; iconFocused: I
   account: { label: "ACCOUNT", icon: "user",         iconFocused: "user" },
 };
 
+// ─── SVG refraction filter (injected once into <body>) ─────────────────────
+// Chrome/Edge: feDisplacementMap bends pixels behind the bar like real glass.
+// Safari/Firefox: filter ignored — CSS backdrop-filter fallback takes over.
+function useGlassSVG() {
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const id = "mora-glass-svg";
+    if (document.getElementById(id)) return;
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("id", id);
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.setAttribute("width", "0");
+    svg.setAttribute("height", "0");
+    svg.style.cssText = "position:absolute;overflow:hidden;width:0;height:0";
+    svg.innerHTML = `
+      <defs>
+        <filter id="mora-glass-filter" x="-5%" y="-5%" width="110%" height="110%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.006 0.006"
+            numOctaves="2" seed="72" result="noise"/>
+          <feGaussianBlur in="noise" stdDeviation="2.5" result="softNoise"/>
+          <feDisplacementMap in="BackgroundImage" in2="softNoise"
+            scale="16" xChannelSelector="R" yChannelSelector="G"
+            result="displaced"/>
+          <feSpecularLighting in="softNoise" surfaceScale="4"
+            specularConstant="1.1" specularExponent="20"
+            lighting-color="rgba(255,255,255,0.80)" result="spec">
+            <fePointLight x="50%" y="8%" z="110"/>
+          </feSpecularLighting>
+          <feBlend in="displaced" in2="spec" mode="screen"/>
+        </filter>
+      </defs>`;
+    document.body.appendChild(svg);
+  }, []);
+}
+
 // ─── CSS injection ─────────────────────────────────────────────────────────
-// Uses @media (prefers-color-scheme: dark) so the bar adapts automatically
-// even before JS state updates. Inline RN styles handle backgroundColor.
+// Layer 1 (all browsers): blur(8px) + saturate(280%) — low blur so content
+//   stays readable; high saturation amplifies background colours so the bar
+//   visually "picks up" whatever is scrolling behind it.
+// Layer 2 (::before): specular gradient + inset rim — simulates light
+//   catching the glass edge, the key visual cue of real glass.
+// Layer 3 (@supports, Chrome/Edge): SVG feDisplacementMap refraction added
+//   on top of layers 1+2 for true optical distortion.
 function useGlassCSS() {
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -80,102 +123,140 @@ function useGlassCSS() {
       document.head.appendChild(el);
     }
     el.textContent = `
-      /* ── bar shell — light mode ─────────────────────────────────────────── */
+      /* ══ LAYER 1 — backdrop colour amplification (all browsers) ════════════ */
+
+      /* Light mode */
       .mora-lg-bar {
-        backdrop-filter: blur(72px) saturate(220%) brightness(1.06);
-        -webkit-backdrop-filter: blur(72px) saturate(220%) brightness(1.06);
-        transition: background 0.3s ease, box-shadow 0.3s ease;
+        isolation: isolate;
+        backdrop-filter:          blur(8px) saturate(280%) brightness(1.06);
+        -webkit-backdrop-filter:  blur(8px) saturate(280%) brightness(1.06);
+        transition: background 0.35s ease, box-shadow 0.35s ease;
         box-shadow:
-          0 20px 60px rgba(0,0,0,0.18),
-          0 4px 20px  rgba(0,0,0,0.10),
-          inset 0 1.5px 0 rgba(255,255,255,0.90),
+          0 16px 48px rgba(0,0,0,0.15),
+          0 4px  16px rgba(0,0,0,0.08),
+          inset 0 1.5px 0 rgba(255,255,255,0.88),
           inset 0 -0.5px 0 rgba(0,0,0,0.05);
       }
-      /* ── bar shell — dark mode ──────────────────────────────────────────── */
+
+      /* Dark mode */
       @media (prefers-color-scheme: dark) {
         .mora-lg-bar {
-          backdrop-filter: blur(72px) saturate(240%) brightness(1.20);
-          -webkit-backdrop-filter: blur(72px) saturate(240%) brightness(1.20);
+          backdrop-filter:          blur(8px) saturate(320%) brightness(1.22);
+          -webkit-backdrop-filter:  blur(8px) saturate(320%) brightness(1.22);
           box-shadow:
-            0 20px 60px rgba(0,0,0,0.60),
-            0 4px 20px  rgba(0,0,0,0.45),
-            inset 0 1.5px 0 rgba(255,255,255,0.22),
-            inset 0 -0.5px 0 rgba(0,0,0,0.35);
+            0 16px 48px rgba(0,0,0,0.55),
+            0 4px  16px rgba(0,0,0,0.38),
+            inset 0 1.5px 0 rgba(255,255,255,0.20),
+            inset 0 -0.5px 0 rgba(0,0,0,0.32);
         }
       }
 
-      /* ── active pill — light ────────────────────────────────────────────── */
+      /* ── LAYER 3 upgrade — SVG refraction (Chrome / Edge only) ──────────── */
+      @supports (backdrop-filter: url("#mora-glass-filter")) {
+        .mora-lg-bar {
+          backdrop-filter:
+            url("#mora-glass-filter") blur(4px) saturate(240%) brightness(1.06);
+          -webkit-backdrop-filter:
+            url("#mora-glass-filter") blur(4px) saturate(240%) brightness(1.06);
+        }
+        @media (prefers-color-scheme: dark) {
+          .mora-lg-bar {
+            backdrop-filter:
+              url("#mora-glass-filter") blur(4px) saturate(280%) brightness(1.22);
+            -webkit-backdrop-filter:
+              url("#mora-glass-filter") blur(4px) saturate(280%) brightness(1.22);
+          }
+        }
+      }
+
+      /* ── active pill ────────────────────────────────────────────────────── */
       .mora-lg-pill {
-        backdrop-filter: blur(40px) saturate(200%) brightness(1.10);
-        -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.10);
+        backdrop-filter:         blur(6px) saturate(240%) brightness(1.08);
+        -webkit-backdrop-filter: blur(6px) saturate(240%) brightness(1.08);
         transition: background 0.28s ease, box-shadow 0.28s ease;
         box-shadow:
-          0 4px 20px rgba(0,0,0,0.12),
-          0 1px 4px  rgba(0,0,0,0.07),
+          0 4px 18px rgba(0,0,0,0.10),
+          0 1px 4px  rgba(0,0,0,0.06),
           inset 0 1px 0 rgba(255,255,255,0.95),
           inset 0 -0.5px 0 rgba(0,0,0,0.04);
       }
-      /* ── active pill — dark ─────────────────────────────────────────────── */
       @media (prefers-color-scheme: dark) {
         .mora-lg-pill {
-          backdrop-filter: blur(40px) saturate(220%) brightness(1.50);
-          -webkit-backdrop-filter: blur(40px) saturate(220%) brightness(1.50);
+          backdrop-filter:         blur(6px) saturate(260%) brightness(1.45);
+          -webkit-backdrop-filter: blur(6px) saturate(260%) brightness(1.45);
           box-shadow:
-            0 4px 20px rgba(0,0,0,0.40),
-            0 1px 4px  rgba(0,0,0,0.25),
-            inset 0 1px 0 rgba(255,255,255,0.35),
-            inset 0 -0.5px 0 rgba(0,0,0,0.20);
+            0 4px 18px rgba(0,0,0,0.36),
+            0 1px 4px  rgba(0,0,0,0.22),
+            inset 0 1px 0 rgba(255,255,255,0.32),
+            inset 0 -0.5px 0 rgba(0,0,0,0.18);
         }
       }
 
       /* ── press state ────────────────────────────────────────────────────── */
-      .mora-lg-tab:active { opacity: 0.70; transform: scale(0.94); }
+      .mora-lg-tab:active { opacity: 0.68; transform: scale(0.93); }
       .mora-lg-tab { transition: opacity 0.14s ease, transform 0.14s ease; cursor: pointer; }
 
-      /* ── glass sheen on bar — light ─────────────────────────────────────── */
+      /* ══ LAYER 2 — specular sheen (::before) — all browsers ════════════════ */
+      /* Simulates light catching the curved glass edge */
+
       .mora-lg-bar::before {
         content: '';
         position: absolute;
         inset: 0;
         border-radius: inherit;
-        background: linear-gradient(
-          170deg,
-          rgba(255,255,255,0.72) 0%,
-          rgba(255,255,255,0.05) 48%,
-          rgba(255,255,255,0.18) 100%
-        );
         pointer-events: none;
+        z-index: 1;
+        /* Top-left specular catch */
+        background: linear-gradient(
+          145deg,
+          rgba(255,255,255,0.52) 0%,
+          rgba(255,255,255,0.06) 38%,
+          transparent 54%
+        );
+        /* Four-side rim: bright top, subtle sides and bottom */
+        box-shadow:
+          inset 0  1.5px 0 rgba(255,255,255,0.82),
+          inset 0 -1px   0 rgba(255,255,255,0.14),
+          inset  1px 0   0 rgba(255,255,255,0.18),
+          inset -1px 0   0 rgba(255,255,255,0.10);
       }
       @media (prefers-color-scheme: dark) {
         .mora-lg-bar::before {
           background: linear-gradient(
-            170deg,
-            rgba(255,255,255,0.13) 0%,
-            rgba(255,255,255,0.01) 40%,
-            rgba(255,255,255,0.05) 100%
+            145deg,
+            rgba(255,255,255,0.16) 0%,
+            rgba(255,255,255,0.02) 38%,
+            transparent 54%
           );
+          box-shadow:
+            inset 0  1.5px 0 rgba(255,255,255,0.22),
+            inset 0 -1px   0 rgba(255,255,255,0.05),
+            inset  1px 0   0 rgba(255,255,255,0.08),
+            inset -1px 0   0 rgba(255,255,255,0.05);
         }
       }
 
-      /* ── glass sheen on pill — light ────────────────────────────────────── */
+      /* Pill specular sheen */
       .mora-lg-pill::before {
         content: '';
         position: absolute;
         inset: 0;
         border-radius: inherit;
-        background: linear-gradient(
-          155deg,
-          rgba(255,255,255,0.88) 0%,
-          rgba(255,255,255,0.12) 55%
-        );
         pointer-events: none;
+        background: linear-gradient(
+          150deg,
+          rgba(255,255,255,0.82) 0%,
+          rgba(255,255,255,0.10) 50%,
+          transparent 65%
+        );
       }
       @media (prefers-color-scheme: dark) {
         .mora-lg-pill::before {
           background: linear-gradient(
-            155deg,
-            rgba(255,255,255,0.22) 0%,
-            rgba(255,255,255,0.02) 55%
+            150deg,
+            rgba(255,255,255,0.20) 0%,
+            rgba(255,255,255,0.02) 50%,
+            transparent 65%
           );
         }
       }
@@ -190,6 +271,7 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
   const { totalItems } = useCart();
 
   useGlassCSS();
+  useGlassSVG();
 
   // Animate pill position on tab switch
   const pillAnim = useRef(new Animated.Value(0)).current;
@@ -212,12 +294,14 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
     }).start();
   }, [pillTarget]);
 
-  // Glass colours — low alpha so backdrop-filter blur is clearly visible
-  const barBg    = isDark ? "rgba(20,20,24,0.52)"   : "rgba(255,255,255,0.48)";
-  const barBorder = isDark ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.90)";
-  const pillBg   = isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.82)";
-  const pillBorder = isDark ? "rgba(255,255,255,0.30)" : "rgba(255,255,255,1.0)";
-  const inactiveTint = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)";
+  // Glass colours — very low alpha so saturate() picks up background colours.
+  // The high CSS saturation (280–320%) amplifies what shows through the glass,
+  // making the bar shift colour as different page sections scroll beneath it.
+  const barBg    = isDark ? "rgba(14,14,18,0.18)"   : "rgba(255,255,255,0.16)";
+  const barBorder = isDark ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.85)";
+  const pillBg   = isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.72)";
+  const pillBorder = isDark ? "rgba(255,255,255,0.26)" : "rgba(255,255,255,0.95)";
+  const inactiveTint = isDark ? "rgba(255,255,255,0.58)" : "rgba(0,0,0,0.46)";
 
   const TAB_W = 72;  // width per tab
   const BAR_PADDING = 6;
