@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { FileText, List as ListIcon, Plus, Boxes, File, ChevronRight, HardDrive, Image as ImageIcon, Pencil, Trash2, X, Layers, ChevronDown, ChevronUp, GripVertical } from "lucide-react";
+import { FileText, List as ListIcon, Plus, Boxes, File, ChevronRight, HardDrive, Image as ImageIcon, Pencil, Trash2, X, Layers, ChevronDown, ChevronUp, GripVertical, Settings2, Star } from "lucide-react";
 import { format } from "date-fns";
 import { useSearch, useLocation } from "wouter";
 import { useState } from "react";
@@ -664,6 +664,10 @@ export default function ContentHub() {
             <File className="w-4 h-4" />
             Files
           </TabsTrigger>
+          <TabsTrigger value="sections" className="gap-2">
+            <Settings2 className="w-4 h-4" />
+            Sections
+          </TabsTrigger>
         </TabsList>
 
         {/* BLOG POSTS */}
@@ -916,7 +920,190 @@ export default function ContentHub() {
             </div>
           )}
         </TabsContent>
+        {/* CONTENT SECTIONS */}
+        <TabsContent value="sections" className="space-y-4">
+          <ContentSectionsTab />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// ─── Content Sections Tab ──────────────────────────────────────────────────────
+
+type CSItem = { id: string; name: string; description?: string; text?: string; type?: string; rating?: number };
+type CSRow  = { id: string; key: string; title: string; items: CSItem[]; status: string };
+
+function ContentSectionsTab() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-content-sections"],
+    queryFn: async () => {
+      const r = await fetch("/api/admin/content-sections", { headers: AUTH_HEADER });
+      const j = await r.json() as { data: CSRow[] };
+      return j.data;
+    },
+  });
+
+  const [editing, setEditing] = useState<CSRow | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!editing) return;
+    setSaving(true);
+    await fetch(`/api/admin/content-sections/${editing.id}`, {
+      method: "PUT",
+      headers: AUTH_HEADER,
+      body: JSON.stringify({ title: editing.title, items: editing.items, status: editing.status }),
+    });
+    await qc.invalidateQueries({ queryKey: ["admin-content-sections"] });
+    setSaving(false);
+    setEditing(null);
+  };
+
+  const updItem = (idx: number, field: keyof CSItem, val: string | number) =>
+    setEditing(prev => prev ? {
+      ...prev,
+      items: prev.items.map((it, i) => i === idx ? { ...it, [field]: val } : it),
+    } : prev);
+
+  const addItem = () =>
+    setEditing(prev => prev ? {
+      ...prev,
+      items: [...prev.items, { id: Date.now().toString(), name: "", text: "", description: "", rating: 5, type: "silver" }],
+    } : prev);
+
+  const removeItem = (idx: number) =>
+    setEditing(prev => prev ? { ...prev, items: prev.items.filter((_, i) => i !== idx) } : prev);
+
+  if (isLoading) return <div className="py-8 text-center text-muted-foreground">Loading…</div>;
+
+  return (
+    <div className="space-y-4">
+      {(data ?? []).map(section => (
+        <Card key={section.id}>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                {section.key === "testimonials" ? <Star className="w-5 h-5 text-yellow-500" /> : <Settings2 className="w-5 h-5 text-blue-500" />}
+                <div>
+                  <p className="font-semibold">{section.title || section.key}</p>
+                  <p className="text-xs text-muted-foreground font-mono">{section.key} · {section.items.length} items</p>
+                </div>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setEditing({ ...section, items: section.items.map(i => ({ ...i })) })}>
+                <Pencil className="w-3 h-3 mr-1" /> Edit
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {section.items.map(item => (
+                <div key={item.id} className="flex items-start gap-3 p-3 bg-muted/40 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{item.name}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{item.description || item.text}</p>
+                  </div>
+                  {item.type && <Badge variant="outline" className="text-xs capitalize">{item.type}</Badge>}
+                  {item.rating != null && (
+                    <Badge variant="outline" className="text-xs">{"★".repeat(item.rating)}</Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+
+      {/* Edit Dialog */}
+      {editing && (
+        <Dialog open onOpenChange={() => setEditing(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Section — {editing.key}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Section Title</Label>
+                <Input
+                  value={editing.title}
+                  onChange={e => setEditing(p => p ? { ...p, title: e.target.value } : p)}
+                  placeholder="Section title"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <Label htmlFor="cs-status">Active</Label>
+                <Switch
+                  id="cs-status"
+                  checked={editing.status === "active"}
+                  onCheckedChange={v => setEditing(p => p ? { ...p, status: v ? "active" : "inactive" } : p)}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Items</Label>
+                  <Button size="sm" variant="outline" onClick={addItem}>
+                    <Plus className="w-3 h-3 mr-1" /> Add Item
+                  </Button>
+                </div>
+
+                {editing.items.map((item, idx) => (
+                  <div key={item.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-muted-foreground">Item {idx + 1}</span>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeItem(idx)}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Name</Label>
+                        <Input value={item.name} onChange={e => updItem(idx, "name", e.target.value)} placeholder="Name" />
+                      </div>
+                      {editing.key === "warranty" && (
+                        <div>
+                          <Label className="text-xs">Type</Label>
+                          <Select value={item.type ?? "silver"} onValueChange={v => updItem(idx, "type", v)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="gold">Gold</SelectItem>
+                              <SelectItem value="silver">Silver</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      {editing.key === "testimonials" && (
+                        <div>
+                          <Label className="text-xs">Rating (1–5)</Label>
+                          <Input
+                            type="number" min={1} max={5}
+                            value={item.rating ?? 5}
+                            onChange={e => updItem(idx, "rating", Number(e.target.value))}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    {editing.key === "warranty" ? (
+                      <div>
+                        <Label className="text-xs">Description</Label>
+                        <Input value={item.description ?? ""} onChange={e => updItem(idx, "description", e.target.value)} placeholder="Warranty description…" />
+                      </div>
+                    ) : (
+                      <div>
+                        <Label className="text-xs">Review Text</Label>
+                        <Input value={item.text ?? ""} onChange={e => updItem(idx, "text", e.target.value)} placeholder="Customer review…" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+              <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save Changes"}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

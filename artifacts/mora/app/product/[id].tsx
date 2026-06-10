@@ -1,5 +1,8 @@
 import React, { useState } from "react";
 const PRIMARY = "#0274C1";
+const GOLD = "#C9922A";
+const SILVER = "#7D8A9A";
+
 import {
   Platform,
   Pressable,
@@ -17,10 +20,13 @@ import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { MoraLogo } from "@/components/MoraLogo";
-import { fetchProduct } from "@/lib/api";
+import { FloatingTabBar } from "@/components/FloatingTabBar";
+import { fetchProduct, fetchProducts, fetchContentSections } from "@/lib/api";
+import { formatIQD } from "@/lib/format";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
-import type { Variant } from "@/lib/types";
+import type { ContentSectionItem } from "@/lib/api";
+import type { Variant, Product } from "@/lib/types";
 
 const CARD_COLORS = [
   "#E8EDF5", "#F0EBE3", "#E8F0E8", "#F5EDEB",
@@ -33,6 +39,164 @@ function cardColor(id: string): string {
   return CARD_COLORS[h % CARD_COLORS.length];
 }
 
+// ─── Star Rating ───────────────────────────────────────────────────────────────
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <View style={{ flexDirection: "row", gap: 2 }}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Feather
+          key={i}
+          name="star"
+          size={11}
+          color={i <= rating ? "#F5A623" : "#D0D0D0"}
+        />
+      ))}
+    </View>
+  );
+}
+
+// ─── Accordion Section ─────────────────────────────────────────────────────────
+function AccordionSection({
+  title,
+  children,
+  colors,
+  initialOpen = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  colors: ReturnType<typeof useColors>;
+  initialOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(initialOpen);
+  return (
+    <View style={[styles.accordionWrap, { borderTopColor: colors.border }]}>
+      <Pressable
+        style={styles.accordionHeader}
+        onPress={() => setOpen((o) => !o)}
+      >
+        <Text style={[styles.accordionTitle, { color: colors.foreground }]}>{title}</Text>
+        <Feather
+          name={open ? "chevron-up" : "chevron-down"}
+          size={16}
+          color={colors.mutedForeground}
+        />
+      </Pressable>
+      {open && <View style={styles.accordionBody}>{children}</View>}
+    </View>
+  );
+}
+
+// ─── Warranty Card ─────────────────────────────────────────────────────────────
+function WarrantyCard({
+  item,
+  colors,
+}: {
+  item: ContentSectionItem;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const isGold = item.type === "gold";
+  const accent = isGold ? GOLD : SILVER;
+  return (
+    <View
+      style={[
+        styles.warrantyCard,
+        { borderColor: accent + "40", backgroundColor: accent + "10" },
+      ]}
+    >
+      <View style={[styles.warrantyIcon, { backgroundColor: accent + "20" }]}>
+        <Feather name={isGold ? "award" : "shield"} size={20} color={accent} />
+      </View>
+      <View style={styles.warrantyText}>
+        <Text style={[styles.warrantyName, { color: colors.foreground }]}>
+          {item.name}
+        </Text>
+        {!!item.description && (
+          <Text style={[styles.warrantyDesc, { color: colors.mutedForeground }]}>
+            {item.description}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+// ─── Testimonial Card ──────────────────────────────────────────────────────────
+function TestimonialCard({
+  item,
+  colors,
+}: {
+  item: ContentSectionItem;
+  colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <View
+      style={[
+        styles.testimonialCard,
+        { backgroundColor: colors.secondary, borderColor: colors.border },
+      ]}
+    >
+      <StarRating rating={item.rating ?? 5} />
+      <Text
+        style={[styles.testimonialText, { color: colors.foreground }]}
+        numberOfLines={4}
+      >
+        {item.text ?? ""}
+      </Text>
+      <Text style={[styles.testimonialName, { color: colors.mutedForeground }]}>
+        — {item.name}
+      </Text>
+    </View>
+  );
+}
+
+// ─── Related Product Card ──────────────────────────────────────────────────────
+function RelatedCard({
+  product,
+  colors,
+}: {
+  product: Product;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const router = useRouter();
+  const bg = cardColor(product.id);
+  const hasDiscount =
+    product.comparePrice != null && product.comparePrice > product.price;
+  const discountPct = hasDiscount
+    ? Math.round(
+        ((product.comparePrice! - product.price) / product.comparePrice!) * 100
+      )
+    : 0;
+
+  return (
+    <Pressable
+      style={[styles.relatedCard, { backgroundColor: colors.background, borderColor: colors.border }]}
+      onPress={() => router.push(`/product/${product.id}`)}
+    >
+      <View style={[styles.relatedImg, { backgroundColor: bg }]}>
+        <Image
+          source={{ uri: product.images?.[0] }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+        />
+        {discountPct > 0 && (
+          <View style={styles.relatedDisc}>
+            <Text style={styles.relatedDiscText}>-{discountPct}%</Text>
+          </View>
+        )}
+      </View>
+      <View style={styles.relatedInfo}>
+        <Text style={[styles.relatedTitle, { color: colors.foreground }]} numberOfLines={2}>
+          {product.title}
+        </Text>
+        <Text style={[styles.relatedPrice, { color: PRIMARY }]}>
+          {formatIQD(product.price)}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+// ─── Skeleton ──────────────────────────────────────────────────────────────────
 function ProductDetailSkeleton({ colors }: { colors: ReturnType<typeof useColors> }) {
   return (
     <>
@@ -42,8 +206,6 @@ function ProductDetailSkeleton({ colors }: { colors: ReturnType<typeof useColors
         <View style={{ height: 20, width: "80%", backgroundColor: "#E8E8E8", borderRadius: 4 }} />
         <View style={{ height: 20, width: 100, backgroundColor: "#E8E8E8", borderRadius: 4 }} />
         <View style={{ height: 12, width: "60%", backgroundColor: "#E8E8E8", borderRadius: 4 }} />
-        <View style={{ height: 12, width: "90%", backgroundColor: "#E8E8E8", borderRadius: 4 }} />
-        <View style={{ height: 12, width: "70%", backgroundColor: "#E8E8E8", borderRadius: 4 }} />
         <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
           {[60, 60, 60, 60].map((w, i) => (
             <View key={i} style={{ height: 44, width: w, backgroundColor: "#E8E8E8", borderRadius: 4 }} />
@@ -54,6 +216,7 @@ function ProductDetailSkeleton({ colors }: { colors: ReturnType<typeof useColors
   );
 }
 
+// ─── Main Screen ───────────────────────────────────────────────────────────────
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -66,7 +229,7 @@ export default function ProductDetailScreen() {
   const [added, setAdded] = useState(false);
 
   const topPadding = isWeb ? 0 : insets.top;
-  const bottomPadding = isWeb ? 24 : insets.bottom;
+  const bottomPadding = isWeb ? 0 : insets.bottom;
 
   const { data: product, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["product", id],
@@ -74,12 +237,32 @@ export default function ProductDetailScreen() {
     enabled: !!id,
   });
 
+  const { data: contentSections } = useQuery({
+    queryKey: ["content-sections"],
+    queryFn: fetchContentSections,
+    staleTime: 300_000,
+  });
+
+  const { data: relatedData } = useQuery({
+    queryKey: ["related-products", product?.category],
+    queryFn: () => fetchProducts({ category: product?.category, limit: 10 }),
+    enabled: !!product?.category,
+    staleTime: 120_000,
+  });
+
   const liked = product ? isWishlisted(product.id) : false;
   const activeVariant = selectedVariant ?? (product?.variants?.[0] ?? null);
   const price = activeVariant?.price ?? product?.price ?? 0;
   const comparePrice = product?.comparePrice;
+  const hasDiscount = comparePrice != null && comparePrice > price;
   const bg = product ? cardColor(product.id) : "#F0F0F0";
   const imageUri = product?.images?.[0];
+
+  const warranty = contentSections?.warranty;
+  const testimonials = contentSections?.testimonials;
+  const relatedProducts = (relatedData?.products ?? [])
+    .filter((p) => p.id !== id)
+    .slice(0, 8);
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -102,7 +285,7 @@ export default function ProductDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
+      {/* ── Header ── */}
       <View
         style={[
           styles.header,
@@ -135,8 +318,9 @@ export default function ProductDetailScreen() {
         </Pressable>
       </View>
 
+      {/* ── Content ── */}
       {isLoading ? (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottomPadding + 90 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottomPadding + 100 }}>
           <ProductDetailSkeleton colors={colors} />
         </ScrollView>
       ) : isError ? (
@@ -155,12 +339,12 @@ export default function ProductDetailScreen() {
       ) : product ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: bottomPadding + 90 }}
+          contentContainerStyle={{ paddingBottom: (isWeb ? 100 : bottomPadding + 32) }}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={PRIMARY} />
           }
         >
-          {/* Product Image */}
+          {/* ── Product Image ── */}
           <View style={[styles.imageBox, { backgroundColor: bg }]}>
             {imageUri ? (
               <Image
@@ -183,7 +367,7 @@ export default function ProductDetailScreen() {
             </Pressable>
           </View>
 
-          {/* Product Info */}
+          {/* ── Info ── */}
           <View style={styles.infoSection}>
             <Text style={[styles.vendor, { color: colors.mutedForeground }]}>
               {product.vendor ?? "Mora"}
@@ -193,12 +377,12 @@ export default function ProductDetailScreen() {
             </Text>
             <View style={styles.priceRow}>
               <Text style={[styles.price, { color: colors.foreground }]}>
-                ${price.toFixed(2)}
+                {formatIQD(price)}
               </Text>
-              {comparePrice != null && comparePrice > price && (
+              {hasDiscount && (
                 <>
                   <Text style={[styles.comparePrice, { color: colors.mutedForeground }]}>
-                    ${comparePrice.toFixed(2)}
+                    {formatIQD(comparePrice!)}
                   </Text>
                   <View style={[styles.saleBadge, { backgroundColor: "#E53935" }]}>
                     <Text style={styles.saleBadgeText}>SALE</Text>
@@ -220,107 +404,145 @@ export default function ProductDetailScreen() {
                 ))}
               </View>
             )}
+          </View>
 
-            {/* Description */}
-            {product.description ? (
-              <View style={styles.descSection}>
-                <Text style={[styles.descLabel, { color: colors.foreground }]}>
-                  DESCRIPTION
-                </Text>
-                <Text style={[styles.description, { color: colors.mutedForeground }]}>
-                  {product.description}
-                </Text>
-              </View>
-            ) : null}
-
-            {/* Variants */}
-            {product.variants && product.variants.length > 1 && (
-              <View style={styles.variantsSection}>
-                <Text style={[styles.variantsLabel, { color: colors.foreground }]}>
-                  {product.variants[0]?.option1 ? "SIZE" : "OPTIONS"}
-                </Text>
-                <View style={styles.variantsRow}>
-                  {product.variants.map((v) => {
-                    const isActive = activeVariant?.id === v.id;
-                    const outOfStock = v.inventory <= 0;
-                    return (
-                      <Pressable
-                        key={v.id}
+          {/* ── Variants / SIZE ── */}
+          {product.variants && product.variants.length > 1 && (
+            <View style={[styles.variantsSection, { borderTopColor: colors.border }]}>
+              <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
+                {product.variants[0]?.option1 ? "SIZE" : "OPTIONS"}
+              </Text>
+              <View style={styles.variantsRow}>
+                {product.variants.map((v) => {
+                  const isActive = activeVariant?.id === v.id;
+                  const outOfStock = v.inventory <= 0;
+                  return (
+                    <Pressable
+                      key={v.id}
+                      style={[
+                        styles.variantChip,
+                        {
+                          borderColor: isActive ? colors.foreground : colors.border,
+                          backgroundColor: isActive ? colors.foreground : colors.background,
+                          opacity: outOfStock ? 0.4 : 1,
+                        },
+                      ]}
+                      onPress={() => {
+                        if (!outOfStock) {
+                          setSelectedVariant(v);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }
+                      }}
+                      disabled={outOfStock}
+                    >
+                      <Text
                         style={[
-                          styles.variantChip,
-                          {
-                            borderColor: isActive ? colors.foreground : colors.border,
-                            backgroundColor: isActive ? colors.foreground : colors.background,
-                            opacity: outOfStock ? 0.4 : 1,
-                          },
+                          styles.variantText,
+                          { color: isActive ? colors.background : colors.foreground },
                         ]}
-                        onPress={() => {
-                          if (!outOfStock) {
-                            setSelectedVariant(v);
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          }
-                        }}
-                        disabled={outOfStock}
                       >
-                        <Text
-                          style={[
-                            styles.variantText,
-                            { color: isActive ? colors.background : colors.foreground },
-                          ]}
-                        >
-                          {v.option1 ?? v.title}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
+                        {v.option1 ?? v.title}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
-            )}
+            </View>
+          )}
+
+          {/* ── Add to Bag ── */}
+          <View style={[styles.addBagSection, { borderTopColor: colors.border }]}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.addBtn,
+                { backgroundColor: added ? "#43A047" : PRIMARY, opacity: pressed ? 0.9 : 1 },
+              ]}
+              onPress={handleAddToCart}
+              testID="add-to-bag-btn"
+            >
+              <Feather name={added ? "check" : "shopping-bag"} size={18} color="#FFFFFF" />
+              <Text style={styles.addBtnText}>
+                {added ? "ADDED TO BAG" : "ADD TO BAG"}
+              </Text>
+            </Pressable>
 
             {/* Delivery info */}
             <View style={[styles.deliveryRow, { borderColor: colors.border }]}>
-              <Feather name="package" size={16} color={colors.primary} />
+              <Feather name="package" size={14} color={PRIMARY} />
               <Text style={[styles.deliveryText, { color: colors.mutedForeground }]}>
-                Free delivery on orders over $50
+                توصيل مجاني للطلبات فوق 100,000 IQD
               </Text>
             </View>
           </View>
+
+          {/* ── Description (accordion) ── */}
+          {!!product.description && (
+            <AccordionSection title="DESCRIPTION" colors={colors} initialOpen={true}>
+              <Text style={[styles.descText, { color: colors.mutedForeground }]}>
+                {product.description}
+              </Text>
+            </AccordionSection>
+          )}
+
+          {/* ── Warranty ── */}
+          {warranty && warranty.items.length > 0 && (
+            <AccordionSection title={warranty.title || "الضمان"} colors={colors}>
+              <View style={styles.warrantyList}>
+                {warranty.items.map((item) => (
+                  <WarrantyCard key={item.id} item={item} colors={colors} />
+                ))}
+              </View>
+            </AccordionSection>
+          )}
+
+          {/* ── Testimonials ── */}
+          {testimonials && testimonials.items.length > 0 && (
+            <View style={[styles.sectionWrap, { borderTopColor: colors.border }]}>
+              <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
+                {testimonials.title || "زبائن النجمة"}
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingLeft: 16, paddingRight: 8, gap: 12 }}
+              >
+                {testimonials.items.map((item) => (
+                  <TestimonialCard key={item.id} item={item} colors={colors} />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* ── Related Products ── */}
+          {relatedProducts.length > 0 && (
+            <View style={[styles.sectionWrap, { borderTopColor: colors.border }]}>
+              <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
+                منتجات مشابهة
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingLeft: 16, paddingRight: 8, gap: 12 }}
+              >
+                {relatedProducts.map((p) => (
+                  <RelatedCard key={p.id} product={p} colors={colors} />
+                ))}
+              </ScrollView>
+            </View>
+          )}
         </ScrollView>
       ) : null}
 
-      {/* Add to Bag button */}
-      {product && (
-        <View
-          style={[
-            styles.footer,
-            {
-              paddingBottom: bottomPadding + 8,
-              borderTopColor: colors.border,
-              backgroundColor: colors.background,
-            },
-          ]}
-        >
-          <Pressable
-            style={({ pressed }) => [
-              styles.addBtn,
-              { backgroundColor: added ? "#43A047" : PRIMARY, opacity: pressed ? 0.9 : 1 },
-            ]}
-            onPress={handleAddToCart}
-            testID="add-to-bag-btn"
-          >
-            <Feather name={added ? "check" : "shopping-bag"} size={18} color="#FFFFFF" />
-            <Text style={styles.addBtnText}>
-              {added ? "ADDED TO BAG" : "ADD TO BAG"}
-            </Text>
-          </Pressable>
-        </View>
-      )}
+      {/* ── Floating Tab Bar (web only) ── */}
+      <FloatingTabBar />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+
+  /* Header */
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -332,21 +554,19 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   cartHeaderBtn: { padding: 4, position: "relative" },
   cartBadge: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 3,
+    position: "absolute", top: 0, right: 0,
+    minWidth: 16, height: 16, borderRadius: 8,
+    alignItems: "center", justifyContent: "center", paddingHorizontal: 3,
   },
   cartBadgeText: { color: "#FFFFFF", fontSize: 10, fontFamily: "Inter_700Bold" },
+
+  /* Error */
   errorBox: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   errorText: { fontFamily: "Inter_400Regular", fontSize: 14 },
   retryBtn: { paddingHorizontal: 24, paddingVertical: 10, borderWidth: 1, borderRadius: 4 },
   retryText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+
+  /* Image */
   imageBox: {
     height: 360,
     alignItems: "center",
@@ -355,57 +575,89 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   wishlistBtn: {
-    position: "absolute",
-    top: 16,
-    right: 16,
-    borderRadius: 24,
-    padding: 10,
-    zIndex: 1,
+    position: "absolute", top: 16, right: 16,
+    borderRadius: 24, padding: 10, zIndex: 1,
   },
-  infoSection: { padding: 20, gap: 12 },
+
+  /* Info */
+  infoSection: { padding: 20, gap: 10 },
   vendor: { fontFamily: "Inter_500Medium", fontSize: 12, letterSpacing: 1, textTransform: "uppercase" },
   title: { fontFamily: "Inter_700Bold", fontSize: 22, lineHeight: 28 },
-  priceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 },
+  priceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 2 },
   price: { fontFamily: "Inter_700Bold", fontSize: 22 },
   comparePrice: { fontFamily: "Inter_400Regular", fontSize: 16, textDecorationLine: "line-through" },
   saleBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 2 },
   saleBadgeText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 0.5 },
-  tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
+  tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 2 },
   tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4, borderWidth: 1 },
   tagText: { fontFamily: "Inter_400Regular", fontSize: 12 },
-  descSection: { gap: 8, marginTop: 4 },
-  descLabel: { fontFamily: "Inter_700Bold", fontSize: 12, letterSpacing: 1 },
-  description: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 22 },
-  variantsSection: { gap: 10, marginTop: 4 },
-  variantsLabel: { fontFamily: "Inter_700Bold", fontSize: 12, letterSpacing: 1 },
+
+  /* Variants */
+  variantsSection: { paddingHorizontal: 20, paddingVertical: 16, gap: 12, borderTopWidth: 1 },
   variantsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   variantChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 4, borderWidth: 1.5 },
   variantText: { fontFamily: "Inter_500Medium", fontSize: 14 },
-  deliveryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    marginTop: 4,
-  },
-  deliveryText: { fontFamily: "Inter_400Regular", fontSize: 13 },
-  footer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-  },
+
+  /* Add to Bag */
+  addBagSection: { paddingHorizontal: 16, paddingVertical: 16, gap: 12, borderTopWidth: 1 },
   addBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    paddingVertical: 16,
-    borderRadius: 4,
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 10, paddingVertical: 16, borderRadius: 4,
   },
   addBtnText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1 },
+  deliveryRow: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingTop: 12, borderTopWidth: 1,
+  },
+  deliveryText: { fontFamily: "Inter_400Regular", fontSize: 12, flex: 1 },
+
+  /* Accordion */
+  accordionWrap: { borderTopWidth: 1 },
+  accordionHeader: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 20, paddingVertical: 16,
+  },
+  accordionTitle: { fontFamily: "Inter_700Bold", fontSize: 13, letterSpacing: 0.8 },
+  accordionBody: { paddingHorizontal: 20, paddingBottom: 16 },
+  descText: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 22 },
+
+  /* Warranty */
+  warrantyList: { gap: 10 },
+  warrantyCard: {
+    flexDirection: "row", alignItems: "flex-start", gap: 12,
+    padding: 14, borderRadius: 8, borderWidth: 1,
+  },
+  warrantyIcon: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: "center", justifyContent: "center",
+  },
+  warrantyText: { flex: 1, gap: 4 },
+  warrantyName: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
+  warrantyDesc: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 19 },
+
+  /* Section wrapper */
+  sectionWrap: { paddingVertical: 16, borderTopWidth: 1, gap: 12 },
+  sectionLabel: { fontFamily: "Inter_700Bold", fontSize: 13, letterSpacing: 0.8, paddingHorizontal: 20 },
+
+  /* Testimonials */
+  testimonialCard: {
+    width: 200, padding: 14, borderRadius: 10, borderWidth: 1,
+    gap: 8,
+  },
+  testimonialText: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 19 },
+  testimonialName: { fontFamily: "Inter_500Medium", fontSize: 12 },
+
+  /* Related Products */
+  relatedCard: {
+    width: 140, borderRadius: 8, borderWidth: 1, overflow: "hidden",
+  },
+  relatedImg: { width: 140, height: 170, alignItems: "center", justifyContent: "center", position: "relative" },
+  relatedDisc: {
+    position: "absolute", top: 8, left: 8,
+    backgroundColor: "#E53935", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3,
+  },
+  relatedDiscText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 10 },
+  relatedInfo: { padding: 10, gap: 4 },
+  relatedTitle: { fontFamily: "Inter_500Medium", fontSize: 12, lineHeight: 16 },
+  relatedPrice: { fontFamily: "Inter_700Bold", fontSize: 12 },
 });

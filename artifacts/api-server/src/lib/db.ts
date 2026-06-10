@@ -194,6 +194,16 @@ db.exec(`
     status     TEXT NOT NULL DEFAULT 'active',
     created_at TEXT NOT NULL
   );
+
+  CREATE TABLE content_sections (
+    id         TEXT PRIMARY KEY,
+    key        TEXT UNIQUE NOT NULL,
+    title      TEXT NOT NULL DEFAULT '',
+    items      TEXT NOT NULL DEFAULT '[]',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    status     TEXT NOT NULL DEFAULT 'active',
+    updated_at TEXT NOT NULL
+  );
 `);
 
 // ─── Seed helpers ─────────────────────────────────────────────────────────────
@@ -206,28 +216,28 @@ const j = (v: unknown) => JSON.stringify(v);
 // ─── Seed: Products ───────────────────────────────────────────────────────────
 
 const seedProducts = [
-  { id: "p001", title: "Oversized Blazer",        vendor: "Mora Studio",    category: "women",  price: 89.99, compare_price: null,   sold_count: 142, tags: ["blazer","office"] },
-  { id: "p002", title: "Slim Fit Trousers",        vendor: "Mora Essentials",category: "women",  price: 55.00, compare_price: 75.00,  sold_count: 98,  tags: ["trousers","sale"] },
-  { id: "p003", title: "Ribbed Knit Dress",        vendor: "Mora Studio",    category: "women",  price: 72.00, compare_price: null,   sold_count: 87,  tags: ["dress","knit"] },
-  { id: "p004", title: "Linen Shirt",              vendor: "Mora Essentials",category: "women",  price: 44.99, compare_price: null,   sold_count: 63,  tags: ["shirt","linen"] },
-  { id: "p005", title: "High Waist Jeans",         vendor: "Mora Denim",     category: "women",  price: 68.00, compare_price: null,   sold_count: 110, tags: ["jeans","denim"] },
-  { id: "p006", title: "Satin Midi Skirt",         vendor: "Mora Studio",    category: "women",  price: 59.99, compare_price: 85.00,  sold_count: 76,  tags: ["skirt","satin","sale"] },
-  { id: "p007", title: "Cropped Leather Jacket",   vendor: "Mora Studio",    category: "women",  price: 149.00,compare_price: null,   sold_count: 54,  tags: ["jacket","leather"] },
-  { id: "p008", title: "Cashmere Sweater",         vendor: "Mora Essentials",category: "women",  price: 95.00, compare_price: null,   sold_count: 91,  tags: ["sweater","cashmere"] },
-  { id: "p009", title: "Slim Fit Chinos",          vendor: "Mora Mens",      category: "men",    price: 52.00, compare_price: null,   sold_count: 79,  tags: ["chinos","slim"] },
-  { id: "p010", title: "Oxford Shirt",             vendor: "Mora Mens",      category: "men",    price: 48.00, compare_price: null,   sold_count: 103, tags: ["shirt","oxford"] },
-  { id: "p011", title: "Wool Coat",                vendor: "Mora Mens",      category: "men",    price: 189.00,compare_price: 250.00, sold_count: 45,  tags: ["coat","wool","sale"] },
-  { id: "p012", title: "Track Jacket",             vendor: "Mora Sport",     category: "men",    price: 65.00, compare_price: null,   sold_count: 67,  tags: ["jacket","sport"] },
-  { id: "p013", title: "Relaxed Denim",            vendor: "Mora Denim",     category: "men",    price: 72.00, compare_price: null,   sold_count: 82,  tags: ["jeans","denim"] },
-  { id: "p014", title: "Piqué Polo Shirt",         vendor: "Mora Mens",      category: "men",    price: 38.00, compare_price: null,   sold_count: 118, tags: ["polo"] },
-  { id: "p015", title: "Vitamin C Serum",          vendor: "Mora Beauty",    category: "beauty", price: 34.99, compare_price: null,   sold_count: 156, tags: ["serum","skincare"] },
-  { id: "p016", title: "Hydra-Glow Moisturiser",   vendor: "Mora Beauty",    category: "beauty", price: 28.00, compare_price: null,   sold_count: 129, tags: ["moisturiser","skincare"] },
-  { id: "p017", title: "Volumising Mascara",       vendor: "Mora Beauty",    category: "beauty", price: 18.50, compare_price: null,   sold_count: 171, tags: ["mascara","makeup"] },
-  { id: "p018", title: "Matte Lip Set",            vendor: "Mora Beauty",    category: "beauty", price: 22.00, compare_price: 30.00,  sold_count: 93,  tags: ["lipstick","makeup","sale"] },
-  { id: "p019", title: "Silk Slip Dress",          vendor: "Mora Studio",    category: "new_in", price: 99.00, compare_price: null,   sold_count: 38,  tags: ["dress","silk","new"] },
-  { id: "p020", title: "Tailored Waistcoat",       vendor: "Mora Studio",    category: "new_in", price: 79.00, compare_price: null,   sold_count: 29,  tags: ["waistcoat","new"] },
-  { id: "p021", title: "Cargo Trousers",           vendor: "Mora Mens",      category: "sale",   price: 35.00, compare_price: 65.00,  sold_count: 134, tags: ["cargo","sale"] },
-  { id: "p022", title: "Wrap Midi Dress",          vendor: "Mora Studio",    category: "sale",   price: 39.99, compare_price: 75.00,  sold_count: 147, tags: ["dress","wrap","sale"] },
+  { id: "p001", title: "Oversized Blazer",        vendor: "Mora Studio",    category: "women",  price: 117000, compare_price: null,   sold_count: 142, tags: ["blazer","office"] },
+  { id: "p002", title: "Slim Fit Trousers",        vendor: "Mora Essentials",category: "women",  price: 72000,  compare_price: 98000,  sold_count: 98,  tags: ["trousers","sale"] },
+  { id: "p003", title: "Ribbed Knit Dress",        vendor: "Mora Studio",    category: "women",  price: 94000,  compare_price: null,   sold_count: 87,  tags: ["dress","knit"] },
+  { id: "p004", title: "Linen Shirt",              vendor: "Mora Essentials",category: "women",  price: 58000,  compare_price: null,   sold_count: 63,  tags: ["shirt","linen"] },
+  { id: "p005", title: "High Waist Jeans",         vendor: "Mora Denim",     category: "women",  price: 88000,  compare_price: null,   sold_count: 110, tags: ["jeans","denim"] },
+  { id: "p006", title: "Satin Midi Skirt",         vendor: "Mora Studio",    category: "women",  price: 78000,  compare_price: 110000, sold_count: 76,  tags: ["skirt","satin","sale"] },
+  { id: "p007", title: "Cropped Leather Jacket",   vendor: "Mora Studio",    category: "women",  price: 194000, compare_price: null,   sold_count: 54,  tags: ["jacket","leather"] },
+  { id: "p008", title: "Cashmere Sweater",         vendor: "Mora Essentials",category: "women",  price: 124000, compare_price: null,   sold_count: 91,  tags: ["sweater","cashmere"] },
+  { id: "p009", title: "Slim Fit Chinos",          vendor: "Mora Mens",      category: "men",    price: 68000,  compare_price: null,   sold_count: 79,  tags: ["chinos","slim"] },
+  { id: "p010", title: "Oxford Shirt",             vendor: "Mora Mens",      category: "men",    price: 62000,  compare_price: null,   sold_count: 103, tags: ["shirt","oxford"] },
+  { id: "p011", title: "Wool Coat",                vendor: "Mora Mens",      category: "men",    price: 246000, compare_price: 325000, sold_count: 45,  tags: ["coat","wool","sale"] },
+  { id: "p012", title: "Track Jacket",             vendor: "Mora Sport",     category: "men",    price: 85000,  compare_price: null,   sold_count: 67,  tags: ["jacket","sport"] },
+  { id: "p013", title: "Relaxed Denim",            vendor: "Mora Denim",     category: "men",    price: 94000,  compare_price: null,   sold_count: 82,  tags: ["jeans","denim"] },
+  { id: "p014", title: "Piqué Polo Shirt",         vendor: "Mora Mens",      category: "men",    price: 49000,  compare_price: null,   sold_count: 118, tags: ["polo"] },
+  { id: "p015", title: "Vitamin C Serum",          vendor: "Mora Beauty",    category: "beauty", price: 45000,  compare_price: null,   sold_count: 156, tags: ["serum","skincare"] },
+  { id: "p016", title: "Hydra-Glow Moisturiser",   vendor: "Mora Beauty",    category: "beauty", price: 36000,  compare_price: null,   sold_count: 129, tags: ["moisturiser","skincare"] },
+  { id: "p017", title: "Volumising Mascara",       vendor: "Mora Beauty",    category: "beauty", price: 24000,  compare_price: null,   sold_count: 171, tags: ["mascara","makeup"] },
+  { id: "p018", title: "Matte Lip Set",            vendor: "Mora Beauty",    category: "beauty", price: 29000,  compare_price: 39000,  sold_count: 93,  tags: ["lipstick","makeup","sale"] },
+  { id: "p019", title: "Silk Slip Dress",          vendor: "Mora Studio",    category: "new_in", price: 129000, compare_price: null,   sold_count: 38,  tags: ["dress","silk","new"] },
+  { id: "p020", title: "Tailored Waistcoat",       vendor: "Mora Studio",    category: "new_in", price: 103000, compare_price: null,   sold_count: 29,  tags: ["waistcoat","new"] },
+  { id: "p021", title: "Cargo Trousers",           vendor: "Mora Mens",      category: "sale",   price: 46000,  compare_price: 85000,  sold_count: 134, tags: ["cargo","sale"] },
+  { id: "p022", title: "Wrap Midi Dress",          vendor: "Mora Studio",    category: "sale",   price: 52000,  compare_price: 98000,  sold_count: 147, tags: ["dress","wrap","sale"] },
 ];
 
 const insertProduct = db.prepare(`
@@ -579,5 +589,39 @@ const seedItems = [
 for (const item of seedItems) {
   insertStoryItem.run(item.id, item.row, item.title, item.img, item.link, item.order, "active", storyNow);
 }
+
+// ─── Seed: Content Sections ───────────────────────────────────────────────────
+
+const insertContentSection = db.prepare(
+  `INSERT INTO content_sections (id, key, title, items, sort_order, status, updated_at) VALUES (?,?,?,?,?,?,?)`
+);
+
+const csNow = new Date().toISOString();
+[
+  {
+    id: "cs_warranty",
+    key: "warranty",
+    title: "الضمان",
+    items: JSON.stringify([
+      { id: "w1", name: "الضمان الذهبي", description: "ضمان شامل لمدة سنة كاملة على جميع المنتجات مع خدمة الاستبدال المجاني", type: "gold" },
+      { id: "w2", name: "الضمان الفضي",  description: "ضمان أساسي لمدة 6 أشهر مع إمكانية الإصلاح أو الاستبدال للمنتجات المعيبة", type: "silver" },
+    ]),
+    sort_order: 0,
+  },
+  {
+    id: "cs_testimonials",
+    key: "testimonials",
+    title: "زبائن النجمة",
+    items: JSON.stringify([
+      { id: "t1", name: "أحمد محمد",  text: "جودة منتجات ممتازة وتوصيل سريع جداً، تجربة تسوق رائعة مع موره", rating: 5 },
+      { id: "t2", name: "سارة خالد", text: "المنتجات مطابقة للوصف تماماً والتغليف جميل جداً، سأتسوق مجدداً", rating: 5 },
+      { id: "t3", name: "عمر حسين",  text: "خدمة عملاء احترافية وأسعار معقولة، أنصح الجميع بالتسوق من موره", rating: 5 },
+      { id: "t4", name: "نور علي",   text: "المقاسات دقيقة والخامة عالية الجودة، مستمرة بالتسوق", rating: 5 },
+    ]),
+    sort_order: 1,
+  },
+].forEach(({ id, key, title, items, sort_order }) => {
+  insertContentSection.run(id, key, title, items, sort_order, "active", csNow);
+});
 
 export default db;

@@ -398,6 +398,11 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
               }
               return;
             }
+            // Home tab re-press while already on home — scroll to top
+            if (focused && route.name === "index" && typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("mora-scroll-home-top"));
+              return;
+            }
             const event = navigation.emit({
               type: "tabPress",
               target: route.key,

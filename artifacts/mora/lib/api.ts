@@ -98,6 +98,27 @@ export async function fetchStories(): Promise<StoryRow[]> {
   return apiFetch<StoryRow[]>("/store/stories");
 }
 
+export type ContentSectionItem = {
+  id: string;
+  name: string;
+  description?: string;
+  text?: string;
+  type?: string;
+  rating?: number;
+};
+
+export type ContentSection = {
+  id: string;
+  key: string;
+  title: string;
+  items: ContentSectionItem[];
+  sortOrder: number;
+};
+
+export async function fetchContentSections(): Promise<Record<string, ContentSection>> {
+  return apiFetch<Record<string, ContentSection>>("/store/content-sections");
+}
+
 export async function fetchSpecialCollection(
   slug: string,
   page = 1

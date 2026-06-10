@@ -20,6 +20,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { useCart } from "@/context/CartContext";
 import { fetchSpecialCollection, searchProducts } from "@/lib/api";
+import { formatIQD } from "@/lib/format";
+import { FloatingTabBar } from "@/components/FloatingTabBar";
 import type { Product } from "@/lib/types";
 
 const { width } = Dimensions.get("window");
@@ -66,11 +68,11 @@ function ProductCard({ product }: { product: Product }) {
         </Text>
         <View style={styles.priceRow}>
           <Text style={[styles.price, { color: colors.foreground }]}>
-            ${product.price.toFixed(2)}
+            {formatIQD(product.price)}
           </Text>
           {hasDiscount && (
             <Text style={[styles.comparePrice, { color: colors.mutedForeground }]}>
-              ${product.comparePrice!.toFixed(2)}
+              {formatIQD(product.comparePrice!)}
             </Text>
           )}
         </View>
@@ -207,17 +209,8 @@ export default function CollectionScreen() {
           <Feather name="arrow-left" size={20} color={iconColor} />
         </Pressable>
 
-        {/* Title (shows when scrolled, hidden when on hero) */}
-        <Animated.View style={{ flex: 1, overflow: "hidden", opacity: headerBgAnim }}>
-          {scrolled && (
-            <Text
-              style={[styles.headerTitle, { color: colors.foreground }]}
-              numberOfLines={1}
-            >
-              {collection?.title ?? ""}
-            </Text>
-          )}
-        </Animated.View>
+        {/* Flex spacer — title removed to avoid clashing with expanding search bar */}
+        <View style={{ flex: 1 }} />
 
         {/* Right side: search icon → search bar + cart */}
         <View style={styles.headerRight}>
@@ -294,7 +287,7 @@ export default function CollectionScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />
         }
-        contentContainerStyle={{ paddingBottom: botPad + 64 }}
+        contentContainerStyle={{ paddingBottom: (isWeb ? 84 : botPad) + 64 }}
       >
         {/* Hero image — scrolls naturally */}
         <View style={styles.hero}>
@@ -378,6 +371,8 @@ export default function CollectionScreen() {
           </View>
         )}
       </Animated.ScrollView>
+
+      <FloatingTabBar />
     </View>
   );
 }

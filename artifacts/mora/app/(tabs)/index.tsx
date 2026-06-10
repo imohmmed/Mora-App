@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   NativeScrollEvent,
@@ -25,6 +25,7 @@ import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { fetchProducts, fetchSpecialCollections, fetchBanners, fetchStories } from "@/lib/api";
+import { formatIQD } from "@/lib/format";
 import { StoriesSection } from "@/components/StoriesSection";
 import type { Product, Banner, Variant } from "@/lib/types";
 
@@ -121,11 +122,11 @@ function ProductCard({
         </Text>
         <View style={styles.priceRow}>
           <Text style={[styles.productPrice, { color: colors.foreground }]}>
-            ${item.price.toFixed(2)}
+            {formatIQD(item.price)}
           </Text>
           {item.comparePrice != null && item.comparePrice > item.price && (
             <Text style={[styles.originalPrice, { color: colors.mutedForeground }]}>
-              ${item.comparePrice.toFixed(2)}
+              {formatIQD(item.comparePrice)}
             </Text>
           )}
         </View>
@@ -236,6 +237,16 @@ export default function HomeScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
   const bottomPadding = isWeb ? 0 : insets.bottom;
+
+  const mainScrollRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = () => {
+      mainScrollRef.current?.scrollTo?.({ y: 0, animated: true });
+    };
+    window.addEventListener("mora-scroll-home-top", handler);
+    return () => window.removeEventListener("mora-scroll-home-top", handler);
+  }, []);
   const categoryKey = CATEGORIES[activeCategory];
   const categoryFilter = CATEGORY_FILTERS[categoryKey ?? "ALL"];
 
@@ -283,6 +294,7 @@ export default function HomeScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <HomeHeader notificationCount={0} favoritesCount={wishlistCount} cartCount={totalItems} />
       <ScrollView
+        ref={mainScrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomPadding + 80 }}
         refreshControl={

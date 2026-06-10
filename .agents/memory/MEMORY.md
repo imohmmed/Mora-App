@@ -1,2 +1,4 @@
 - [Web Liquid Glass Tab Bar](web-liquid-glass.md) — CSS backdrop-filter approach for Expo web; className prop trick for RN Web
 - [Firebase Auth Setup](firebase-auth.md) — phone/Google/Apple auth built, waiting on Firebase credentials (6 env vars needed)
+- [VPS nginx serve path](vps-nginx-path.md) — Expo web dist must go to /var/www/mora/artifacts/mora/dist NOT /var/www/mora-web/
+- [IQD Pricing & Content Sections](iqd-content-sections.md) — All prices in IQD (×1300 from USD), formatIQD() in lib/format.ts, warranty+testimonials via content_sections API
