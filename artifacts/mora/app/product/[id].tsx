@@ -39,22 +39,6 @@ function cardColor(id: string): string {
   return CARD_COLORS[h % CARD_COLORS.length];
 }
 
-// ─── Star Rating ───────────────────────────────────────────────────────────────
-function StarRating({ rating }: { rating: number }) {
-  return (
-    <View style={{ flexDirection: "row", gap: 2 }}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Feather
-          key={i}
-          name="star"
-          size={11}
-          color={i <= rating ? "#F5A623" : "#D0D0D0"}
-        />
-      ))}
-    </View>
-  );
-}
-
 // ─── Accordion Section ─────────────────────────────────────────────────────────
 function AccordionSection({
   title,
@@ -86,66 +70,28 @@ function AccordionSection({
   );
 }
 
-// ─── Warranty Card ─────────────────────────────────────────────────────────────
-function WarrantyCard({
+// ─── Text Paragraph ────────────────────────────────────────────────────────────
+function TextParagraph({
   item,
   colors,
+  isBold,
 }: {
   item: ContentSectionItem;
   colors: ReturnType<typeof useColors>;
+  isBold?: boolean;
 }) {
-  const isGold = item.type === "gold";
-  const accent = isGold ? GOLD : SILVER;
+  const content = item.text ?? item.name ?? "";
+  if (!content) return null;
   return (
-    <View
+    <Text
       style={[
-        styles.warrantyCard,
-        { borderColor: accent + "40", backgroundColor: accent + "10" },
+        styles.textParagraph,
+        { color: isBold ? colors.foreground : colors.mutedForeground },
+        isBold && { fontFamily: "Inter_600SemiBold" },
       ]}
     >
-      <View style={[styles.warrantyIcon, { backgroundColor: accent + "20" }]}>
-        <Feather name={isGold ? "award" : "shield"} size={20} color={accent} />
-      </View>
-      <View style={styles.warrantyText}>
-        <Text style={[styles.warrantyName, { color: colors.foreground }]}>
-          {item.name}
-        </Text>
-        {!!item.description && (
-          <Text style={[styles.warrantyDesc, { color: colors.mutedForeground }]}>
-            {item.description}
-          </Text>
-        )}
-      </View>
-    </View>
-  );
-}
-
-// ─── Testimonial Card ──────────────────────────────────────────────────────────
-function TestimonialCard({
-  item,
-  colors,
-}: {
-  item: ContentSectionItem;
-  colors: ReturnType<typeof useColors>;
-}) {
-  return (
-    <View
-      style={[
-        styles.testimonialCard,
-        { backgroundColor: colors.secondary, borderColor: colors.border },
-      ]}
-    >
-      <StarRating rating={item.rating ?? 5} />
-      <Text
-        style={[styles.testimonialText, { color: colors.foreground }]}
-        numberOfLines={4}
-      >
-        {item.text ?? ""}
-      </Text>
-      <Text style={[styles.testimonialName, { color: colors.mutedForeground }]}>
-        — {item.name}
-      </Text>
-    </View>
+      {content}
+    </Text>
   );
 }
 
@@ -470,7 +416,7 @@ export default function ProductDetailScreen() {
             <View style={[styles.deliveryRow, { borderColor: colors.border }]}>
               <Feather name="package" size={14} color={PRIMARY} />
               <Text style={[styles.deliveryText, { color: colors.mutedForeground }]}>
-                توصيل مجاني للطلبات فوق 100,000 IQD
+                Free delivery on orders over 100,000 IQD
               </Text>
             </View>
           </View>
@@ -486,38 +432,31 @@ export default function ProductDetailScreen() {
 
           {/* ── Warranty ── */}
           {warranty && warranty.items.length > 0 && (
-            <AccordionSection title={warranty.title || "الضمان"} colors={colors}>
-              <View style={styles.warrantyList}>
+            <AccordionSection title={warranty.title || "WARRANTY"} colors={colors}>
+              <View style={styles.textSection}>
                 {warranty.items.map((item) => (
-                  <WarrantyCard key={item.id} item={item} colors={colors} />
+                  <TextParagraph key={item.id} item={item} colors={colors} />
                 ))}
               </View>
             </AccordionSection>
           )}
 
-          {/* ── Testimonials ── */}
+          {/* ── Star Customers ── */}
           {testimonials && testimonials.items.length > 0 && (
-            <View style={[styles.sectionWrap, { borderTopColor: colors.border }]}>
-              <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
-                {testimonials.title || "زبائن النجمة"}
-              </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingLeft: 16, paddingRight: 8, gap: 12 }}
-              >
-                {testimonials.items.map((item) => (
-                  <TestimonialCard key={item.id} item={item} colors={colors} />
+            <AccordionSection title={testimonials.title || "STAR CUSTOMERS ⭐"} colors={colors}>
+              <View style={styles.textSection}>
+                {testimonials.items.map((item, i) => (
+                  <TextParagraph key={item.id} item={item} colors={colors} isBold={i === 0} />
                 ))}
-              </ScrollView>
-            </View>
+              </View>
+            </AccordionSection>
           )}
 
           {/* ── Related Products ── */}
           {relatedProducts.length > 0 && (
             <View style={[styles.sectionWrap, { borderTopColor: colors.border }]}>
               <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
-                منتجات مشابهة
+                RELATED PRODUCTS
               </Text>
               <ScrollView
                 horizontal
@@ -621,31 +560,13 @@ const styles = StyleSheet.create({
   accordionBody: { paddingHorizontal: 20, paddingBottom: 16 },
   descText: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 22 },
 
-  /* Warranty */
-  warrantyList: { gap: 10 },
-  warrantyCard: {
-    flexDirection: "row", alignItems: "flex-start", gap: 12,
-    padding: 14, borderRadius: 8, borderWidth: 1,
-  },
-  warrantyIcon: {
-    width: 40, height: 40, borderRadius: 20,
-    alignItems: "center", justifyContent: "center",
-  },
-  warrantyText: { flex: 1, gap: 4 },
-  warrantyName: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
-  warrantyDesc: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 19 },
+  /* Text sections (warranty / star customers) */
+  textSection: { gap: 10 },
+  textParagraph: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 22 },
 
   /* Section wrapper */
   sectionWrap: { paddingVertical: 16, borderTopWidth: 1, gap: 12 },
   sectionLabel: { fontFamily: "Inter_700Bold", fontSize: 13, letterSpacing: 0.8, paddingHorizontal: 20 },
-
-  /* Testimonials */
-  testimonialCard: {
-    width: 200, padding: 14, borderRadius: 10, borderWidth: 1,
-    gap: 8,
-  },
-  testimonialText: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 19 },
-  testimonialName: { fontFamily: "Inter_500Medium", fontSize: 12 },
 
   /* Related Products */
   relatedCard: {
