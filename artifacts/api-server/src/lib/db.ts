@@ -544,9 +544,9 @@ const insertStoryItem = db.prepare(
 const storyNow = new Date().toISOString();
 
 const seedRows = [
-  { id: "srow1", title: "تسوّق حسب الفئة", sort_order: 0 },
-  { id: "srow2", title: "الأكثر مبيعاً",   sort_order: 1 },
-  { id: "srow3", title: "مجموعات خاصة",    sort_order: 2 },
+  { id: "srow1", title: "", sort_order: 0 },
+  { id: "srow2", title: "", sort_order: 1 },
+  { id: "srow3", title: "", sort_order: 2 },
 ];
 for (const r of seedRows) {
   insertStoryRow.run(r.id, r.title, r.sort_order, "active", storyNow);
