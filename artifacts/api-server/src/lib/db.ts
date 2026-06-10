@@ -175,6 +175,25 @@ db.exec(`
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
+
+  CREATE TABLE story_rows (
+    id         TEXT PRIMARY KEY,
+    title      TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    status     TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE story_items (
+    id         TEXT PRIMARY KEY,
+    row_id     TEXT NOT NULL REFERENCES story_rows(id) ON DELETE CASCADE,
+    title      TEXT NOT NULL DEFAULT '',
+    image_url  TEXT NOT NULL DEFAULT '',
+    link_url   TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    status     TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL
+  );
 `);
 
 // ─── Seed helpers ─────────────────────────────────────────────────────────────
@@ -511,6 +530,54 @@ export function getTopProducts(limit = 5) {
     sold: Math.floor(Math.random() * 80) + 10,
     revenue: +((Math.random() * 80 + 10) * (p["price"] as number)).toFixed(2),
   }));
+}
+
+// ─── Seed: Story Rows & Items ─────────────────────────────────────────────────
+
+const insertStoryRow = db.prepare(
+  `INSERT INTO story_rows (id, title, sort_order, status, created_at) VALUES (?,?,?,?,?)`
+);
+const insertStoryItem = db.prepare(
+  `INSERT INTO story_items (id, row_id, title, image_url, link_url, sort_order, status, created_at) VALUES (?,?,?,?,?,?,?,?)`
+);
+
+const storyNow = new Date().toISOString();
+
+const seedRows = [
+  { id: "srow1", title: "تسوّق حسب الفئة", sort_order: 0 },
+  { id: "srow2", title: "الأكثر مبيعاً",   sort_order: 1 },
+  { id: "srow3", title: "مجموعات خاصة",    sort_order: 2 },
+];
+for (const r of seedRows) {
+  insertStoryRow.run(r.id, r.title, r.sort_order, "active", storyNow);
+}
+
+const seedItems = [
+  // Row 1
+  { id: "si001", row: "srow1", title: "Tops",       img: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=200&h=200&fit=crop", link: "/products?category=women", order: 0 },
+  { id: "si002", row: "srow1", title: "T-shirts",   img: "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=200&h=200&fit=crop", link: "/products?category=men",   order: 1 },
+  { id: "si003", row: "srow1", title: "Suits",      img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop", link: "/products?category=men",   order: 2 },
+  { id: "si004", row: "srow1", title: "Bottoms",    img: "https://images.unsplash.com/photo-1542272454315-4c01d7abdf4a?w=200&h=200&fit=crop", link: "/products?category=women", order: 3 },
+  { id: "si005", row: "srow1", title: "Hoodies",    img: "https://images.unsplash.com/photo-1556821840-3a63f15732ce?w=200&h=200&fit=crop", link: "/products?category=men",   order: 4 },
+  { id: "si006", row: "srow1", title: "Jackets",    img: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=200&h=200&fit=crop", link: "/products?category=women", order: 5 },
+  // Row 2
+  { id: "si007", row: "srow2", title: "Denim",      img: "https://images.unsplash.com/photo-1475178626620-a4d074967452?w=200&h=200&fit=crop", link: "/products?category=women", order: 0 },
+  { id: "si008", row: "srow2", title: "Co-ords",    img: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=200&fit=crop", link: "/products?category=women", order: 1 },
+  { id: "si009", row: "srow2", title: "Shirts",     img: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=200&h=200&fit=crop", link: "/products?category=men",   order: 2 },
+  { id: "si010", row: "srow2", title: "Outerwear",  img: "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=200&h=200&fit=crop", link: "/products?category=men",   order: 3 },
+  { id: "si011", row: "srow2", title: "Swimwear",   img: "https://images.unsplash.com/photo-1570303345338-e1f0eddf4946?w=200&h=200&fit=crop", link: "/products?category=women", order: 4 },
+  { id: "si012", row: "srow2", title: "Shorts",     img: "https://images.unsplash.com/photo-1591195853828-11db59a44f43?w=200&h=200&fit=crop", link: "/products?category=men",   order: 5 },
+  // Row 3
+  { id: "si013", row: "srow3", title: "Beauty",     img: "https://images.unsplash.com/photo-1596462502278-27bf85033e5a?w=200&h=200&fit=crop", link: "/products?category=beauty", order: 0 },
+  { id: "si014", row: "srow3", title: "New In",     img: "https://images.unsplash.com/photo-1445205170230-053b83016050?w=200&h=200&fit=crop", link: "/products?category=new_in", order: 1 },
+  { id: "si015", row: "srow3", title: "Sale",       img: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=200&h=200&fit=crop", link: "/products?category=sale",   order: 2 },
+  { id: "si016", row: "srow3", title: "Accessories",img: "https://images.unsplash.com/photo-1492707892479-7bc8d5a4ee93?w=200&h=200&fit=crop", link: "/products",                 order: 3 },
+  { id: "si017", row: "srow3", title: "Bags",       img: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=200&h=200&fit=crop", link: "/products",                 order: 4 },
+  { id: "si018", row: "srow3", title: "Shoes",      img: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200&h=200&fit=crop", link: "/products",                 order: 5 },
+];
+
+for (const item of seedItems) {
+  insertStoryItem.run(item.id, item.row, item.title, item.img, item.link, item.order, "active", storyNow);
 }
 
 export default db;

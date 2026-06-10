@@ -89,6 +89,21 @@ export type SpecialCollection = {
   products: Product[];
 };
 
+export type StoryItem = {
+  id: string;
+  title: string;
+  imageUrl: string;
+  linkUrl: string;
+  sortOrder: number;
+};
+
+export type StoryRow = {
+  id: string;
+  title: string;
+  sortOrder: number;
+  items: StoryItem[];
+};
+
 export type CartItem = {
   productId: string;
   variantId: string;

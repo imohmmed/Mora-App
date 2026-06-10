@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { FileText, List as ListIcon, Plus, Boxes, File, ChevronRight, HardDrive, Image as ImageIcon, Pencil, Trash2, X } from "lucide-react";
+import { FileText, List as ListIcon, Plus, Boxes, File, ChevronRight, HardDrive, Image as ImageIcon, Pencil, Trash2, X, Layers, ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import { format } from "date-fns";
 import { useSearch, useLocation } from "wouter";
 import { useState } from "react";
@@ -314,6 +314,299 @@ function BannersTab() {
   );
 }
 
+// ─── Stories Tab ───────────────────────────────────────────────────────────────
+
+type StoryItem = { id: string; rowId: string; title: string; imageUrl: string; linkUrl: string; sortOrder: number; status: string };
+type StoryRow  = { id: string; title: string; sortOrder: number; status: string; items: StoryItem[] };
+
+const EMPTY_STORY_ITEM = { title: "", imageUrl: "", linkUrl: "", status: "active" };
+
+function StoryItemForm({
+  open, rowId, initial, rows, onClose, onSaved,
+}: { open: boolean; rowId: string; initial?: StoryItem | null; rows: StoryRow[]; onClose: () => void; onSaved: () => void }) {
+  const isEdit = !!initial;
+  const [form, setForm] = useState({ ...EMPTY_STORY_ITEM, rowId, ...(initial ? { title: initial.title, imageUrl: initial.imageUrl, linkUrl: initial.linkUrl, status: initial.status, rowId: initial.rowId } : {}) });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+
+  const handleSave = async () => {
+    if (!form.title.trim()) { setErr("Title is required"); return; }
+    setSaving(true); setErr("");
+    try {
+      const url  = isEdit ? `/api/admin/story-items/${initial!.id}` : "/api/admin/story-items";
+      const body = isEdit ? { title: form.title, imageUrl: form.imageUrl, linkUrl: form.linkUrl, status: form.status, rowId: form.rowId } : { ...form };
+      const res  = await fetch(url, { method: isEdit ? "PUT" : "POST", headers: AUTH_HEADER, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error("Failed");
+      onSaved(); onClose();
+    } catch (e) { setErr((e as Error).message); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={o => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>{isEdit ? "Edit Item" : "Add Story Item"}</DialogTitle></DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="grid gap-1.5">
+            <Label>Row</Label>
+            <Select value={form.rowId} onValueChange={v => set("rowId", v)}>
+              <SelectTrigger><SelectValue placeholder="Select row" /></SelectTrigger>
+              <SelectContent>
+                {rows.map(r => <SelectItem key={r.id} value={r.id}>{r.title || `Row ${r.sortOrder + 1}`}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Title *</Label>
+            <Input value={form.title} onChange={e => set("title", e.target.value)} placeholder="Tops, T-shirts…" />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Image URL</Label>
+            <Input value={form.imageUrl} onChange={e => set("imageUrl", e.target.value)} placeholder="https://images.unsplash.com/…" />
+            {form.imageUrl && (
+              <div className="w-16 h-16 rounded-full overflow-hidden border">
+                <img src={form.imageUrl} alt="" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = "none")} />
+              </div>
+            )}
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Link URL</Label>
+            <Input value={form.linkUrl} onChange={e => set("linkUrl", e.target.value)} placeholder="/products?category=women" />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Status</Label>
+            <Select value={form.status} onValueChange={v => set("status", v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {err && <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded">{err}</p>}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button onClick={handleSave} disabled={saving}>{saving ? "Saving…" : isEdit ? "Save" : "Add Item"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function StoriesTab() {
+  const qc = useQueryClient();
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [addRowOpen, setAddRowOpen] = useState(false);
+  const [editRowId, setEditRowId] = useState<string | null>(null);
+  const [editRowTitle, setEditRowTitle] = useState("");
+  const [itemFormOpen, setItemFormOpen] = useState(false);
+  const [itemFormRowId, setItemFormRowId] = useState("");
+  const [editItem, setEditItem] = useState<StoryItem | null>(null);
+  const [savingRow, setSavingRow] = useState(false);
+  const [newRowTitle, setNewRowTitle] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const { data: rowsRes, isLoading } = useQuery<{ data: StoryRow[] }>({
+    queryKey: ["/api/admin/story-rows"],
+    queryFn: () => fetch("/api/admin/story-rows", { headers: AUTH_HEADER }).then(r => r.json()),
+  });
+
+  const rows = rowsRes?.data ?? [];
+  const refresh = () => qc.invalidateQueries({ queryKey: ["/api/admin/story-rows"] });
+
+  const handleAddRow = async () => {
+    if (!newRowTitle.trim()) return;
+    setSavingRow(true);
+    try {
+      await fetch("/api/admin/story-rows", { method: "POST", headers: AUTH_HEADER, body: JSON.stringify({ title: newRowTitle }) });
+      setNewRowTitle(""); setAddRowOpen(false); await refresh();
+    } finally { setSavingRow(false); }
+  };
+
+  const handleSaveRowTitle = async (rowId: string) => {
+    await fetch(`/api/admin/story-rows/${rowId}`, { method: "PUT", headers: AUTH_HEADER, body: JSON.stringify({ title: editRowTitle }) });
+    setEditRowId(null); await refresh();
+  };
+
+  const handleToggleRowStatus = async (row: StoryRow) => {
+    await fetch(`/api/admin/story-rows/${row.id}`, { method: "PUT", headers: AUTH_HEADER, body: JSON.stringify({ status: row.status === "active" ? "inactive" : "active" }) });
+    await refresh();
+  };
+
+  const handleDeleteRow = async (id: string) => {
+    setDeletingId(id);
+    try { await fetch(`/api/admin/story-rows/${id}`, { method: "DELETE", headers: AUTH_HEADER }); await refresh(); }
+    finally { setDeletingId(null); }
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    setDeletingId(id);
+    try { await fetch(`/api/admin/story-items/${id}`, { method: "DELETE", headers: AUTH_HEADER }); await refresh(); }
+    finally { setDeletingId(null); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Manage story rows shown below the banner. Each row is a horizontal scroll of circles.
+        </p>
+        <Button onClick={() => setAddRowOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Row
+        </Button>
+      </div>
+
+      {/* Add Row Dialog */}
+      <Dialog open={addRowOpen} onOpenChange={o => !o && setAddRowOpen(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>New Story Row</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid gap-1.5">
+              <Label>Row Title</Label>
+              <Input
+                value={newRowTitle}
+                onChange={e => setNewRowTitle(e.target.value)}
+                placeholder="e.g. Shop by Category"
+                onKeyDown={e => e.key === "Enter" && handleAddRow()}
+              />
+              <p className="text-xs text-muted-foreground">Optional — shown as a small heading above the row.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddRowOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddRow} disabled={savingRow || !newRowTitle.trim()}>{savingRow ? "Adding…" : "Add Row"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Story Item Form */}
+      {itemFormOpen && (
+        <StoryItemForm
+          open={itemFormOpen}
+          rowId={itemFormRowId}
+          initial={editItem}
+          rows={rows}
+          onClose={() => { setItemFormOpen(false); setEditItem(null); }}
+          onSaved={refresh}
+        />
+      )}
+
+      {isLoading ? (
+        <div className="space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
+      ) : rows.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+            <Layers className="h-8 w-8 text-muted-foreground opacity-50" />
+            <p className="text-muted-foreground text-sm">No story rows yet. Add a row to get started.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {rows.map((row, rowIdx) => {
+            const isExpanded = expandedRow === row.id;
+            return (
+              <Card key={row.id} className={row.status === "inactive" ? "opacity-60" : ""}>
+                <CardContent className="p-0">
+                  {/* Row Header */}
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <GripVertical className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      {editRowId === row.id ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            className="h-7 text-sm"
+                            value={editRowTitle}
+                            onChange={e => setEditRowTitle(e.target.value)}
+                            onKeyDown={e => { if (e.key === "Enter") handleSaveRowTitle(row.id); if (e.key === "Escape") setEditRowId(null); }}
+                            autoFocus
+                          />
+                          <Button size="sm" className="h-7 px-2 text-xs" onClick={() => handleSaveRowTitle(row.id)}>Save</Button>
+                          <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditRowId(null)}><X className="w-3 h-3" /></Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm truncate">{row.title || `Row ${rowIdx + 1}`}</span>
+                          <Badge variant={row.status === "active" ? "default" : "secondary"} className="text-xs cursor-pointer" onClick={() => handleToggleRowStatus(row)}>
+                            {row.status}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">{row.items.length} items</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditRowId(row.id); setEditRowTitle(row.title); }}><Pencil className="w-3.5 h-3.5" /></Button>
+                      <Button
+                        variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => handleDeleteRow(row.id)} disabled={deletingId === row.id}
+                      ><Trash2 className="w-3.5 h-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExpandedRow(isExpanded ? null : row.id)}>
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Items preview bar (always visible) */}
+                  {!isExpanded && row.items.length > 0 && (
+                    <div className="flex items-center gap-2 px-10 pb-3 overflow-x-auto">
+                      {row.items.slice(0, 8).map(item => (
+                        <div key={item.id} className="flex flex-col items-center gap-1 flex-shrink-0">
+                          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/30 bg-muted">
+                            {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-muted" />}
+                          </div>
+                          <span className="text-xs text-muted-foreground max-w-10 truncate">{item.title}</span>
+                        </div>
+                      ))}
+                      {row.items.length > 8 && <span className="text-xs text-muted-foreground">+{row.items.length - 8}</span>}
+                    </div>
+                  )}
+
+                  {/* Expanded items list */}
+                  {isExpanded && (
+                    <div className="border-t">
+                      <div className="flex items-center justify-between px-4 py-2 bg-muted/30">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Items in this row</span>
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setItemFormRowId(row.id); setEditItem(null); setItemFormOpen(true); }}>
+                          <Plus className="w-3 h-3 mr-1" /> Add Item
+                        </Button>
+                      </div>
+                      {row.items.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2">
+                          <ImageIcon className="w-6 h-6 opacity-40" />
+                          <p className="text-sm">No items yet.</p>
+                        </div>
+                      ) : (
+                        <div className="divide-y">
+                          {row.items.map(item => (
+                            <div key={item.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/20">
+                              <div className="w-9 h-9 rounded-full overflow-hidden border border-border bg-muted flex-shrink-0">
+                                {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" /> : <div className="w-full h-full" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{item.title}</p>
+                                {item.linkUrl && <p className="text-xs text-muted-foreground font-mono truncate">{item.linkUrl}</p>}
+                              </div>
+                              <Badge variant={item.status === "active" ? "outline" : "secondary"} className="text-xs flex-shrink-0">{item.status}</Badge>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditItem(item); setItemFormRowId(item.rowId); setItemFormOpen(true); }}><Pencil className="w-3 h-3" /></Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeleteItem(item.id)} disabled={deletingId === item.id}><Trash2 className="w-3 h-3" /></Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ContentHub() {
   const search = useSearch();
   const [, navigate] = useLocation();
@@ -362,6 +655,10 @@ export default function ContentHub() {
           <TabsTrigger value="metaobjects" className="gap-2">
             <Boxes className="w-4 h-4" />
             Metaobjects
+          </TabsTrigger>
+          <TabsTrigger value="stories" className="gap-2">
+            <Layers className="w-4 h-4" />
+            Stories
           </TabsTrigger>
           <TabsTrigger value="files" className="gap-2">
             <File className="w-4 h-4" />
@@ -438,6 +735,11 @@ export default function ContentHub() {
         {/* BANNERS */}
         <TabsContent value="banners">
           <BannersTab />
+        </TabsContent>
+
+        {/* STORIES */}
+        <TabsContent value="stories">
+          <StoriesTab />
         </TabsContent>
 
         {/* MENUS */}

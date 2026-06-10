@@ -24,7 +24,8 @@ import { SpecialCollectionsGrid } from "@/components/SpecialCollectionsGrid";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
-import { fetchProducts, fetchSpecialCollections, fetchBanners } from "@/lib/api";
+import { fetchProducts, fetchSpecialCollections, fetchBanners, fetchStories } from "@/lib/api";
+import { StoriesSection } from "@/components/StoriesSection";
 import type { Product, Banner, Variant } from "@/lib/types";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -264,6 +265,12 @@ export default function HomeScreen() {
     staleTime: 120_000,
   });
 
+  const { data: storyRows } = useQuery({
+    queryKey: ["stories"],
+    queryFn: fetchStories,
+    staleTime: 300_000,
+  });
+
   const products = data?.products ?? [];
   const displayBanners = banners ?? [];
 
@@ -336,6 +343,8 @@ export default function HomeScreen() {
             ))}
           </View>
         )}
+
+        <StoriesSection rows={storyRows ?? []} />
 
         <SpecialCollectionsGrid
           collections={specialCollections ?? []}

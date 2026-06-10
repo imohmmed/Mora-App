@@ -1,4 +1,4 @@
-import type { Product, Order, OrderItem, Collection, SpecialCollection, Banner } from "./types";
+import type { Product, Order, OrderItem, Collection, SpecialCollection, Banner, StoryRow } from "./types";
 
 type ApiResponse<T> = { data: T; meta: Record<string, unknown>; error: string | null };
 
@@ -92,6 +92,10 @@ export async function fetchBanners(): Promise<Banner[]> {
 
 export async function fetchSpecialCollections(): Promise<SpecialCollection[]> {
   return apiFetch<SpecialCollection[]>("/store/special-collections");
+}
+
+export async function fetchStories(): Promise<StoryRow[]> {
+  return apiFetch<StoryRow[]>("/store/stories");
 }
 
 export async function fetchSpecialCollection(

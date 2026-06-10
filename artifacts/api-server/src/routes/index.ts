@@ -9,6 +9,7 @@ import cartRouter from "./cart.js";
 import specialCollectionsRouter from "./specialCollections.js";
 import authRouter from "./auth.js";
 import bannersRouter from "./banners.js";
+import storiesRouter from "./stories.js";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(cartRouter);
 router.use(specialCollectionsRouter);
 router.use(authRouter);
 router.use(bannersRouter);
+router.use(storiesRouter);
 
 export default router;
