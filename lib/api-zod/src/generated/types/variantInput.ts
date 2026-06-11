@@ -13,6 +13,8 @@ export interface VariantInput {
   price?: number;
   /** @nullable */
   comparePrice?: number | null;
+  /** @nullable */
+  cost?: number | null;
   inventory?: number;
   /** @nullable */
   option1?: string | null;

@@ -11,7 +11,13 @@ router.get("/store/products", (req, res) => {
   const { category, q, limit = "20", page = "1" } = req.query as Record<string, string>;
   let sql = `SELECT * FROM products WHERE status='active'`;
   const params: unknown[] = [];
-  if (category) { sql += ` AND category=?`; params.push(category); }
+  if (category === "sale") {
+    // The Sale section auto-includes any discounted product (compare_price > price),
+    // regardless of its category, plus anything explicitly filed under "sale".
+    sql += ` AND (category='sale' OR (compare_price IS NOT NULL AND compare_price > price))`;
+  } else if (category) {
+    sql += ` AND category=?`; params.push(category);
+  }
   if (q) { sql += ` AND (title LIKE ? OR tags LIKE ?)`; params.push(`%${q}%`, `%${q}%`); }
   const all = db.prepare(sql).all(...params) as Row[];
   const total = all.length;
@@ -91,8 +97,8 @@ router.post("/admin/products", (req, res) => {
   const id = `p_${Date.now()}`;
   const now = new Date().toISOString();
   const b = req.body as Record<string, unknown>;
-  db.prepare(`INSERT INTO products (id,title,vendor,category,description,price,compare_price,images,tags,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
-    .run(id, b["title"] ?? "", b["vendor"] ?? "", b["category"] ?? "women", b["description"] ?? "", b["price"] ?? 0, b["compareAtPrice"] ?? null, JSON.stringify(b["images"] ?? []), JSON.stringify(b["tags"] ?? []), b["status"] ?? "draft", now, now);
+  db.prepare(`INSERT INTO products (id,title,vendor,category,description,price,compare_price,cost,images,tags,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, b["title"] ?? "", b["vendor"] ?? "", b["category"] ?? "women", b["description"] ?? "", b["price"] ?? 0, b["compareAtPrice"] ?? null, b["cost"] ?? null, JSON.stringify(b["images"] ?? []), JSON.stringify(b["tags"] ?? []), b["status"] ?? "draft", now, now);
   const product = parseOne(db.prepare(`SELECT * FROM products WHERE id=?`).get(id) as Row | undefined);
   res.status(201).json({ data: product, meta: {}, error: null });
 });
@@ -103,8 +109,8 @@ router.put("/admin/products/:id", (req, res) => {
   if (!existing) { res.status(404).json({ data: null, meta: {}, error: "Product not found" }); return; }
   const b = req.body as Record<string, unknown>;
   const now = new Date().toISOString();
-  db.prepare(`UPDATE products SET title=COALESCE(?,title), vendor=COALESCE(?,vendor), category=COALESCE(?,category), description=COALESCE(?,description), price=COALESCE(?,price), compare_price=?, images=COALESCE(?,images), tags=COALESCE(?,tags), status=COALESCE(?,status), updated_at=? WHERE id=?`)
-    .run(b["title"] ?? null, b["vendor"] ?? null, b["category"] ?? null, b["description"] ?? null, b["price"] ?? null, b["compareAtPrice"] ?? null, b["images"] !== undefined ? JSON.stringify(b["images"]) : null, b["tags"] !== undefined ? JSON.stringify(b["tags"]) : null, b["status"] ?? null, now, id);
+  db.prepare(`UPDATE products SET title=COALESCE(?,title), vendor=COALESCE(?,vendor), category=COALESCE(?,category), description=COALESCE(?,description), price=COALESCE(?,price), compare_price=?, cost=COALESCE(?,cost), images=COALESCE(?,images), tags=COALESCE(?,tags), status=COALESCE(?,status), updated_at=? WHERE id=?`)
+    .run(b["title"] ?? null, b["vendor"] ?? null, b["category"] ?? null, b["description"] ?? null, b["price"] ?? null, b["compareAtPrice"] ?? null, b["cost"] ?? null, b["images"] !== undefined ? JSON.stringify(b["images"]) : null, b["tags"] !== undefined ? JSON.stringify(b["tags"]) : null, b["status"] ?? null, now, id);
   const product = parseOne(db.prepare(`SELECT * FROM products WHERE id=?`).get(id) as Row | undefined);
   res.json({ data: product, meta: {}, error: null });
 });
@@ -177,8 +183,8 @@ router.post("/admin/variants", (req, res) => {
   const option2 = (b["option2"] as string | undefined) ?? null;
   const derived = [option1, option2].filter(Boolean).join(" / ");
   const title = (b["title"] as string | undefined) ?? (derived || "Default Title");
-  db.prepare(`INSERT INTO variants (id,product_id,title,sku,price,compare_price,inventory,option1,option2) VALUES (?,?,?,?,?,?,?,?,?)`)
-    .run(id, productId, title, b["sku"] ?? "", b["price"] ?? 0, b["comparePrice"] ?? null, b["inventory"] ?? 0, option1, option2);
+  db.prepare(`INSERT INTO variants (id,product_id,title,sku,price,compare_price,cost,inventory,option1,option2) VALUES (?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, productId, title, b["sku"] ?? "", b["price"] ?? 0, b["comparePrice"] ?? null, b["cost"] ?? null, b["inventory"] ?? 0, option1, option2);
   const variant = parseOne(db.prepare(`SELECT * FROM variants WHERE id=?`).get(id) as Row | undefined);
   res.status(201).json({ data: variant, meta: {}, error: null });
 });
@@ -187,7 +193,7 @@ router.put("/admin/variants/:id/update", (req, res) => {
   const id = req.params["id"];
   if (!db.prepare(`SELECT id FROM variants WHERE id=?`).get(id)) { res.status(404).json({ data: null, meta: {}, error: "Variant not found" }); return; }
   const b = req.body as Record<string, unknown>;
-  db.prepare(`UPDATE variants SET inventory=COALESCE(?,inventory), price=COALESCE(?,price), sku=COALESCE(?,sku), title=COALESCE(?,title), compare_price=COALESCE(?,compare_price) WHERE id=?`).run(b["inventory"] ?? null, b["price"] ?? null, b["sku"] ?? null, b["title"] ?? null, b["comparePrice"] ?? null, id);
+  db.prepare(`UPDATE variants SET inventory=COALESCE(?,inventory), price=COALESCE(?,price), sku=COALESCE(?,sku), title=COALESCE(?,title), compare_price=COALESCE(?,compare_price), cost=COALESCE(?,cost) WHERE id=?`).run(b["inventory"] ?? null, b["price"] ?? null, b["sku"] ?? null, b["title"] ?? null, b["comparePrice"] ?? null, b["cost"] ?? null, id);
   const variant = parseOne(db.prepare(`SELECT * FROM variants WHERE id=?`).get(id) as Row | undefined);
   res.json({ data: variant, meta: {}, error: null });
 });

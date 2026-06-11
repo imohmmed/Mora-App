@@ -1226,6 +1226,7 @@ components:
         description: { type: string }
         price: { type: number }
         comparePrice: { type: ["number", "null"] }
+        cost: { type: ["number", "null"] }
         images: { type: array, items: { type: string } }
         tags: { type: array, items: { type: string } }
         status: { type: string }
@@ -1244,6 +1245,7 @@ components:
         sku: { type: string }
         price: { type: number }
         comparePrice: { type: ["number", "null"] }
+        cost: { type: ["number", "null"] }
         inventory: { type: integer }
         option1: { type: ["string", "null"] }
         option2: { type: ["string", "null"] }
@@ -1269,6 +1271,7 @@ components:
         description: { type: string }
         price: { type: number }
         compareAtPrice: { type: ["number", "null"] }
+        cost: { type: ["number", "null"] }
         images: { type: array, items: { type: string } }
         tags: { type: array, items: { type: string } }
         status: { type: string }
@@ -1283,6 +1286,7 @@ components:
         description: { type: string }
         price: { type: number }
         compareAtPrice: { type: ["number", "null"] }
+        cost: { type: ["number", "null"] }
         images: { type: array, items: { type: string } }
         tags: { type: array, items: { type: string } }
         status: { type: string }
@@ -1295,6 +1299,7 @@ components:
         sku: { type: string }
         price: { type: number }
         comparePrice: { type: ["number", "null"] }
+        cost: { type: ["number", "null"] }
         inventory: { type: integer }
         option1: { type: ["string", "null"] }
         option2: { type: ["string", "null"] }
@@ -1308,6 +1313,7 @@ components:
         sku: { type: string }
         title: { type: string }
         comparePrice: { type: ["number", "null"] }
+        cost: { type: ["number", "null"] }
 
     ProductListResponse:
       type: object

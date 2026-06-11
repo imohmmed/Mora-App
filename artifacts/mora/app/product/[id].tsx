@@ -327,7 +327,7 @@ export default function ProductDetailScreen() {
               </Text>
               {hasDiscount && (
                 <>
-                  <Text style={[styles.comparePrice, { color: colors.mutedForeground }]}>
+                  <Text style={[styles.comparePrice, { color: "#E53935" }]}>
                     {formatIQD(comparePrice!)}
                   </Text>
                   <View style={[styles.saleBadge, { backgroundColor: "#E53935" }]}>

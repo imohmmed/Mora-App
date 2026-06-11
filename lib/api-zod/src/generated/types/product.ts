@@ -15,6 +15,8 @@ export interface Product {
   price: number;
   /** @nullable */
   comparePrice?: number | null;
+  /** @nullable */
+  cost?: number | null;
   images?: string[];
   tags?: string[];
   status: string;

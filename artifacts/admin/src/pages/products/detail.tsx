@@ -28,8 +28,11 @@ type VariantRow = {
   title: string;
   sku: string;
   price: number;
+  cost?: number | null;
   inventory: number;
 };
+
+const fmtIQD = (n: number) => `${Math.round(n).toLocaleString("en-US")} IQD`;
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -52,6 +55,7 @@ export default function ProductDetail() {
     description: "",
     price: "",
     compareAtPrice: "",
+    cost: "",
     status: "",
   });
 
@@ -64,6 +68,7 @@ export default function ProductDetail() {
     option1: "",
     option2: "",
     price: "",
+    cost: "",
     inventory: "",
     sku: "",
   });
@@ -77,6 +82,7 @@ export default function ProductDetail() {
         description: product.description || "",
         price: product.price?.toString() || "",
         compareAtPrice: product.comparePrice != null ? product.comparePrice.toString() : "",
+        cost: product.cost != null ? product.cost.toString() : "",
         status: product.status || "draft",
       });
       setImages(product.images ?? []);
@@ -120,6 +126,7 @@ export default function ProductDetail() {
           description: formData.description,
           price: parseFloat(formData.price) || 0,
           compareAtPrice: formData.compareAtPrice ? parseFloat(formData.compareAtPrice) : null,
+          cost: formData.cost ? parseFloat(formData.cost) : null,
           images,
           tags,
           status: formData.status,
@@ -148,6 +155,7 @@ export default function ProductDetail() {
   const handleAddVariant = () => {
     if (!id) return;
     const price = parseFloat(variantForm.price);
+    const cost = parseFloat(variantForm.cost);
     const inventory = parseInt(variantForm.inventory, 10);
     if (!variantForm.option1.trim() && !variantForm.option2.trim()) {
       toast({ title: "Missing options", description: "Add a color and/or size for the variant.", variant: "destructive" });
@@ -161,13 +169,14 @@ export default function ProductDetail() {
           option2: variantForm.option2.trim() || null,
           sku: variantForm.sku.trim() || undefined,
           price: isNaN(price) ? 0 : price,
+          cost: isNaN(cost) ? null : cost,
           inventory: isNaN(inventory) ? 0 : inventory,
         },
       },
       {
         onSuccess: () => {
           toast({ title: "Variant added" });
-          setVariantForm({ option1: "", option2: "", price: "", inventory: "", sku: "" });
+          setVariantForm({ option1: "", option2: "", price: "", cost: "", inventory: "", sku: "" });
           invalidateProductData();
         },
         onError: () => {
@@ -216,6 +225,11 @@ export default function ProductDetail() {
 
     return { rowValues, colValues, lookup };
   })();
+
+  const priceNum = parseFloat(formData.price) || 0;
+  const costNum = parseFloat(formData.cost) || 0;
+  const profit = priceNum - costNum;
+  const margin = priceNum > 0 ? (profit / priceNum) * 100 : 0;
 
   if (isLoading) {
     return <div className="p-6 md:p-8">Loading product details...</div>;
@@ -347,7 +361,13 @@ export default function ProductDetail() {
                                 <td key={col} className={cn("px-3 py-2 text-center border-r last:border-r-0", !v && "bg-muted/30")}>
                                   {v ? (
                                     <div className="space-y-0.5">
-                                      <div className="font-semibold">${v.price.toFixed(2)}</div>
+                                      <div className="font-semibold">{fmtIQD(v.price)}</div>
+                                      {v.cost != null && (
+                                        <div className="text-xs text-emerald-600">
+                                          +{fmtIQD(v.price - v.cost)}
+                                          {v.price > 0 && ` · ${(((v.price - v.cost) / v.price) * 100).toFixed(1)}%`}
+                                        </div>
+                                      )}
                                       <div className={cn("text-xs", v.inventory <= 0 ? "text-red-500" : "text-muted-foreground")}>
                                         {v.inventory} in stock
                                       </div>
@@ -383,6 +403,8 @@ export default function ProductDetail() {
                         <th className="text-left px-4 py-2 font-medium">Variant</th>
                         <th className="text-left px-4 py-2 font-medium">SKU</th>
                         <th className="text-right px-4 py-2 font-medium">Price</th>
+                        <th className="text-right px-4 py-2 font-medium">Profit</th>
+                        <th className="text-right px-4 py-2 font-medium">Margin</th>
                         <th className="text-right px-4 py-2 font-medium">Stock</th>
                         <th className="text-right px-4 py-2 font-medium w-12"></th>
                       </tr>
@@ -392,7 +414,13 @@ export default function ProductDetail() {
                         <tr key={v.id} className="hover:bg-muted/20">
                           <td className="px-4 py-2 font-medium">{v.title}</td>
                           <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{v.sku}</td>
-                          <td className="px-4 py-2 text-right">${v.price.toFixed(2)}</td>
+                          <td className="px-4 py-2 text-right">{fmtIQD(v.price)}</td>
+                          <td className="px-4 py-2 text-right text-xs text-emerald-600">
+                            {v.cost != null ? `+${fmtIQD(v.price - v.cost)}` : "—"}
+                          </td>
+                          <td className="px-4 py-2 text-right text-xs text-muted-foreground">
+                            {v.cost != null && v.price > 0 ? `${(((v.price - v.cost) / v.price) * 100).toFixed(1)}%` : "—"}
+                          </td>
                           <td className={cn("px-4 py-2 text-right", v.inventory <= 0 ? "text-red-500 font-medium" : "")}>
                             {v.inventory}
                           </td>
@@ -419,7 +447,7 @@ export default function ProductDetail() {
               {/* Add variant form */}
               <div className="border rounded-lg p-4 space-y-3 bg-muted/10">
                 <p className="text-sm font-medium">Add variant</p>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
                   <div className="grid gap-1">
                     <Label htmlFor="variant-color" className="text-xs">Color</Label>
                     <Input
@@ -441,16 +469,29 @@ export default function ProductDetail() {
                     />
                   </div>
                   <div className="grid gap-1">
-                    <Label htmlFor="variant-price" className="text-xs">Price</Label>
+                    <Label htmlFor="variant-price" className="text-xs">Price (IQD)</Label>
                     <Input
                       id="variant-price"
                       type="number"
-                      step="0.01"
+                      step="1"
                       min="0"
-                      placeholder="0.00"
+                      placeholder="0"
                       value={variantForm.price}
                       onChange={(e) => setVariantForm(p => ({ ...p, price: e.target.value }))}
                       data-testid="input-variant-price"
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="variant-cost" className="text-xs">Cost (IQD)</Label>
+                    <Input
+                      id="variant-cost"
+                      type="number"
+                      step="1"
+                      min="0"
+                      placeholder="0"
+                      value={variantForm.cost}
+                      onChange={(e) => setVariantForm(p => ({ ...p, cost: e.target.value }))}
+                      data-testid="input-variant-cost"
                     />
                   </div>
                   <div className="grid gap-1">
@@ -543,33 +584,69 @@ export default function ProductDetail() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label htmlFor="price">Base Price</Label>
+                <Label htmlFor="price">Selling Price</Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                   <Input 
                     id="price" 
                     type="number"
-                    className="pl-7"
+                    step="1"
+                    min="0"
+                    className="pr-12"
                     value={formData.price} 
                     onChange={e => setFormData(p => ({ ...p, price: e.target.value }))}
                   />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">IQD</span>
                 </div>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="compareAtPrice">Compare-at Price</Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                   <Input 
                     id="compareAtPrice" 
                     type="number"
-                    step="0.01"
+                    step="1"
                     min="0"
-                    className="pl-7"
-                    placeholder="0.00"
+                    className="pr-12"
+                    placeholder="0"
                     value={formData.compareAtPrice} 
                     onChange={e => setFormData(p => ({ ...p, compareAtPrice: e.target.value }))}
                     data-testid="input-compare-price"
                   />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">IQD</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Original price. Set higher than the selling price to show a discount.
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="cost">Cost per item</Label>
+                <div className="relative">
+                  <Input 
+                    id="cost" 
+                    type="number"
+                    step="1"
+                    min="0"
+                    className="pr-12"
+                    placeholder="0"
+                    value={formData.cost} 
+                    onChange={e => setFormData(p => ({ ...p, cost: e.target.value }))}
+                    data-testid="input-cost"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">IQD</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                <div>
+                  <p className="text-xs text-muted-foreground">Profit</p>
+                  <p className="text-sm font-semibold" data-testid="text-profit">
+                    {formData.cost ? fmtIQD(profit) : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Margin</p>
+                  <p className="text-sm font-semibold" data-testid="text-margin">
+                    {formData.cost && priceNum > 0 ? `${margin.toFixed(1)}%` : "—"}
+                  </p>
                 </div>
               </div>
             </CardContent>

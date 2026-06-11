@@ -125,7 +125,7 @@ function ProductCard({
             {formatIQD(item.price)}
           </Text>
           {item.comparePrice != null && item.comparePrice > item.price && (
-            <Text style={[styles.originalPrice, { color: colors.mutedForeground }]}>
+            <Text style={[styles.originalPrice, { color: "#E53935" }]}>
               {formatIQD(item.comparePrice)}
             </Text>
           )}

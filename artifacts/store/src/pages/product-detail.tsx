@@ -258,7 +258,7 @@ export default function ProductDetail() {
                 </span>
                 {product.comparePrice &&
                   product.comparePrice > (selectedVariant?.price || 0) && (
-                    <span className="text-muted-foreground line-through text-base">
+                    <span className="text-destructive line-through text-base">
                       ${product.comparePrice.toFixed(2)}
                     </span>
                   )}

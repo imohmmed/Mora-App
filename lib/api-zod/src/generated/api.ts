@@ -150,6 +150,7 @@ export const AdminListProductsResponse = zod.object({
   "description": zod.string().optional(),
   "price": zod.number(),
   "comparePrice": zod.number().nullish(),
+  "cost": zod.number().nullish(),
   "images": zod.array(zod.string()).optional(),
   "tags": zod.array(zod.string()).optional(),
   "status": zod.string(),
@@ -175,6 +176,7 @@ export const AdminCreateProductBody = zod.object({
   "description": zod.string().optional(),
   "price": zod.number(),
   "compareAtPrice": zod.number().nullish(),
+  "cost": zod.number().nullish(),
   "images": zod.array(zod.string()).optional(),
   "tags": zod.array(zod.string()).optional(),
   "status": zod.string().optional()
@@ -197,6 +199,7 @@ export const AdminGetProductResponse = zod.object({
   "description": zod.string().optional(),
   "price": zod.number(),
   "comparePrice": zod.number().nullish(),
+  "cost": zod.number().nullish(),
   "images": zod.array(zod.string()).optional(),
   "tags": zod.array(zod.string()).optional(),
   "status": zod.string(),
@@ -212,6 +215,7 @@ export const AdminGetProductResponse = zod.object({
   "sku": zod.string(),
   "price": zod.number(),
   "comparePrice": zod.number().nullish(),
+  "cost": zod.number().nullish(),
   "inventory": zod.number(),
   "option1": zod.string().nullish(),
   "option2": zod.string().nullish()
@@ -238,6 +242,7 @@ export const AdminUpdateProductBody = zod.object({
   "description": zod.string().optional(),
   "price": zod.number().optional(),
   "compareAtPrice": zod.number().nullish(),
+  "cost": zod.number().nullish(),
   "images": zod.array(zod.string()).optional(),
   "tags": zod.array(zod.string()).optional(),
   "status": zod.string().optional()
@@ -252,6 +257,7 @@ export const AdminUpdateProductResponse = zod.object({
   "description": zod.string().optional(),
   "price": zod.number(),
   "comparePrice": zod.number().nullish(),
+  "cost": zod.number().nullish(),
   "images": zod.array(zod.string()).optional(),
   "tags": zod.array(zod.string()).optional(),
   "status": zod.string(),
@@ -395,6 +401,7 @@ export const AdminListVariantsResponse = zod.object({
   "sku": zod.string(),
   "price": zod.number(),
   "comparePrice": zod.number().nullish(),
+  "cost": zod.number().nullish(),
   "inventory": zod.number(),
   "option1": zod.string().nullish(),
   "option2": zod.string().nullish()
@@ -415,6 +422,7 @@ export const AdminCreateVariantBody = zod.object({
   "sku": zod.string().optional(),
   "price": zod.number().optional(),
   "comparePrice": zod.number().nullish(),
+  "cost": zod.number().nullish(),
   "inventory": zod.number().optional(),
   "option1": zod.string().nullish(),
   "option2": zod.string().nullish()
@@ -436,6 +444,7 @@ export const AdminGetProductVariantsResponse = zod.object({
   "sku": zod.string(),
   "price": zod.number(),
   "comparePrice": zod.number().nullish(),
+  "cost": zod.number().nullish(),
   "inventory": zod.number(),
   "option1": zod.string().nullish(),
   "option2": zod.string().nullish()
@@ -459,7 +468,8 @@ export const AdminUpdateVariantBody = zod.object({
   "price": zod.number().optional(),
   "sku": zod.string().optional(),
   "title": zod.string().optional(),
-  "comparePrice": zod.number().nullish()
+  "comparePrice": zod.number().nullish(),
+  "cost": zod.number().nullish()
 })
 
 export const AdminUpdateVariantResponse = zod.object({
@@ -470,6 +480,7 @@ export const AdminUpdateVariantResponse = zod.object({
   "sku": zod.string(),
   "price": zod.number(),
   "comparePrice": zod.number().nullish(),
+  "cost": zod.number().nullish(),
   "inventory": zod.number(),
   "option1": zod.string().nullish(),
   "option2": zod.string().nullish()

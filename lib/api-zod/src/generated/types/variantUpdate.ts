@@ -13,4 +13,6 @@ export interface VariantUpdate {
   title?: string;
   /** @nullable */
   comparePrice?: number | null;
+  /** @nullable */
+  cost?: number | null;
 }

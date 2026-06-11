@@ -14,6 +14,8 @@ export interface ProductInput {
   price: number;
   /** @nullable */
   compareAtPrice?: number | null;
+  /** @nullable */
+  cost?: number | null;
   images?: string[];
   tags?: string[];
   status?: string;

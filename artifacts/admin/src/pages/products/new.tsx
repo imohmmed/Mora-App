@@ -21,14 +21,21 @@ export default function NewProduct() {
   const [form, setForm] = useState({
     title: "",
     vendor: "",
-    category: "clothing",
+    category: "women",
     description: "",
     price: "",
     compareAtPrice: "",
+    cost: "",
     status: "draft",
     tags: [] as string[],
   });
   const [tagInput, setTagInput] = useState("");
+
+  const fmtIQD = (n: number) => `${Math.round(n).toLocaleString("en-US")} IQD`;
+  const priceNum = parseFloat(form.price) || 0;
+  const costNum = parseFloat(form.cost) || 0;
+  const profit = priceNum - costNum;
+  const margin = priceNum > 0 ? (profit / priceNum) * 100 : 0;
 
   const set = (key: keyof typeof form, value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -60,6 +67,7 @@ export default function NewProduct() {
           description: form.description,
           price,
           compareAtPrice: form.compareAtPrice ? parseFloat(form.compareAtPrice) : null,
+          cost: form.cost ? parseFloat(form.cost) : null,
           status: form.status,
           tags: form.tags,
         },
@@ -116,38 +124,74 @@ export default function NewProduct() {
 
           <Card>
             <CardHeader><CardTitle>Pricing</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="price">Price ($) *</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                  <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="pl-7"
-                    placeholder="0.00"
-                    value={form.price}
-                    onChange={(e) => set("price", e.target.value)}
-                    required
-                  />
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="price">Selling Price (IQD) *</Label>
+                  <div className="relative">
+                    <Input
+                      id="price"
+                      type="number"
+                      step="1"
+                      min="0"
+                      className="pr-12"
+                      placeholder="0"
+                      value={form.price}
+                      onChange={(e) => set("price", e.target.value)}
+                      required
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">IQD</span>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="compareAtPrice">Compare-at Price (IQD)</Label>
+                  <div className="relative">
+                    <Input
+                      id="compareAtPrice"
+                      type="number"
+                      step="1"
+                      min="0"
+                      className="pr-12"
+                      placeholder="0"
+                      value={form.compareAtPrice}
+                      onChange={(e) => set("compareAtPrice", e.target.value)}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">IQD</span>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="cost">Cost per item (IQD)</Label>
+                  <div className="relative">
+                    <Input
+                      id="cost"
+                      type="number"
+                      step="1"
+                      min="0"
+                      className="pr-12"
+                      placeholder="0"
+                      value={form.cost}
+                      onChange={(e) => set("cost", e.target.value)}
+                      data-testid="input-cost"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">IQD</span>
+                  </div>
                 </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="compareAtPrice">Compare-at Price ($)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                  <Input
-                    id="compareAtPrice"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="pl-7"
-                    placeholder="0.00"
-                    value={form.compareAtPrice}
-                    onChange={(e) => set("compareAtPrice", e.target.value)}
-                  />
+              <p className="text-xs text-muted-foreground">
+                Set Compare-at above the selling price to show a discount in the store and app.
+              </p>
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                <div>
+                  <p className="text-xs text-muted-foreground">Profit</p>
+                  <p className="text-sm font-semibold" data-testid="text-profit">
+                    {form.cost ? fmtIQD(profit) : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Margin</p>
+                  <p className="text-sm font-semibold" data-testid="text-margin">
+                    {form.cost && priceNum > 0 ? `${margin.toFixed(1)}%` : "—"}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -221,11 +265,11 @@ export default function NewProduct() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="clothing">Clothing</SelectItem>
-                    <SelectItem value="accessories">Accessories</SelectItem>
-                    <SelectItem value="shoes">Shoes</SelectItem>
-                    <SelectItem value="bags">Bags</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="women">Women</SelectItem>
+                    <SelectItem value="men">Men</SelectItem>
+                    <SelectItem value="beauty">Beauty</SelectItem>
+                    <SelectItem value="new_in">New In</SelectItem>
+                    <SelectItem value="sale">Sale</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

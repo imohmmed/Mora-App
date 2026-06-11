@@ -35,6 +35,8 @@ export interface Product {
   price: number;
   /** @nullable */
   comparePrice?: number | null;
+  /** @nullable */
+  cost?: number | null;
   images?: string[];
   tags?: string[];
   status: string;
@@ -54,6 +56,8 @@ export interface Variant {
   price: number;
   /** @nullable */
   comparePrice?: number | null;
+  /** @nullable */
+  cost?: number | null;
   inventory: number;
   /** @nullable */
   option1?: string | null;
@@ -73,6 +77,8 @@ export interface ProductInput {
   price: number;
   /** @nullable */
   compareAtPrice?: number | null;
+  /** @nullable */
+  cost?: number | null;
   images?: string[];
   tags?: string[];
   status?: string;
@@ -86,6 +92,8 @@ export interface ProductUpdate {
   price?: number;
   /** @nullable */
   compareAtPrice?: number | null;
+  /** @nullable */
+  cost?: number | null;
   images?: string[];
   tags?: string[];
   status?: string;
@@ -98,6 +106,8 @@ export interface VariantInput {
   price?: number;
   /** @nullable */
   comparePrice?: number | null;
+  /** @nullable */
+  cost?: number | null;
   inventory?: number;
   /** @nullable */
   option1?: string | null;
@@ -112,6 +122,8 @@ export interface VariantUpdate {
   title?: string;
   /** @nullable */
   comparePrice?: number | null;
+  /** @nullable */
+  cost?: number | null;
 }
 
 export interface ProductListResponse {

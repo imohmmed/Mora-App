@@ -86,7 +86,7 @@ export function ProductCard({ product, showQuickAdd }: { product: Product; showQ
         <div className="flex gap-2 items-center text-sm">
           <span className="font-bold">${product.price.toFixed(2)}</span>
           {product.comparePrice && product.comparePrice > product.price && (
-            <span className="text-muted-foreground line-through text-xs">
+            <span className="text-destructive line-through text-xs">
               ${product.comparePrice.toFixed(2)}
             </span>
           )}

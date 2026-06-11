@@ -27,6 +27,7 @@ db.exec(`
     description   TEXT NOT NULL DEFAULT '',
     price         REAL NOT NULL,
     compare_price REAL,
+    cost          REAL,
     images        TEXT NOT NULL DEFAULT '[]',
     tags          TEXT NOT NULL DEFAULT '[]',
     status        TEXT NOT NULL DEFAULT 'active',
@@ -50,6 +51,7 @@ db.exec(`
     sku           TEXT NOT NULL,
     price         REAL NOT NULL,
     compare_price REAL,
+    cost          REAL,
     inventory     INTEGER NOT NULL DEFAULT 0,
     option1       TEXT,
     option2       TEXT
@@ -215,6 +217,17 @@ db.exec(`
   );
 `);
 
+// ─── Migrations (additive, safe on existing DBs) ──────────────────────────────
+
+function ensureColumn(table: string, column: string, decl: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${decl}`);
+  }
+}
+ensureColumn("products", "cost", "REAL");
+ensureColumn("variants", "cost", "REAL");
+
 // ─── Seed helpers ─────────────────────────────────────────────────────────────
 
 const iso = (daysAgo: number) =>
@@ -255,12 +268,12 @@ const seedProducts = [
 ];
 
 const insertProduct = db.prepare(`
-  INSERT INTO products (id,title,vendor,category,description,price,compare_price,images,tags,status,sold_count,created_at,updated_at)
-  VALUES (@id,@title,@vendor,@category,@description,@price,@compare_price,@images,@tags,@status,@sold_count,@created_at,@updated_at)
+  INSERT INTO products (id,title,vendor,category,description,price,compare_price,cost,images,tags,status,sold_count,created_at,updated_at)
+  VALUES (@id,@title,@vendor,@category,@description,@price,@compare_price,@cost,@images,@tags,@status,@sold_count,@created_at,@updated_at)
 `);
 const insertVariant = db.prepare(`
-  INSERT INTO variants (id,product_id,title,sku,price,compare_price,inventory,option1,option2)
-  VALUES (@id,@product_id,@title,@sku,@price,@compare_price,@inventory,@option1,@option2)
+  INSERT INTO variants (id,product_id,title,sku,price,compare_price,cost,inventory,option1,option2)
+  VALUES (@id,@product_id,@title,@sku,@price,@compare_price,@cost,@inventory,@option1,@option2)
 `);
 
 const SIZES = ["XS", "S", "M", "L", "XL"];
@@ -272,6 +285,7 @@ for (const p of seedProducts) {
     images: j([`https://picsum.photos/seed/${p.id}/600/800`]),
     tags: j(p.tags),
     compare_price: p.compare_price ?? null,
+    cost: Math.round(p.price * 0.55),
     sold_count: p.sold_count,
     status: "active",
     created_at: iso(Math.floor(Math.random() * 90)),
@@ -285,6 +299,7 @@ for (const p of seedProducts) {
       sku: `${p.id.toUpperCase()}-${size}`,
       price: p.price,
       compare_price: p.compare_price ?? null,
+      cost: Math.round(p.price * 0.55),
       inventory: Math.floor(Math.random() * 40) + 5,
       option1: size,
       option2: null,
