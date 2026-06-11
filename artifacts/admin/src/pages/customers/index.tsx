@@ -1,25 +1,47 @@
 import { useState } from "react";
-import { useAdminListCustomers } from "@workspace/api-client-react";
+import { useAdminListCustomers, useAdminDeleteCustomer } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Plus, Users as UsersIcon } from "lucide-react";
+import { Search, Plus, Users as UsersIcon, Trash2 } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Customers() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const deleteCustomer = useAdminDeleteCustomer();
 
   const { data: response, isLoading } = useAdminListCustomers({
     q: debouncedSearch || undefined,
   });
 
   const customers = response?.data ?? [];
+
+  const handleDelete = (id: string) => {
+    deleteCustomer.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          toast({ title: "Customer deleted" });
+          queryClient.invalidateQueries({ queryKey: ["/api/admin/customers"] });
+        },
+        onError: () => toast({ title: "Error deleting customer", variant: "destructive" }),
+      }
+    );
+  };
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
@@ -56,16 +78,17 @@ export default function Customers() {
               <TableHead>Location</TableHead>
               <TableHead className="text-right">Orders</TableHead>
               <TableHead className="text-right">Amount Spent</TableHead>
+              <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">Loading...</TableCell>
+                <TableCell colSpan={6} className="h-24 text-center">Loading...</TableCell>
               </TableRow>
             ) : customers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-48 text-center">
+                <TableCell colSpan={6} className="h-48 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <UsersIcon className="h-8 w-8 mb-2 opacity-50" />
                     <p>No customers found.</p>
@@ -86,6 +109,33 @@ export default function Customers() {
                   <TableCell className="text-right">{customer.ordersCount ?? 0}</TableCell>
                   <TableCell className="text-right font-medium">
                     ${(customer.totalSpent ?? 0).toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="relative z-10 h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => e.stopPropagation()}
+                          data-testid={`btn-delete-customer-${customer.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete {customer.firstName} {customer.lastName}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. The customer will be permanently removed.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(customer.id)}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </TableCell>
                 </TableRow>
               ))

@@ -947,6 +947,13 @@ function ContentSectionsTab() {
 
   const [editing, setEditing] = useState<CSRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [newKey, setNewKey] = useState("");
+  const [newTitle, setNewTitle] = useState("");
+  const [newStatus, setNewStatus] = useState("active");
+  const [creating, setCreating] = useState(false);
+  const [createErr, setCreateErr] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const save = async () => {
     if (!editing) return;
@@ -959,6 +966,41 @@ function ContentSectionsTab() {
     await qc.invalidateQueries({ queryKey: ["admin-content-sections"] });
     setSaving(false);
     setEditing(null);
+  };
+
+  const handleCreate = async () => {
+    if (!newKey.trim()) { setCreateErr("Key is required"); return; }
+    setCreating(true);
+    setCreateErr("");
+    try {
+      const res = await fetch("/api/admin/content-sections", {
+        method: "POST",
+        headers: AUTH_HEADER,
+        body: JSON.stringify({ key: newKey.trim(), title: newTitle, items: [], status: newStatus }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null) as { error?: string } | null;
+        throw new Error(j?.error || "Failed to create section");
+      }
+      await qc.invalidateQueries({ queryKey: ["admin-content-sections"] });
+      setNewKey(""); setNewTitle(""); setNewStatus("active");
+      setAddOpen(false);
+    } catch (e) {
+      setCreateErr((e as Error).message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Delete this section? This cannot be undone.")) return;
+    setDeletingId(id);
+    try {
+      await fetch(`/api/admin/content-sections/${id}`, { method: "DELETE", headers: AUTH_HEADER });
+      await qc.invalidateQueries({ queryKey: ["admin-content-sections"] });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const updItem = (idx: number, field: keyof CSItem, val: string | number) =>
@@ -980,6 +1022,16 @@ function ContentSectionsTab() {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Custom content sections rendered on the store and mobile app.
+        </p>
+        <Button data-testid="btn-add-section" onClick={() => { setCreateErr(""); setAddOpen(true); }}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Section
+        </Button>
+      </div>
+
       {(data ?? []).map(section => (
         <Card key={section.id}>
           <CardContent className="pt-6">
@@ -991,9 +1043,21 @@ function ContentSectionsTab() {
                   <p className="text-xs text-muted-foreground font-mono">{section.key} · {section.items.length} items</p>
                 </div>
               </div>
-              <Button size="sm" variant="outline" onClick={() => setEditing({ ...section, items: section.items.map(i => ({ ...i })) })}>
-                <Pencil className="w-3 h-3 mr-1" /> Edit
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => setEditing({ ...section, items: section.items.map(i => ({ ...i })) })}>
+                  <Pencil className="w-3 h-3 mr-1" /> Edit
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 text-destructive hover:text-destructive"
+                  onClick={() => handleDelete(section.id)}
+                  disabled={deletingId === section.id}
+                  data-testid={`btn-delete-section-${section.id}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               {section.items.map(item => (
@@ -1104,6 +1168,50 @@ function ContentSectionsTab() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Add Section Dialog */}
+      <Dialog open={addOpen} onOpenChange={o => !o && setAddOpen(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>New Content Section</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid gap-1.5">
+              <Label>Key *</Label>
+              <Input
+                value={newKey}
+                onChange={e => setNewKey(e.target.value)}
+                placeholder="e.g. testimonials"
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground">Unique identifier used by the store/app to render this section.</p>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Title</Label>
+              <Input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Section title" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Status</Label>
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {createErr && (
+              <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded">{createErr}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOpen(false)} disabled={creating}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={creating || !newKey.trim()}>
+              {creating ? "Creating…" : "Create Section"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

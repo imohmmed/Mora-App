@@ -86,13 +86,32 @@ export interface ProductUpdate {
   price?: number;
   /** @nullable */
   compareAtPrice?: number | null;
+  images?: string[];
+  tags?: string[];
   status?: string;
+}
+
+export interface VariantInput {
+  productId: string;
+  title?: string;
+  sku?: string;
+  price?: number;
+  /** @nullable */
+  comparePrice?: number | null;
+  inventory?: number;
+  /** @nullable */
+  option1?: string | null;
+  /** @nullable */
+  option2?: string | null;
 }
 
 export interface VariantUpdate {
   inventory?: number;
   price?: number;
   sku?: string;
+  title?: string;
+  /** @nullable */
+  comparePrice?: number | null;
 }
 
 export interface ProductListResponse {

@@ -1,9 +1,12 @@
 import { Router } from "express";
 import { db } from "../lib/db.js";
+import { requireAdmin } from "../middlewares/auth.js";
 
 const router = Router();
 const now = () => new Date().toISOString();
 const uid = () => Math.random().toString(36).slice(2, 10);
+
+router.use(["/admin/story-rows", "/admin/story-items"], requireAdmin);
 
 // ─── Store: get all active rows with active items ──────────────────────────
 router.get("/store/stories", (_req, res) => {
@@ -84,7 +87,7 @@ router.put("/admin/story-rows/:id", (req, res) => {
   if (status !== undefined) db.prepare(`UPDATE story_rows SET status=? WHERE id=?`).run(status, req.params.id);
   if (sortOrder !== undefined) db.prepare(`UPDATE story_rows SET sort_order=? WHERE id=?`).run(sortOrder, req.params.id);
   const updated = db.prepare(`SELECT * FROM story_rows WHERE id=?`).get(req.params.id);
-  res.json({ data: updated, meta: {}, error: null });
+  return res.json({ data: updated, meta: {}, error: null });
 });
 
 // ─── Admin: delete row ─────────────────────────────────────────────────────
@@ -103,7 +106,7 @@ router.post("/admin/story-items", (req, res) => {
     `INSERT INTO story_items (id, row_id, title, image_url, link_url, sort_order, status, created_at) VALUES (?,?,?,?,?,?,?,?)`
   ).run(id, rowId, title, imageUrl, linkUrl, maxOrder + 1, status, now());
   const item = db.prepare(`SELECT * FROM story_items WHERE id=?`).get(id) as { id: string; row_id: string; title: string; image_url: string; link_url: string; sort_order: number; status: string; created_at: string };
-  res.status(201).json({
+  return res.status(201).json({
     data: { id: item.id, rowId: item.row_id, title: item.title, imageUrl: item.image_url, linkUrl: item.link_url, sortOrder: item.sort_order, status: item.status, createdAt: item.created_at },
     meta: {}, error: null,
   });
@@ -121,7 +124,7 @@ router.put("/admin/story-items/:id", (req, res) => {
   if (rowId !== undefined) db.prepare(`UPDATE story_items SET row_id=? WHERE id=?`).run(rowId, req.params.id);
   if (sortOrder !== undefined) db.prepare(`UPDATE story_items SET sort_order=? WHERE id=?`).run(sortOrder, req.params.id);
   const updated = db.prepare(`SELECT * FROM story_items WHERE id=?`).get(req.params.id) as { id: string; row_id: string; title: string; image_url: string; link_url: string; sort_order: number; status: string; created_at: string };
-  res.json({
+  return res.json({
     data: { id: updated.id, rowId: updated.row_id, title: updated.title, imageUrl: updated.image_url, linkUrl: updated.link_url, sortOrder: updated.sort_order, status: updated.status, createdAt: updated.created_at },
     meta: {}, error: null,
   });

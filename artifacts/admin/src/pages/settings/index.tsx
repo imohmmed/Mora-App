@@ -9,7 +9,76 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Settings as SettingsIcon, Truck, Receipt, MapPin, Bell, CreditCard } from "lucide-react";
+import { Settings as SettingsIcon, Truck, Receipt, MapPin, Bell, Wallet, Trash2, Plus } from "lucide-react";
+
+type ShippingMethod = { id: string; label: string; duration: string; price: number };
+type TaxRegion = { id: string; region: string; rate: number };
+type TaxConfig = { enabled: boolean; inclusive: boolean; regions: TaxRegion[] };
+type StoreLocation = { id: string; name: string; address: string; primary: boolean };
+type NotificationSettings = {
+  newOrder: boolean;
+  orderFulfilled: boolean;
+  orderRefunded: boolean;
+  lowInventory: boolean;
+  newCustomer: boolean;
+  abandonedCart: boolean;
+};
+type PaymentMethods = { card: boolean; cod: boolean; applePay: boolean; paypal: boolean };
+
+type SettingsForm = {
+  storeName: string;
+  storeEmail: string;
+  storePhone: string;
+  currency: string;
+  timezone: string;
+  shippingMethods: ShippingMethod[];
+  tax: TaxConfig;
+  locations: StoreLocation[];
+  notifications: NotificationSettings;
+  paymentMethods: PaymentMethods;
+};
+
+type ExtendedSettings = {
+  storeName?: string;
+  storeEmail?: string;
+  storePhone?: string;
+  currency?: string;
+  timezone?: string;
+  shippingMethods?: ShippingMethod[];
+  tax?: TaxConfig;
+  locations?: StoreLocation[];
+  notifications?: Partial<NotificationSettings>;
+  paymentMethods?: Partial<PaymentMethods>;
+};
+
+const DEFAULT_NOTIFICATIONS: NotificationSettings = {
+  newOrder: true,
+  orderFulfilled: true,
+  orderRefunded: true,
+  lowInventory: false,
+  newCustomer: false,
+  abandonedCart: false,
+};
+
+const DEFAULT_PAYMENTS: PaymentMethods = { card: true, cod: true, applePay: false, paypal: false };
+
+const NOTIFICATION_FIELDS: { key: keyof NotificationSettings; label: string; desc: string }[] = [
+  { key: "newOrder", label: "New order placed", desc: "Send to store owner when a customer places an order" },
+  { key: "orderFulfilled", label: "Order fulfilled", desc: "Send to customer when their order ships" },
+  { key: "orderRefunded", label: "Order refunded", desc: "Send to customer when a refund is issued" },
+  { key: "lowInventory", label: "Low inventory alert", desc: "Notify when product stock falls below 5 units" },
+  { key: "newCustomer", label: "New customer registered", desc: "Notify store owner of new account registrations" },
+  { key: "abandonedCart", label: "Abandoned cart recovery", desc: "Email customers who left items in their cart" },
+];
+
+const PAYMENT_FIELDS: { key: keyof PaymentMethods; label: string; desc: string }[] = [
+  { key: "card", label: "Credit / Debit Card", desc: "Accept Visa, Mastercard and other cards" },
+  { key: "cod", label: "Cash on Delivery", desc: "Let customers pay when their order arrives" },
+  { key: "applePay", label: "Apple Pay", desc: "Fast checkout for Apple devices" },
+  { key: "paypal", label: "PayPal", desc: "Accept payments through PayPal" },
+];
+
+const genId = (prefix: string) => `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
 export default function Settings() {
   const { data: response, isLoading } = useAdminGetSettings();
@@ -17,14 +86,19 @@ export default function Settings() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const settings = response?.data;
+  const settings = response?.data as ExtendedSettings | undefined;
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<SettingsForm>({
     storeName: "",
     storeEmail: "",
     storePhone: "",
     currency: "USD",
     timezone: "UTC",
+    shippingMethods: [],
+    tax: { enabled: true, inclusive: false, regions: [] },
+    locations: [],
+    notifications: { ...DEFAULT_NOTIFICATIONS },
+    paymentMethods: { ...DEFAULT_PAYMENTS },
   });
 
   useEffect(() => {
@@ -35,6 +109,15 @@ export default function Settings() {
         storePhone: settings.storePhone || "",
         currency: settings.currency || "USD",
         timezone: settings.timezone || "UTC",
+        shippingMethods: settings.shippingMethods ?? [],
+        tax: {
+          enabled: settings.tax?.enabled ?? true,
+          inclusive: settings.tax?.inclusive ?? false,
+          regions: settings.tax?.regions ?? [],
+        },
+        locations: settings.locations ?? [],
+        notifications: { ...DEFAULT_NOTIFICATIONS, ...settings.notifications },
+        paymentMethods: { ...DEFAULT_PAYMENTS, ...settings.paymentMethods },
       });
     }
   }, [settings]);
@@ -53,6 +136,56 @@ export default function Settings() {
       }
     );
   };
+
+  // ─── Shipping helpers ───────────────────────────────────────────────────────
+  const updateShipping = (id: string, patch: Partial<ShippingMethod>) =>
+    setFormData((p) => ({
+      ...p,
+      shippingMethods: p.shippingMethods.map((m) => (m.id === id ? { ...m, ...patch } : m)),
+    }));
+  const addShipping = () =>
+    setFormData((p) => ({
+      ...p,
+      shippingMethods: [...p.shippingMethods, { id: genId("ship"), label: "New Method", duration: "", price: 0 }],
+    }));
+  const removeShipping = (id: string) =>
+    setFormData((p) => ({ ...p, shippingMethods: p.shippingMethods.filter((m) => m.id !== id) }));
+
+  // ─── Tax helpers ────────────────────────────────────────────────────────────
+  const updateTaxRegion = (id: string, patch: Partial<TaxRegion>) =>
+    setFormData((p) => ({
+      ...p,
+      tax: { ...p.tax, regions: p.tax.regions.map((r) => (r.id === id ? { ...r, ...patch } : r)) },
+    }));
+  const addTaxRegion = () =>
+    setFormData((p) => ({
+      ...p,
+      tax: { ...p.tax, regions: [...p.tax.regions, { id: genId("tax"), region: "New Region", rate: 0 }] },
+    }));
+  const removeTaxRegion = (id: string) =>
+    setFormData((p) => ({ ...p, tax: { ...p.tax, regions: p.tax.regions.filter((r) => r.id !== id) } }));
+
+  // ─── Location helpers ───────────────────────────────────────────────────────
+  const updateLocation = (id: string, patch: Partial<StoreLocation>) =>
+    setFormData((p) => ({
+      ...p,
+      locations: p.locations.map((l) => (l.id === id ? { ...l, ...patch } : l)),
+    }));
+  const addLocation = () =>
+    setFormData((p) => ({
+      ...p,
+      locations: [...p.locations, { id: genId("loc"), name: "New Location", address: "", primary: false }],
+    }));
+  const removeLocation = (id: string) =>
+    setFormData((p) => ({ ...p, locations: p.locations.filter((l) => l.id !== id) }));
+
+  const saveButton = (
+    <div className="flex justify-end">
+      <Button onClick={handleSave} disabled={updateSettings.isPending} data-testid="btn-save-settings">
+        {updateSettings.isPending ? "Saving..." : "Save changes"}
+      </Button>
+    </div>
+  );
 
   if (isLoading) {
     return <div className="p-6 md:p-8">Loading settings...</div>;
@@ -87,9 +220,9 @@ export default function Settings() {
             <Bell className="w-4 h-4" />
             Notifications
           </TabsTrigger>
-          <TabsTrigger value="billing" className="gap-2">
-            <CreditCard className="w-4 h-4" />
-            Billing
+          <TabsTrigger value="payments" className="gap-2">
+            <Wallet className="w-4 h-4" />
+            Payments
           </TabsTrigger>
         </TabsList>
 
@@ -174,58 +307,68 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={updateSettings.isPending} data-testid="btn-save-settings">
-              {updateSettings.isPending ? "Saving..." : "Save changes"}
-            </Button>
-          </div>
+          {saveButton}
         </TabsContent>
 
         {/* SHIPPING */}
         <TabsContent value="shipping" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Shipping Zones</CardTitle>
-              <CardDescription>Set shipping rates for different regions and countries.</CardDescription>
+              <CardTitle>Shipping Methods</CardTitle>
+              <CardDescription>Set the shipping options and rates offered at checkout.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {[
-                { zone: "Domestic", rate: "Free shipping over $50", price: "$5.99 flat" },
-                { zone: "Middle East", rate: "Standard", price: "$12.99" },
-                { zone: "International", rate: "Standard", price: "$24.99" },
-              ].map((z) => (
-                <div key={z.zone} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{z.zone}</p>
-                    <p className="text-sm text-muted-foreground">{z.rate}</p>
+              {formData.shippingMethods.length === 0 && (
+                <p className="text-sm text-muted-foreground">No shipping methods yet. Add one below.</p>
+              )}
+              {formData.shippingMethods.map((m) => (
+                <div key={m.id} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_140px_auto] gap-3 items-end p-4 border rounded-lg">
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs">Label</Label>
+                    <Input
+                      value={m.label}
+                      onChange={(e) => updateShipping(m.id, { label: e.target.value })}
+                      data-testid={`input-shipping-label-${m.id}`}
+                    />
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium">{z.price}</p>
-                    <Button variant="link" className="h-auto p-0 text-sm">Edit</Button>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs">Delivery Time</Label>
+                    <Input
+                      value={m.duration}
+                      onChange={(e) => updateShipping(m.id, { duration: e.target.value })}
+                      data-testid={`input-shipping-duration-${m.id}`}
+                    />
                   </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs">Price</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={m.price}
+                      onChange={(e) => updateShipping(m.id, { price: parseFloat(e.target.value) || 0 })}
+                      data-testid={`input-shipping-price-${m.id}`}
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => removeShipping(m.id)}
+                    data-testid={`btn-remove-shipping-${m.id}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
               ))}
-              <Button variant="outline" className="w-full">
-                <Truck className="w-4 h-4 mr-2" />
-                Add Shipping Zone
+              <Button variant="outline" className="w-full" onClick={addShipping} data-testid="btn-add-shipping">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Shipping Method
               </Button>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Carriers</CardTitle>
-              <CardDescription>Connect carrier accounts for calculated rates.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {["DHL Express", "FedEx", "UPS", "Aramex"].map((carrier) => (
-                <div key={carrier} className="flex items-center justify-between p-3 border rounded-lg">
-                  <span className="font-medium text-sm">{carrier}</span>
-                  <Button variant="outline" size="sm">Connect</Button>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+          {saveButton}
         </TabsContent>
 
         {/* TAXES */}
@@ -241,33 +384,68 @@ export default function Settings() {
                   <p className="font-medium">Charge tax on products</p>
                   <p className="text-sm text-muted-foreground">Tax will be collected on eligible products</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={formData.tax.enabled}
+                  onCheckedChange={(v) => setFormData((p) => ({ ...p, tax: { ...p.tax, enabled: v } }))}
+                  data-testid="switch-tax-enabled"
+                />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">Show prices including tax</p>
                   <p className="text-sm text-muted-foreground">Tax-inclusive prices shown in your storefront</p>
                 </div>
-                <Switch />
+                <Switch
+                  checked={formData.tax.inclusive}
+                  onCheckedChange={(v) => setFormData((p) => ({ ...p, tax: { ...p.tax, inclusive: v } }))}
+                  data-testid="switch-tax-inclusive"
+                />
               </div>
               <div className="border-t pt-4 space-y-3">
-                {[
-                  { region: "United States", rate: "Automatic (varies by state)" },
-                  { region: "Iraq", rate: "15% VAT" },
-                  { region: "UAE", rate: "5% VAT" },
-                  { region: "European Union", rate: "Varies by country" },
-                ].map((t) => (
-                  <div key={t.region} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium text-sm">{t.region}</p>
-                      <p className="text-xs text-muted-foreground">{t.rate}</p>
+                {formData.tax.regions.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No tax regions yet. Add one below.</p>
+                )}
+                {formData.tax.regions.map((t) => (
+                  <div key={t.id} className="grid grid-cols-1 md:grid-cols-[1fr_140px_auto] gap-3 items-end p-3 border rounded-lg">
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs">Region</Label>
+                      <Input
+                        value={t.region}
+                        onChange={(e) => updateTaxRegion(t.id, { region: e.target.value })}
+                        data-testid={`input-tax-region-${t.id}`}
+                      />
                     </div>
-                    <Button variant="outline" size="sm">Edit</Button>
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs">Rate (%)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={t.rate}
+                        onChange={(e) => updateTaxRegion(t.id, { rate: parseFloat(e.target.value) || 0 })}
+                        data-testid={`input-tax-rate-${t.id}`}
+                      />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => removeTaxRegion(t.id)}
+                      data-testid={`btn-remove-tax-${t.id}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 ))}
+                <Button variant="outline" className="w-full" onClick={addTaxRegion} data-testid="btn-add-tax">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Tax Region
+                </Button>
               </div>
             </CardContent>
           </Card>
+
+          {saveButton}
         </TabsContent>
 
         {/* LOCATIONS */}
@@ -278,94 +456,62 @@ export default function Settings() {
               <CardDescription>Manage warehouses, offices, and fulfillment centers.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="p-4 border rounded-lg bg-card">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-medium">Mora HQ — Baghdad</p>
-                    <p className="text-sm text-muted-foreground">Al-Mansour District, Baghdad, Iraq</p>
-                    <p className="text-xs text-muted-foreground mt-1">Primary location · Fulfills online orders</p>
+              {formData.locations.length === 0 && (
+                <p className="text-sm text-muted-foreground">No locations yet. Add one below.</p>
+              )}
+              {formData.locations.map((l) => (
+                <div key={l.id} className="p-4 border rounded-lg space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs">Name</Label>
+                      <Input
+                        value={l.name}
+                        onChange={(e) => updateLocation(l.id, { name: e.target.value })}
+                        data-testid={`input-location-name-${l.id}`}
+                      />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label className="text-xs">Address</Label>
+                      <Input
+                        value={l.address}
+                        onChange={(e) => updateLocation(l.id, { address: e.target.value })}
+                        data-testid={`input-location-address-${l.id}`}
+                      />
+                    </div>
                   </div>
-                  <Button variant="outline" size="sm">Edit</Button>
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-sm">
+                      <Switch
+                        checked={l.primary}
+                        onCheckedChange={(v) => setFormData((p) => ({
+                          ...p,
+                          locations: p.locations.map((loc) => ({ ...loc, primary: loc.id === l.id ? v : v ? false : loc.primary })),
+                        }))}
+                        data-testid={`switch-location-primary-${l.id}`}
+                      />
+                      Primary location
+                    </label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => removeLocation(l.id)}
+                      data-testid={`btn-remove-location-${l.id}`}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Remove
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              <Button variant="outline" className="w-full">
-                <MapPin className="w-4 h-4 mr-2" />
+              ))}
+              <Button variant="outline" className="w-full" onClick={addLocation} data-testid="btn-add-location">
+                <Plus className="w-4 h-4 mr-2" />
                 Add Location
               </Button>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        {/* BILLING */}
-        <TabsContent value="billing" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Current Plan</CardTitle>
-              <CardDescription>You are on the <strong>Mora Pro</strong> plan.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/40">
-                <div>
-                  <p className="font-semibold">Mora Pro</p>
-                  <p className="text-sm text-muted-foreground">Unlimited products · 3 staff accounts · Advanced analytics</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold">$79<span className="text-base font-normal text-muted-foreground">/mo</span></p>
-                  <p className="text-xs text-muted-foreground">Renews Aug 1, 2026</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <Button variant="outline">Change Plan</Button>
-                <Button variant="ghost" className="text-destructive hover:text-destructive">Cancel Plan</Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment Method</CardTitle>
-              <CardDescription>Manage how you pay for your subscription.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <CreditCard className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">Visa ending in 4242</p>
-                    <p className="text-sm text-muted-foreground">Expires 12/27</p>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm">Update</Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Billing History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="divide-y">
-                {[
-                  { date: "Jul 1, 2026", amount: "$79.00", status: "Paid", inv: "INV-2026-07" },
-                  { date: "Jun 1, 2026", amount: "$79.00", status: "Paid", inv: "INV-2026-06" },
-                  { date: "May 1, 2026", amount: "$79.00", status: "Paid", inv: "INV-2026-05" },
-                ].map((row) => (
-                  <div key={row.inv} className="flex items-center justify-between py-3">
-                    <div>
-                      <p className="text-sm font-medium">{row.inv}</p>
-                      <p className="text-xs text-muted-foreground">{row.date}</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm font-medium">{row.amount}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">{row.status}</span>
-                      <Button variant="ghost" size="sm" className="text-xs h-7">Download</Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          {saveButton}
         </TabsContent>
 
         {/* NOTIFICATIONS */}
@@ -376,24 +522,54 @@ export default function Settings() {
               <CardDescription>Control which events trigger email alerts to staff and customers.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {[
-                { label: "New order placed", desc: "Send to store owner when a customer places an order", on: true },
-                { label: "Order fulfilled", desc: "Send to customer when their order ships", on: true },
-                { label: "Order refunded", desc: "Send to customer when a refund is issued", on: true },
-                { label: "Low inventory alert", desc: "Notify when product stock falls below 5 units", on: false },
-                { label: "New customer registered", desc: "Notify store owner of new account registrations", on: false },
-                { label: "Abandoned cart recovery", desc: "Email customers who left items in their cart", on: false },
-              ].map((n) => (
-                <div key={n.label} className="flex items-center justify-between py-2 border-b last:border-0">
+              {NOTIFICATION_FIELDS.map((n) => (
+                <div key={n.key} className="flex items-center justify-between py-2 border-b last:border-0">
                   <div>
                     <p className="font-medium text-sm">{n.label}</p>
                     <p className="text-xs text-muted-foreground">{n.desc}</p>
                   </div>
-                  <Switch defaultChecked={n.on} />
+                  <Switch
+                    checked={formData.notifications[n.key]}
+                    onCheckedChange={(v) =>
+                      setFormData((p) => ({ ...p, notifications: { ...p.notifications, [n.key]: v } }))
+                    }
+                    data-testid={`switch-notification-${n.key}`}
+                  />
                 </div>
               ))}
             </CardContent>
           </Card>
+
+          {saveButton}
+        </TabsContent>
+
+        {/* PAYMENTS */}
+        <TabsContent value="payments" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment Methods</CardTitle>
+              <CardDescription>Choose which payment options are available at checkout.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {PAYMENT_FIELDS.map((m) => (
+                <div key={m.key} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <div>
+                    <p className="font-medium text-sm">{m.label}</p>
+                    <p className="text-xs text-muted-foreground">{m.desc}</p>
+                  </div>
+                  <Switch
+                    checked={formData.paymentMethods[m.key]}
+                    onCheckedChange={(v) =>
+                      setFormData((p) => ({ ...p, paymentMethods: { ...p.paymentMethods, [m.key]: v } }))
+                    }
+                    data-testid={`switch-payment-${m.key}`}
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {saveButton}
         </TabsContent>
       </Tabs>
     </div>

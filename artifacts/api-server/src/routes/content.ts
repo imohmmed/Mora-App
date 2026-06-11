@@ -1,8 +1,11 @@
 import { Router } from "express";
 import { db } from "../lib/db.js";
+import { requireAdmin } from "../middlewares/auth.js";
 
 const router = Router();
 const now = () => new Date().toISOString();
+
+router.use("/admin/content-sections", requireAdmin);
 
 // ─── Store: get all active content sections ───────────────────────────────
 router.get("/store/content-sections", (_req, res) => {
@@ -72,6 +75,51 @@ router.put("/admin/content-sections/:id", (req, res) => {
     meta: {},
     error: null,
   });
+});
+
+// ─── Admin: create section ────────────────────────────────────────────────
+router.post("/admin/content-sections", (req, res) => {
+  const { key, title, items, sortOrder, status } = req.body as {
+    key?: string;
+    title?: string;
+    items?: unknown[];
+    sortOrder?: number;
+    status?: string;
+  };
+
+  if (!key || !key.trim()) {
+    res.status(400).json({ data: null, meta: {}, error: "key is required" });
+    return;
+  }
+
+  const existing = db.prepare(`SELECT id FROM content_sections WHERE key=?`).get(key.trim()) as { id: string } | undefined;
+  if (existing) {
+    res.status(409).json({ data: null, meta: {}, error: "A section with this key already exists" });
+    return;
+  }
+
+  const id = `cs_${Date.now()}`;
+  db.prepare(
+    `INSERT INTO content_sections (id,key,title,items,sort_order,status,updated_at) VALUES (?,?,?,?,?,?,?)`
+  ).run(id, key.trim(), title ?? "", JSON.stringify(items ?? []), sortOrder ?? 0, status ?? "active", now());
+
+  const created = db.prepare(`SELECT * FROM content_sections WHERE id=?`).get(id) as { id: string; key: string; title: string; items: string; sort_order: number; status: string; updated_at: string };
+  res.status(201).json({
+    data: { ...created, items: JSON.parse(created.items || "[]") },
+    meta: {},
+    error: null,
+  });
+});
+
+// ─── Admin: delete section ────────────────────────────────────────────────
+router.delete("/admin/content-sections/:id", (req, res) => {
+  const { id } = req.params;
+  if (!db.prepare(`SELECT id FROM content_sections WHERE id=?`).get(id)) {
+    res.status(404).json({ data: null, meta: {}, error: "Section not found" });
+    return;
+  }
+  db.prepare(`DELETE FROM content_sections WHERE id=?`).run(id);
+  res.json({ data: { deleted: true }, meta: {}, error: null });
 });
 
 export default router;

@@ -75,3 +75,21 @@ export async function fetchBlogPosts() {
   const json = await res.json() as ApiResponse<BlogPost[]>;
   return { posts: json.data };
 }
+
+export type StoreShippingMethod = { id: string; label: string; duration: string; price: number };
+export type StoreTaxRegion = { id: string; region: string; rate: number };
+export type StoreTaxConfig = { enabled: boolean; inclusive: boolean; regions: StoreTaxRegion[] };
+export type StorePaymentMethods = { card: boolean; cod: boolean; applePay: boolean; paypal: boolean };
+export type StoreSettings = {
+  shippingMethods: StoreShippingMethod[];
+  tax: StoreTaxConfig;
+  paymentMethods: StorePaymentMethods;
+  currency: string;
+};
+
+export async function fetchStoreSettings() {
+  const res = await fetch(`${BASE_URL}/store/settings`);
+  if (!res.ok) throw new Error("Failed to fetch settings");
+  const json = await res.json() as ApiResponse<StoreSettings>;
+  return { settings: json.data };
+}

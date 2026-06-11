@@ -1,22 +1,74 @@
-import { useAdminGetCustomer, useAdminUpdateCustomer } from "@workspace/api-client-react";
+import { useAdminGetCustomer, useAdminUpdateCustomer, getAdminGetCustomerQueryKey } from "@workspace/api-client-react";
 import { useParams, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { 
   Card, CardContent, CardHeader, CardTitle, CardDescription
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, User, Mail, MapPin, ShoppingBag } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft, User, Mail, MapPin, ShoppingBag, Pencil } from "lucide-react";
+import { useState } from "react";
 import { format } from "date-fns";
 import { fmt } from "@/lib/date";
 
 export default function CustomerDetail() {
   const { id } = useParams();
-  
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const { data: response, isLoading } = useAdminGetCustomer(id!);
-  
+  const updateCustomer = useAdminUpdateCustomer();
+
   const customerDetail = response?.data;
   const customer = customerDetail; // It is CustomerDetail type which extends Customer and adds orders[]
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    segment: "",
+    company: "",
+  });
+
+  const openEdit = () => {
+    if (!customer) return;
+    setForm({
+      firstName: customer.firstName ?? "",
+      lastName: customer.lastName ?? "",
+      email: customer.email ?? "",
+      phone: customer.phone ?? "",
+      segment: customer.segment ?? "",
+      company: customer.company ?? "",
+    });
+    setEditOpen(true);
+  };
+
+  const handleSave = () => {
+    if (!id) return;
+    updateCustomer.mutate(
+      { id, data: form },
+      {
+        onSuccess: () => {
+          toast({ title: "Customer updated" });
+          queryClient.invalidateQueries({ queryKey: getAdminGetCustomerQueryKey(id) });
+          queryClient.invalidateQueries({ queryKey: ["/api/admin/customers"] });
+          setEditOpen(false);
+        },
+        onError: () => {
+          toast({ title: "Error updating customer", variant: "destructive" });
+        },
+      }
+    );
+  };
 
   if (isLoading) {
     return <div className="p-6 md:p-8">Loading customer...</div>;
@@ -40,7 +92,53 @@ export default function CustomerDetail() {
             Customer since {customer.createdAt ? fmt(customer.createdAt, "MMMM yyyy") : "Unknown"}
           </p>
         </div>
+        <Button variant="outline" size="sm" onClick={openEdit} data-testid="btn-edit-customer">
+          <Pencil className="w-4 h-4 mr-2" />
+          Edit
+        </Button>
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Customer</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label>First Name</Label>
+                <Input value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Last Name</Label>
+                <Input value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Email</Label>
+              <Input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Phone</Label>
+              <Input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Segment</Label>
+              <Input value={form.segment} onChange={e => setForm(p => ({ ...p, segment: e.target.value }))} placeholder="e.g. VIP, Wholesale" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Company</Label>
+              <Input value={form.company} onChange={e => setForm(p => ({ ...p, company: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={updateCustomer.isPending}>Cancel</Button>
+            <Button onClick={handleSave} disabled={updateCustomer.isPending}>
+              {updateCustomer.isPending ? "Saving…" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-1 space-y-6">

@@ -238,6 +238,8 @@ export const AdminUpdateProductBody = zod.object({
   "description": zod.string().optional(),
   "price": zod.number().optional(),
   "compareAtPrice": zod.number().nullish(),
+  "images": zod.array(zod.string()).optional(),
+  "tags": zod.array(zod.string()).optional(),
   "status": zod.string().optional()
 })
 
@@ -405,6 +407,21 @@ export const AdminListVariantsResponse = zod.object({
 
 
 /**
+ * @summary Create a variant
+ */
+export const AdminCreateVariantBody = zod.object({
+  "productId": zod.string(),
+  "title": zod.string().optional(),
+  "sku": zod.string().optional(),
+  "price": zod.number().optional(),
+  "comparePrice": zod.number().nullish(),
+  "inventory": zod.number().optional(),
+  "option1": zod.string().nullish(),
+  "option2": zod.string().nullish()
+})
+
+
+/**
  * @summary Get variants for a product
  */
 export const AdminGetProductVariantsParams = zod.object({
@@ -440,7 +457,9 @@ export const AdminUpdateVariantParams = zod.object({
 export const AdminUpdateVariantBody = zod.object({
   "inventory": zod.number().optional(),
   "price": zod.number().optional(),
-  "sku": zod.string().optional()
+  "sku": zod.string().optional(),
+  "title": zod.string().optional(),
+  "comparePrice": zod.number().nullish()
 })
 
 export const AdminUpdateVariantResponse = zod.object({
@@ -454,6 +473,24 @@ export const AdminUpdateVariantResponse = zod.object({
   "inventory": zod.number(),
   "option1": zod.string().nullish(),
   "option2": zod.string().nullish()
+}),
+  "meta": zod.object({
+
+}).passthrough(),
+  "error": zod.string().nullable()
+})
+
+
+/**
+ * @summary Delete a variant
+ */
+export const AdminDeleteVariantParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AdminDeleteVariantResponse = zod.object({
+  "data": zod.object({
+  "deleted": zod.boolean()
 }),
   "meta": zod.object({
 
@@ -600,6 +637,24 @@ export const AdminUpdateOrderResponse = zod.object({
   "isAbandoned": zod.boolean().optional(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
+}),
+  "meta": zod.object({
+
+}).passthrough(),
+  "error": zod.string().nullable()
+})
+
+
+/**
+ * @summary Delete an order
+ */
+export const AdminDeleteOrderParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AdminDeleteOrderResponse = zod.object({
+  "data": zod.object({
+  "deleted": zod.boolean()
 }),
   "meta": zod.object({
 
@@ -788,6 +843,24 @@ export const AdminUpdateCustomerResponse = zod.object({
 
 
 /**
+ * @summary Delete a customer
+ */
+export const AdminDeleteCustomerParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AdminDeleteCustomerResponse = zod.object({
+  "data": zod.object({
+  "deleted": zod.boolean()
+}),
+  "meta": zod.object({
+
+}).passthrough(),
+  "error": zod.string().nullable()
+})
+
+
+/**
  * @summary List campaigns
  */
 export const AdminListCampaignsResponse = zod.object({
@@ -872,6 +945,24 @@ export const AdminUpdateCampaignResponse = zod.object({
   "clicks": zod.number().optional(),
   "conversions": zod.number().optional(),
   "createdAt": zod.string().optional()
+}),
+  "meta": zod.object({
+
+}).passthrough(),
+  "error": zod.string().nullable()
+})
+
+
+/**
+ * @summary Delete a campaign
+ */
+export const AdminDeleteCampaignParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AdminDeleteCampaignResponse = zod.object({
+  "data": zod.object({
+  "deleted": zod.boolean()
 }),
   "meta": zod.object({
 
@@ -1285,6 +1376,24 @@ export const AdminUpdateMarketResponse = zod.object({
   "currency": zod.string(),
   "status": zod.string(),
   "createdAt": zod.string().optional()
+}),
+  "meta": zod.object({
+
+}).passthrough(),
+  "error": zod.string().nullable()
+})
+
+
+/**
+ * @summary Delete a market
+ */
+export const AdminDeleteMarketParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const AdminDeleteMarketResponse = zod.object({
+  "data": zod.object({
+  "deleted": zod.boolean()
 }),
   "meta": zod.object({
 

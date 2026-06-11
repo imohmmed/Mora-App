@@ -6,11 +6,16 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface VariantUpdate {
-  inventory?: number;
-  price?: number;
-  sku?: string;
+export interface VariantInput {
+  productId: string;
   title?: string;
+  sku?: string;
+  price?: number;
   /** @nullable */
   comparePrice?: number | null;
+  inventory?: number;
+  /** @nullable */
+  option1?: string | null;
+  /** @nullable */
+  option2?: string | null;
 }

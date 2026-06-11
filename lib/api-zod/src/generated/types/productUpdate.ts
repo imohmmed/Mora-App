@@ -14,5 +14,7 @@ export interface ProductUpdate {
   price?: number;
   /** @nullable */
   compareAtPrice?: number | null;
+  images?: string[];
+  tags?: string[];
   status?: string;
 }

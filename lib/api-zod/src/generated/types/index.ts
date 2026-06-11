@@ -109,6 +109,7 @@ export * from './topProduct';
 export * from './topProductsResponse';
 export * from './topProductsResponseMeta';
 export * from './variant';
+export * from './variantInput';
 export * from './variantListResponse';
 export * from './variantResponse';
 export * from './variantResponseMeta';

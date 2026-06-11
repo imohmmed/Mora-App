@@ -84,4 +84,11 @@ router.put("/admin/orders/:id", (req, res) => {
   res.json({ data: order, meta: {}, error: null });
 });
 
+router.delete("/admin/orders/:id", (req, res) => {
+  const id = req.params["id"];
+  if (!db.prepare(`SELECT id FROM orders WHERE id=?`).get(id)) { res.status(404).json({ data: null, meta: {}, error: "Order not found" }); return; }
+  db.prepare(`DELETE FROM orders WHERE id=?`).run(id);
+  res.json({ data: { deleted: true }, meta: {}, error: null });
+});
+
 export default router;

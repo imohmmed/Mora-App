@@ -1,19 +1,25 @@
 import { useState, useMemo } from "react";
-import { useAdminListOrders } from "@workspace/api-client-react";
+import { useAdminListOrders, useAdminDeleteOrder } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Inbox, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
+import { Search, Inbox, ChevronLeft, ChevronRight, ArrowUpDown, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { fmt } from "@/lib/date";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useToast } from "@/hooks/use-toast";
 
 const PAGE_SIZE = 10;
 
@@ -26,6 +32,22 @@ export default function Orders() {
   const [sort, setSort] = useState<string>("newest");
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 300);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const deleteOrder = useAdminDeleteOrder();
+
+  const handleDelete = (id: string) => {
+    deleteOrder.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          toast({ title: "Order deleted" });
+          queryClient.invalidateQueries({ queryKey: ["/api/admin/orders"] });
+        },
+        onError: () => toast({ title: "Error deleting order", variant: "destructive" }),
+      }
+    );
+  };
 
   const { data: response, isLoading } = useAdminListOrders({
     status: status !== "all" ? status : undefined,
@@ -137,16 +159,17 @@ export default function Orders() {
               <TableHead>Customer</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Total</TableHead>
+              <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">Loading...</TableCell>
+                <TableCell colSpan={6} className="h-24 text-center">Loading...</TableCell>
               </TableRow>
             ) : orders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-48 text-center">
+                <TableCell colSpan={6} className="h-48 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <Inbox className="h-8 w-8 mb-2 opacity-50" />
                     <p>No orders found.</p>
@@ -168,6 +191,33 @@ export default function Orders() {
                   <TableCell>{order.email}</TableCell>
                   <TableCell>{statusBadge(order.financialStatus, order.fulfillmentStatus)}</TableCell>
                   <TableCell className="text-right font-semibold">${order.total.toFixed(2)}</TableCell>
+                  <TableCell className="text-right">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="relative z-10 h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => e.stopPropagation()}
+                          data-testid={`btn-delete-order-${order.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete order {order.orderNumber}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. The order will be permanently removed.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(order.id)}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
                 </TableRow>
               ))
             )}

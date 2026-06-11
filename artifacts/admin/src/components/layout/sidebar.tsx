@@ -15,10 +15,6 @@ import {
   ChevronDown,
   ChevronRight,
   UserSearch,
-  Building2,
-  ClipboardList,
-  ArrowLeftRight,
-  Gift,
   Boxes,
   File,
   List as ListIcon,
@@ -46,9 +42,6 @@ const NAV: NavSection[] = [
     ],
     sub: [
       { href: "/products/inventory", label: "Inventory", icon: Warehouse },
-      { href: "/products/purchase-orders", label: "Purchase Orders", icon: ClipboardList },
-      { href: "/products/transfers", label: "Transfers", icon: ArrowLeftRight },
-      { href: "/products/gift-cards", label: "Gift Cards", icon: Gift },
     ],
   },
   {
@@ -58,7 +51,6 @@ const NAV: NavSection[] = [
     ],
     sub: [
       { href: "/customers/segments", label: "Segments", icon: UserSearch },
-      { href: "/customers/companies", label: "Companies", icon: Building2 },
     ],
   },
   {

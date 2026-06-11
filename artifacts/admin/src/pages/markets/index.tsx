@@ -1,12 +1,18 @@
-import { useAdminListMarkets } from "@workspace/api-client-react";
+import { useAdminListMarkets, useAdminDeleteMarket } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Globe, Plus, BookOpen, Rocket } from "lucide-react";
+import { Globe, Plus, BookOpen, Rocket, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const CATALOGS = [
   {
@@ -49,6 +55,22 @@ const ROLLOUTS = [
 export default function Markets() {
   const { data: response, isLoading } = useAdminListMarkets();
   const markets = response?.data ?? [];
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const deleteMarket = useAdminDeleteMarket();
+
+  const handleDelete = (id: string) => {
+    deleteMarket.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          toast({ title: "Market deleted" });
+          queryClient.invalidateQueries({ queryKey: ["/api/admin/markets"] });
+        },
+        onError: () => toast({ title: "Error deleting market", variant: "destructive" }),
+      }
+    );
+  };
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
@@ -90,16 +112,17 @@ export default function Markets() {
                   <TableHead>Status</TableHead>
                   <TableHead>Currency</TableHead>
                   <TableHead>Countries</TableHead>
+                  <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">Loading...</TableCell>
+                    <TableCell colSpan={5} className="h-24 text-center">Loading...</TableCell>
                   </TableRow>
                 ) : markets.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-48 text-center">
+                    <TableCell colSpan={5} className="h-48 text-center">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Globe className="h-8 w-8 mb-2 opacity-50" />
                         <p>No markets found.</p>
@@ -131,6 +154,32 @@ export default function Markets() {
                             )}
                           </div>
                         ) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              data-testid={`btn-delete-market-${market.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete market “{market.name}”?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. The market will be permanently removed.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(market.id)}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </TableCell>
                     </TableRow>
                   ))

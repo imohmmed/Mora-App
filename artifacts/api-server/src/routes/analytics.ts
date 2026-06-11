@@ -74,6 +74,11 @@ router.put("/admin/markets/:id", (req, res) => {
   res.json({ data: parseRows(rows)[0] ?? null, meta: {}, error: null });
 });
 
+router.delete("/admin/markets/:id", (req, res) => {
+  db.prepare(`DELETE FROM markets WHERE id=?`).run(req.params["id"]);
+  res.json({ data: { deleted: true }, meta: {}, error: null });
+});
+
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 router.get("/admin/settings", (_req, res) => {

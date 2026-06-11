@@ -338,6 +338,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VariantListResponse"
+    post:
+      operationId: adminCreateVariant
+      tags: [variants]
+      security: [{ bearerAuth: [] }]
+      summary: Create a variant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VariantInput"
+      responses:
+        "201":
+          description: Created variant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VariantResponse"
 
   /admin/variants/{productId}:
     get:
@@ -384,6 +402,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VariantResponse"
+
+  /admin/variants/{id}:
+    delete:
+      operationId: adminDeleteVariant
+      tags: [variants]
+      security: [{ bearerAuth: [] }]
+      summary: Delete a variant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedResponse"
 
   # ─── Orders ──────────────────────────────────────────────────────────────────
 
@@ -472,6 +510,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OrderResponse"
+    delete:
+      operationId: adminDeleteOrder
+      tags: [orders]
+      security: [{ bearerAuth: [] }]
+      summary: Delete an order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedResponse"
 
   # ─── Customers ───────────────────────────────────────────────────────────────
 
@@ -587,6 +643,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CustomerResponse"
+    delete:
+      operationId: adminDeleteCustomer
+      tags: [customers]
+      security: [{ bearerAuth: [] }]
+      summary: Delete a customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedResponse"
 
   # ─── Campaigns ───────────────────────────────────────────────────────────────
 
@@ -665,6 +739,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CampaignResponse"
+    delete:
+      operationId: adminDeleteCampaign
+      tags: [campaigns]
+      security: [{ bearerAuth: [] }]
+      summary: Delete a campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedResponse"
 
   # ─── Discounts ───────────────────────────────────────────────────────────────
 
@@ -1031,6 +1123,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MarketResponse"
+    delete:
+      operationId: adminDeleteMarket
+      tags: [markets]
+      security: [{ bearerAuth: [] }]
+      summary: Delete a market
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedResponse"
 
   # ─── Settings ─────────────────────────────────────────────────────────────────
 
@@ -1173,7 +1283,22 @@ components:
         description: { type: string }
         price: { type: number }
         compareAtPrice: { type: ["number", "null"] }
+        images: { type: array, items: { type: string } }
+        tags: { type: array, items: { type: string } }
         status: { type: string }
+
+    VariantInput:
+      type: object
+      properties:
+        productId: { type: string }
+        title: { type: string }
+        sku: { type: string }
+        price: { type: number }
+        comparePrice: { type: ["number", "null"] }
+        inventory: { type: integer }
+        option1: { type: ["string", "null"] }
+        option2: { type: ["string", "null"] }
+      required: [productId]
 
     VariantUpdate:
       type: object
@@ -1181,6 +1306,8 @@ components:
         inventory: { type: integer }
         price: { type: number }
         sku: { type: string }
+        title: { type: string }
+        comparePrice: { type: ["number", "null"] }
 
     ProductListResponse:
       type: object

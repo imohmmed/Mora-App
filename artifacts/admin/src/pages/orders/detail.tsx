@@ -1,4 +1,4 @@
-import { useAdminGetOrder, useAdminUpdateOrder } from "@workspace/api-client-react";
+import { useAdminGetOrder, useAdminUpdateOrder, getAdminGetOrderQueryKey } from "@workspace/api-client-react";
 import { useParams, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { 
@@ -24,37 +24,29 @@ export default function OrderDetail() {
   
   const order = response?.data;
 
-  const handleStatusChange = (status: string) => {
+  const applyUpdate = (
+    data: { status?: string; financialStatus?: string; fulfillmentStatus?: string; note?: string },
+    successMessage: string
+  ) => {
     if (!id) return;
     updateOrder.mutate(
-      { id, data: { status } },
+      { id, data },
       {
         onSuccess: () => {
-          toast({ title: "Order status updated" });
-          queryClient.invalidateQueries({ queryKey: ["/api/admin/orders", id] });
+          toast({ title: successMessage });
+          queryClient.invalidateQueries({ queryKey: getAdminGetOrderQueryKey(id) });
+          queryClient.invalidateQueries({ queryKey: ["/api/admin/orders"] });
         },
         onError: () => {
-          toast({ title: "Error updating status", variant: "destructive" });
+          toast({ title: "Error updating order", variant: "destructive" });
         }
       }
     );
   };
 
-  const handleFulfillmentChange = (fulfillmentStatus: string) => {
-    if (!id) return;
-    updateOrder.mutate(
-      { id, data: { fulfillmentStatus } },
-      {
-        onSuccess: () => {
-          toast({ title: "Fulfillment status updated" });
-          queryClient.invalidateQueries({ queryKey: ["/api/admin/orders", id] });
-        },
-        onError: () => {
-          toast({ title: "Error updating status", variant: "destructive" });
-        }
-      }
-    );
-  };
+  const handleStatusChange = (status: string) => applyUpdate({ status }, "Order status updated");
+  const handleFulfillmentChange = (fulfillmentStatus: string) => applyUpdate({ fulfillmentStatus }, "Fulfillment status updated");
+  const handlePaymentChange = (financialStatus: string) => applyUpdate({ financialStatus }, "Payment status updated");
 
   if (isLoading) {
     return <div className="p-6 md:p-8">Loading order...</div>;
@@ -128,6 +120,34 @@ export default function OrderDetail() {
               {fmt(order.createdAt, "MMM d, yyyy 'at' h:mm a")}
             </p>
           )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={updateOrder.isPending || order.financialStatus === "paid"}
+            onClick={() => handlePaymentChange("paid")}
+          >
+            <CreditCard className="w-4 h-4 mr-2" />
+            Mark as Paid
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={updateOrder.isPending || order.fulfillmentStatus === "fulfilled"}
+            onClick={() => handleFulfillmentChange("fulfilled")}
+          >
+            <Package className="w-4 h-4 mr-2" />
+            Mark as Fulfilled
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={updateOrder.isPending || order.status === "cancelled"}
+            onClick={() => handleStatusChange("cancelled")}
+          >
+            Cancel Order
+          </Button>
         </div>
       </div>
 
@@ -269,7 +289,13 @@ export default function OrderDetail() {
                 {order.financialStatus || "unpaid"}
               </Badge>
               {order.financialStatus !== "paid" && (
-                <Button variant="outline" className="w-full" size="sm" disabled>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  size="sm"
+                  disabled={updateOrder.isPending}
+                  onClick={() => handlePaymentChange("paid")}
+                >
                   Mark as Paid
                 </Button>
               )}

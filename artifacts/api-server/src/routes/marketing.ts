@@ -40,6 +40,11 @@ router.put("/admin/campaigns/:id", (req, res) => {
   res.json({ data: c, meta: {}, error: null });
 });
 
+router.delete("/admin/campaigns/:id", (req, res) => {
+  db.prepare(`DELETE FROM campaigns WHERE id=?`).run(req.params["id"]);
+  res.json({ data: { deleted: true }, meta: {}, error: null });
+});
+
 // ─── Discounts ────────────────────────────────────────────────────────────────
 
 router.get("/admin/discounts", (_req, res) => {

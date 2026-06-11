@@ -1,16 +1,25 @@
-// In-memory SQLite database using better-sqlite3.
-// All data lives in :memory: — resets on restart, loads seed data instantly.
+// SQLite database using better-sqlite3.
+// File-backed when DATABASE_PATH is set (production — survives restarts);
+// in-memory otherwise (dev — fresh seed on each restart).
 
 import Database from "better-sqlite3";
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 
-export const db = new Database(":memory:");
+const DB_PATH = process.env.DATABASE_PATH?.trim() || ":memory:";
+if (DB_PATH !== ":memory:") {
+  const dir = dirname(DB_PATH);
+  if (dir && !existsSync(dir)) mkdirSync(dir, { recursive: true });
+}
+
+export const db = new Database(DB_PATH);
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
 db.exec(`
   PRAGMA journal_mode = WAL;
 
-  CREATE TABLE products (
+  CREATE TABLE IF NOT EXISTS products (
     id            TEXT PRIMARY KEY,
     title         TEXT NOT NULL,
     vendor        TEXT NOT NULL,
@@ -26,7 +35,7 @@ db.exec(`
     updated_at    TEXT NOT NULL
   );
 
-  CREATE TABLE special_collection_items (
+  CREATE TABLE IF NOT EXISTS special_collection_items (
     collection_slug TEXT NOT NULL,
     product_id      TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     sort_order      INTEGER NOT NULL DEFAULT 0,
@@ -34,7 +43,7 @@ db.exec(`
     PRIMARY KEY (collection_slug, product_id)
   );
 
-  CREATE TABLE variants (
+  CREATE TABLE IF NOT EXISTS variants (
     id            TEXT PRIMARY KEY,
     product_id    TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     title         TEXT NOT NULL,
@@ -46,7 +55,7 @@ db.exec(`
     option2       TEXT
   );
 
-  CREATE TABLE collections (
+  CREATE TABLE IF NOT EXISTS collections (
     id             TEXT PRIMARY KEY,
     title          TEXT NOT NULL,
     description    TEXT NOT NULL DEFAULT '',
@@ -55,7 +64,7 @@ db.exec(`
     created_at     TEXT NOT NULL
   );
 
-  CREATE TABLE customers (
+  CREATE TABLE IF NOT EXISTS customers (
     id                TEXT PRIMARY KEY,
     first_name        TEXT NOT NULL,
     last_name         TEXT NOT NULL,
@@ -72,13 +81,13 @@ db.exec(`
     created_at        TEXT NOT NULL
   );
 
-  CREATE TABLE sessions (
+  CREATE TABLE IF NOT EXISTS sessions (
     token       TEXT PRIMARY KEY,
     customer_id TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
     created_at  TEXT NOT NULL
   );
 
-  CREATE TABLE banners (
+  CREATE TABLE IF NOT EXISTS banners (
     id           TEXT PRIMARY KEY,
     title        TEXT NOT NULL DEFAULT '',
     subtitle     TEXT NOT NULL DEFAULT '',
@@ -94,7 +103,7 @@ db.exec(`
     created_at   TEXT NOT NULL
   );
 
-  CREATE TABLE orders (
+  CREATE TABLE IF NOT EXISTS orders (
     id                 TEXT PRIMARY KEY,
     order_number       TEXT NOT NULL,
     customer_id        TEXT,
@@ -117,7 +126,7 @@ db.exec(`
     updated_at         TEXT NOT NULL
   );
 
-  CREATE TABLE discounts (
+  CREATE TABLE IF NOT EXISTS discounts (
     id          TEXT PRIMARY KEY,
     code        TEXT NOT NULL UNIQUE,
     type        TEXT NOT NULL,
@@ -129,7 +138,7 @@ db.exec(`
     status      TEXT NOT NULL DEFAULT 'active'
   );
 
-  CREATE TABLE campaigns (
+  CREATE TABLE IF NOT EXISTS campaigns (
     id          TEXT PRIMARY KEY,
     title       TEXT NOT NULL,
     type        TEXT NOT NULL DEFAULT 'email',
@@ -142,7 +151,7 @@ db.exec(`
     created_at  TEXT NOT NULL
   );
 
-  CREATE TABLE blog_posts (
+  CREATE TABLE IF NOT EXISTS blog_posts (
     id           TEXT PRIMARY KEY,
     title        TEXT NOT NULL,
     handle       TEXT NOT NULL UNIQUE,
@@ -155,14 +164,14 @@ db.exec(`
     created_at   TEXT NOT NULL
   );
 
-  CREATE TABLE menus (
+  CREATE TABLE IF NOT EXISTS menus (
     id     TEXT PRIMARY KEY,
     title  TEXT NOT NULL,
     handle TEXT NOT NULL UNIQUE,
     items  TEXT NOT NULL DEFAULT '[]'
   );
 
-  CREATE TABLE markets (
+  CREATE TABLE IF NOT EXISTS markets (
     id         TEXT PRIMARY KEY,
     name       TEXT NOT NULL,
     countries  TEXT NOT NULL DEFAULT '[]',
@@ -171,12 +180,12 @@ db.exec(`
     created_at TEXT NOT NULL
   );
 
-  CREATE TABLE settings (
+  CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
 
-  CREATE TABLE story_rows (
+  CREATE TABLE IF NOT EXISTS story_rows (
     id         TEXT PRIMARY KEY,
     title      TEXT NOT NULL DEFAULT '',
     sort_order INTEGER NOT NULL DEFAULT 0,
@@ -184,7 +193,7 @@ db.exec(`
     created_at TEXT NOT NULL
   );
 
-  CREATE TABLE story_items (
+  CREATE TABLE IF NOT EXISTS story_items (
     id         TEXT PRIMARY KEY,
     row_id     TEXT NOT NULL REFERENCES story_rows(id) ON DELETE CASCADE,
     title      TEXT NOT NULL DEFAULT '',
@@ -195,7 +204,7 @@ db.exec(`
     created_at TEXT NOT NULL
   );
 
-  CREATE TABLE content_sections (
+  CREATE TABLE IF NOT EXISTS content_sections (
     id         TEXT PRIMARY KEY,
     key        TEXT UNIQUE NOT NULL,
     title      TEXT NOT NULL DEFAULT '',
@@ -213,6 +222,11 @@ const iso = (daysAgo: number) =>
 
 const j = (v: unknown) => JSON.stringify(v);
 
+// Seed only when the database is empty (fresh file, or every restart for :memory:).
+const needsSeed =
+  (db.prepare(`SELECT COUNT(*) AS n FROM products`).get() as { n: number }).n === 0;
+
+if (needsSeed) {
 // ─── Seed: Products ───────────────────────────────────────────────────────────
 
 const seedProducts = [
@@ -476,8 +490,33 @@ const DEFAULT_SETTINGS = {
   weightUnit: "kg",
   address: { line1: "123 Fashion Street", city: "London", country: "United Kingdom", zip: "E1 6QA" },
   checkoutDomain: "checkout.mora.store",
+  shippingMethods: [
+    { id: "standard", label: "Standard Shipping", duration: "5–7 business days", price: 0 },
+    { id: "express", label: "Express Shipping", duration: "2–3 business days", price: 9.99 },
+  ],
+  tax: {
+    enabled: true,
+    inclusive: false,
+    regions: [
+      { id: "tax_iraq", region: "Iraq", rate: 15 },
+      { id: "tax_uae", region: "UAE", rate: 5 },
+    ],
+  },
+  locations: [
+    { id: "loc_hq", name: "Mora HQ — Baghdad", address: "Al-Mansour District, Baghdad, Iraq", primary: true },
+  ],
+  notifications: {
+    newOrder: true,
+    orderFulfilled: true,
+    orderRefunded: true,
+    lowInventory: false,
+    newCustomer: false,
+    abandonedCart: false,
+  },
+  paymentMethods: { card: true, cod: true, applePay: false, paypal: false },
 };
 insertSetting.run("store", j(DEFAULT_SETTINGS));
+} // ── end seed block 1 ─────────────────────────────────────────────────────────
 
 // ─── Query helpers (typed row → JS object) ────────────────────────────────────
 
@@ -542,6 +581,7 @@ export function getTopProducts(limit = 5) {
   }));
 }
 
+if (needsSeed) {
 // ─── Seed: Story Rows & Items ─────────────────────────────────────────────────
 
 const insertStoryRow = db.prepare(
@@ -626,5 +666,6 @@ const csNow = new Date().toISOString();
 ].forEach(({ id, key, title, items, sort_order }) => {
   insertContentSection.run(id, key, title, items, sort_order, "active", csNow);
 });
+} // ── end seed block 2 ─────────────────────────────────────────────────────────
 
 export default db;

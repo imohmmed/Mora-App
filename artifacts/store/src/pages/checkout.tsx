@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import { useCart } from "@/hooks/use-cart";
 import { Layout } from "@/components/layout/Layout";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, ChevronRight } from "lucide-react";
+import { fetchStoreSettings, type StoreShippingMethod, type StoreTaxConfig } from "@/lib/api";
 
 type ShippingForm = {
   email: string;
@@ -19,7 +20,7 @@ type ShippingForm = {
   phone: string;
 };
 
-const SHIPPING_METHODS = [
+const DEFAULT_SHIPPING_METHODS: StoreShippingMethod[] = [
   { id: "standard", label: "Standard Shipping", duration: "5–7 business days", price: 0 },
   { id: "express", label: "Express Shipping", duration: "2–3 business days", price: 9.99 },
   { id: "overnight", label: "Overnight Delivery", duration: "Next business day", price: 24.99 },
@@ -61,9 +62,11 @@ export default function Checkout() {
   const { items, total, clearCart } = useCart();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [shippingMethod, setShippingMethod] = useState("standard");
+  const [shippingMethods, setShippingMethods] = useState<StoreShippingMethod[]>(DEFAULT_SHIPPING_METHODS);
+  const [taxConfig, setTaxConfig] = useState<StoreTaxConfig | null>(null);
 
   // Snapshot cart at order time so confirmation survives clearCart
-  const orderSnapshotRef = useRef<{ items: typeof items; subtotal: number; shipping: number; total: number; orderNumber: string } | null>(null);
+  const orderSnapshotRef = useRef<{ items: typeof items; subtotal: number; shipping: number; tax: number; total: number; orderNumber: string } | null>(null);
 
   const [form, setForm] = useState<ShippingForm>({
     email: "",
@@ -76,9 +79,34 @@ export default function Checkout() {
     phone: "",
   });
 
-  const selectedMethod = SHIPPING_METHODS.find((m) => m.id === shippingMethod)!;
-  const shippingCost = selectedMethod.price;
-  const grandTotal = total + shippingCost;
+  useEffect(() => {
+    fetchStoreSettings()
+      .then(({ settings }) => {
+        if (settings.shippingMethods?.length) {
+          setShippingMethods(settings.shippingMethods);
+          setShippingMethod((cur) =>
+            settings.shippingMethods.some((m) => m.id === cur) ? cur : settings.shippingMethods[0]!.id
+          );
+        }
+        if (settings.tax) setTaxConfig(settings.tax);
+      })
+      .catch(() => {
+        // Resilient: keep default shipping methods and no extra tax on failure.
+      });
+  }, []);
+
+  const selectedMethod = shippingMethods.find((m) => m.id === shippingMethod) ?? shippingMethods[0]!;
+  const shippingCost = selectedMethod?.price ?? 0;
+
+  const taxAmount = (() => {
+    if (!taxConfig?.enabled || !taxConfig.regions?.length) return 0;
+    const country = form.country.trim().toLowerCase();
+    const match = taxConfig.regions.find((r) => r.region.trim().toLowerCase() === country);
+    const region = match ?? taxConfig.regions[0]!;
+    return +((total * region.rate) / 100).toFixed(2);
+  })();
+
+  const grandTotal = total + shippingCost + taxAmount;
 
   const updateForm = (field: keyof ShippingForm) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -94,6 +122,7 @@ export default function Checkout() {
       items: [...items],
       subtotal: total,
       shipping: shippingCost,
+      tax: taxAmount,
       total: grandTotal,
       orderNumber: "#" + Math.floor(10000 + Math.random() * 90000),
     };
@@ -140,9 +169,14 @@ export default function Checkout() {
                 <span>Subtotal</span><span>${snap.subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
-                <span>Shipping ({selectedMethod.label})</span>
+                <span>Shipping ({selectedMethod?.label})</span>
                 <span>{snap.shipping === 0 ? "Free" : `$${snap.shipping.toFixed(2)}`}</span>
               </div>
+              {snap.tax > 0 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Tax</span><span>${snap.tax.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-base pt-1">
                 <span>Total</span><span>${snap.total.toFixed(2)}</span>
               </div>
@@ -193,6 +227,12 @@ export default function Checkout() {
               {shippingCost === 0 ? "Free" : `$${shippingCost.toFixed(2)}`}
             </span>
           </div>
+          {taxAmount > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Tax</span>
+              <span className="font-medium">${taxAmount.toFixed(2)}</span>
+            </div>
+          )}
           <div className="border-t border-border pt-3 flex justify-between text-lg font-bold">
             <span>Total</span>
             <span>${grandTotal.toFixed(2)}</span>
@@ -241,7 +281,7 @@ export default function Checkout() {
                     <button type="button" onClick={() => setStep(1)} className="text-primary ml-2 underline text-xs">Edit</button>
                   </div>
                   <div className="space-y-3">
-                    {SHIPPING_METHODS.map((method) => (
+                    {shippingMethods.map((method) => (
                       <label key={method.id} className={`flex items-center justify-between p-4 border cursor-pointer transition-colors ${shippingMethod === method.id ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground"}`}>
                         <div className="flex items-center gap-3">
                           <input type="radio" name="shipping" value={method.id} checked={shippingMethod === method.id} onChange={() => setShippingMethod(method.id)} className="accent-primary" />

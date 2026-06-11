@@ -1,19 +1,41 @@
-import { useAdminListCampaigns } from "@workspace/api-client-react";
+import { useAdminListCampaigns, useAdminDeleteCampaign } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Megaphone, Plus } from "lucide-react";
+import { Megaphone, Plus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { fmt } from "@/lib/date";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Campaigns() {
   const { data: response, isLoading } = useAdminListCampaigns();
   const campaigns = response?.data ?? [];
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const deleteCampaign = useAdminDeleteCampaign();
+
+  const handleDelete = (id: string) => {
+    deleteCampaign.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          toast({ title: "Campaign deleted" });
+          queryClient.invalidateQueries({ queryKey: ["/api/admin/campaigns"] });
+        },
+        onError: () => toast({ title: "Error deleting campaign", variant: "destructive" }),
+      }
+    );
+  };
 
   const spendPct = (spent: number | undefined, budget: number | undefined) => {
     if (!budget || !spent) return 0;
@@ -44,16 +66,17 @@ export default function Campaigns() {
               <TableHead>Budget</TableHead>
               <TableHead className="text-right">Impressions</TableHead>
               <TableHead className="text-right">Conversions</TableHead>
+              <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">Loading...</TableCell>
+                <TableCell colSpan={7} className="h-24 text-center">Loading...</TableCell>
               </TableRow>
             ) : campaigns.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-48 text-center">
+                <TableCell colSpan={7} className="h-48 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <Megaphone className="h-8 w-8 mb-2 opacity-50" />
                     <p>No campaigns found.</p>
@@ -96,6 +119,33 @@ export default function Campaigns() {
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {new Intl.NumberFormat().format(campaign.conversions ?? 0)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="relative z-10 h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => e.stopPropagation()}
+                          data-testid={`btn-delete-campaign-${campaign.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete campaign “{campaign.title}”?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. The campaign will be permanently removed.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(campaign.id)}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </TableCell>
                 </TableRow>
               ))

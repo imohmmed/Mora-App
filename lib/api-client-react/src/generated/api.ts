@@ -73,6 +73,7 @@ import type {
   SettingsResponse,
   SettingsUpdate,
   TopProductsResponse,
+  VariantInput,
   VariantListResponse,
   VariantResponse,
   VariantUpdate
@@ -1384,6 +1385,77 @@ export function useAdminListVariants<TData = Awaited<ReturnType<typeof adminList
 
 
 
+export const getAdminCreateVariantUrl = () => {
+
+
+
+
+  return `/api/admin/variants`
+}
+
+/**
+ * @summary Create a variant
+ */
+export const adminCreateVariant = async (variantInput: VariantInput, options?: RequestInit): Promise<VariantResponse> => {
+
+  return customFetch<VariantResponse>(getAdminCreateVariantUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      variantInput,)
+  }
+);}
+
+
+
+
+export const getAdminCreateVariantMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminCreateVariant>>, TError,{data: BodyType<VariantInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminCreateVariant>>, TError,{data: BodyType<VariantInput>}, TContext> => {
+
+const mutationKey = ['adminCreateVariant'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminCreateVariant>>, {data: BodyType<VariantInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  adminCreateVariant(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminCreateVariantMutationResult = NonNullable<Awaited<ReturnType<typeof adminCreateVariant>>>
+    export type AdminCreateVariantMutationBody = BodyType<VariantInput>
+    export type AdminCreateVariantMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a variant
+ */
+export const useAdminCreateVariant = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminCreateVariant>>, TError,{data: BodyType<VariantInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminCreateVariant>>,
+        TError,
+        {data: BodyType<VariantInput>},
+        TContext
+      > => {
+      return useMutation(getAdminCreateVariantMutationOptions(options));
+    }
+
 export const getAdminGetProductVariantsUrl = (productId: string,) => {
 
 
@@ -1531,6 +1603,76 @@ export const useAdminUpdateVariant = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getAdminUpdateVariantMutationOptions(options));
+    }
+
+export const getAdminDeleteVariantUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/variants/${id}`
+}
+
+/**
+ * @summary Delete a variant
+ */
+export const adminDeleteVariant = async (id: string, options?: RequestInit): Promise<DeletedResponse> => {
+
+  return customFetch<DeletedResponse>(getAdminDeleteVariantUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getAdminDeleteVariantMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminDeleteVariant>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminDeleteVariant>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['adminDeleteVariant'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminDeleteVariant>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  adminDeleteVariant(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminDeleteVariantMutationResult = NonNullable<Awaited<ReturnType<typeof adminDeleteVariant>>>
+
+    export type AdminDeleteVariantMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a variant
+ */
+export const useAdminDeleteVariant = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminDeleteVariant>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminDeleteVariant>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getAdminDeleteVariantMutationOptions(options));
     }
 
 export const getAdminListOrdersUrl = (params?: AdminListOrdersParams,) => {
@@ -1835,6 +1977,76 @@ export const useAdminUpdateOrder = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getAdminUpdateOrderMutationOptions(options));
+    }
+
+export const getAdminDeleteOrderUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/orders/${id}`
+}
+
+/**
+ * @summary Delete an order
+ */
+export const adminDeleteOrder = async (id: string, options?: RequestInit): Promise<DeletedResponse> => {
+
+  return customFetch<DeletedResponse>(getAdminDeleteOrderUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getAdminDeleteOrderMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminDeleteOrder>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminDeleteOrder>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['adminDeleteOrder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminDeleteOrder>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  adminDeleteOrder(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminDeleteOrderMutationResult = NonNullable<Awaited<ReturnType<typeof adminDeleteOrder>>>
+
+    export type AdminDeleteOrderMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete an order
+ */
+export const useAdminDeleteOrder = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminDeleteOrder>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminDeleteOrder>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getAdminDeleteOrderMutationOptions(options));
     }
 
 export const getAdminListCustomerSegmentsUrl = () => {
@@ -2295,6 +2507,76 @@ export const useAdminUpdateCustomer = <TError = ErrorType<unknown>,
       return useMutation(getAdminUpdateCustomerMutationOptions(options));
     }
 
+export const getAdminDeleteCustomerUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/customers/${id}`
+}
+
+/**
+ * @summary Delete a customer
+ */
+export const adminDeleteCustomer = async (id: string, options?: RequestInit): Promise<DeletedResponse> => {
+
+  return customFetch<DeletedResponse>(getAdminDeleteCustomerUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getAdminDeleteCustomerMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminDeleteCustomer>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminDeleteCustomer>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['adminDeleteCustomer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminDeleteCustomer>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  adminDeleteCustomer(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminDeleteCustomerMutationResult = NonNullable<Awaited<ReturnType<typeof adminDeleteCustomer>>>
+
+    export type AdminDeleteCustomerMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a customer
+ */
+export const useAdminDeleteCustomer = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminDeleteCustomer>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminDeleteCustomer>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getAdminDeleteCustomerMutationOptions(options));
+    }
+
 export const getAdminListCampaignsUrl = () => {
 
 
@@ -2590,6 +2872,76 @@ export const useAdminUpdateCampaign = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getAdminUpdateCampaignMutationOptions(options));
+    }
+
+export const getAdminDeleteCampaignUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/campaigns/${id}`
+}
+
+/**
+ * @summary Delete a campaign
+ */
+export const adminDeleteCampaign = async (id: string, options?: RequestInit): Promise<DeletedResponse> => {
+
+  return customFetch<DeletedResponse>(getAdminDeleteCampaignUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getAdminDeleteCampaignMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminDeleteCampaign>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminDeleteCampaign>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['adminDeleteCampaign'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminDeleteCampaign>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  adminDeleteCampaign(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminDeleteCampaignMutationResult = NonNullable<Awaited<ReturnType<typeof adminDeleteCampaign>>>
+
+    export type AdminDeleteCampaignMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a campaign
+ */
+export const useAdminDeleteCampaign = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminDeleteCampaign>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminDeleteCampaign>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getAdminDeleteCampaignMutationOptions(options));
     }
 
 export const getAdminListDiscountsUrl = () => {
@@ -3988,6 +4340,76 @@ export const useAdminUpdateMarket = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getAdminUpdateMarketMutationOptions(options));
+    }
+
+export const getAdminDeleteMarketUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/markets/${id}`
+}
+
+/**
+ * @summary Delete a market
+ */
+export const adminDeleteMarket = async (id: string, options?: RequestInit): Promise<DeletedResponse> => {
+
+  return customFetch<DeletedResponse>(getAdminDeleteMarketUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getAdminDeleteMarketMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminDeleteMarket>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminDeleteMarket>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['adminDeleteMarket'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminDeleteMarket>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  adminDeleteMarket(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminDeleteMarketMutationResult = NonNullable<Awaited<ReturnType<typeof adminDeleteMarket>>>
+
+    export type AdminDeleteMarketMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a market
+ */
+export const useAdminDeleteMarket = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminDeleteMarket>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminDeleteMarket>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getAdminDeleteMarketMutationOptions(options));
     }
 
 export const getAdminGetSettingsUrl = () => {
