@@ -97,8 +97,9 @@ router.post("/admin/products", (req, res) => {
   const id = `p_${Date.now()}`;
   const now = new Date().toISOString();
   const b = req.body as Record<string, unknown>;
-  db.prepare(`INSERT INTO products (id,title,vendor,category,description,price,compare_price,cost,images,tags,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-    .run(id, b["title"] ?? "", b["vendor"] ?? "", b["category"] ?? "women", b["description"] ?? "", b["price"] ?? 0, b["compareAtPrice"] ?? null, b["cost"] ?? null, JSON.stringify(b["images"] ?? []), JSON.stringify(b["tags"] ?? []), b["status"] ?? "draft", now, now);
+  const slug = (b["urlSlug"] as string | undefined) || (b["title"] as string || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || id;
+  db.prepare(`INSERT INTO products (id,title,vendor,category,description,price,compare_price,cost,images,tags,status,option_definitions,seo_title,seo_description,url_slug,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, b["title"] ?? "", b["vendor"] ?? "", b["category"] ?? "women", b["description"] ?? "", b["price"] ?? 0, b["compareAtPrice"] ?? null, b["cost"] ?? null, JSON.stringify(b["images"] ?? []), JSON.stringify(b["tags"] ?? []), b["status"] ?? "draft", JSON.stringify(b["optionDefinitions"] ?? []), b["seoTitle"] ?? "", b["seoDescription"] ?? "", slug, now, now);
   const product = parseOne(db.prepare(`SELECT * FROM products WHERE id=?`).get(id) as Row | undefined);
   res.status(201).json({ data: product, meta: {}, error: null });
 });
@@ -109,10 +110,60 @@ router.put("/admin/products/:id", (req, res) => {
   if (!existing) { res.status(404).json({ data: null, meta: {}, error: "Product not found" }); return; }
   const b = req.body as Record<string, unknown>;
   const now = new Date().toISOString();
-  db.prepare(`UPDATE products SET title=COALESCE(?,title), vendor=COALESCE(?,vendor), category=COALESCE(?,category), description=COALESCE(?,description), price=COALESCE(?,price), compare_price=?, cost=COALESCE(?,cost), images=COALESCE(?,images), tags=COALESCE(?,tags), status=COALESCE(?,status), updated_at=? WHERE id=?`)
-    .run(b["title"] ?? null, b["vendor"] ?? null, b["category"] ?? null, b["description"] ?? null, b["price"] ?? null, b["compareAtPrice"] ?? null, b["cost"] ?? null, b["images"] !== undefined ? JSON.stringify(b["images"]) : null, b["tags"] !== undefined ? JSON.stringify(b["tags"]) : null, b["status"] ?? null, now, id);
+  db.prepare(`UPDATE products SET title=COALESCE(?,title), vendor=COALESCE(?,vendor), category=COALESCE(?,category), description=COALESCE(?,description), price=COALESCE(?,price), compare_price=?, cost=COALESCE(?,cost), images=COALESCE(?,images), tags=COALESCE(?,tags), status=COALESCE(?,status), option_definitions=COALESCE(?,option_definitions), seo_title=COALESCE(?,seo_title), seo_description=COALESCE(?,seo_description), url_slug=COALESCE(?,url_slug), updated_at=? WHERE id=?`)
+    .run(b["title"] ?? null, b["vendor"] ?? null, b["category"] ?? null, b["description"] ?? null, b["price"] ?? null, b["compareAtPrice"] ?? null, b["cost"] ?? null, b["images"] !== undefined ? JSON.stringify(b["images"]) : null, b["tags"] !== undefined ? JSON.stringify(b["tags"]) : null, b["status"] ?? null, b["optionDefinitions"] !== undefined ? JSON.stringify(b["optionDefinitions"]) : null, b["seoTitle"] ?? null, b["seoDescription"] ?? null, b["urlSlug"] ?? null, now, id);
   const product = parseOne(db.prepare(`SELECT * FROM products WHERE id=?`).get(id) as Row | undefined);
   res.json({ data: product, meta: {}, error: null });
+});
+
+// ─── Admin: product collections & variant sync ────────────────────────────────
+
+router.get("/admin/products/:id/collections", requireAdmin, (req, res) => {
+  const productId = req.params["id"];
+  const rows = db.prepare(`SELECT c.* FROM collections c JOIN product_collections pc ON pc.collection_id=c.id WHERE pc.product_id=?`).all(productId) as Row[];
+  res.json({ data: parseRows(rows), meta: { total: rows.length }, error: null });
+});
+
+router.put("/admin/products/:id/collections", requireAdmin, (req, res) => {
+  const productId = req.params["id"];
+  if (!db.prepare(`SELECT id FROM products WHERE id=?`).get(productId)) { res.status(404).json({ data: null, meta: {}, error: "Product not found" }); return; }
+  const b = req.body as { collectionIds?: string[] };
+  const ids = b.collectionIds ?? [];
+  db.prepare(`DELETE FROM product_collections WHERE product_id=?`).run(productId);
+  const ins = db.prepare(`INSERT OR IGNORE INTO product_collections (product_id,collection_id) VALUES (?,?)`);
+  for (const cid of ids) ins.run(productId, cid);
+  res.json({ data: { collectionIds: ids }, meta: {}, error: null });
+});
+
+router.post("/admin/products/:id/variants/sync", requireAdmin, (req, res) => {
+  const productId = req.params["id"];
+  if (!db.prepare(`SELECT id FROM products WHERE id=?`).get(productId)) { res.status(404).json({ data: null, meta: {}, error: "Product not found" }); return; }
+  const b = req.body as { variants?: Record<string, unknown>[] };
+  const incoming = b.variants ?? [];
+  const existing = db.prepare(`SELECT * FROM variants WHERE product_id=?`).all(productId) as Row[];
+  const existingByKey = new Map<string, Row>();
+  for (const v of existing) {
+    const key = [v["option1"], v["option2"]].filter(Boolean).join(" / ") || "Default Title";
+    existingByKey.set(key, v);
+  }
+  db.prepare(`DELETE FROM variants WHERE product_id=?`).run(productId);
+  const insertMany = db.transaction(() => {
+    for (let i = 0; i < incoming.length; i++) {
+      const v = incoming[i];
+      const o1 = (v["option1"] as string | undefined) ?? null;
+      const o2 = (v["option2"] as string | undefined) ?? null;
+      const key = [o1, o2].filter(Boolean).join(" / ") || "Default Title";
+      const prev = existingByKey.get(key);
+      const vid = `var_${Date.now()}_${i}_${Math.floor(Math.random() * 9999)}`;
+      const title = key;
+      const inventory = (v["inventory"] as number | undefined) ?? (prev?.["inventory"] as number | undefined) ?? 0;
+      db.prepare(`INSERT INTO variants (id,product_id,title,sku,price,compare_price,cost,inventory,option1,option2) VALUES (?,?,?,?,?,?,?,?,?,?)`)
+        .run(vid, productId, title, v["sku"] ?? "", v["price"] ?? 0, v["comparePrice"] ?? null, v["cost"] ?? null, inventory, o1, o2);
+    }
+  });
+  insertMany();
+  const variants = parseRows(db.prepare(`SELECT * FROM variants WHERE product_id=?`).all(productId) as Row[]);
+  res.json({ data: variants, meta: { total: variants.length }, error: null });
 });
 
 router.delete("/admin/products/:id", (req, res) => {

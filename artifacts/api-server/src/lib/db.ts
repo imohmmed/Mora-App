@@ -227,6 +227,18 @@ function ensureColumn(table: string, column: string, decl: string) {
 }
 ensureColumn("products", "cost", "REAL");
 ensureColumn("variants", "cost", "REAL");
+ensureColumn("products", "option_definitions", "TEXT NOT NULL DEFAULT '[]'");
+ensureColumn("products", "seo_title", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("products", "seo_description", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("products", "url_slug", "TEXT NOT NULL DEFAULT ''");
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS product_collections (
+    product_id    TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    collection_id TEXT NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+    PRIMARY KEY (product_id, collection_id)
+  );
+`);
 
 // ─── Seed helpers ─────────────────────────────────────────────────────────────
 

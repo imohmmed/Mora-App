@@ -2,15 +2,23 @@ import { useState } from "react";
 import { useAdminCreateProduct } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, X } from "lucide-react";
+import { ArrowLeft, Plus, X, Search } from "lucide-react";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
+import { SortableImageGrid } from "@/components/ui/SortableImageGrid";
+import { VariantBuilder, type OptionGroup, type VariantRow } from "@/components/ui/VariantBuilder";
+import { CollectionMultiSelect } from "@/components/ui/CollectionMultiSelect";
+import { adminFetch } from "@/lib/api";
+
+const fmtIQD = (n: number) => `${Math.round(n).toLocaleString("en-US")} IQD`;
 
 export default function NewProduct() {
   const [, navigate] = useLocation();
@@ -18,116 +26,180 @@ export default function NewProduct() {
   const { toast } = useToast();
   const createProduct = useAdminCreateProduct();
 
-  const [form, setForm] = useState({
-    title: "",
-    vendor: "",
-    category: "women",
-    description: "",
-    price: "",
-    compareAtPrice: "",
-    cost: "",
-    status: "draft",
-    tags: [] as string[],
-  });
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [images, setImages] = useState<string[]>([]);
+  const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
+  const [price, setPrice] = useState("");
+  const [compareAtPrice, setCompareAtPrice] = useState("");
+  const [cost, setCost] = useState("");
+  const [status, setStatus] = useState("draft");
+  const [category, setCategory] = useState("women");
+  const [vendor, setVendor] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
+  const [seoTitle, setSeoTitle] = useState("");
+  const [seoDescription, setSeoDescription] = useState("");
+  const [urlSlug, setUrlSlug] = useState("");
+  const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
+  const [variants, setVariants] = useState<VariantRow[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const fmtIQD = (n: number) => `${Math.round(n).toLocaleString("en-US")} IQD`;
-  const priceNum = parseFloat(form.price) || 0;
-  const costNum = parseFloat(form.cost) || 0;
+  const priceNum = parseFloat(price) || 0;
+  const costNum = parseFloat(cost) || 0;
   const profit = priceNum - costNum;
   const margin = priceNum > 0 ? (profit / priceNum) * 100 : 0;
 
-  const set = (key: keyof typeof form, value: string) =>
-    setForm((f) => ({ ...f, [key]: value }));
+  const autoSlug = (t: string) =>
+    t.toLowerCase().replace(/[^a-z0-9\u0600-\u06ff]+/g, "-").replace(/^-|-$/g, "");
 
   const addTag = () => {
     const t = tagInput.trim();
-    if (t && !form.tags.includes(t)) {
-      setForm((f) => ({ ...f, tags: [...f.tags, t] }));
-    }
+    if (t && !tags.includes(t)) setTags((p) => [...p, t]);
     setTagInput("");
   };
 
-  const removeTag = (tag: string) =>
-    setForm((f) => ({ ...f, tags: f.tags.filter((t) => t !== tag) }));
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const price = parseFloat(form.price);
-    if (!form.title || !form.vendor || isNaN(price)) {
-      toast({ title: "Missing fields", description: "Title, vendor, and price are required.", variant: "destructive" });
+  const handleSave = async () => {
+    if (!title.trim()) {
+      toast({ title: "Title required", variant: "destructive" });
       return;
     }
-    createProduct.mutate(
-      {
-        data: {
-          title: form.title,
-          vendor: form.vendor,
-          category: form.category,
-          description: form.description,
-          price,
-          compareAtPrice: form.compareAtPrice ? parseFloat(form.compareAtPrice) : null,
-          cost: form.cost ? parseFloat(form.cost) : null,
-          status: form.status,
-          tags: form.tags,
-        },
-      },
-      {
-        onSuccess: (res) => {
-          toast({ title: "Product created" });
-          queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
-          navigate(`/products/${res.data?.id ?? ""}`);
-        },
-        onError: () =>
-          toast({ title: "Error", description: "Failed to create product.", variant: "destructive" }),
+    setIsSaving(true);
+    try {
+      const res = await new Promise<{ data?: { id?: string } }>((resolve, reject) => {
+        createProduct.mutate(
+          {
+            data: {
+              title,
+              vendor,
+              category,
+              description,
+              price: parseFloat(price) || 0,
+              compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null,
+              cost: cost ? parseFloat(cost) : null,
+              images,
+              tags,
+              status,
+              optionDefinitions: optionGroups,
+              seoTitle: seoTitle || title,
+              seoDescription,
+              urlSlug: urlSlug || autoSlug(title),
+            } as unknown as Parameters<typeof createProduct.mutate>[0]["data"],
+          },
+          { onSuccess: resolve, onError: reject }
+        );
+      });
+
+      const pid = res?.data?.id;
+      if (!pid) throw new Error("No product ID returned");
+
+      if (variants.length > 0) {
+        await adminFetch(`/admin/products/${pid}/variants/sync`, {
+          method: "POST",
+          body: JSON.stringify({
+            variants: variants.map((v) => ({
+              option1: v.option1,
+              option2: v.option2,
+              price: parseFloat(v.price) || 0,
+              comparePrice: v.comparePrice ? parseFloat(v.comparePrice) : null,
+              cost: v.cost ? parseFloat(v.cost) : null,
+              sku: v.sku,
+              inventory: parseInt(v.inventory) || 0,
+            })),
+          }),
+        });
       }
-    );
+
+      if (selectedCollections.length > 0) {
+        await adminFetch(`/admin/products/${pid}/collections`, {
+          method: "PUT",
+          body: JSON.stringify({ collectionIds: selectedCollections }),
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
+      toast({ title: "Product created" });
+      navigate(`/products/${pid}`);
+    } catch {
+      toast({ title: "Error", description: "Failed to create product.", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-6">
+    <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
         <Link href="/products" className="text-muted-foreground hover:text-foreground">
           <ArrowLeft className="w-5 h-5" />
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight">New Product</h1>
+        <h1 className="text-2xl font-bold tracking-tight flex-1">New Product</h1>
+        <Button onClick={handleSave} disabled={isSaving}>
+          {isSaving ? "Saving..." : "Save product"}
+        </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Left column — main info */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* ── Left column ── */}
         <div className="md:col-span-2 space-y-6">
+
+          {/* Title + Description */}
           <Card>
-            <CardHeader><CardTitle>Basic Information</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="pt-6 space-y-4">
               <div className="grid gap-2">
-                <Label htmlFor="title">Title *</Label>
+                <Label htmlFor="title">Title</Label>
                 <Input
                   id="title"
                   placeholder="e.g. Classic Oxford Shirt"
-                  value={form.title}
-                  onChange={(e) => set("title", e.target.value)}
-                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Product description..."
-                  rows={5}
-                  value={form.description}
-                  onChange={(e) => set("description", e.target.value)}
+                <Label>Description</Label>
+                <RichTextEditor
+                  value={description}
+                  onChange={setDescription}
+                  placeholder="Write a product description..."
                 />
               </div>
             </CardContent>
           </Card>
 
+          {/* Media */}
           <Card>
-            <CardHeader><CardTitle>Pricing</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Media</CardTitle>
+              <CardDescription>Add image URLs. Drag to reorder — first image is the main cover.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SortableImageGrid images={images} onChange={setImages} />
+            </CardContent>
+          </Card>
+
+          {/* Collections */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Collections</CardTitle>
+              <CardDescription>Add this product to one or more collections.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CollectionMultiSelect
+                selected={selectedCollections}
+                onChange={setSelectedCollections}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Pricing */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Pricing</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="price">Selling Price (IQD) *</Label>
+                  <Label htmlFor="price">Selling Price (IQD)</Label>
                   <div className="relative">
                     <Input
                       id="price"
@@ -136,9 +208,8 @@ export default function NewProduct() {
                       min="0"
                       className="pr-12"
                       placeholder="0"
-                      value={form.price}
-                      onChange={(e) => set("price", e.target.value)}
-                      required
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">IQD</span>
                   </div>
@@ -153,96 +224,122 @@ export default function NewProduct() {
                       min="0"
                       className="pr-12"
                       placeholder="0"
-                      value={form.compareAtPrice}
-                      onChange={(e) => set("compareAtPrice", e.target.value)}
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">IQD</span>
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="cost">Cost per item (IQD)</Label>
-                  <div className="relative">
-                    <Input
-                      id="cost"
-                      type="number"
-                      step="1"
-                      min="0"
-                      className="pr-12"
-                      placeholder="0"
-                      value={form.cost}
-                      onChange={(e) => set("cost", e.target.value)}
-                      data-testid="input-cost"
+                      value={compareAtPrice}
+                      onChange={(e) => setCompareAtPrice(e.target.value)}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">IQD</span>
                   </div>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Set Compare-at above the selling price to show a discount in the store and app.
+                Set Compare-at higher than the selling price to show a discount with a red strikethrough.
               </p>
-              <div className="grid grid-cols-2 gap-3 pt-2 border-t">
-                <div>
-                  <p className="text-xs text-muted-foreground">Profit</p>
-                  <p className="text-sm font-semibold" data-testid="text-profit">
-                    {form.cost ? fmtIQD(profit) : "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Margin</p>
-                  <p className="text-sm font-semibold" data-testid="text-margin">
-                    {form.cost && priceNum > 0 ? `${margin.toFixed(1)}%` : "—"}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader><CardTitle>Variants</CardTitle></CardHeader>
-            <CardContent>
-              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground space-y-2">
-                <p className="font-medium">Variants can be added after the product is created.</p>
-                <p>Save this product first, then add size/color variants from the product detail page.</p>
-              </div>
-            </CardContent>
-          </Card>
+              <Separator />
 
-          <Card>
-            <CardHeader><CardTitle>Tags</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add a tag..."
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
-                />
-                <Button type="button" variant="outline" onClick={addTag}>
-                  <Plus className="w-4 h-4" />
-                </Button>
+              <div className="grid gap-2">
+                <Label htmlFor="cost">Cost per item</Label>
+                <div className="relative">
+                  <Input
+                    id="cost"
+                    type="number"
+                    step="1"
+                    min="0"
+                    className="pr-12"
+                    placeholder="0"
+                    value={cost}
+                    onChange={(e) => setCost(e.target.value)}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">IQD</span>
+                </div>
               </div>
-              {form.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {form.tags.map((t) => (
-                    <Badge key={t} variant="secondary" className="gap-1 pr-1">
-                      {t}
-                      <button type="button" onClick={() => removeTag(t)} className="hover:text-destructive">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </Badge>
-                  ))}
+              {cost && (
+                <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-muted/30 border">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Profit per item</p>
+                    <p className="font-semibold text-sm">{fmtIQD(profit)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Margin</p>
+                    <p className="font-semibold text-sm">{priceNum > 0 ? `${margin.toFixed(1)}%` : "—"}</p>
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
+
+          {/* Variants */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Variants</CardTitle>
+              <CardDescription>Add options like size or color. Each combination becomes a variant.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <VariantBuilder
+                optionGroups={optionGroups}
+                onOptionGroupsChange={setOptionGroups}
+                variants={variants}
+                onVariantsChange={setVariants}
+                basePrice={price}
+              />
+            </CardContent>
+          </Card>
+
+          {/* SEO */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Search className="w-4 h-4" />
+                Search Engine Listing
+              </CardTitle>
+              <CardDescription>
+                Customize how this product appears in search results.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-2">
+                <Label htmlFor="seoTitle">Meta title</Label>
+                <Input
+                  id="seoTitle"
+                  placeholder={title || "Product title"}
+                  value={seoTitle}
+                  onChange={(e) => setSeoTitle(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">{(seoTitle || title).length} / 70 characters</p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="seoDesc">Meta description</Label>
+                <Textarea
+                  id="seoDesc"
+                  rows={3}
+                  placeholder="Brief product summary for search results..."
+                  value={seoDescription}
+                  onChange={(e) => setSeoDescription(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">{seoDescription.length} / 160 characters</p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="urlSlug">URL handle</Label>
+                <div className="flex gap-2 items-center">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">moramoda.tech/products/</span>
+                  <Input
+                    id="urlSlug"
+                    placeholder={autoSlug(title) || "product-handle"}
+                    value={urlSlug}
+                    onChange={(e) => setUrlSlug(e.target.value)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Right column — meta */}
+        {/* ── Right sidebar ── */}
         <div className="space-y-4">
           <Card>
             <CardHeader><CardTitle>Status</CardTitle></CardHeader>
             <CardContent>
-              <Select value={form.status} onValueChange={(v) => set("status", v)}>
+              <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -260,7 +357,7 @@ export default function NewProduct() {
             <CardContent className="space-y-4">
               <div className="grid gap-2">
                 <Label>Category</Label>
-                <Select value={form.category} onValueChange={(v) => set("category", v)}>
+                <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -274,28 +371,56 @@ export default function NewProduct() {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="vendor">Vendor *</Label>
+                <Label htmlFor="vendor">Vendor</Label>
                 <Input
                   id="vendor"
                   placeholder="e.g. Mora Brand"
-                  value={form.vendor}
-                  onChange={(e) => set("vendor", e.target.value)}
-                  required
+                  value={vendor}
+                  onChange={(e) => setVendor(e.target.value)}
                 />
               </div>
             </CardContent>
           </Card>
 
-          <div className="flex flex-col gap-3">
-            <Button type="submit" disabled={createProduct.isPending} className="w-full">
-              {createProduct.isPending ? "Saving..." : "Save Product"}
+          <Card>
+            <CardHeader><CardTitle>Tags</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add a tag..."
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
+                />
+                <Button type="button" variant="outline" size="icon" onClick={addTag}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {tags.map((t) => (
+                    <Badge key={t} variant="secondary" className="gap-1 pr-1 text-xs">
+                      {t}
+                      <button type="button" onClick={() => setTags((p) => p.filter((x) => x !== t))} className="hover:text-destructive">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="space-y-2">
+            <Button className="w-full" onClick={handleSave} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save product"}
             </Button>
-            <Button type="button" variant="outline" className="w-full" onClick={() => navigate("/products")}>
-              Cancel
+            <Button variant="outline" className="w-full" onClick={() => navigate("/products")}>
+              Discard
             </Button>
           </div>
         </div>
-      </form>
+      </div>
     </div>
   );
 }
