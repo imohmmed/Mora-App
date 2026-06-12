@@ -192,9 +192,9 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Rich
         </div>
       </div>
 
-      <div onClick={() => editor.commands.focus()}>
+      <div className="relative" onClick={() => editor.commands.focus()}>
         {!editor.getText() && placeholder && (
-          <div className="absolute pointer-events-none text-muted-foreground text-sm px-3 py-2">
+          <div className="absolute top-0 left-0 pointer-events-none text-muted-foreground text-sm px-3 py-2 z-10">
             {placeholder}
           </div>
         )}
