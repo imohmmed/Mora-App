@@ -653,14 +653,12 @@ export default function AnalyticsPage() {
   const { from, to } = PRESETS[selectedPreset] || PRESETS[0];
   const isSingleDay = from === to;
 
-  const { data: overviewRes, isLoading } = useQuery({
+  const { data: ov, isLoading } = useQuery({
     queryKey: ["analytics-overview", from, to],
-    queryFn: () => adminFetch<OverviewData>(`/admin/analytics/overview?from=${from}&to=${to}`),
+    queryFn: () => adminFetch<OverviewData>(`/admin/analytics/overview?from=${from}&to=${to}`).then(r => r.data),
     enabled: activeTab === "analytics",
     staleTime: 60_000,
   });
-
-  const ov = overviewRes;
 
   // KPI sparklines — use hourly if single day, daily if range
   const grossSpark = ov
