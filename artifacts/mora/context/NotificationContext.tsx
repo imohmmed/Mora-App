@@ -11,6 +11,7 @@ import React, {
   useState,
 } from "react";
 import { AppState, Platform } from "react-native";
+import { router } from "expo-router";
 import {
   registerForPushNotificationsAsync,
   sendTokenToServer,
@@ -97,7 +98,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     });
   }, []);
 
-  // ── Handle incoming push notifications (order stage updates from backend) ────
+  // ── Handle incoming push notifications (foreground) ─────────────────────────
   useEffect(() => {
     if (Platform.OS === "web") return;
     let Notifications: typeof import("expo-notifications") | null = null;
@@ -111,6 +112,29 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         const orderId = (data.orderId as string) ?? "";
         const message = data.message as string | undefined;
         setOrderActivity({ active: true, orderId, stage, message });
+      }
+    });
+
+    return () => sub.remove();
+  }, []);
+
+  // ── Handle notification taps → navigate to the right screen ──────────────────
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    let Notifications: typeof import("expo-notifications") | null = null;
+    try { Notifications = require("expo-notifications"); } catch {}
+    if (!Notifications) return;
+
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as Record<string, unknown>;
+      const type = data?.type as string | undefined;
+      const url  = data?.url  as string | undefined;
+
+      if (type === "chat_message") {
+        router.push("/(tabs)/chat");
+      } else if (url) {
+        // url is an app route like "/product/abc" or "/collection/summer"
+        router.push(url as any);
       }
     });
 

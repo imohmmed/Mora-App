@@ -1,7 +1,10 @@
 import { Router } from "express";
+import { createHmac } from "crypto";
 import { db } from "../lib/db.js";
 
 const router = Router();
+
+const CHATWOOT_SECRET = process.env.CHATWOOT_WEBHOOK_SECRET ?? "";
 
 function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -15,6 +18,18 @@ function now() {
 // We only act on outgoing agent messages (message_type === 1) so the customer
 // gets a push notification on their phone.
 router.post("/webhooks/chatwoot", async (req, res) => {
+  // Verify HMAC-SHA256 signature sent by Chatwoot
+  if (CHATWOOT_SECRET) {
+    const sig = req.headers["x-chatwoot-signature"] as string | undefined;
+    const expected = createHmac("sha256", CHATWOOT_SECRET)
+      .update(JSON.stringify(req.body))
+      .digest("hex");
+    if (sig !== expected) {
+      res.status(401).json({ ok: false });
+      return;
+    }
+  }
+
   // Respond immediately — Chatwoot will retry on non-2xx
   res.json({ ok: true });
 

@@ -172,6 +172,8 @@ export default function Notifications() {
   const [pushBody, setPushBody] = useState("");
   const [pushTarget, setPushTarget] = useState<"all" | "specific">("all");
   const [pushCustomerIds, setPushCustomerIds] = useState("");
+  const [pushLinkType, setPushLinkType] = useState<"none" | "product" | "collection" | "chat">("none");
+  const [pushLinkValue, setPushLinkValue] = useState("");
 
   // Live Activity form state
   const [laStage, setLaStage] = useState("confirmed");
@@ -198,6 +200,15 @@ export default function Notifications() {
   const sendPush = useMutation({
     mutationFn: async () => {
       const ids = pushCustomerIds.split(",").map((s) => s.trim()).filter(Boolean);
+      // Build deep-link URL
+      let url: string | undefined;
+      if (pushLinkType === "product" && pushLinkValue.trim()) {
+        url = `/product/${pushLinkValue.trim()}`;
+      } else if (pushLinkType === "collection" && pushLinkValue.trim()) {
+        url = `/collection/${pushLinkValue.trim()}`;
+      } else if (pushLinkType === "chat") {
+        url = `/(tabs)/chat`;
+      }
       return apiFetch<{ sent: number; success: number; failed: number }>("/admin/notifications/push", {
         method: "POST",
         body: JSON.stringify({
@@ -205,6 +216,7 @@ export default function Notifications() {
           body: pushBody,
           targetAll: pushTarget === "all",
           customerIds: ids,
+          data: url ? { url } : {},
         }),
       });
     },
@@ -212,6 +224,8 @@ export default function Notifications() {
       toast({ title: `تم الإرسال`, description: `${d.sent} جهاز — ${d.success} نجح، ${d.failed} فشل` });
       setPushTitle("");
       setPushBody("");
+      setPushLinkType("none");
+      setPushLinkValue("");
       qc.invalidateQueries({ queryKey: ["notif-stats"] });
       qc.invalidateQueries({ queryKey: ["notif-history"] });
     },
@@ -383,6 +397,43 @@ export default function Notifications() {
                 />
               </div>
             )}
+
+            {/* Deep-link destination */}
+            <div className="grid gap-2">
+              <Label>الوجهة عند الضغط على الإشعار</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {([
+                  { id: "none",       label: "بدون رابط",  emoji: "🚫" },
+                  { id: "product",    label: "منتج",        emoji: "👕" },
+                  { id: "collection", label: "كولكشن",      emoji: "🗂️" },
+                  { id: "chat",       label: "المحادثة",    emoji: "💬" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => { setPushLinkType(opt.id); setPushLinkValue(""); }}
+                    className={cn(
+                      "border rounded-lg py-2 px-2 text-xs font-medium transition-colors text-center",
+                      pushLinkType === opt.id
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "hover:bg-accent"
+                    )}
+                  >
+                    <div className="text-lg mb-0.5">{opt.emoji}</div>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {(pushLinkType === "product" || pushLinkType === "collection") && (
+                <Input
+                  value={pushLinkValue}
+                  onChange={(e) => setPushLinkValue(e.target.value)}
+                  placeholder={pushLinkType === "product" ? "معرّف المنتج (مثال: prod_abc123)" : "slug الكولكشن (مثال: summer-2025)"}
+                  dir="ltr"
+                  className="mt-1"
+                />
+              )}
+            </div>
 
             <Button
               onClick={() => sendPush.mutate()}
