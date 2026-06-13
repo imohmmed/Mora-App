@@ -22,7 +22,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useNotification } from "@/context/NotificationContext";
 import { formatIQD } from "@/lib/format";
-import { AppleActionSheet } from "@/components/AppleActionSheet";
+import { CompactPicker } from "@/components/CompactPicker";
 
 const PRIMARY = "#0274C1";
 const WAYL_BLUE = "#3B82F6";
@@ -305,7 +305,7 @@ export default function CheckoutScreen() {
 
         </ScrollView>
 
-        <AppleActionSheet
+        <CompactPicker
           visible={showCityPicker}
           title="Select Governorate"
           options={IRAQ_GOVERNORATES}
