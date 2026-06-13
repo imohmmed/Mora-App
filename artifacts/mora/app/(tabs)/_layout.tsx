@@ -42,6 +42,9 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="search" role="search">
         <TabIcon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="chat">
+        <TabIcon sf={{ default: "message.circle", selected: "message.circle.fill" }} />
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="cart">
         <TabIcon sf={{ default: "bag", selected: "bag.fill" }} />
       </NativeTabs.Trigger>

@@ -1,10 +1,5 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
-import {
-  Platform,
-  View,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import React, { useState } from "react";
+import { Platform, View, StyleSheet, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
@@ -20,15 +15,15 @@ function buildIdentityScript(
   return `
 (function () {
   function setUser() {
-    if (window.$chatwoot && typeof window.$chatwoot.setUser === 'function') {
-      window.$chatwoot.setUser('${safe(user.id)}', {
-        name: '${safe(user.firstName + " " + user.lastName)}',
-        email: '${safe(user.email)}',
-        ${user.phone ? `phone_number: '${safe(user.phone)}',` : ""}
+    if (window.$chatwoot && typeof window.$chatwoot.setUser === "function") {
+      window.$chatwoot.setUser("${safe(user.id)}", {
+        name: "${safe(user.firstName + " " + user.lastName)}",
+        email: "${safe(user.email)}",
+        ${user.phone ? `phone_number: "${safe(user.phone)}",` : ""}
       });
     }
   }
-  window.addEventListener('chatwoot:ready', setUser);
+  window.addEventListener("chatwoot:ready", setUser);
   setTimeout(setUser, 3000);
 })();
 true;
@@ -42,32 +37,21 @@ export default function ChatScreen() {
   const isDark = resolvedScheme === "dark";
   const bg = isDark ? "#0D0D0F" : "#FFFFFF";
 
-  // Pass darkMode in URL so show.html.erb can apply it via Vuex directly
+  // darkMode param → show.html.erb reads it and dispatches setColorScheme
   const widgetUrl = `${WIDGET_BASE}&darkMode=${isDark ? "dark" : "light"}`;
 
-  const iframeRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // For web iframe: send theme whenever isDark changes or iframe loads
-  const sendThemeToIframe = useCallback(() => {
-    if (Platform.OS !== "web") return;
-    // The URL already carries darkMode; reload the iframe if scheme changed
-    // (handled by React re-render with updated src)
-  }, []);
-
-  useEffect(() => {
-    sendThemeToIframe();
-  }, [sendThemeToIframe]);
-
+  // ── Web (iframe) ─────────────────────────────────────────────────────────
   if (Platform.OS === "web") {
     return (
       <View style={[styles.container, { backgroundColor: bg }]}>
+        {/* key forces a reload when the colour scheme flips */}
         {/* @ts-ignore */}
         <iframe
-          key={isDark ? "dark" : "light"}   /* force reload when scheme changes */
-          ref={iframeRef}
+          key={isDark ? "dark" : "light"}
           src={widgetUrl}
-          style={{ width: "100%", height: "100%", border: "none", flex: 1 }}
+          style={{ width: "100%", height: "100%", border: "none" }}
           title="Mora Support"
           allow="microphone; camera"
         />
@@ -79,13 +63,13 @@ export default function ChatScreen() {
   const WebView = require("react-native-webview").WebView;
   const identityScript = buildIdentityScript(user);
 
-  // Bottom inset so the chat input is not hidden behind the tab bar
+  // Push WebView content up so the Chatwoot input bar clears the native tab bar
   const tabBarHeight = 83 + insets.bottom;
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
       <WebView
-        key={isDark ? "dark" : "light"}   /* reload when scheme changes */
+        key={isDark ? "dark" : "light"}
         source={{ uri: widgetUrl }}
         injectedJavaScript={identityScript}
         onLoadEnd={() => setLoading(false)}
@@ -94,7 +78,6 @@ export default function ChatScreen() {
         domStorageEnabled
         allowsInlineMediaPlayback
         mediaPlaybackRequiresUserAction={false}
-        // Push WebView content up so the chat input clears the tab bar
         contentInset={{ bottom: tabBarHeight }}
         scrollIndicatorInsets={{ bottom: tabBarHeight }}
       />

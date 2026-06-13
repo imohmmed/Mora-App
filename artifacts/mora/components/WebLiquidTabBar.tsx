@@ -390,14 +390,6 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
           const isBag = route.name === "cart";
 
           const onPress = () => {
-            // Chat tab — toggle Chatwoot widget on web instead of navigating
-            if (route.name === "chat") {
-              const cw = (window as any).$chatwoot;
-              if (cw) {
-                cw.toggle();
-              }
-              return;
-            }
             // Home tab re-press while already on home — scroll to top
             if (focused && route.name === "index" && typeof window !== "undefined") {
               window.dispatchEvent(new CustomEvent("mora-scroll-home-top"));
