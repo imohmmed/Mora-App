@@ -16,7 +16,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import * as WebBrowser from "expo-web-browser";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
@@ -25,7 +24,6 @@ import { formatIQD } from "@/lib/format";
 import { CompactPicker } from "@/components/CompactPicker";
 
 const PRIMARY = "#0274C1";
-const WAYL_BLUE = "#3B82F6";
 
 const IRAQ_GOVERNORATES = [
   "Baghdad", "Basra", "Nineveh", "Erbil", "Sulaymaniyah",
@@ -74,7 +72,16 @@ const si = StyleSheet.create({
 });
 
 type FormState = { name: string; phone: string; city: string; district: string; street: string; note: string };
-type PayMethod = "cod" | "wayl";
+type PayMethod = "cod" | "zaincash" | "fastpay" | "asiahawala" | "mastercard" | "visa";
+
+const PAY_METHODS: { id: PayMethod; label: string; subtitle: string; logo: string; color: string }[] = [
+  { id: "cod",       label: "Cash on Delivery", subtitle: "Pay when your order arrives",   logo: "💵", color: "#22C55E"  },
+  { id: "zaincash",  label: "ZainCash",          subtitle: "Zain mobile wallet",            logo: "⚡", color: "#F97316"  },
+  { id: "fastpay",   label: "FastPay",            subtitle: "FastPay digital wallet",        logo: "🚀", color: "#8B5CF6"  },
+  { id: "asiahawala",label: "Asia Hawala",        subtitle: "Cash transfer via Asia Hawala", logo: "🌐", color: "#06B6D4"  },
+  { id: "mastercard",label: "Mastercard",         subtitle: "Debit or credit card",          logo: "💳", color: "#EB001B"  },
+  { id: "visa",      label: "Visa",               subtitle: "Debit or credit card",          logo: "💳", color: "#1A1F71"  },
+];
 
 export default function CheckoutScreen() {
   const { resolvedScheme } = useTheme();
@@ -156,22 +163,6 @@ export default function CheckoutScreen() {
         message: "Your order has been placed!",
       });
 
-      let waylUrl: string | null = null;
-
-      if (payMethod === "wayl") {
-        try {
-          const waylRes = await fetch(`${base}/store/wayl/create-link`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orderNumber, total: orderTotal }),
-          });
-          const waylJson = await waylRes.json() as { data: { url?: string } | null; error?: string };
-          waylUrl = waylJson.data?.url || null;
-        } catch {
-          // Non-fatal: we already created the order, continue without payment URL
-        }
-      }
-
       clearCart();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
@@ -179,10 +170,6 @@ export default function CheckoutScreen() {
         pathname: "/checkout/complete",
         params: { orderNumber, total: String(orderTotal), name: form.name, city: form.city, district: form.district, phone: form.phone, items: snapshot, paymentMethod: payMethod },
       } as any);
-
-      if (payMethod === "wayl" && waylUrl) {
-        await WebBrowser.openBrowserAsync(waylUrl, { presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN });
-      }
     } catch (err: any) {
       setSubmitting(false);
       Alert.alert("Error", err.message || "Something went wrong. Please try again.");
@@ -242,32 +229,32 @@ export default function CheckoutScreen() {
           {/* Payment Method */}
           <Text style={[st.sectionLbl, { color: sub }]}>PAYMENT METHOD</Text>
           <View style={[st.group, { backgroundColor: card }]}>
-            <PayOption
-              selected={payMethod === "cod"}
-              onPress={() => setPayMethod("cod")}
-              icon="dollar-sign"
-              iconColor={payMethod === "cod" ? PRIMARY : sub}
-              iconBg={payMethod === "cod" ? "rgba(2,116,193,0.12)" : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)")}
-              title="Cash on Delivery"
-              subtitle="Pay when your order arrives"
-              textCol={textCol}
-              sub={sub}
-              isDark={isDark}
-            />
-            <Divider color={divClr} />
-            <PayOption
-              selected={payMethod === "wayl"}
-              onPress={() => setPayMethod("wayl")}
-              icon="credit-card"
-              iconColor={payMethod === "wayl" ? WAYL_BLUE : sub}
-              iconBg={payMethod === "wayl" ? "rgba(59,130,246,0.12)" : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)")}
-              title="Online Payment"
-              subtitle="Zain Cash · FastPay · Asia Hawala · Visa"
-              textCol={textCol}
-              sub={sub}
-              isDark={isDark}
-              badge="Powered by Wayl"
-            />
+            {PAY_METHODS.map((m, idx) => {
+              const isSelected = payMethod === m.id;
+              const iconBg = isSelected
+                ? `${m.color}22`
+                : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)";
+              return (
+                <React.Fragment key={m.id}>
+                  <Pressable
+                    onPress={() => setPayMethod(m.id)}
+                    style={[st.payCard, isSelected && { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)" }]}
+                  >
+                    <View style={[st.payIcon, { backgroundColor: iconBg }]}>
+                      <Text style={{ fontSize: 18 }}>{m.logo}</Text>
+                    </View>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={[st.payTitle, { color: textCol }]}>{m.label}</Text>
+                      <Text style={[st.paySub, { color: sub }]}>{m.subtitle}</Text>
+                    </View>
+                    <View style={[st.radio, { borderColor: isSelected ? m.color : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
+                      {isSelected && <View style={[st.radioDot, { backgroundColor: m.color }]} />}
+                    </View>
+                  </Pressable>
+                  {idx < PAY_METHODS.length - 1 && <Divider color={divClr} />}
+                </React.Fragment>
+              );
+            })}
           </View>
 
           {/* Note */}
@@ -320,7 +307,6 @@ export default function CheckoutScreen() {
             disabled={submitting}
             style={({ pressed }) => [
               st.placeBtn,
-              payMethod === "wayl" && { backgroundColor: WAYL_BLUE },
               pressed && { opacity: 0.85 },
               submitting && { opacity: 0.7 },
             ]}
@@ -328,8 +314,8 @@ export default function CheckoutScreen() {
             {submitting
               ? <ActivityIndicator color="#fff" />
               : <>
-                  <Feather name={payMethod === "wayl" ? "credit-card" : "check-circle"} size={16} color="#fff" />
-                  <Text style={st.placeTxt}>{payMethod === "wayl" ? "PROCEED TO PAYMENT" : "PLACE ORDER"}</Text>
+                  <Feather name="check-circle" size={16} color="#fff" />
+                  <Text style={st.placeTxt}>PLACE ORDER</Text>
                 </>
             }
           </Pressable>
