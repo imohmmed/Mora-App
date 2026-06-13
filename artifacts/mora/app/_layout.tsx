@@ -10,6 +10,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { Platform } from "react-native";
+import { useAuth } from "@/context/AuthContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -64,6 +65,33 @@ function useChatwoot() {
   }, []);
 }
 
+// ─── Chatwoot identity (web only, needs AuthContext) ─────────────────────────
+// Sets the logged-in user's email on the Chatwoot contact so the backend can
+// match the contact to a push token and send notifications.
+function ChatwootIdentity() {
+  const { user } = useAuth();
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const trySet = () => {
+      const cw = (window as any).$chatwoot;
+      if (!cw?.setUser) return;
+      if (user) {
+        cw.setUser(user.id, {
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          ...(user.phone ? { phone_number: user.phone } : {}),
+        });
+      } else {
+        cw.reset?.();
+      }
+    };
+    trySet();
+    window.addEventListener("chatwoot:ready", trySet);
+    return () => window.removeEventListener("chatwoot:ready", trySet);
+  }, [user]);
+  return null;
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -108,6 +136,7 @@ export default function RootLayout() {
           <LanguageProvider>
             <QueryClientProvider client={queryClient}>
               <AuthProvider>
+                <ChatwootIdentity />
                 <NotificationProvider>
                   <CartProvider>
                     <WishlistProvider>

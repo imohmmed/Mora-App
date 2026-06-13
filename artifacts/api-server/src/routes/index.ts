@@ -14,6 +14,7 @@ import contentRouter from "./content.js";
 import notificationsRouter from "./notifications.js";
 import waylRouter from "./wayl.js";
 import adminAuthRouter from "./admin-auth.js";
+import webhooksRouter from "./webhooks.js";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(bannersRouter);
 router.use(storiesRouter);
 router.use(contentRouter);
 router.use(notificationsRouter);
+router.use(webhooksRouter);
 
 export default router;

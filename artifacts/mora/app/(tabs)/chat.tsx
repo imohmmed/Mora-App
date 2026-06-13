@@ -1,36 +1,58 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Platform,
   View,
   Text,
-  Pressable,
-  Linking,
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
 import { useTheme } from "@/context/ThemeContext";
+import { useAuth } from "@/context/AuthContext";
 
-const CHAT_URL = "https://chat.moramoda.tech";
+const CHAT_WIDGET_URL =
+  "https://chat.moramoda.tech/widget?website_token=WPeCyRzhWzff2TuFHRe27SaQ";
+
+// Build JS to inject into the WebView so Chatwoot knows who the user is.
+// This lets the backend match the contact email → push token for notifications.
+function buildIdentityScript(user: { id: string; firstName: string; lastName: string; email: string; phone?: string } | null): string {
+  if (!user) return "true;";
+  const safe = (s: string) => s.replace(/[\\'"]/g, "");
+  const id = safe(user.id);
+  const name = safe(`${user.firstName} ${user.lastName}`);
+  const email = safe(user.email);
+  const phone = safe(user.phone ?? "");
+  return `
+(function () {
+  function setUser() {
+    if (window.$chatwoot && typeof window.$chatwoot.setUser === 'function') {
+      window.$chatwoot.setUser('${id}', {
+        name: '${name}',
+        email: '${email}',
+        ${phone ? `phone_number: '${phone}',` : ""}
+      });
+    }
+  }
+  window.addEventListener('chatwoot:ready', setUser);
+  setTimeout(setUser, 3000);
+})();
+true;
+`;
+}
 
 export default function ChatScreen() {
   const { resolvedScheme } = useTheme();
+  const { user } = useAuth();
   const isDark = resolvedScheme === "dark";
   const bg = isDark ? "#0D0D0F" : "#FFFFFF";
-  const text = isDark ? "#FFFFFF" : "#000000";
-  const sub = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.45)";
 
+  // ── Web: Chatwoot SDK is already loaded via _layout.tsx useChatwoot()
   if (Platform.OS === "web") {
     return (
       <View style={[styles.container, { backgroundColor: bg }]}>
-        {/* @ts-ignore — iframe is valid on web */}
+        {/* @ts-ignore */}
         <iframe
-          src={CHAT_URL}
-          style={{
-            width: "100%",
-            height: "100%",
-            border: "none",
-            flex: 1,
-          }}
+          src={CHAT_WIDGET_URL}
+          style={{ width: "100%", height: "100%", border: "none", flex: 1 }}
           title="Mora Support"
           allow="microphone; camera"
         />
@@ -38,62 +60,38 @@ export default function ChatScreen() {
     );
   }
 
+  // ── Native (iOS / Android): embed Chatwoot widget in a WebView
+  // Lazy-require so web bundle never includes react-native-webview
+  const WebView = require("react-native-webview").WebView;
+  const [loading, setLoading] = useState(true);
+  const identityScript = buildIdentityScript(user);
+
   return (
-    <View style={[styles.center, { backgroundColor: bg }]}>
-      <Text style={[styles.emoji]}>💬</Text>
-      <Text style={[styles.title, { color: text }]}>تواصل مع الدعم</Text>
-      <Text style={[styles.sub, { color: sub }]}>
-        يسعدنا مساعدتك — فريق المبيعات والدعم جاهز
-      </Text>
-      <Pressable
-        style={({ pressed }) => [
-          styles.btn,
-          { opacity: pressed ? 0.75 : 1 },
-        ]}
-        onPress={() => Linking.openURL(CHAT_URL)}
-      >
-        <Text style={styles.btnText}>ابدأ المحادثة</Text>
-      </Pressable>
+    <View style={[styles.container, { backgroundColor: bg }]}>
+      <WebView
+        source={{ uri: CHAT_WIDGET_URL }}
+        injectedJavaScript={identityScript}
+        onLoadEnd={() => setLoading(false)}
+        style={{ flex: 1, backgroundColor: bg }}
+        javaScriptEnabled
+        domStorageEnabled
+        allowsInlineMediaPlayback
+        mediaPlaybackRequiresUserAction={false}
+      />
+      {loading && (
+        <View style={[styles.loader, { backgroundColor: bg }]}>
+          <ActivityIndicator size="large" color="#0274C1" />
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  center: {
-    flex: 1,
+  container: { flex: 1 },
+  loader: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 32,
-    gap: 12,
-  },
-  emoji: {
-    fontSize: 48,
-    marginBottom: 4,
-  },
-  title: {
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
-    textAlign: "center",
-  },
-  sub: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  btn: {
-    marginTop: 16,
-    backgroundColor: "#0274C1",
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 14,
-  },
-  btnText: {
-    color: "#FFF",
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
   },
 });
