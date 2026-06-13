@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Check, ArrowLeft, MapPin, Phone, Package,
-  DollarSign, ChevronRight, Loader2, Eye, EyeOff,
-  ShoppingBag, Truck, User, CreditCard, Zap, RefreshCw,
+  DollarSign, Loader2, Eye, EyeOff,
+  ShoppingBag, User, ChevronRight,
 } from "lucide-react";
 
 const BASE = "/api";
@@ -19,8 +19,7 @@ function fmtIQD(n: number) {
   return n.toLocaleString("en-US") + " IQD";
 }
 
-type Step = 1 | 2 | 3;
-type PayMethod = "cod" | "wayl";
+type Step = 1 | 2;
 type FormState = {
   name: string; phone: string;
   city: string; district: string; street: string; note: string;
@@ -30,17 +29,15 @@ type OrderSnap = {
   subtotal: number;
   orderNumber: string;
   form: FormState;
-  payMethod: PayMethod;
 };
 
-// ── Step Indicator ─────────────────────────────────────────────────────────────
-const STEP_LABELS = ["Information", "Payment", "Complete"];
+const STEP_LABELS = ["Cart", "Checkout", "Complete"];
 
-function StepIndicator({ current }: { current: Step }) {
+function StepIndicator({ current }: { current: 1 | 2 | 3 }) {
   return (
     <div className="flex items-center mb-10">
       {STEP_LABELS.map((label, i) => {
-        const step = (i + 1) as Step;
+        const step = (i + 1) as 1 | 2 | 3;
         const done   = step < current;
         const active = step === current;
         return (
@@ -75,7 +72,6 @@ function StepIndicator({ current }: { current: Step }) {
   );
 }
 
-// ── Login Gate ─────────────────────────────────────────────────────────────────
 function LoginGate({ onLogin }: { onLogin: (email: string, pw: string) => Promise<unknown> }) {
   const [email, setEmail]     = useState("");
   const [pw, setPw]           = useState("");
@@ -137,7 +133,6 @@ function LoginGate({ onLogin }: { onLogin: (email: string, pw: string) => Promis
   );
 }
 
-// ── Order Summary Sidebar ──────────────────────────────────────────────────────
 function OrderSidebar({ items, subtotal }: { items: ReturnType<typeof useCart>["items"]; subtotal: number }) {
   return (
     <div className="lg:w-2/5">
@@ -189,50 +184,18 @@ function OrderSidebar({ items, subtotal }: { items: ReturnType<typeof useCart>["
   );
 }
 
-// ── Slide variants (direction-aware) ──────────────────────────────────────────
-function slideVariants(direction: 1 | -1) {
-  return {
-    initial: { opacity: 0, x: direction * 32 },
-    animate: { opacity: 1, x: 0 },
-    exit:    { opacity: 0, x: direction * -32 },
-  };
-}
-
-// ── Main Component ─────────────────────────────────────────────────────────────
 export default function Checkout() {
   const { items, total, clearCart } = useCart();
   const { user, token, isLoading, login } = useStoreAuth();
 
-  const [step, setStep]           = useState<Step>(1);
-  const [dir, setDir]             = useState<1 | -1>(1);
-  const [payMethod, setPayMethod] = useState<PayMethod>("cod");
-  const [placing, setPlacing]     = useState(false);
+  const [step, setStep]         = useState<Step>(1);
+  const [placing, setPlacing]   = useState(false);
   const [placeError, setPlaceError] = useState("");
-  const [verifying, setVerifying] = useState(false);
-  const [payVerified, setPayVerified] = useState<boolean | null>(null);
   const orderRef = useRef<OrderSnap | null>(null);
 
   const [form, setForm] = useState<FormState>({
     name: "", phone: "", city: "", district: "", street: "", note: "",
   });
-
-  // Handle return from Wayl payment
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("wayl_return") === "1") {
-      const stored = localStorage.getItem("mora_wayl_pending");
-      if (stored) {
-        try {
-          const snap = JSON.parse(stored) as OrderSnap;
-          orderRef.current = snap;
-          clearCart();
-          setStep(3);
-          localStorage.removeItem("mora_wayl_pending");
-          window.history.replaceState({}, "", window.location.pathname);
-        } catch { /* ignore */ }
-      }
-    }
-  }, []);
 
   useEffect(() => {
     if (user) {
@@ -247,25 +210,9 @@ export default function Checkout() {
     }
   }, [user]);
 
-  const goTo = (next: Step) => {
-    setDir(next > step ? 1 : -1);
-    setStep(next);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
   const upd = (key: keyof FormState) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm((f) => ({ ...f, [key]: e.target.value }));
-
-  const verifyWaylPayment = async (referenceId: string) => {
-    setVerifying(true);
-    try {
-      const res = await fetch(`${BASE}/store/wayl/status/${referenceId}`);
-      const json = await res.json() as { data: { paid: boolean } };
-      setPayVerified(json.data?.paid === true);
-    } catch { setPayVerified(false); }
-    setVerifying(false);
-  };
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -279,7 +226,8 @@ export default function Checkout() {
         },
         body: JSON.stringify({
           email: user?.email || "",
-          subtotal: total, shipping: 0,
+          subtotal: total,
+          shipping: 0,
           shippingAddress: {
             fullName: form.name, phone: form.phone,
             city: form.city, district: form.district, street: form.street,
@@ -289,36 +237,18 @@ export default function Checkout() {
             quantity: i.quantity, price: i.price,
             option1: i.option1, option2: i.option2, image: i.image,
           })),
-          paymentMethod: payMethod,
+          paymentMethod: "cod",
           note: form.note,
         }),
       });
-      const json = await res.json() as { data: { order_number?: string } | null; error?: string };
+      const json = await res.json() as { data: { order_number?: string; orderNumber?: string } | null; error?: string };
       if (!res.ok) throw new Error(json.error || "Order failed");
 
-      const orderNumber = json.data?.order_number || "#—";
-      const snap: OrderSnap = {
-        items: [...items], subtotal: total,
-        orderNumber, form: { ...form }, payMethod,
-      };
-      orderRef.current = snap;
-
-      if (payMethod === "wayl") {
-        localStorage.setItem("mora_wayl_pending", JSON.stringify(snap));
-        const redirectionUrl = `${window.location.origin}${window.location.pathname}?wayl_return=1`;
-        const waylRes = await fetch(`${BASE}/store/wayl/create-link`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderNumber, total, redirectionUrl }),
-        });
-        const waylJson = await waylRes.json() as { data: { url?: string } | null; error?: string };
-        if (!waylRes.ok || !waylJson.data?.url) throw new Error(waylJson.error || "Could not create payment link");
-        window.location.href = waylJson.data.url;
-        return;
-      }
-
+      const orderNumber = json.data?.order_number || json.data?.orderNumber || "#—";
+      orderRef.current = { items: [...items], subtotal: total, orderNumber, form: { ...form } };
       clearCart();
-      goTo(3);
+      setStep(2);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err: unknown) {
       setPlaceError((err as Error).message || "Something went wrong. Please try again.");
     } finally {
@@ -326,8 +256,7 @@ export default function Checkout() {
     }
   };
 
-  // Empty cart guard
-  if (items.length === 0 && step < 3) {
+  if (items.length === 0 && step < 2) {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-24 text-center">
@@ -344,10 +273,8 @@ export default function Checkout() {
     );
   }
 
-  // ── Step 3: Complete ─────────────────────────────────────────────────────────
-  if (step === 3) {
+  if (step === 2) {
     const snap = orderRef.current!;
-    const isWayl = snap?.payMethod === "wayl";
     return (
       <Layout>
         <div className="container mx-auto px-4 py-16 max-w-2xl">
@@ -366,46 +293,10 @@ export default function Checkout() {
               <span className="text-sm font-bold text-primary tracking-wide">{snap?.orderNumber}</span>
             </div>
             <p className="text-muted-foreground">
-              Thank you{snap?.form.name ? `, ${snap.form.name.split(" ")[0]}` : ""}!{" "}
-              {isWayl ? "Your payment is being processed." : "We'll prepare your order right away."}
+              Thank you{snap?.form.name ? `, ${snap.form.name.split(" ")[0]}` : ""}! We'll prepare your order right away.
             </p>
           </motion.div>
 
-          {/* Wayl payment status */}
-          {isWayl && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="border border-border bg-secondary/30 p-4 mb-4 text-sm"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-semibold flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-primary" />
-                  Online Payment Status
-                </span>
-                {payVerified === true && (
-                  <span className="text-green-600 font-bold flex items-center gap-1">
-                    <Check className="h-4 w-4" />Confirmed
-                  </span>
-                )}
-                {payVerified === false && (
-                  <span className="text-destructive font-bold">Not yet confirmed</span>
-                )}
-              </div>
-              <button
-                onClick={() => verifyWaylPayment(snap.orderNumber)}
-                disabled={verifying || payVerified === true}
-                className="flex items-center gap-2 text-primary hover:underline disabled:opacity-50 font-medium"
-              >
-                {verifying
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  : <RefreshCw className="h-3.5 w-3.5" />}
-                {verifying ? "Checking…" : payVerified === true ? "Payment Confirmed" : "Verify Payment"}
-              </button>
-            </motion.div>
-          )}
-
-          {/* Order items */}
           <motion.div
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
@@ -435,7 +326,6 @@ export default function Checkout() {
             </div>
           </motion.div>
 
-          {/* Delivery details */}
           <motion.div
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
@@ -448,11 +338,7 @@ export default function Checkout() {
                 value: [snap?.form.district, snap?.form.city].filter(Boolean).join(", ") || "—",
               },
               { icon: Phone, label: "Phone", value: snap?.form.phone || "—" },
-              {
-                icon: isWayl ? CreditCard : DollarSign,
-                label: "Payment",
-                value: isWayl ? "Online · Wayl" : "Cash on Delivery",
-              },
+              { icon: DollarSign, label: "Payment", value: "Cash on Delivery" },
             ].map(({ icon: Icon, label, value }) => (
               <div key={label} className="border border-border bg-secondary/30 p-4 flex gap-3">
                 <Icon className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
@@ -472,11 +358,10 @@ export default function Checkout() {
     );
   }
 
-  // ── Steps 1 & 2 ─────────────────────────────────────────────────────────────
   return (
     <Layout>
       <div className="container mx-auto px-4 py-12 max-w-6xl">
-        <StepIndicator current={step} />
+        <StepIndicator current={2} />
 
         {isLoading ? (
           <div className="flex items-center justify-center py-24">
@@ -488,205 +373,97 @@ export default function Checkout() {
           <div className="flex flex-col lg:flex-row gap-10">
             <div className="lg:w-3/5">
               <AnimatePresence mode="wait" initial={false}>
-
-                {/* ── Step 1: Information ──────────────────────────────────── */}
-                {step === 1 && (
-                  <motion.form
-                    key="step1"
-                    variants={slideVariants(dir)}
-                    initial="initial" animate="animate" exit="exit"
-                    transition={{ duration: 0.22, ease: "easeInOut" }}
-                    onSubmit={(e) => { e.preventDefault(); goTo(2); }}
-                    className="space-y-5"
-                  >
+                <motion.form
+                  key="checkout"
+                  initial={{ opacity: 0, x: 24 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -24 }}
+                  transition={{ duration: 0.22, ease: "easeInOut" }}
+                  onSubmit={handlePlaceOrder}
+                  className="space-y-6"
+                >
+                  <div className="flex items-center gap-3">
+                    <Link href="/cart" className="text-muted-foreground hover:text-foreground transition-colors p-1 -ml-1">
+                      <ArrowLeft className="h-5 w-5" />
+                    </Link>
                     <h2 className="text-xl font-bold tracking-tighter uppercase">Delivery Information</h2>
+                  </div>
 
-                    <div className="flex items-center gap-2 bg-primary/8 border border-primary/20 px-4 py-3 rounded text-sm">
-                      <User className="h-4 w-4 text-primary flex-shrink-0" />
-                      <span>Signed in as <strong>{user.email}</strong></span>
-                    </div>
+                  <div className="flex items-center gap-2 bg-primary/8 border border-primary/20 px-4 py-3 rounded text-sm">
+                    <User className="h-4 w-4 text-primary flex-shrink-0" />
+                    <span>Signed in as <strong>{user.email}</strong></span>
+                  </div>
 
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Full Name</Label>
-                        <Input required className="h-12" value={form.name} onChange={upd("name")} placeholder="Ahmed Al-Rashidi" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Phone Number</Label>
-                        <Input required className="h-12" type="tel" value={form.phone} onChange={upd("phone")} placeholder="+964 770 000 0000" />
-                      </div>
-                    </div>
-
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>City</Label>
-                        <Input required className="h-12" value={form.city} onChange={upd("city")} placeholder="Baghdad" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>District / Area</Label>
-                        <Input required className="h-12" value={form.district} onChange={upd("district")} placeholder="Al-Mansour" />
-                      </div>
-                    </div>
-
+                  <div className="grid sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Street <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
-                      <Input className="h-12" value={form.street} onChange={upd("street")} placeholder="Street 14, Building 3" />
+                      <Label>Full Name</Label>
+                      <Input required className="h-12" value={form.name} onChange={upd("name")} placeholder="Ahmed Al-Rashidi" />
                     </div>
-
                     <div className="space-y-2">
-                      <Label>Order Note <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
-                      <textarea
-                        value={form.note} onChange={upd("note")}
-                        placeholder="Any special instructions for your order…"
-                        className="w-full border border-input bg-background px-3 py-3 text-sm rounded-md resize-none min-h-[80px] focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
+                      <Label>Phone Number</Label>
+                      <Input required className="h-12" type="tel" value={form.phone} onChange={upd("phone")} placeholder="+964 770 000 0000" />
                     </div>
+                  </div>
 
-                    <Button type="submit" className="w-full h-14 text-base uppercase font-bold tracking-wider">
-                      Continue to Payment
-                      <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
-                  </motion.form>
-                )}
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>City</Label>
+                      <Input required className="h-12" value={form.city} onChange={upd("city")} placeholder="Baghdad" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>District / Area</Label>
+                      <Input required className="h-12" value={form.district} onChange={upd("district")} placeholder="Al-Mansour" />
+                    </div>
+                  </div>
 
-                {/* ── Step 2: Payment ──────────────────────────────────────── */}
-                {step === 2 && (
-                  <motion.form
-                    key="step2"
-                    variants={slideVariants(dir)}
-                    initial="initial" animate="animate" exit="exit"
-                    transition={{ duration: 0.22, ease: "easeInOut" }}
-                    onSubmit={handlePlaceOrder}
-                    className="space-y-6"
+                  <div className="space-y-2">
+                    <Label>Street <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+                    <Input className="h-12" value={form.street} onChange={upd("street")} placeholder="Street 14, Building 3" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Order Notes <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+                    <textarea
+                      value={form.note}
+                      onChange={upd("note")}
+                      placeholder="Any special instructions for your order…"
+                      className="w-full border border-input bg-background px-3 py-3 text-sm rounded-md resize-none min-h-[80px] focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+
+                  {/* Payment */}
+                  <div className="border border-border bg-secondary/30 p-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <DollarSign className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm">Cash on Delivery</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Pay in cash when your order arrives</p>
+                      </div>
+                      <div className="ml-auto w-5 h-5 rounded-full border-2 border-primary bg-primary flex items-center justify-center flex-shrink-0">
+                        <Check className="h-3 w-3 text-primary-foreground" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {placeError && (
+                    <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-4 py-3 rounded-md">
+                      {placeError}
+                    </div>
+                  )}
+
+                  <Button
+                    type="submit"
+                    disabled={placing}
+                    className="w-full h-14 text-base uppercase font-bold tracking-wider gap-2"
                   >
-                    {/* Header */}
-                    <div className="flex items-center gap-3">
-                      <button type="button" onClick={() => goTo(1)}
-                        className="text-muted-foreground hover:text-foreground transition-colors p-1 -ml-1">
-                        <ArrowLeft className="h-5 w-5" />
-                      </button>
-                      <h2 className="text-xl font-bold tracking-tighter uppercase">Payment Method</h2>
-                    </div>
-
-                    {/* Address summary */}
-                    <div className="flex items-center gap-3 border border-border bg-secondary/30 p-4 text-sm">
-                      <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
-                      <div className="flex-1">
-                        <p className="font-semibold">{form.name}</p>
-                        <p className="text-muted-foreground">
-                          {[form.district, form.city].filter(Boolean).join(", ")} · {form.phone}
-                        </p>
-                      </div>
-                      <button type="button" onClick={() => goTo(1)}
-                        className="text-primary text-xs underline underline-offset-2 flex-shrink-0">
-                        Edit
-                      </button>
-                    </div>
-
-                    {/* Payment options */}
-                    <div className="space-y-3">
-                      <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Select Payment Method</p>
-
-                      {/* Cash on Delivery */}
-                      <label
-                        className={`flex items-center gap-4 p-4 border-2 cursor-pointer transition-all ${
-                          payMethod === "cod" ? "border-primary bg-primary/5" : "border-border hover:border-border/80"
-                        }`}
-                        onClick={() => setPayMethod("cod")}
-                      >
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
-                          payMethod === "cod" ? "bg-primary/15" : "bg-secondary"
-                        }`}>
-                          <Truck className={`h-5 w-5 ${payMethod === "cod" ? "text-primary" : "text-muted-foreground"}`} />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-bold text-sm">Cash on Delivery</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">Pay when your order arrives at your door</p>
-                        </div>
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                          payMethod === "cod" ? "border-primary bg-primary" : "border-border"
-                        }`}>
-                          {payMethod === "cod" && <Check className="h-3 w-3 text-primary-foreground" />}
-                        </div>
-                      </label>
-
-                      {/* Online Payment (Wayl) */}
-                      <label
-                        className={`flex items-center gap-4 p-4 border-2 cursor-pointer transition-all ${
-                          payMethod === "wayl" ? "border-blue-500 bg-blue-500/5" : "border-border hover:border-border/80"
-                        }`}
-                        onClick={() => setPayMethod("wayl")}
-                      >
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
-                          payMethod === "wayl" ? "bg-blue-500/15" : "bg-secondary"
-                        }`}>
-                          <CreditCard className={`h-5 w-5 ${payMethod === "wayl" ? "text-blue-500" : "text-muted-foreground"}`} />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <p className="font-bold text-sm">Online Payment</p>
-                            <span className="text-[9px] font-bold uppercase tracking-wider bg-blue-500/15 text-blue-500 px-1.5 py-0.5 rounded">
-                              Powered by Wayl
-                            </span>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Zain Cash · FastPay · Asia Hawala · Visa · Mastercard
-                          </p>
-                        </div>
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                          payMethod === "wayl" ? "border-blue-500 bg-blue-500" : "border-border"
-                        }`}>
-                          {payMethod === "wayl" && <Check className="h-3 w-3 text-white" />}
-                        </div>
-                      </label>
-                    </div>
-
-                    {/* Payment info callout */}
-                    {payMethod === "cod" && (
-                      <div className="bg-secondary/50 border border-border p-4 flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <DollarSign className="h-4 w-4 text-primary" />
-                          <span>You will pay on delivery</span>
-                        </div>
-                        <span className="text-xl font-black tracking-tighter text-primary">{fmtIQD(total)}</span>
-                      </div>
-                    )}
-                    {payMethod === "wayl" && (
-                      <div className="bg-blue-500/5 border border-blue-500/20 p-4 flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Zap className="h-4 w-4 text-blue-500" />
-                          <span>You'll be redirected to Wayl's secure page</span>
-                        </div>
-                        <span className="text-xl font-black tracking-tighter text-blue-600">{fmtIQD(total)}</span>
-                      </div>
-                    )}
-
-                    {placeError && (
-                      <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-4 py-3">
-                        {placeError}
-                      </div>
-                    )}
-
-                    <Button
-                      type="submit"
-                      className={`w-full h-14 text-base uppercase font-bold tracking-wider ${
-                        payMethod === "wayl" ? "bg-blue-500 hover:bg-blue-600" : ""
-                      }`}
-                      disabled={placing}
-                    >
-                      {placing ? (
-                        <><Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          {payMethod === "wayl" ? "Creating Payment Link…" : "Placing Order…"}
-                        </>
-                      ) : payMethod === "wayl" ? (
-                        <><CreditCard className="h-4 w-4 mr-2" />Pay Online · {fmtIQD(total)}</>
-                      ) : (
-                        <>Place Order · {fmtIQD(total)}</>
-                      )}
-                    </Button>
-                  </motion.form>
-                )}
-
+                    {placing
+                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order…</>
+                      : <><Check className="h-4 w-4" /> Place Order · {fmtIQD(total)}</>
+                    }
+                  </Button>
+                </motion.form>
               </AnimatePresence>
             </div>
 
