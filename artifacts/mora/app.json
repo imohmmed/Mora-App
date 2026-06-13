@@ -15,7 +15,8 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.mora1.com"
+      "bundleIdentifier": "app.mora1.com",
+      "appleTeamId": "PM27C7JC3M"
     },
     "android": {
       "package": "app.mora1.com",
