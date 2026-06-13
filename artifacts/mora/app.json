@@ -17,7 +17,7 @@
       "supportsTablet": false
     },
     "android": {
-      "package": "tech.moramoda.app",
+      "package": "app.mora1.com",
       "googleServicesFile": "./google-services.json"
     },
     "web": {
