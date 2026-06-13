@@ -137,6 +137,32 @@ export async function getAppleRedirectResult(): Promise<{ uid: string; email: st
   };
 }
 
+/**
+ * Listen for the first sign-in event (fires after signInWithRedirect completes).
+ * Unsubscribes after first call so it doesn't fire for already-logged-in users.
+ * Returns a cleanup function.
+ */
+export function waitForSignInWeb(
+  onUser: (u: { uid: string; email: string; name: string }) => void,
+  onError?: (e: Error) => void,
+): () => void {
+  if (!isFirebaseConfigured()) return () => {};
+  let unsubscribe: (() => void) | null = null;
+  try {
+    const auth = getAuth();
+    const { onAuthStateChanged } = require("firebase/auth");
+    unsubscribe = onAuthStateChanged(auth, (user: any) => {
+      if (user?.uid) {
+        unsubscribe?.();
+        onUser({ uid: user.uid, email: user.email ?? "", name: user.displayName ?? "" });
+      }
+    }, (err: Error) => { onError?.(err); });
+  } catch (e: any) {
+    onError?.(e);
+  }
+  return () => { unsubscribe?.(); };
+}
+
 // ─── Phone normaliser ────────────────────────────────────────────────────────
 
 /** Converts "07766699669" or "7766699669" → "+9647766699669" */

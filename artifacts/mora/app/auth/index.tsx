@@ -32,7 +32,7 @@ import {
   signInWithGoogle,
   signInWithApple,
   getGoogleRedirectResult,
-  getAppleRedirectResult,
+  waitForSignInWeb,
 } from "@/lib/firebase";
 
 const PRIMARY = "#0274C1";
@@ -108,24 +108,47 @@ export default function AuthScreen() {
     }
   }, []);
 
-  // Handle redirect result after Google / Apple signInWithRedirect returns
+  // Handle redirect result after Google / Apple signInWithRedirect returns.
+  // Two-stage: getRedirectResult (standard) + waitForSignInWeb (Safari ITP fallback).
   useEffect(() => {
     if (Platform.OS !== "web") return;
+    const pending = sessionStorage.getItem("mora_pending_signin");
+    if (!pending) return; // no redirect was initiated from this device
     let cancelled = false;
+    let cleanup: (() => void) | null = null;
+
+    async function finishSignIn(user: { uid: string; email: string; name: string }) {
+      if (cancelled) return;
+      const savedReturn = sessionStorage.getItem("mora_auth_returnTo") || "";
+      sessionStorage.removeItem("mora_auth_returnTo");
+      sessionStorage.removeItem("mora_pending_signin");
+      try {
+        await loginWithSocial(user.uid, user.name, user.email);
+        router.replace(((savedReturn || (returnTo as string) || "/(tabs)/account") as any));
+      } catch (err: any) {
+        if (!cancelled) setError(err.message ?? t.errGoogle);
+      }
+    }
+
     async function checkRedirect() {
       try {
-        // getGoogleRedirectResult / getAppleRedirectResult both call
-        // Firebase's getRedirectResult — one call is enough for any provider
+        // Primary: Firebase getRedirectResult
         const result = await getGoogleRedirectResult();
-        if (cancelled || !result) return;
-        await loginWithSocial(result.uid, result.name, result.email);
-        router.replace(((returnTo as string) || "/(tabs)/account") as any);
+        if (result) { await finishSignIn(result); return; }
+        // Fallback: onAuthStateChanged (covers Safari ITP case where
+        // getRedirectResult returns null but Firebase still signs in)
+        if (!cancelled) {
+          cleanup = waitForSignInWeb(
+            (user) => finishSignIn(user),
+            (err) => { if (!cancelled) setError(err.message ?? t.errGoogle); },
+          );
+        }
       } catch (err: any) {
         if (!cancelled) setError(err.message ?? t.errGoogle);
       }
     }
     checkRedirect();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; cleanup?.(); };
   }, []);
 
   const bg       = isDark ? "#0D0D0D" : "#FFFFFF";
@@ -154,24 +177,33 @@ export default function AuthScreen() {
     if (!configured) { setError(t.errNoFB); return; }
     setGLoading(true); setError("");
     try {
-      const { uid, email, name } = await signInWithGoogle();
-      await loginWithSocial(uid, name, email);
-      router.replace(((returnTo as string) || "/(tabs)/account") as any);
+      // Save returnTo + pending flag before redirect (lost during navigation)
+      if (Platform.OS === "web") {
+        if (returnTo) sessionStorage.setItem("mora_auth_returnTo", returnTo as string);
+        sessionStorage.setItem("mora_pending_signin", "1");
+      }
+      await signInWithGoogle();
+      // signInWithRedirect navigates away — code below never runs
     } catch (err: any) {
       setError(err.message ?? t.errGoogle);
-    } finally { setGLoading(false); }
+      setGLoading(false);
+    }
   };
 
   const handleApple = async () => {
     if (!configured) { setError(t.errNoFB); return; }
     setALoading(true); setError("");
     try {
-      const { uid, email, name } = await signInWithApple();
-      await loginWithSocial(uid, name, email);
-      router.replace(((returnTo as string) || "/(tabs)/account") as any);
+      if (Platform.OS === "web") {
+        if (returnTo) sessionStorage.setItem("mora_auth_returnTo", returnTo as string);
+        sessionStorage.setItem("mora_pending_signin", "1");
+      }
+      await signInWithApple();
+      // signInWithRedirect navigates away — code below never runs
     } catch (err: any) {
       setError(err.message ?? t.errApple);
-    } finally { setALoading(false); }
+      setALoading(false);
+    }
   };
 
   const topPad = Platform.OS === "web" ? 0 : insets.top;

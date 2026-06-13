@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
+function fmtIQD(n: number) {
+  return n.toLocaleString("en-US") + " IQD";
+}
+
 const MOCK_DISCOUNT_CODES: Record<string, number> = {
   MORA10: 10,
   MORA20: 20,
@@ -77,7 +81,7 @@ export default function Cart() {
                           {item.option1 && <span>{item.option1}</span>}
                           {item.option2 && <span> / {item.option2}</span>}
                         </div>
-                        <div className="font-medium mt-2 md:hidden">${item.price.toFixed(2)}</div>
+                        <div className="font-medium mt-2 md:hidden">{fmtIQD(item.price)}</div>
                         <button
                           onClick={() => removeItem(item.variantId)}
                           className="text-sm text-muted-foreground hover:text-destructive transition-colors mt-4 flex items-center gap-1"
@@ -102,7 +106,7 @@ export default function Cart() {
 
                     <div className="w-full md:w-auto flex justify-between md:justify-end items-center font-bold">
                       <span className="md:hidden text-sm text-muted-foreground">Total</span>
-                      ${(item.price * item.quantity).toFixed(2)}
+                      {fmtIQD(item.price * item.quantity)}
                     </div>
                   </div>
                 ))}
@@ -143,21 +147,21 @@ export default function Cart() {
                 <div className="space-y-4 text-sm mb-8">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span className="font-medium">${total.toFixed(2)}</span>
+                    <span className="font-medium">{fmtIQD(total)}</span>
                   </div>
                   {discountAmount > 0 && (
                     <div className="flex justify-between text-primary">
                       <span>Discount ({discountPercent}%)</span>
-                      <span className="font-medium">−${discountAmount.toFixed(2)}</span>
+                      <span className="font-medium">−{fmtIQD(discountAmount)}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Shipping</span>
-                    <span className="text-muted-foreground text-xs italic">Calculated at checkout</span>
+                    <span className="text-green-600 font-semibold">Free</span>
                   </div>
                   <div className="border-t border-border pt-4 mt-4 flex justify-between text-lg font-bold">
                     <span>Total</span>
-                    <span>${grandTotal.toFixed(2)}</span>
+                    <span>{fmtIQD(grandTotal)}</span>
                   </div>
                 </div>
 
