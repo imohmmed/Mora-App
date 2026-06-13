@@ -16,7 +16,11 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.mora1.com",
-      "appleTeamId": "PM27C7JC3M"
+      "appleTeamId": "PM27C7JC3M",
+      "associatedDomains": [
+        "applinks:mora1.com",
+        "webcredentials:mora1.com"
+      ]
     },
     "android": {
       "package": "app.mora1.com",
