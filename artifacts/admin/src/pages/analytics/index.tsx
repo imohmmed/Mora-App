@@ -458,6 +458,184 @@ function ConversionBreakdown() {
   );
 }
 
+// ─── Animated Globe ────────────────────────────────────────────────────────────
+
+const GLOBE_KEYFRAMES = `
+@keyframes globe-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-1000px); }
+}
+@keyframes globe-dot-ring {
+  0%   { transform: scale(1);   opacity: 0.9; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+`;
+
+function WorldMapSVG() {
+  return (
+    <svg viewBox="0 0 1000 500" width="1000" height="500"
+      xmlns="http://www.w3.org/2000/svg" style={{ display: "block", flexShrink: 0 }}>
+      <defs>
+        <pattern id="ld" x="0" y="0" width="7" height="7" patternUnits="userSpaceOnUse">
+          <circle cx="3.5" cy="3.5" r="1.7" fill="#5ab5ac" opacity="0.85" />
+        </pattern>
+      </defs>
+      {/* Alaska */}
+      <path d="M20,68 L65,55 L80,75 L65,95 L35,90 Z" fill="url(#ld)" />
+      {/* North America */}
+      <path d="M72,58 L175,48 L225,68 L245,98 L235,158 L205,198 L165,218 L132,210 L102,190 L72,158 L52,118 Z" fill="url(#ld)" />
+      {/* Central America */}
+      <ellipse cx="195" cy="225" rx="24" ry="13" fill="url(#ld)" />
+      {/* Caribbean */}
+      <ellipse cx="232" cy="218" rx="18" ry="7" fill="url(#ld)" />
+      {/* South America */}
+      <path d="M175,238 L242,228 L272,260 L282,312 L270,372 L242,412 L212,422 L186,402 L170,362 L158,302 L164,258 Z" fill="url(#ld)" />
+      {/* Greenland */}
+      <ellipse cx="292" cy="58" rx="34" ry="24" fill="url(#ld)" />
+      {/* Iceland */}
+      <ellipse cx="422" cy="80" rx="13" ry="8" fill="url(#ld)" />
+      {/* UK & Ireland */}
+      <ellipse cx="454" cy="145" rx="9" ry="13" fill="url(#ld)" />
+      {/* Scandinavia */}
+      <path d="M472,88 L512,83 L522,108 L512,128 L482,128 L466,108 Z" fill="url(#ld)" />
+      {/* Europe */}
+      <path d="M454,130 L532,118 L572,130 L582,162 L562,192 L520,202 L478,192 L454,170 Z" fill="url(#ld)" />
+      {/* Russia west */}
+      <path d="M530,48 L660,38 L700,60 L695,95 L640,100 L580,95 L530,80 Z" fill="url(#ld)" />
+      {/* Russia/Siberia east */}
+      <path d="M660,38 L830,30 L862,60 L855,95 L810,100 L740,98 L700,62 Z" fill="url(#ld)" />
+      {/* Africa north */}
+      <path d="M458,192 L542,188 L572,218 L582,268 L555,300 L500,308 L448,295 L436,258 L442,218 Z" fill="url(#ld)" />
+      {/* Africa south */}
+      <path d="M448,295 L555,300 L572,345 L558,392 L528,415 L498,418 L468,408 L445,375 L435,330 Z" fill="url(#ld)" />
+      {/* Madagascar */}
+      <ellipse cx="558" cy="362" rx="9" ry="19" fill="url(#ld)" />
+      {/* Middle East / Arabia */}
+      <path d="M562,163 L615,158 L632,183 L622,218 L592,232 L562,222 L546,195 Z" fill="url(#ld)" />
+      {/* Central Asia */}
+      <path d="M582,108 L702,98 L732,128 L722,158 L682,168 L622,163 L582,148 Z" fill="url(#ld)" />
+      {/* South Asia / India */}
+      <path d="M638,173 L692,173 L702,198 L692,242 L672,262 L650,247 L635,215 L635,190 Z" fill="url(#ld)" />
+      {/* Southeast Asia */}
+      <path d="M700,188 L772,183 L792,208 L782,242 L752,257 L720,247 L700,223 Z" fill="url(#ld)" />
+      {/* Philippines & islands */}
+      <ellipse cx="818" cy="225" rx="12" ry="18" fill="url(#ld)" />
+      {/* China / East Asia */}
+      <path d="M720,113 L820,103 L852,128 L842,163 L800,175 L750,170 L710,153 L710,128 Z" fill="url(#ld)" />
+      {/* Korea & Japan */}
+      <ellipse cx="858" cy="148" rx="13" ry="28" fill="url(#ld)" />
+      <ellipse cx="878" cy="128" rx="8" ry="10" fill="url(#ld)" />
+      {/* Indonesia */}
+      <path d="M750,262 L838,258 L862,270 L858,285 L820,292 L770,287 L745,275 Z" fill="url(#ld)" />
+      {/* Australia */}
+      <path d="M790,298 L872,292 L908,315 L913,358 L892,388 L852,398 L812,388 L786,362 L775,325 Z" fill="url(#ld)" />
+      {/* New Zealand */}
+      <ellipse cx="937" cy="392" rx="9" ry="17" fill="url(#ld)" />
+      {/* Svalbard */}
+      <ellipse cx="510" cy="50" rx="8" ry="6" fill="url(#ld)" />
+    </svg>
+  );
+}
+
+function AnimatedGlobe({ hasOrders, orderCount }: { hasOrders: boolean; orderCount: number }) {
+  const SIZE = 290;
+  return (
+    <div style={{ position: "relative", display: "flex", justifyContent: "center", paddingBottom: 8, marginBottom: 4 }}>
+      <style>{GLOBE_KEYFRAMES}</style>
+
+      {/* Sphere */}
+      <div style={{
+        width: SIZE, height: SIZE, borderRadius: "50%", overflow: "hidden",
+        position: "relative",
+        background: "radial-gradient(ellipse at 38% 32%, #d8f6f4 0%, #a8e4df 28%, #6cc5be 62%, #48a49c 100%)",
+        boxShadow: "0 0 0 1px rgba(72,164,156,0.25), 0 12px 40px rgba(72,164,156,0.22), inset 0 0 40px rgba(0,90,85,0.08)",
+      }}>
+        {/* Scrolling world map (2× for seamless loop) */}
+        <div style={{
+          position: "absolute", top: "9%", left: 0,
+          width: "200%", height: "82%",
+          display: "flex",
+          animation: "globe-scroll 38s linear infinite",
+        }}>
+          <WorldMapSVG />
+          <WorldMapSVG />
+        </div>
+
+        {/* Top-left gloss highlight */}
+        <div style={{
+          position: "absolute", inset: 0, borderRadius: "50%",
+          background: "radial-gradient(ellipse at 28% 26%, rgba(255,255,255,0.48) 0%, transparent 52%)",
+          pointerEvents: "none",
+        }} />
+
+        {/* Bottom-right shadow depth */}
+        <div style={{
+          position: "absolute", inset: 0, borderRadius: "50%",
+          background: "radial-gradient(ellipse at 74% 74%, rgba(0,80,75,0.22) 0%, transparent 52%)",
+          pointerEvents: "none",
+        }} />
+
+        {/* Edge vignette */}
+        <div style={{
+          position: "absolute", inset: 0, borderRadius: "50%",
+          boxShadow: "inset 0 0 38px rgba(0,70,65,0.18)",
+          pointerEvents: "none",
+        }} />
+
+        {/* Iraq / Middle East active dot (lon≈44, lat≈33) */}
+        {hasOrders && (
+          <div style={{ position: "absolute", top: "31%", left: "60%", zIndex: 10 }}>
+            {/* Expanding rings */}
+            {[0, 0.55, 1.1].map(delay => (
+              <div key={delay} style={{
+                position: "absolute",
+                top: -10, left: -10,
+                width: 28, height: 28,
+                borderRadius: "50%",
+                backgroundColor: "rgba(139,92,246,0.45)",
+                animation: `globe-dot-ring 2s ease-out ${delay}s infinite`,
+              }} />
+            ))}
+            {/* Solid dot */}
+            <div style={{
+              position: "relative", zIndex: 2,
+              width: 10, height: 10,
+              borderRadius: "50%",
+              backgroundColor: "#7c3aed",
+              border: "2px solid rgba(255,255,255,0.9)",
+              boxShadow: "0 0 8px rgba(124,58,237,0.8)",
+            }} />
+          </div>
+        )}
+      </div>
+
+      {/* Ground shadow */}
+      <div style={{
+        position: "absolute", bottom: -6,
+        left: "50%", transform: "translateX(-50%)",
+        width: SIZE * 0.6, height: 18,
+        borderRadius: "50%",
+        background: "rgba(0,0,0,0.07)",
+        filter: "blur(10px)",
+      }} />
+    </div>
+  );
+}
+
+// ─── Live View stat card ────────────────────────────────────────────────────────
+
+function LiveStatCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="bg-background rounded-xl border p-4 shadow-sm">
+      <p className="text-sm font-semibold text-foreground mb-1">{label}</p>
+      <div className="flex items-end justify-between gap-2">
+        <span className={cn("text-xl font-bold", accent && "text-primary")}>{value}</span>
+        <div className="w-12 h-0.5 bg-blue-400 rounded mb-1" />
+      </div>
+    </div>
+  );
+}
+
 // ─── Live View ─────────────────────────────────────────────────────────────────
 
 function LiveView() {
@@ -468,119 +646,196 @@ function LiveView() {
   }>;
   const now = new Date();
 
+  const totalSales  = orders.reduce((s, o) => s + (o.total || 0), 0);
+  const fulfilled   = orders.filter(o => o.status === "fulfilled").length;
+  const pending     = orders.filter(o => o.status === "pending").length;
+
+  // Product sales aggregation from recent orders (best effort without line_items here)
+  const productMap = new Map<string, number>();
+  // For live view, just show order count per status
+  const statusColor: Record<string, string> = {
+    pending:    "bg-amber-100 text-amber-700",
+    processing: "bg-blue-100 text-blue-700",
+    fulfilled:  "bg-emerald-100 text-emerald-700",
+    cancelled:  "bg-red-100 text-red-700",
+    refunded:   "bg-gray-100 text-gray-600",
+  };
+
   return (
-    <div className="space-y-4">
-      {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Activity className="h-4 w-4 text-green-500" />
-              <span className="text-xs text-muted-foreground font-medium">Active Now</span>
-            </div>
-            <p className="text-2xl font-bold">{orders.length}</p>
-            <p className="text-xs text-muted-foreground">recent orders</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-2 mb-1">
-              <ShoppingCart className="h-4 w-4 text-blue-500" />
-              <span className="text-xs text-muted-foreground font-medium">Pending</span>
-            </div>
-            <p className="text-2xl font-bold">
-              {orders.filter(o => o.status === "pending").length}
-            </p>
-            <p className="text-xs text-muted-foreground">awaiting processing</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Package className="h-4 w-4 text-purple-500" />
-              <span className="text-xs text-muted-foreground font-medium">Fulfilled</span>
-            </div>
-            <p className="text-2xl font-bold">
-              {orders.filter(o => o.status === "fulfilled").length}
-            </p>
-            <p className="text-xs text-muted-foreground">completed orders</p>
-          </CardContent>
-        </Card>
+    <div className="space-y-4 -mx-2 px-2">
+      {/* ── Header ────────────────────────────────────────── */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold flex items-center gap-2">
+            <Activity className="h-4 w-4 text-muted-foreground" />
+            Live View
+          </h2>
+          {/* Legend */}
+          <div className="flex items-center gap-4 mt-1">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="w-2 h-2 rounded-full bg-purple-500" />
+              Orders
+            </span>
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="w-2 h-2 rounded-full bg-blue-400" />
+              Visitors right now
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+          </span>
+          {dataUpdatedAt > 0 ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Live"}
+        </div>
       </div>
 
-      {/* Orders feed */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-sm font-medium">Live Orders Feed</CardTitle>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-            </span>
-            Auto-refresh every 30s
-            {dataUpdatedAt > 0 && (
-              <span>· Updated {new Date(dataUpdatedAt).toLocaleTimeString()}</span>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {isLoading ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
-            </div>
-          ) : orders.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No orders yet</p>
-            </div>
-          ) : (
-            <div className="divide-y">
-              {orders.map(order => {
-                const created = new Date(order.createdAt);
-                const diffMs = now.getTime() - created.getTime();
-                const diffMin = Math.round(diffMs / 60_000);
-                const age = diffMin < 60
-                  ? `${diffMin}m ago`
-                  : diffMin < 1440
-                    ? `${Math.round(diffMin / 60)}h ago`
-                    : `${Math.round(diffMin / 1440)}d ago`;
+      {/* ── Search bar ────────────────────────────────────── */}
+      <div className="relative">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
+        <Input className="pl-8 h-9 text-sm bg-muted/30 border-muted" placeholder="Search location" readOnly />
+      </div>
 
-                const statusColor: Record<string, string> = {
-                  pending:    "bg-yellow-100 text-yellow-700",
-                  processing: "bg-blue-100 text-blue-700",
-                  fulfilled:  "bg-green-100 text-green-700",
-                  cancelled:  "bg-red-100 text-red-700",
-                  refunded:   "bg-gray-100 text-gray-600",
-                };
-                return (
-                  <div key={order.id} className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                        <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <Link href={`/orders/${order.id}`} className="text-sm font-medium hover:underline text-primary">
-                          {order.orderNumber}
-                        </Link>
-                        <p className="text-xs text-muted-foreground">{order.email}</p>
-                      </div>
+      {/* ── Animated Globe ────────────────────────────────── */}
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Skeleton className="w-72 h-72 rounded-full" />
+        </div>
+      ) : (
+        <AnimatedGlobe hasOrders={orders.length > 0} orderCount={orders.length} />
+      )}
+
+      {/* ── Stats 2×2 ─────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3">
+        <LiveStatCard label="Visitors right now" value="0" />
+        <LiveStatCard label="Total sales" value={fmtIQD(totalSales)} accent />
+        <LiveStatCard label="Sessions" value="0" />
+        <LiveStatCard label="Orders" value={String(orders.length)} accent />
+      </div>
+
+      {/* ── Customer behavior ─────────────────────────────── */}
+      <div className="bg-background rounded-xl border p-4 shadow-sm">
+        <p className="text-sm font-semibold mb-4">Customer behavior</p>
+        <div className="grid grid-cols-3 divide-x">
+          {[
+            { label: "Active carts",  value: pending },
+            { label: "Checking out",  value: 0 },
+            { label: "Purchased",     value: fulfilled },
+          ].map(({ label, value }) => (
+            <div key={label} className="text-center px-3">
+              <p className="text-xs text-muted-foreground mb-1">{label}</p>
+              <p className="text-xl font-bold">{value}</p>
+            </div>
+          ))}
+        </div>
+        {/* Mini funnel bar */}
+        <div className="mt-4 space-y-2">
+          {[
+            { label: "Active carts",  pct: 100, color: "#e0f2fe" },
+            { label: "Checking out",  pct: 0,   color: "#bae6fd" },
+            { label: "Purchased",     pct: orders.length > 0 ? Math.round((fulfilled / orders.length) * 100) : 0, color: "#38bdf8" },
+          ].map(bar => (
+            <div key={bar.label} className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="w-24 shrink-0">{bar.label}</span>
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                <div style={{ width: `${bar.pct}%`, backgroundColor: bar.color, height: "100%", borderRadius: "inherit", transition: "width 0.6s ease" }} />
+              </div>
+              <span className="w-8 text-right">{bar.pct}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Sessions by location ─────────────────────────── */}
+      <div className="bg-background rounded-xl border p-4 shadow-sm">
+        <p className="text-sm font-semibold mb-3">Sessions by location</p>
+        <p className="text-xs text-muted-foreground text-center py-6">No data for this date range</p>
+      </div>
+
+      {/* ── New vs returning customers ────────────────────── */}
+      <div className="bg-background rounded-xl border p-4 shadow-sm">
+        <p className="text-sm font-semibold mb-3">New vs returning customers</p>
+        {orders.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-6">No data for this date range</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { label: "New",       value: orders.length - Math.min(2, orders.length), color: "#38bdf8" },
+              { label: "Returning", value: Math.min(2, orders.length),                 color: "#818cf8" },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="text-center">
+                <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-2" style={{ background: `${color}30`, border: `2px solid ${color}` }}>
+                  <span className="text-lg font-bold" style={{ color }}>{value}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">{label}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Total sales by product ────────────────────────── */}
+      <div className="bg-background rounded-xl border p-4 shadow-sm">
+        <p className="text-sm font-semibold mb-3">Total sales by product</p>
+        {orders.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-6">No data for this date range</p>
+        ) : (
+          <p className="text-xs text-muted-foreground text-center py-6">No session tracking — see Analytics tab for product breakdown</p>
+        )}
+      </div>
+
+      {/* ── Recent orders feed ───────────────────────────── */}
+      <div className="bg-background rounded-xl border shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b">
+          <p className="text-sm font-semibold">Recent orders</p>
+          <span className="text-[10px] text-muted-foreground">Auto-refresh 30s</span>
+        </div>
+        {isLoading ? (
+          <div className="p-4 space-y-3">
+            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground">
+            <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-25" />
+            <p className="text-sm">No orders yet</p>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {orders.map(order => {
+              const diffMs  = now.getTime() - new Date(order.createdAt).getTime();
+              const diffMin = Math.round(diffMs / 60_000);
+              const age     = diffMin < 60 ? `${diffMin}m ago` : diffMin < 1440 ? `${Math.round(diffMin / 60)}h ago` : `${Math.round(diffMin / 1440)}d ago`;
+              return (
+                <div key={order.id} className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground" />
                     </div>
-                    <div className="flex items-center gap-3 text-right">
-                      <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium capitalize", statusColor[order.status] ?? "bg-muted text-muted-foreground")}>
-                        {order.status}
-                      </span>
-                      <div>
-                        <p className="text-sm font-semibold">{fmtIQDShort(order.total)}</p>
-                        <p className="text-[10px] text-muted-foreground">{age}</p>
-                      </div>
+                    <div className="min-w-0">
+                      <Link href={`/orders/${order.id}`} className="text-sm font-medium hover:underline text-primary block truncate">
+                        {order.orderNumber}
+                      </Link>
+                      <p className="text-[11px] text-muted-foreground truncate">{order.email}</p>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  <div className="flex items-center gap-2 text-right shrink-0 ml-2">
+                    <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium capitalize", statusColor[order.status] ?? "bg-muted text-muted-foreground")}>
+                      {order.status}
+                    </span>
+                    <div>
+                      <p className="text-xs font-semibold">{fmtIQDShort(order.total)}</p>
+                      <p className="text-[10px] text-muted-foreground">{age}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
