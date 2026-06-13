@@ -1,8 +1,8 @@
 /**
- * Auth Screen — Google + Apple sign-in only.
+ * Auth Screen — Google + Apple sign-in via popup (no redirect).
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -25,8 +25,6 @@ import {
   isFirebaseConfigured,
   signInWithGoogle,
   signInWithApple,
-  getGoogleRedirectResult,
-  waitForSignInWeb,
 } from "@/lib/firebase";
 
 const PRIMARY = "#0274C1";
@@ -76,65 +74,28 @@ export default function AuthScreen() {
 
   const configured = isFirebaseConfigured();
 
-  useEffect(() => {
-    if (Platform.OS === "web" && typeof document !== "undefined") {
-      document.title = "Mora";
-    }
-  }, []);
-
-  useEffect(() => {
-    if (Platform.OS !== "web") return;
-    const pending = sessionStorage.getItem("mora_pending_signin");
-    if (!pending) return;
-    let cancelled = false;
-    let cleanup: (() => void) | null = null;
-
-    async function finishSignIn(user: { uid: string; email: string; name: string }) {
-      if (cancelled) return;
-      const savedReturn = sessionStorage.getItem("mora_auth_returnTo") || "";
-      sessionStorage.removeItem("mora_auth_returnTo");
-      sessionStorage.removeItem("mora_pending_signin");
-      try {
-        await loginWithSocial(user.uid, user.name, user.email);
-        router.replace(((savedReturn || (returnTo as string) || "/(tabs)/account") as any));
-      } catch (err: any) {
-        if (!cancelled) setError(err.message ?? t.errGoogle);
-      }
-    }
-
-    async function checkRedirect() {
-      try {
-        const result = await getGoogleRedirectResult();
-        if (result) { await finishSignIn(result); return; }
-        if (!cancelled) {
-          cleanup = waitForSignInWeb(
-            (user) => finishSignIn(user),
-            (err) => { if (!cancelled) setError(err.message ?? t.errGoogle); },
-          );
-        }
-      } catch (err: any) {
-        if (!cancelled) setError(err.message ?? t.errGoogle);
-      }
-    }
-    checkRedirect();
-    return () => { cancelled = true; cleanup?.(); };
-  }, []);
-
   const bg    = isDark ? "#0D0D0D" : "#FFFFFF";
   const fg    = isDark ? "#FFFFFF" : "#000000";
   const muted = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.44)";
+
+  const afterSignIn = async (user: { uid: string; email: string; name: string }, errMsg: string) => {
+    try {
+      await loginWithSocial(user.uid, user.name, user.email);
+      router.replace(((returnTo || "/(tabs)/account") as any));
+    } catch (err: any) {
+      setError(err.message ?? errMsg);
+    }
+  };
 
   const handleGoogle = async () => {
     if (!configured) { setError(t.errNoFB); return; }
     setGLoading(true); setError("");
     try {
-      if (Platform.OS === "web") {
-        if (returnTo) sessionStorage.setItem("mora_auth_returnTo", returnTo as string);
-        sessionStorage.setItem("mora_pending_signin", "1");
-      }
-      await signInWithGoogle();
+      const user = await signInWithGoogle();
+      await afterSignIn(user, t.errGoogle);
     } catch (err: any) {
       setError(err.message ?? t.errGoogle);
+    } finally {
       setGLoading(false);
     }
   };
@@ -143,13 +104,11 @@ export default function AuthScreen() {
     if (!configured) { setError(t.errNoFB); return; }
     setALoading(true); setError("");
     try {
-      if (Platform.OS === "web") {
-        if (returnTo) sessionStorage.setItem("mora_auth_returnTo", returnTo as string);
-        sessionStorage.setItem("mora_pending_signin", "1");
-      }
-      await signInWithApple();
+      const user = await signInWithApple();
+      await afterSignIn(user, t.errApple);
     } catch (err: any) {
       setError(err.message ?? t.errApple);
+    } finally {
       setALoading(false);
     }
   };
@@ -210,7 +169,7 @@ export default function AuthScreen() {
             </View>
           )}
 
-          {/* ── Google — pill, white border in dark ── */}
+          {/* ── Google ── */}
           <Pressable
             style={({ pressed }) => [
               styles.socialBtn,
@@ -232,7 +191,7 @@ export default function AuthScreen() {
             }
           </Pressable>
 
-          {/* ── Apple — pill, solid black always ── */}
+          {/* ── Apple ── */}
           <Pressable
             style={({ pressed }) => [
               styles.socialBtn,
@@ -262,7 +221,7 @@ export default function AuthScreen() {
             <Text style={{ color: PRIMARY }}>{t.terms}</Text>
           </Text>
 
-          {/* ── Language selector ── */}
+          {/* ── Language ── */}
           <Pressable
             style={[styles.langBtn, { borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.12)" }]}
             onPress={() => setShowLangPicker(true)}
@@ -322,7 +281,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     marginBottom: 14,
   },
-  appleBtn: { backgroundColor: "#000" },
+  appleBtn:  { backgroundColor: "#000" },
   socialTxt: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
 
   termsTxt: {
