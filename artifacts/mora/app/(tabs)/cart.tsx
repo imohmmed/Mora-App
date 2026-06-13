@@ -304,6 +304,6 @@ const s = StyleSheet.create({
   emptyCircle: { width: 88, height: 88, borderRadius: 44, alignItems: "center", justifyContent: "center", marginBottom: 20 },
   emptyTitle:  { fontSize: 20, fontWeight: "700", marginBottom: 8 },
   emptySub:    { fontSize: 14, marginBottom: 36 },
-  shopBtn:     { backgroundColor: "#111", paddingHorizontal: 36, paddingVertical: 14, borderRadius: 50 },
+  shopBtn:     { backgroundColor: PRIMARY, paddingHorizontal: 36, paddingVertical: 14, borderRadius: 50 },
   shopBtnTxt:  { color: "#fff", fontSize: 14, fontWeight: "700", letterSpacing: 1 },
 });
