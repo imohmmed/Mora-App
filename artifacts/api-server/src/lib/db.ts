@@ -576,40 +576,168 @@ export function parseOne(row: Row | undefined): Row | null {
 // ─── Analytics helpers ────────────────────────────────────────────────────────
 
 export function getAnalyticsSummary() {
-  const rows = db.prepare(`SELECT total, financial_status FROM orders WHERE is_draft=0 AND is_abandoned=0`).all() as Row[];
-  const revenue = rows.reduce((s, r) => s + (r["total"] as number), 0);
+  const rows = db.prepare(`SELECT subtotal, total FROM orders WHERE is_draft=0 AND is_abandoned=0`).all() as Row[];
+  const revenue = rows.reduce((s, r) => s + ((r["subtotal"] as number) || 0), 0);
   const orders = rows.length;
+  const returningCount = ((db.prepare(
+    `SELECT COUNT(*) as n FROM (SELECT customer_id FROM orders WHERE is_draft=0 AND is_abandoned=0 AND customer_id IS NOT NULL GROUP BY customer_id HAVING COUNT(*)>1)`
+  ).get() as Row)["n"] as number) || 0;
+  const totalUnique = ((db.prepare(
+    `SELECT COUNT(DISTINCT customer_id) as n FROM orders WHERE is_draft=0 AND is_abandoned=0 AND customer_id IS NOT NULL`
+  ).get() as Row)["n"] as number) || 0;
   return {
-    revenue: +revenue.toFixed(2),
+    revenue: Math.round(revenue),
     orders,
     customers: (db.prepare(`SELECT COUNT(*) as n FROM customers`).get() as Row)["n"],
-    avgOrderValue: orders ? +(revenue / orders).toFixed(2) : 0,
-    conversion: 3.2,
-    visitors: 4_820,
-    pageViews: 18_340,
-    returnRate: 22.4,
+    avgOrderValue: orders ? Math.round(revenue / orders) : 0,
+    returningCustomerRate: totalUnique > 0 ? +((returningCount / totalUnique) * 100).toFixed(1) : 0,
   };
 }
 
 export function getRevenueByDay(days = 14) {
   return Array.from({ length: days }, (_, i) => {
     const d = new Date(Date.now() - (days - 1 - i) * 86_400_000);
+    const dateStr = d.toISOString().substring(0, 10);
+    const row = db.prepare(
+      `SELECT COALESCE(SUM(subtotal),0) as rev, COUNT(*) as cnt FROM orders WHERE is_draft=0 AND is_abandoned=0 AND substr(created_at,1,10)=?`
+    ).get(dateStr) as Row;
     return {
-      date: `${d.getMonth() + 1}/${d.getDate()}`,
-      revenue: Math.floor(Math.random() * 600) + 100,
-      orders: Math.floor(Math.random() * 12) + 2,
+      date: dateStr,
+      revenue: Math.round((row["rev"] as number) || 0),
+      orders: (row["cnt"] as number) || 0,
     };
   });
 }
 
 export function getTopProducts(limit = 5) {
-  const rows = db.prepare(`SELECT id, title, price FROM products LIMIT ?`).all(limit) as Row[];
-  return rows.map((p) => ({
-    productId: p["id"],
-    title: p["title"],
-    sold: Math.floor(Math.random() * 80) + 10,
-    revenue: +((Math.random() * 80 + 10) * (p["price"] as number)).toFixed(2),
+  const orderRows = db.prepare(`SELECT line_items FROM orders WHERE is_draft=0 AND is_abandoned=0`).all() as Row[];
+  const map = new Map<string, { id: string; title: string; unitsSold: number; revenue: number }>();
+  for (const order of orderRows) {
+    try {
+      const items = JSON.parse((order["line_items"] as string) || "[]") as Array<{productId?: string; title: string; quantity: number; price: number}>;
+      for (const item of items) {
+        const key = item.productId || item.title;
+        const ex = map.get(key) || { id: item.productId || key, title: item.title, unitsSold: 0, revenue: 0 };
+        ex.unitsSold += item.quantity || 0;
+        ex.revenue   += (item.price || 0) * (item.quantity || 0);
+        map.set(key, ex);
+      }
+    } catch { /* skip malformed */ }
+  }
+  return [...map.values()].sort((a, b) => b.revenue - a.revenue).slice(0, limit);
+}
+
+export function getAnalyticsForRange(from: string, to: string) {
+  const orders = db.prepare(
+    `SELECT * FROM orders WHERE is_draft=0 AND is_abandoned=0 AND substr(created_at,1,10)>=? AND substr(created_at,1,10)<=?`
+  ).all(from, to) as Row[];
+
+  const grossSales     = orders.reduce((s, o) => s + ((o["subtotal"] as number) || 0), 0);
+  const shippingTotal  = orders.reduce((s, o) => s + ((o["shipping"]  as number) || 0), 0);
+  const taxTotal       = orders.reduce((s, o) => s + ((o["tax"]       as number) || 0), 0);
+  const totalSales     = orders.reduce((s, o) => s + ((o["total"]     as number) || 0), 0);
+  const orderCount     = orders.length;
+  const ordersFulfilled = orders.filter(o => o["fulfillment_status"] === "fulfilled").length;
+
+  // Returning customer rate (store-wide: customers with >1 total order)
+  const returningCount = ((db.prepare(
+    `SELECT COUNT(*) as n FROM (SELECT customer_id FROM orders WHERE is_draft=0 AND is_abandoned=0 AND customer_id IS NOT NULL GROUP BY customer_id HAVING COUNT(*)>1)`
+  ).get() as Row)["n"] as number) || 0;
+  const totalUnique = ((db.prepare(
+    `SELECT COUNT(DISTINCT customer_id) as n FROM orders WHERE is_draft=0 AND is_abandoned=0 AND customer_id IS NOT NULL`
+  ).get() as Row)["n"] as number) || 0;
+  const returningRate = totalUnique > 0 ? +((returningCount / totalUnique) * 100).toFixed(1) : 0;
+
+  // Daily breakdown for the range
+  const fromMs = new Date(from).getTime();
+  const toMs   = new Date(to  ).getTime();
+  const days   = Math.max(1, Math.round((toMs - fromMs) / 86_400_000) + 1);
+  const salesOverTime = Array.from({ length: days }, (_, i) => {
+    const d = new Date(fromMs + i * 86_400_000);
+    const ds = d.toISOString().substring(0, 10);
+    const dayOrders = orders.filter(o => (o["created_at"] as string).startsWith(ds));
+    return {
+      date: ds,
+      revenue: Math.round(dayOrders.reduce((s, o) => s + ((o["subtotal"] as number) || 0), 0)),
+      orders:  dayOrders.length,
+    };
+  });
+
+  // Hourly breakdown (only meaningful if from===to, i.e. single day)
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const hourlyBreakdown = Array.from({ length: 24 }, (_, h) => {
+    const label = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
+    const hStr  = `${from}T${pad(h)}:`;
+    const dayOrders = orders.filter(o => (o["created_at"] as string).startsWith(hStr));
+    return {
+      time: label,
+      revenue: Math.round(dayOrders.reduce((s, o) => s + ((o["subtotal"] as number) || 0), 0)),
+    };
+  });
+
+  // Sales by product (parse line_items JSON)
+  const productMap = new Map<string, { title: string; units: number; revenue: number }>();
+  for (const order of orders) {
+    try {
+      const items = JSON.parse((order["line_items"] as string) || "[]") as Array<{title: string; quantity: number; price: number}>;
+      for (const item of items) {
+        const ex = productMap.get(item.title) || { title: item.title, units: 0, revenue: 0 };
+        ex.units   += item.quantity || 0;
+        ex.revenue += (item.price || 0) * (item.quantity || 0);
+        productMap.set(item.title, ex);
+      }
+    } catch { /* skip */ }
+  }
+  const salesByProduct = [...productMap.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+
+  // Products by sell-through rate (from products.sold_count)
+  const allProds = db.prepare(`SELECT title, price, sold_count FROM products WHERE status='active' ORDER BY sold_count DESC LIMIT 10`).all() as Row[];
+  const sellThrough = allProds.map(p => ({
+    title:     p["title"] as string,
+    soldCount: (p["sold_count"] as number) || 0,
+    revenue:   Math.round(((p["price"] as number) || 0) * ((p["sold_count"] as number) || 0)),
   }));
+
+  // Customer cohort retention (last 6 cohort months)
+  const cohortRows = db.prepare(`
+    SELECT substr(c.created_at,1,7) AS cohort,
+           COUNT(DISTINCT c.id)            AS total,
+           COUNT(DISTINCT o.customer_id)   AS returned
+    FROM customers c
+    LEFT JOIN orders o ON o.customer_id=c.id AND o.is_draft=0 AND o.is_abandoned=0
+    GROUP BY cohort ORDER BY cohort DESC LIMIT 6
+  `).all() as Row[];
+  const cohort = cohortRows.map(r => ({
+    month:    (r["cohort"]   as string) || "",
+    total:    (r["total"]    as number) || 0,
+    returned: (r["returned"] as number) || 0,
+    rate:     (r["total"] as number) > 0
+      ? +((((r["returned"] as number) || 0) / ((r["total"] as number) || 1)) * 100).toFixed(1)
+      : 0,
+  }));
+
+  return {
+    grossSales:              Math.round(grossSales),
+    returningCustomerRate:   returningRate,
+    ordersFulfilled,
+    orders:                  orderCount,
+    avgOrderValue:           orderCount > 0 ? Math.round(grossSales / orderCount) : 0,
+    totalSalesBreakdown: {
+      grossSales:    Math.round(grossSales),
+      discounts:     0,
+      returns:       0,
+      netSales:      Math.round(grossSales),
+      shippingCharges: Math.round(shippingTotal),
+      returnFees:    0,
+      taxes:         Math.round(taxTotal),
+      totalSales:    Math.round(totalSales),
+    },
+    salesOverTime,
+    hourlyBreakdown,
+    salesByProduct,
+    sellThrough,
+    cohort,
+  };
 }
 
 if (needsSeed) {

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import db, { parseRows, getAnalyticsSummary, getRevenueByDay, getTopProducts } from "../lib/db.js";
+import db, { parseRows, getAnalyticsSummary, getRevenueByDay, getTopProducts, getAnalyticsForRange } from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
 import type { Row } from "../lib/types.js";
 
@@ -25,15 +25,44 @@ router.get("/admin/analytics/top-products", (req, res) => {
   res.json({ data: getTopProducts(limit), meta: {}, error: null });
 });
 
+router.get("/admin/analytics/overview", (req, res) => {
+  const today = new Date().toISOString().substring(0, 10);
+  const from  = ((req.query["from"] as string) || today).substring(0, 10);
+  const to    = ((req.query["to"]   as string) || from ).substring(0, 10);
+  res.json({ data: getAnalyticsForRange(from, to), meta: { from, to }, error: null });
+});
+
 router.get("/admin/analytics/reports", (_req, res) => {
+  const today      = new Date().toISOString().substring(0, 10);
+  const last30From = new Date(Date.now() - 30 * 86_400_000).toISOString().substring(0, 10);
+  const last60From = new Date(Date.now() - 60 * 86_400_000).toISOString().substring(0, 10);
+  const last31To   = new Date(Date.now() - 31 * 86_400_000).toISOString().substring(0, 10);
+
+  const curr = getAnalyticsForRange(last30From, today);
+  const prev = getAnalyticsForRange(last60From, last31To);
+
+  const pct = (c: number, p: number) => {
+    if (p === 0) return c > 0 ? "—" : "0%";
+    const v = ((c - p) / p) * 100;
+    return (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
+  };
+  const iqd = (n: number) => `${Math.round(n).toLocaleString("en-US")} IQD`;
+
   const summary = getAnalyticsSummary();
+  const totalProducts = ((db.prepare(`SELECT COUNT(*) as n FROM products`).get() as Row)["n"] as number) || 0;
+
   const reports = [
-    { name: "Total Sales",           value: `$${summary.revenue.toFixed(2)}`,  change: "+12.4%" },
-    { name: "Average Order Value",   value: `$${summary.avgOrderValue.toFixed(2)}`, change: "+3.1%" },
-    { name: "Orders Fulfilled",      value: (db.prepare(`SELECT COUNT(*) AS n FROM orders WHERE fulfillment_status='fulfilled'`).get() as Row)["n"], change: "+8.7%" },
-    { name: "Return Rate",           value: "4.2%",                            change: "-0.5%" },
-    { name: "New Customers",         value: 42,                                change: "+22%" },
-    { name: "Repeat Purchase Rate",  value: "31%",                             change: "+5%" },
+    { name: "Total Sales (last 30 days)",      value: iqd(curr.totalSalesBreakdown.totalSales), change: pct(curr.totalSalesBreakdown.totalSales, prev.totalSalesBreakdown.totalSales) },
+    { name: "Gross Sales (last 30 days)",       value: iqd(curr.grossSales),                     change: pct(curr.grossSales, prev.grossSales) },
+    { name: "Net Sales (last 30 days)",         value: iqd(curr.totalSalesBreakdown.netSales),   change: pct(curr.totalSalesBreakdown.netSales, prev.totalSalesBreakdown.netSales) },
+    { name: "Orders (last 30 days)",            value: String(curr.orders),                       change: pct(curr.orders, prev.orders) },
+    { name: "Orders Fulfilled (last 30 days)",  value: String(curr.ordersFulfilled),              change: pct(curr.ordersFulfilled, prev.ordersFulfilled) },
+    { name: "Average Order Value",              value: iqd(curr.avgOrderValue),                  change: pct(curr.avgOrderValue, prev.avgOrderValue) },
+    { name: "Shipping Revenue",                 value: iqd(curr.totalSalesBreakdown.shippingCharges), change: pct(curr.totalSalesBreakdown.shippingCharges, prev.totalSalesBreakdown.shippingCharges) },
+    { name: "Tax Collected",                    value: iqd(curr.totalSalesBreakdown.taxes),      change: pct(curr.totalSalesBreakdown.taxes, prev.totalSalesBreakdown.taxes) },
+    { name: "Returning Customer Rate",          value: `${summary.returningCustomerRate}%`,      change: "—" },
+    { name: "Total Customers",                  value: String(summary.customers),                change: "—" },
+    { name: "Total Active Products",            value: String(totalProducts),                    change: "—" },
   ];
   res.json({ data: reports, meta: {}, error: null });
 });
