@@ -26,6 +26,23 @@ import { LiveActivityBanner } from "@/components/LiveActivityBanner";
 
 SplashScreen.preventAutoHideAsync();
 
+// ─── Prevent iOS Safari zoom on input focus (font-size < 16px triggers zoom) ──
+function useNoInputZoom() {
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    const id = "mora-no-input-zoom";
+    if (document.getElementById(id)) return;
+    const style = document.createElement("style");
+    style.id = id;
+    style.textContent = `
+      input, textarea, select {
+        font-size: 16px !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
+}
+
 // ─── Chatwoot SDK (web only) ──────────────────────────────────────────────
 function useChatwoot() {
   useEffect(() => {
@@ -103,17 +120,19 @@ const queryClient = new QueryClient({
 
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerBackTitle: "Back" }}>
+    <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="auth" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="collection/[slug]" options={{ headerShown: false }} />
+      <Stack.Screen name="checkout" options={{ headerShown: false }} />
     </Stack>
   );
 }
 
 export default function RootLayout() {
   useChatwoot();
+  useNoInputZoom();
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
