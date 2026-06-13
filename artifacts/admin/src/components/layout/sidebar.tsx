@@ -17,6 +17,7 @@ import {
   File,
   List as ListIcon,
   Warehouse,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +56,7 @@ const NAV: NavSection[] = [
     label: "Marketing",
     items: [
       { href: "/discounts", label: "Discounts", icon: Tags },
+      { href: "/notifications", label: "Notifications", icon: Bell },
     ],
   },
   {

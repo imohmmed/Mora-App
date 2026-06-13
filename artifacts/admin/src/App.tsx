@@ -28,6 +28,7 @@ import BlogPostEditor from "@/pages/content/blog-new";
 import MenuEditor from "@/pages/content/menu-editor";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
+import Notifications from "@/pages/notifications";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ function Router() {
         <Route path="/content/menus/new" component={MenuEditor} />
         <Route path="/content/menus/:id" component={MenuEditor} />
         <Route path="/content" component={ContentHub} />
+        <Route path="/notifications" component={Notifications} />
         <Route path="/settings" component={Settings} />
         <Route component={NotFound} />
       </Switch>

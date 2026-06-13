@@ -55,12 +55,14 @@ export type Filters = {
   priceMax: number;
 };
 
+const MAX_PRICE = 500000;
+
 const DEFAULT_FILTERS: Filters = {
   sizes: [],
   colors: [],
   brands: [],
   priceMin: 0,
-  priceMax: 500,
+  priceMax: MAX_PRICE,
 };
 
 function applyFilters(products: Product[], filters: Filters): Product[] {
@@ -260,24 +262,26 @@ export function FilterPanel({
         {openSections.price && (
           <div className="pb-3 space-y-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="w-8">${filters.priceMin}</span>
+              <span className="w-20 text-xs">{(filters.priceMin / 1000).toFixed(0)}k</span>
               <input
-                type="range" min={0} max={500} step={10}
+                type="range" min={0} max={MAX_PRICE} step={5000}
                 value={filters.priceMin}
                 onChange={(e) => setFilters((f) => ({ ...f, priceMin: +e.target.value }))}
                 className="flex-1 accent-primary"
               />
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="w-8">${filters.priceMax}</span>
+              <span className="w-20 text-xs">{filters.priceMax >= MAX_PRICE ? "Any" : `${(filters.priceMax / 1000).toFixed(0)}k`}</span>
               <input
-                type="range" min={0} max={500} step={10}
+                type="range" min={0} max={MAX_PRICE} step={5000}
                 value={filters.priceMax}
                 onChange={(e) => setFilters((f) => ({ ...f, priceMax: +e.target.value }))}
                 className="flex-1 accent-primary"
               />
             </div>
-            <div className="text-xs text-muted-foreground">${filters.priceMin} – ${filters.priceMax}</div>
+            <div className="text-xs text-muted-foreground">
+              {(filters.priceMin / 1000).toFixed(0)}k – {filters.priceMax >= MAX_PRICE ? "Any" : `${(filters.priceMax / 1000).toFixed(0)}k`} IQD
+            </div>
           </div>
         )}
       </div>
@@ -311,7 +315,7 @@ export default function Products() {
     filters.colors.length > 0 ||
     filters.brands.length > 0 ||
     filters.priceMin > 0 ||
-    filters.priceMax < 500;
+    filters.priceMax < MAX_PRICE;
 
   const filtered = useMemo(() => {
     let products = data?.products ?? [];

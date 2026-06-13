@@ -11,6 +11,7 @@ import authRouter from "./auth.js";
 import bannersRouter from "./banners.js";
 import storiesRouter from "./stories.js";
 import contentRouter from "./content.js";
+import notificationsRouter from "./notifications.js";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(authRouter);
 router.use(bannersRouter);
 router.use(storiesRouter);
 router.use(contentRouter);
+router.use(notificationsRouter);
 
 export default router;

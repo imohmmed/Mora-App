@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { CartItem } from "@/lib/types";
+import { useNotification } from "@/context/NotificationContext";
 
 const CART_KEY = "mora_cart_v1";
 const SESSION_KEY = "mora_cart_session_v1";
@@ -65,6 +66,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const didLoad = useRef(false);
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { updateCartActivity } = useNotification();
 
   useEffect(() => {
     if (didLoad.current) return;
@@ -164,6 +166,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+
+  // ── Sync cart count to LiveActivityBanner ─────────────────────────────────
+  useEffect(() => {
+    if (isLoaded) {
+      updateCartActivity(totalItems);
+    }
+  }, [totalItems, isLoaded]);
 
   return (
     <CartContext.Provider

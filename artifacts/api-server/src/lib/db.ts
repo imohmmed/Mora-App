@@ -260,6 +260,32 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_act_category ON activity_log(category);
 `);
 
+// ─── Notifications infrastructure ────────────────────────────────────────────
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS push_tokens (
+    id          TEXT PRIMARY KEY,
+    customer_id TEXT NOT NULL,
+    token       TEXT NOT NULL UNIQUE,
+    platform    TEXT NOT NULL DEFAULT 'ios',
+    created_at  TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_pt_customer ON push_tokens(customer_id);
+
+  CREATE TABLE IF NOT EXISTS notification_log (
+    id          TEXT PRIMARY KEY,
+    type        TEXT NOT NULL DEFAULT 'push',
+    title       TEXT NOT NULL DEFAULT '',
+    body        TEXT NOT NULL DEFAULT '',
+    payload     TEXT NOT NULL DEFAULT '{}',
+    tokens_sent INTEGER NOT NULL DEFAULT 0,
+    success     INTEGER NOT NULL DEFAULT 0,
+    failed      INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_nlog_created ON notification_log(created_at DESC);
+`);
+
 // ─── Seed helpers ─────────────────────────────────────────────────────────────
 
 const iso = (daysAgo: number) =>
