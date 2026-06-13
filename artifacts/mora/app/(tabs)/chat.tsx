@@ -2,38 +2,46 @@ import React, { useState } from "react";
 import {
   Platform,
   View,
-  Text,
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 
-const CHAT_WIDGET_URL =
+const WIDGET_BASE =
   "https://chat.moramoda.tech/widget?website_token=WPeCyRzhWzff2TuFHRe27SaQ";
 
-// Build JS to inject into the WebView so Chatwoot knows who the user is.
-// This lets the backend match the contact email → push token for notifications.
-function buildIdentityScript(user: { id: string; firstName: string; lastName: string; email: string; phone?: string } | null): string {
-  if (!user) return "true;";
+function widgetUrl(isDark: boolean) {
+  return `${WIDGET_BASE}&color_scheme=${isDark ? "dark" : "light"}`;
+}
+
+// Auto-open conversation + identify user
+function buildScript(
+  user: { id: string; firstName: string; lastName: string; email: string; phone?: string } | null
+): string {
   const safe = (s: string) => s.replace(/[\\'"]/g, "");
-  const id = safe(user.id);
-  const name = safe(`${user.firstName} ${user.lastName}`);
-  const email = safe(user.email);
-  const phone = safe(user.phone ?? "");
+  const identityPart = user
+    ? `
+    if (typeof window.$chatwoot?.setUser === 'function') {
+      window.$chatwoot.setUser('${safe(user.id)}', {
+        name: '${safe(`${user.firstName} ${user.lastName}`)}',
+        email: '${safe(user.email)}',
+        ${user.phone ? `phone_number: '${safe(user.phone)}',` : ""}
+      });
+    }`
+    : "";
+
   return `
 (function () {
-  function setUser() {
-    if (window.$chatwoot && typeof window.$chatwoot.setUser === 'function') {
-      window.$chatwoot.setUser('${id}', {
-        name: '${name}',
-        email: '${email}',
-        ${phone ? `phone_number: '${phone}',` : ""}
-      });
+  function init() {
+    if (!window.$chatwoot) return;
+    ${identityPart}
+    if (typeof window.$chatwoot.toggle === 'function') {
+      window.$chatwoot.toggle('open');
     }
   }
-  window.addEventListener('chatwoot:ready', setUser);
-  setTimeout(setUser, 3000);
+  window.addEventListener('chatwoot:ready', init);
+  setTimeout(init, 2500);
 })();
 true;
 `;
@@ -43,15 +51,16 @@ export default function ChatScreen() {
   const { resolvedScheme } = useTheme();
   const { user } = useAuth();
   const isDark = resolvedScheme === "dark";
-  const bg = isDark ? "#0D0D0F" : "#FFFFFF";
+  const bg = isDark ? "#0D0D0F" : "#F2F2F7";
+  const url = widgetUrl(isDark);
 
-  // ── Web: Chatwoot SDK is already loaded via _layout.tsx useChatwoot()
+  // ── Web
   if (Platform.OS === "web") {
     return (
       <View style={[styles.container, { backgroundColor: bg }]}>
         {/* @ts-ignore */}
         <iframe
-          src={CHAT_WIDGET_URL}
+          src={url}
           style={{ width: "100%", height: "100%", border: "none", flex: 1 }}
           title="Mora Support"
           allow="microphone; camera"
@@ -60,17 +69,15 @@ export default function ChatScreen() {
     );
   }
 
-  // ── Native (iOS / Android): embed Chatwoot widget in a WebView
-  // Lazy-require so web bundle never includes react-native-webview
+  // ── Native (iOS / Android)
   const WebView = require("react-native-webview").WebView;
   const [loading, setLoading] = useState(true);
-  const identityScript = buildIdentityScript(user);
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
       <WebView
-        source={{ uri: CHAT_WIDGET_URL }}
-        injectedJavaScript={identityScript}
+        source={{ uri: url }}
+        injectedJavaScript={buildScript(user)}
         onLoadEnd={() => setLoading(false)}
         style={{ flex: 1, backgroundColor: bg }}
         javaScriptEnabled
