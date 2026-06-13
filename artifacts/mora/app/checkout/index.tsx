@@ -20,6 +20,7 @@ import * as WebBrowser from "expo-web-browser";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
+import { useNotification } from "@/context/NotificationContext";
 import { formatIQD } from "@/lib/format";
 
 const PRIMARY = "#0274C1";
@@ -74,6 +75,7 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const { user, token, isLoading } = useAuth();
   const { items, subtotal, clearCart } = useCart();
+  const { startOrderActivity } = useNotification();
 
   const [form, setForm] = useState<FormState>({ name: "", phone: "", city: "", district: "", street: "", note: "" });
   const [payMethod, setPayMethod] = useState<PayMethod>("cod");
@@ -131,9 +133,19 @@ export default function CheckoutScreen() {
       const orderJson = await orderRes.json() as { data: { order_number?: string; orderNumber?: string; total?: number } | null; error?: string };
       if (!orderRes.ok) throw new Error(orderJson.error || "Order failed");
 
+      const orderId     = (orderJson.data as any)?.id ?? "";
       const orderNumber = orderJson.data?.order_number || orderJson.data?.orderNumber || "#—";
       const orderTotal  = orderJson.data?.total ?? subtotal;
       const snapshot    = JSON.stringify(items.map((i) => ({ title: i.title, quantity: i.quantity, price: i.price, image: i.image, size: i.size, color: i.color })));
+
+      // Start iOS Live Activity (Dynamic Island) — non-blocking, native-only
+      startOrderActivity({
+        orderId,
+        orderNumber,
+        customerName: form.name || user?.firstName || "Customer",
+        stage: "confirmed",
+        message: "Your order has been placed!",
+      });
 
       let waylUrl: string | null = null;
 

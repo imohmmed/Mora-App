@@ -56,7 +56,10 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
+    "@bacons/apple-targets": "^4.0.7",
+    "@expo/image-utils": "^0.10.1",
     "@expo/ui": "0.2.0-canary-20260121-a63c0dd",
+    "expo-notifications": "^56.0.17",
     "firebase": "^12.14.0",
     "react-native-webview": "^13.16.1"
   }

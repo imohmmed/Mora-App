@@ -20,7 +20,11 @@
       "associatedDomains": [
         "applinks:mora1.com",
         "webcredentials:mora1.com"
-      ]
+      ],
+      "infoPlist": {
+        "NSSupportsLiveActivities": true,
+        "NSSupportsLiveActivitiesFrequentUpdates": true
+      }
     },
     "android": {
       "package": "app.mora1.com",
@@ -50,7 +54,8 @@
           "color": "#0274C1",
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "@bacons/apple-targets"
     ],
     "experiments": {
       "typedRoutes": true,

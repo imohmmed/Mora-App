@@ -2,6 +2,7 @@ import { Router } from "express";
 import db, { parseRows, parseOne, logActivity } from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
 import type { Row } from "../lib/types.js";
+import { sendLiveActivityPush } from "../lib/apns.js";
 
 const router = Router();
 
@@ -68,8 +69,8 @@ router.post("/store/orders", (req, res) => {
   }
 
   db.prepare(
-    `INSERT INTO orders (id,order_number,customer_id,email,status,financial_status,fulfillment_status,subtotal,shipping,tax,total,currency,shipping_address,line_items,note,tags,is_draft,is_abandoned,created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    `INSERT INTO orders (id,order_number,customer_id,email,status,financial_status,fulfillment_status,subtotal,shipping,tax,total,currency,shipping_address,line_items,note,tags,is_draft,is_abandoned,delivery_stage,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).run(
     id, orderNum, customerId, email,
     "pending", "pending", "unfulfilled",
@@ -77,7 +78,7 @@ router.post("/store/orders", (req, res) => {
     JSON.stringify(b["shippingAddress"] ?? {}),
     JSON.stringify(b["lineItems"] ?? []),
     (b["note"] as string) ?? "", "[]",
-    0, 0, now, now
+    0, 0, "confirmed", now, now
   );
 
   if (customerId) {
@@ -100,6 +101,30 @@ router.post("/store/orders", (req, res) => {
 
   const order = parseOne(db.prepare(`SELECT * FROM orders WHERE id=?`).get(id) as Row | undefined);
   res.status(201).json({ data: order, meta: {}, error: null });
+});
+
+// ─── Store: save Live Activity push token ─────────────────────────────────────
+
+router.post("/store/orders/:id/live-activity-token", (req, res) => {
+  const id = req.params["id"];
+  const { pushToken } = req.body as { pushToken?: string };
+  if (!pushToken) { res.status(400).json({ data: null, error: "pushToken required" }); return; }
+
+  // Verify the order exists (and belongs to the authenticated customer if token provided)
+  let where = `id=?`;
+  const params: unknown[] = [id];
+  const authHeader = req.headers["authorization"];
+  if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+    const sess = db.prepare(`SELECT customer_id FROM sessions WHERE token=?`).get(authHeader.slice(7)) as Row | undefined;
+    if (sess) { where += ` AND customer_id=?`; params.push(sess["customer_id"]); }
+  }
+  const existing = db.prepare(`SELECT id FROM orders WHERE ${where}`).get(...params) as Row | undefined;
+  if (!existing) { res.status(404).json({ data: null, error: "Order not found" }); return; }
+
+  db.prepare(`UPDATE orders SET live_activity_push_token=?, updated_at=? WHERE id=?`)
+    .run(pushToken, new Date().toISOString(), id);
+
+  res.json({ data: { ok: true }, error: null });
 });
 
 // ─── Admin endpoints ──────────────────────────────────────────────────────────
@@ -168,6 +193,41 @@ router.put("/admin/orders/:id", (req, res) => {
   }
   const order = parseOne(db.prepare(`SELECT * FROM orders WHERE id=?`).get(id) as Row | undefined);
   res.json({ data: order, meta: {}, error: null });
+});
+
+// ─── Admin: update delivery stage + push Live Activity via APNs ───────────────
+
+router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
+  const id = req.params["id"];
+  const { stage, message } = req.body as { stage: string; message?: string };
+  if (!stage) { res.status(400).json({ data: null, error: "stage required" }); return; }
+
+  const existing = db.prepare(`SELECT order_number, live_activity_push_token FROM orders WHERE id=?`).get(id) as Row | undefined;
+  if (!existing) { res.status(404).json({ data: null, meta: {}, error: "Order not found" }); return; }
+
+  const now = new Date().toISOString();
+  db.prepare(`UPDATE orders SET delivery_stage=?, updated_at=? WHERE id=?`).run(stage, now, id);
+
+  const orderNum = existing["order_number"] as string;
+  logActivity("order.stage_updated", "Orders", "order", id, `Order ${orderNum}`, "Admin",
+    { orderNumber: orderNum, stage, message });
+
+  // Send APNs Live Activity push if we have a push token
+  const laPushToken = existing["live_activity_push_token"] as string | null;
+  let apnsResult: { ok: boolean; error?: string } = { ok: true };
+  if (laPushToken) {
+    try {
+      apnsResult = await sendLiveActivityPush(laPushToken, {
+        stage: stage as any,
+        message: message ?? "",
+      });
+    } catch (e: unknown) {
+      apnsResult = { ok: false, error: String(e) };
+    }
+  }
+
+  const order = parseOne(db.prepare(`SELECT * FROM orders WHERE id=?`).get(id) as Row | undefined);
+  res.json({ data: { order, apns: apnsResult, hasPushToken: !!laPushToken }, error: null });
 });
 
 router.delete("/admin/orders/:id", (req, res) => {

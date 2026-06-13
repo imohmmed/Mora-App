@@ -106,26 +106,28 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS orders (
-    id                 TEXT PRIMARY KEY,
-    order_number       TEXT NOT NULL,
-    customer_id        TEXT,
-    email              TEXT NOT NULL DEFAULT '',
-    status             TEXT NOT NULL DEFAULT 'pending',
-    financial_status   TEXT NOT NULL DEFAULT 'pending',
-    fulfillment_status TEXT NOT NULL DEFAULT 'unfulfilled',
-    subtotal           REAL NOT NULL DEFAULT 0,
-    shipping           REAL NOT NULL DEFAULT 5.99,
-    tax                REAL NOT NULL DEFAULT 0,
-    total              REAL NOT NULL DEFAULT 0,
-    currency           TEXT NOT NULL DEFAULT 'USD',
-    shipping_address   TEXT NOT NULL DEFAULT '{}',
-    line_items         TEXT NOT NULL DEFAULT '[]',
-    note               TEXT NOT NULL DEFAULT '',
-    tags               TEXT NOT NULL DEFAULT '[]',
-    is_draft           INTEGER NOT NULL DEFAULT 0,
-    is_abandoned       INTEGER NOT NULL DEFAULT 0,
-    created_at         TEXT NOT NULL,
-    updated_at         TEXT NOT NULL
+    id                       TEXT PRIMARY KEY,
+    order_number             TEXT NOT NULL,
+    customer_id              TEXT,
+    email                    TEXT NOT NULL DEFAULT '',
+    status                   TEXT NOT NULL DEFAULT 'pending',
+    financial_status         TEXT NOT NULL DEFAULT 'pending',
+    fulfillment_status       TEXT NOT NULL DEFAULT 'unfulfilled',
+    subtotal                 REAL NOT NULL DEFAULT 0,
+    shipping                 REAL NOT NULL DEFAULT 5.99,
+    tax                      REAL NOT NULL DEFAULT 0,
+    total                    REAL NOT NULL DEFAULT 0,
+    currency                 TEXT NOT NULL DEFAULT 'USD',
+    shipping_address         TEXT NOT NULL DEFAULT '{}',
+    line_items               TEXT NOT NULL DEFAULT '[]',
+    note                     TEXT NOT NULL DEFAULT '',
+    tags                     TEXT NOT NULL DEFAULT '[]',
+    is_draft                 INTEGER NOT NULL DEFAULT 0,
+    is_abandoned             INTEGER NOT NULL DEFAULT 0,
+    live_activity_push_token TEXT,
+    delivery_stage           TEXT NOT NULL DEFAULT 'confirmed',
+    created_at               TEXT NOT NULL,
+    updated_at               TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS discounts (
@@ -1007,5 +1009,13 @@ export function getActivityLog(limit = 50, offset = 0, category?: string, search
     })),
   };
 }
+
+// ─── Migrations: add columns to existing DBs without losing data ──────────────
+// SQLite does not support IF NOT EXISTS in ALTER TABLE, so we catch errors.
+const runMigration = (sql: string) => {
+  try { db.exec(sql); } catch { /* column likely already exists */ }
+};
+runMigration(`ALTER TABLE orders ADD COLUMN live_activity_push_token TEXT`);
+runMigration(`ALTER TABLE orders ADD COLUMN delivery_stage TEXT NOT NULL DEFAULT 'confirmed'`);
 
 export default db;

@@ -1,6 +1,6 @@
 /**
  * NotificationContext.tsx
- * Manages push notifications + in-app Live Activity banner state.
+ * Manages push notifications + iOS Live Activity (Dynamic Island / Lock Screen).
  */
 import React, {
   createContext,
@@ -10,7 +10,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { AppState, Platform } from "react-native";
+import { Platform } from "react-native";
 import { router } from "expo-router";
 import {
   registerForPushNotificationsAsync,
@@ -20,15 +20,9 @@ import {
   cancelScheduledNotification,
   setBadgeCount,
 } from "@/services/notifications";
+import { MoraLiveActivity, type OrderStage } from "@/modules/MoraLiveActivity";
 
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-export type OrderStage =
-  | "confirmed"
-  | "preparing"
-  | "shipping"
-  | "delivered"
-  | "issue";
+export type { OrderStage };
 
 export type CartActivity = {
   active: boolean;
@@ -38,6 +32,7 @@ export type CartActivity = {
 export type OrderActivity = {
   active: boolean;
   orderId: string;
+  orderNumber: string;
   stage: OrderStage;
   message?: string;
 };
@@ -47,17 +42,17 @@ type NotificationCtx = {
   permissionGranted: boolean;
   cartActivity: CartActivity;
   orderActivity: OrderActivity | null;
-  /** Call on login to register the push token */
   onUserLogin: (authToken: string) => Promise<void>;
-  /** Call on logout to deregister */
   onUserLogout: () => Promise<void>;
-  /** Called by CartContext whenever cart changes */
   updateCartActivity: (totalItems: number) => void;
-  /** Start order tracking Live Activity */
-  startOrderActivity: (orderId: string, stage?: OrderStage) => void;
-  /** Advance the order to next stage */
+  startOrderActivity: (params: {
+    orderId: string;
+    orderNumber: string;
+    customerName: string;
+    stage?: OrderStage;
+    message?: string;
+  }) => void;
   updateOrderStage: (stage: OrderStage, message?: string) => void;
-  /** End order Live Activity (called on delivered ack or dismiss) */
   endOrderActivity: () => void;
 };
 
@@ -74,9 +69,12 @@ const NotificationContext = createContext<NotificationCtx>({
   endOrderActivity: () => {},
 });
 
-// ── Provider ───────────────────────────────────────────────────────────────────
-
 const CART_REMINDER_ID = "mora_cart_reminder";
+
+function getApiBase(): string {
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  return domain ? `https://${domain}/api` : "/api";
+}
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [pushToken, setPushToken] = useState<string | null>(null);
@@ -84,69 +82,67 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [cartActivity, setCartActivity] = useState<CartActivity>({ active: false, totalItems: 0 });
   const [orderActivity, setOrderActivity] = useState<OrderActivity | null>(null);
 
-  const authTokenRef = useRef<string | null>(null);
-  const cartReminderRef = useRef<string | null>(null);
+  const authTokenRef      = useRef<string | null>(null);
+  const cartReminderRef   = useRef<string | null>(null);
+  const liveActivityIdRef = useRef<string | null>(null);   // Native iOS Live Activity ID
+  const orderIdRef        = useRef<string | null>(null);   // API order ID for server calls
 
-  // ── Init: request permission on app start ────────────────────────────────────
+  // ── Init: request permission ────────────────────────────────────────────────
   useEffect(() => {
     if (Platform.OS === "web") return;
     registerForPushNotificationsAsync().then((token) => {
-      if (token) {
-        setPushToken(token);
-        setPermissionGranted(true);
-      }
+      if (token) { setPushToken(token); setPermissionGranted(true); }
     });
   }, []);
 
-  // ── Handle incoming push notifications (foreground) ─────────────────────────
+  // ── Foreground push handler ─────────────────────────────────────────────────
   useEffect(() => {
     if (Platform.OS === "web") return;
-    let Notifications: typeof import("expo-notifications") | null = null;
-    try { Notifications = require("expo-notifications"); } catch {}
-    if (!Notifications) return;
-
-    const sub = Notifications.addNotificationReceivedListener((notification) => {
+    let N: typeof import("expo-notifications") | null = null;
+    try { N = require("expo-notifications"); } catch {}
+    if (!N) return;
+    const sub = N.addNotificationReceivedListener((notification) => {
       const data = notification.request.content.data as Record<string, unknown>;
       if (data?.type === "live_activity" && data?.stage) {
         const stage = data.stage as OrderStage;
-        const orderId = (data.orderId as string) ?? "";
-        const message = data.message as string | undefined;
-        setOrderActivity({ active: true, orderId, stage, message });
+        const msg   = data.message as string | undefined;
+        setOrderActivity((prev) =>
+          prev ? { ...prev, stage, message: msg, active: true } : null
+        );
+        // Also update the native Live Activity if running
+        if (liveActivityIdRef.current) {
+          MoraLiveActivity.updateActivity(liveActivityIdRef.current, stage, msg);
+        }
       }
     });
-
     return () => sub.remove();
   }, []);
 
-  // ── Handle notification taps → navigate to the right screen ──────────────────
+  // ── Notification tap → navigate ─────────────────────────────────────────────
   useEffect(() => {
     if (Platform.OS === "web") return;
-    let Notifications: typeof import("expo-notifications") | null = null;
-    try { Notifications = require("expo-notifications"); } catch {}
-    if (!Notifications) return;
-
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+    let N: typeof import("expo-notifications") | null = null;
+    try { N = require("expo-notifications"); } catch {}
+    if (!N) return;
+    const sub = N.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as Record<string, unknown>;
       const type = data?.type as string | undefined;
       const url  = data?.url  as string | undefined;
-
       if (type === "chat_message") {
         router.push("/(tabs)/chat");
       } else if (url) {
-        // url is an app route like "/product/abc" or "/collection/summer"
         router.push(url as any);
       }
     });
-
     return () => sub.remove();
   }, []);
 
-  // ── Badge count sync ─────────────────────────────────────────────────────────
+  // ── Badge count sync ────────────────────────────────────────────────────────
   useEffect(() => {
     setBadgeCount(cartActivity.totalItems > 0 ? cartActivity.totalItems : 0);
   }, [cartActivity.totalItems]);
 
-  // ── Login: register token ────────────────────────────────────────────────────
+  // ── Login ───────────────────────────────────────────────────────────────────
   const onUserLogin = useCallback(async (authToken: string) => {
     authTokenRef.current = authToken;
     if (pushToken) {
@@ -161,27 +157,22 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   }, [pushToken]);
 
-  // ── Logout: deregister token ─────────────────────────────────────────────────
+  // ── Logout ──────────────────────────────────────────────────────────────────
   const onUserLogout = useCallback(async () => {
     if (pushToken) await removeTokenFromServer(pushToken);
     authTokenRef.current = null;
   }, [pushToken]);
 
-  // ── Cart Live Activity ────────────────────────────────────────────────────────
+  // ── Cart Activity ───────────────────────────────────────────────────────────
   const updateCartActivity = useCallback((totalItems: number) => {
     setCartActivity({ active: totalItems > 0, totalItems });
-
-    // Schedule / cancel abandoned cart reminder
     if (totalItems > 0) {
-      // Cancel previous reminder, schedule new one (2 hours)
-      if (cartReminderRef.current) {
-        cancelScheduledNotification(cartReminderRef.current);
-      }
+      if (cartReminderRef.current) cancelScheduledNotification(cartReminderRef.current);
       scheduleLocalNotification({
         identifier: CART_REMINDER_ID,
         title: "نسيت شيئاً في سلتك! 🛒",
-        body: `لديك ${totalItems} ${totalItems === 1 ? "منتج" : "منتجات"} بانتظارك — أكمل طلبك قبل نفاذ الكمية.`,
-        delaySeconds: 2 * 60 * 60, // 2 hours
+        body: `لديك ${totalItems} ${totalItems === 1 ? "منتج" : "منتجات"} بانتظارك`,
+        delaySeconds: 2 * 60 * 60,
         data: { type: "abandoned_cart" },
       }).then((id) => { if (id) cartReminderRef.current = id; });
     } else {
@@ -190,22 +181,75 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   }, []);
 
-  // ── Order Live Activity ───────────────────────────────────────────────────────
-  const startOrderActivity = useCallback((orderId: string, stage: OrderStage = "confirmed") => {
-    setOrderActivity({ active: true, orderId, stage });
-    // Cart is now empty after checkout
+  // ── Order Live Activity ─────────────────────────────────────────────────────
+  const startOrderActivity = useCallback((params: {
+    orderId: string;
+    orderNumber: string;
+    customerName: string;
+    stage?: OrderStage;
+    message?: string;
+  }) => {
+    const stage = params.stage ?? "confirmed";
+
+    // Update React state
+    setOrderActivity({
+      active: true,
+      orderId: params.orderId,
+      orderNumber: params.orderNumber,
+      stage,
+      message: params.message,
+    });
     setCartActivity({ active: false, totalItems: 0 });
     cancelScheduledNotification(CART_REMINDER_ID);
+
+    // Start native iOS Live Activity
+    if (Platform.OS === "ios" && MoraLiveActivity.isAvailable()) {
+      const activityId = MoraLiveActivity.startActivity({
+        orderNumber: params.orderNumber,
+        customerName: params.customerName,
+        stage,
+        message: params.message,
+      });
+      if (activityId) {
+        liveActivityIdRef.current = activityId;
+        orderIdRef.current = params.orderId;
+
+        // Send push token to server so backend can update Live Activity remotely
+        MoraLiveActivity.getPushToken(activityId).then((token) => {
+          if (token && params.orderId) {
+            const base = getApiBase();
+            fetch(`${base}/store/orders/${params.orderId}/live-activity-token`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(authTokenRef.current
+                  ? { Authorization: `Bearer ${authTokenRef.current}` }
+                  : {}),
+              },
+              body: JSON.stringify({ pushToken: token }),
+            }).catch(() => {});
+          }
+        });
+      }
+    }
   }, []);
 
   const updateOrderStage = useCallback((stage: OrderStage, message?: string) => {
     setOrderActivity((prev) =>
-      prev ? { ...prev, stage, message } : { active: true, orderId: "", stage, message }
+      prev ? { ...prev, stage, message } : null
     );
+    if (liveActivityIdRef.current) {
+      MoraLiveActivity.updateActivity(liveActivityIdRef.current, stage, message);
+    }
   }, []);
 
   const endOrderActivity = useCallback(() => {
     setOrderActivity((prev) => prev ? { ...prev, active: false } : null);
+    if (liveActivityIdRef.current) {
+      MoraLiveActivity.endActivity(liveActivityIdRef.current, "delivered", "Order delivered!");
+      liveActivityIdRef.current = null;
+    }
+    orderIdRef.current = null;
   }, []);
 
   return (

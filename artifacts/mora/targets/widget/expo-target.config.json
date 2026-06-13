@@ -1,0 +1,8 @@
+{
+  "type": "widget",
+  "name": "MoraOrderWidget",
+  "teamId": "PM27C7JC3M",
+  "bundleIdentifier": "app.mora1.com.widget",
+  "deploymentTarget": "16.1",
+  "frameworks": ["ActivityKit", "WidgetKit", "SwiftUI"]
+}
