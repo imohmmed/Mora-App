@@ -23,10 +23,11 @@ async function waylFetch(method: string, path: string, body?: object) {
 }
 
 router.post("/store/wayl/create-link", async (req: Request, res: Response) => {
-  const { orderNumber, total, redirectionUrl } = req.body as {
+  const { orderNumber, total, redirectionUrl, lineItems } = req.body as {
     orderNumber?: string;
     total?: number;
     redirectionUrl?: string;
+    lineItems?: Array<{ title: string; quantity: number; price: number }>;
   };
 
   if (!orderNumber || !total) {
@@ -34,20 +35,43 @@ router.post("/store/wayl/create-link", async (req: Request, res: Response) => {
     return;
   }
 
+  const totalIQD = Math.round(Number(total));
+
+  // Build line items — Wayl requires at least one; amounts must sum to total
+  const waylLineItems = lineItems && lineItems.length > 0
+    ? lineItems.map((item) => ({
+        label: `${item.title}${item.quantity > 1 ? ` ×${item.quantity}` : ""}`,
+        amount: Math.round(item.price * item.quantity),
+        type: "increase" as const,
+      }))
+    : [{ label: "Order Payment", amount: totalIQD, type: "increase" as const }];
+
+  // Ensure line items sum matches total (adjust last item if rounding drift)
+  const lineSum = waylLineItems.reduce((s, l) => s + l.amount, 0);
+  if (lineSum !== totalIQD && waylLineItems.length > 0) {
+    waylLineItems[waylLineItems.length - 1].amount += totalIQD - lineSum;
+  }
+
   try {
     const env = (process.env.WAYL_ENV as "live" | "test") ?? "live";
     const data = await waylFetch("POST", "/links", {
       env,
       referenceId: orderNumber,
-      total: Number(total),
+      total: totalIQD,
       currency: "IQD",
-      ...(redirectionUrl ? { redirectionUrl } : {}),
+      customParameter: "",
+      lineItem: waylLineItems,
+      webhookUrl: `${process.env.API_BASE_URL ?? "https://moramoda.tech/api"}/store/wayl/webhook`,
+      webhookSecret: process.env.WAYL_WEBHOOK_SECRET ?? "mora-webhook-secret-2024",
+      ...(redirectionUrl ? { redirectionUrl } : { redirectionUrl: "https://moramoda.tech" }),
     });
 
     const link = data["data"] as Record<string, string>;
-    res.json({ data: { url: link["url"], referenceId: link["referenceId"] }, error: null });
+    res.json({ data: { url: link["url"], code: link["code"], referenceId: link["referenceId"] }, error: null });
   } catch (err: unknown) {
-    res.status(500).json({ data: null, error: (err as Error).message });
+    const msg = (err as Error).message;
+    console.error("[Wayl] create-link error:", msg);
+    res.status(500).json({ data: null, error: msg });
   }
 });
 

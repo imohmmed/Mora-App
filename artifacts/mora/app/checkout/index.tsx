@@ -204,7 +204,12 @@ export default function CheckoutScreen() {
           const waylRes = await fetch(`${base}/store/wayl/create-link`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orderNumber, total: orderTotal }),
+            body: JSON.stringify({
+              orderNumber,
+              total: orderTotal,
+              lineItems: items.map((i) => ({ title: i.title, quantity: i.quantity, price: i.price })),
+              redirectionUrl: `https://${process.env.EXPO_PUBLIC_DOMAIN || "moramoda.tech"}/checkout/complete`,
+            }),
           });
           const waylJson = await waylRes.json() as { data: { url?: string } | null; error?: string };
           waylUrl = waylJson.data?.url || null;
