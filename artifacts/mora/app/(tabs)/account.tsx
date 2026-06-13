@@ -60,8 +60,8 @@ function SettingsScreen({ onBack, insets }: { onBack: () => void; insets: any })
   const colors = useColors();
   const { mode, setMode, resolvedScheme } = useTheme();
   const isDark = resolvedScheme === "dark";
-  const card = isDark ? "#1C1C1E" : "#FFFFFF";
-  const bg   = isDark ? "#0A0A0A" : "#F2F2F7";
+  const card = isDark ? "#1C1C1E" : "#EBF5FF";
+  const bg   = isDark ? "#0A0A0A" : "#FFFFFF";
   const { lang, language, setLang } = useLanguage();
   const [showLangPicker, setShowLangPicker] = useState(false);
   const topPad = Platform.OS === "web" ? 0 : insets.top;
@@ -440,8 +440,8 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
   const colors = useColors();
   const { resolvedScheme } = useTheme();
   const isDark = resolvedScheme === "dark";
-  const card = isDark ? "#1C1C1E" : "#FFFFFF";
-  const bg   = isDark ? "#0A0A0A" : "#F2F2F7";
+  const card = isDark ? "#1C1C1E" : "#EBF5FF";
+  const bg   = isDark ? "#0A0A0A" : "#FFFFFF";
   const { user, logout } = useAuth();
   const router = useRouter();
   const { count: wishlistCount } = useWishlist();

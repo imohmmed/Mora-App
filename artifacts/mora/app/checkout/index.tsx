@@ -90,8 +90,8 @@ export default function CheckoutScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [showCityPicker, setShowCityPicker] = useState(false);
 
-  const bg      = isDark ? "#0A0A0A" : "#F2F2F7";
-  const card    = isDark ? "#1C1C1E" : "#FFFFFF";
+  const bg      = isDark ? "#0A0A0A" : "#FFFFFF";
+  const card    = isDark ? "#1C1C1E" : "#EBF5FF";
   const textCol = isDark ? "#FFFFFF" : "#1A1A1A";
   const sub     = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.42)";
   const divClr  = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
