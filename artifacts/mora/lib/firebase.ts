@@ -21,6 +21,13 @@ export function isFirebaseConfigured(): boolean {
   return !!(c.apiKey && c.authDomain && c.projectId && c.appId);
 }
 
+/** Call this on auth screen mount to pre-load Firebase modules so they're
+ *  ready before the user taps — prevents Safari iOS popup-blocked on first tap. */
+export function warmUpFirebase(): void {
+  if (Platform.OS !== "web") return;
+  try { getAuth(); } catch {}
+}
+
 let _auth: any = null;
 
 function getAuth() {

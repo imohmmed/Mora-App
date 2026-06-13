@@ -2,7 +2,7 @@
  * Auth Screen — Google + Apple sign-in via popup (no redirect).
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -25,6 +25,7 @@ import {
   isFirebaseConfigured,
   signInWithGoogle,
   signInWithApple,
+  warmUpFirebase,
 } from "@/lib/firebase";
 
 const PRIMARY = "#0274C1";
@@ -74,6 +75,10 @@ export default function AuthScreen() {
 
   const configured = isFirebaseConfigured();
 
+  // Pre-load Firebase modules on screen mount so they're cached before the user
+  // taps — prevents Safari iOS "auth/popup-blocked" on the very first tap.
+  useEffect(() => { warmUpFirebase(); }, []);
+
   const bg    = isDark ? "#0D0D0D" : "#FFFFFF";
   const fg    = isDark ? "#FFFFFF" : "#000000";
   const muted = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.44)";
@@ -87,11 +92,15 @@ export default function AuthScreen() {
     }
   };
 
+  // IMPORTANT: No state updates (setLoading / setError) before the popup call.
+  // Any setState before await signInWithPopup breaks Safari iOS gesture chain
+  // and causes auth/popup-blocked. Loading state is set only AFTER popup closes.
   const handleGoogle = async () => {
     if (!configured) { setError(t.errNoFB); return; }
-    setGLoading(true); setError("");
+    setError("");
     try {
       const user = await signInWithGoogle();
+      setGLoading(true);
       await afterSignIn(user, t.errGoogle);
     } catch (err: any) {
       setError(err.message ?? t.errGoogle);
@@ -102,9 +111,10 @@ export default function AuthScreen() {
 
   const handleApple = async () => {
     if (!configured) { setError(t.errNoFB); return; }
-    setALoading(true); setError("");
+    setError("");
     try {
       const user = await signInWithApple();
+      setALoading(true);
       await afterSignIn(user, t.errApple);
     } catch (err: any) {
       setError(err.message ?? t.errApple);
