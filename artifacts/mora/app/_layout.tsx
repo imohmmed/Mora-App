@@ -61,6 +61,13 @@ function useChatwoot() {
     `;
     document.head.appendChild(style);
 
+    // Detect dark mode: check stored pref first, fall back to system
+    const stored = localStorage.getItem("mora_theme_mode_v1");
+    let prefersDark: boolean;
+    if (stored === "dark") prefersDark = true;
+    else if (stored === "light") prefersDark = false;
+    else prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
+
     const script = document.createElement("script");
     script.src = BASE_URL + "/packs/js/sdk.js";
     script.async = true;
@@ -72,6 +79,7 @@ function useChatwoot() {
         position: "right",
         locale: "ar",
         type: "standard",
+        colorScheme: prefersDark ? "dark" : "light",
       });
       // Belt-and-suspenders: also call the API to hide the bubble
       window.addEventListener("chatwoot:ready", () => {
@@ -79,6 +87,16 @@ function useChatwoot() {
       });
     };
     document.head.appendChild(script);
+
+    // Re-sync color scheme if system theme changes while app is open
+    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
+    const onSchemeChange = () => {
+      const nowDark = mq?.matches ?? false;
+      // Chatwoot doesn't expose setColorScheme publicly, so we rely on the
+      // initial detection above. For a full update, the user can reload.
+    };
+    mq?.addEventListener?.("change", onSchemeChange);
+    return () => mq?.removeEventListener?.("change", onSchemeChange);
   }, []);
 }
 
