@@ -80,7 +80,8 @@ db.exec(`
     company           TEXT,
     address           TEXT NOT NULL DEFAULT '{}',
     accepts_marketing INTEGER NOT NULL DEFAULT 0,
-    created_at        TEXT NOT NULL
+    created_at        TEXT NOT NULL,
+    updated_at        TEXT NOT NULL DEFAULT ''
   );
 
   CREATE TABLE IF NOT EXISTS sessions (
@@ -287,6 +288,9 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_nlog_created ON notification_log(created_at DESC);
 `);
+
+// ─── Migrations (add columns to existing DBs) ────────────────────────────────
+try { db.exec(`ALTER TABLE customers ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''`); } catch { /* column already exists */ }
 
 // ─── Admin users (Google OAuth) ──────────────────────────────────────────────
 
