@@ -88,9 +88,22 @@ export async function verifyOTP(code: string): Promise<{ uid: string; phone: str
 
 export async function signInWithGoogle(): Promise<{ uid: string; email: string; name: string }> {
   const auth = getAuth();
-  const { GoogleAuthProvider, signInWithPopup } = require("firebase/auth");
+  const { GoogleAuthProvider, signInWithRedirect } = require("firebase/auth");
   const provider = new GoogleAuthProvider();
-  const result = await signInWithPopup(auth, provider);
+  // signInWithRedirect: navigates away → Google → back to app.
+  // getGoogleRedirectResult() must be called on the return page.
+  await signInWithRedirect(auth, provider);
+  // This line is never reached (redirect happens above).
+  return { uid: "", email: "", name: "" };
+}
+
+/** Call once on auth screen mount to collect the result after redirect. */
+export async function getGoogleRedirectResult(): Promise<{ uid: string; email: string; name: string } | null> {
+  if (!isFirebaseConfigured()) return null;
+  const auth = getAuth();
+  const { getRedirectResult } = require("firebase/auth");
+  const result = await getRedirectResult(auth);
+  if (!result) return null;
   return {
     uid:   result.user.uid,
     email: result.user.email ?? "",
@@ -102,11 +115,21 @@ export async function signInWithGoogle(): Promise<{ uid: string; email: string; 
 
 export async function signInWithApple(): Promise<{ uid: string; email: string; name: string }> {
   const auth = getAuth();
-  const { OAuthProvider, signInWithPopup } = require("firebase/auth");
+  const { OAuthProvider, signInWithRedirect } = require("firebase/auth");
   const provider = new OAuthProvider("apple.com");
   provider.addScope("email");
   provider.addScope("name");
-  const result = await signInWithPopup(auth, provider);
+  await signInWithRedirect(auth, provider);
+  return { uid: "", email: "", name: "" };
+}
+
+/** Call once on auth screen mount to collect the Apple redirect result. */
+export async function getAppleRedirectResult(): Promise<{ uid: string; email: string; name: string } | null> {
+  if (!isFirebaseConfigured()) return null;
+  const auth = getAuth();
+  const { getRedirectResult } = require("firebase/auth");
+  const result = await getRedirectResult(auth);
+  if (!result) return null;
   return {
     uid:   result.user.uid,
     email: result.user.email ?? "",

@@ -31,6 +31,8 @@ import {
   sendPhoneOTP,
   signInWithGoogle,
   signInWithApple,
+  getGoogleRedirectResult,
+  getAppleRedirectResult,
 } from "@/lib/firebase";
 
 const PRIMARY = "#0274C1";
@@ -104,6 +106,26 @@ export default function AuthScreen() {
     if (Platform.OS === "web" && typeof document !== "undefined") {
       document.title = "Mora";
     }
+  }, []);
+
+  // Handle redirect result after Google / Apple signInWithRedirect returns
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    let cancelled = false;
+    async function checkRedirect() {
+      try {
+        // getGoogleRedirectResult / getAppleRedirectResult both call
+        // Firebase's getRedirectResult — one call is enough for any provider
+        const result = await getGoogleRedirectResult();
+        if (cancelled || !result) return;
+        await loginWithSocial(result.uid, result.name, result.email);
+        router.replace(((returnTo as string) || "/(tabs)/account") as any);
+      } catch (err: any) {
+        if (!cancelled) setError(err.message ?? t.errGoogle);
+      }
+    }
+    checkRedirect();
+    return () => { cancelled = true; };
   }, []);
 
   const bg       = isDark ? "#0D0D0D" : "#FFFFFF";
