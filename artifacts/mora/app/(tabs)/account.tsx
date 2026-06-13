@@ -58,7 +58,10 @@ function statusColor(s: string) {
 ────────────────────────────────────────────── */
 function SettingsScreen({ onBack, insets }: { onBack: () => void; insets: any }) {
   const colors = useColors();
-  const { mode, setMode } = useTheme();
+  const { mode, setMode, resolvedScheme } = useTheme();
+  const isDark = resolvedScheme === "dark";
+  const card = isDark ? "#1C1C1E" : "#FFFFFF";
+  const bg   = isDark ? "#0A0A0A" : "#F2F2F7";
   const { lang, language, setLang } = useLanguage();
   const [showLangPicker, setShowLangPicker] = useState(false);
   const topPad = Platform.OS === "web" ? 0 : insets.top;
@@ -78,7 +81,7 @@ function SettingsScreen({ onBack, insets }: { onBack: () => void; insets: any })
   }));
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: bg }]}>
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         <Pressable onPress={onBack} style={styles.iconBtn}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
@@ -94,7 +97,7 @@ function SettingsScreen({ onBack, insets }: { onBack: () => void; insets: any })
         {/* ── Appearance ── */}
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>APPEARANCE</Text>
-          <View style={[styles.sectionCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
+          <View style={[styles.sectionCard, { backgroundColor: card }]}>
             <View style={[styles.themeRow, { borderBottomColor: colors.border }]}>
               {THEME_OPTIONS.map((opt) => {
                 const active = mode === opt.value;
@@ -133,7 +136,7 @@ function SettingsScreen({ onBack, insets }: { onBack: () => void; insets: any })
         {/* ── Language ── */}
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>LANGUAGE</Text>
-          <View style={[styles.sectionCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
+          <View style={[styles.sectionCard, { backgroundColor: card }]}>
             <Pressable
               style={({ pressed }) => [
                 styles.settingsRow,
@@ -177,7 +180,7 @@ function SettingsScreen({ onBack, insets }: { onBack: () => void; insets: any })
         {/* ── Information ── */}
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>INFORMATION</Text>
-          <View style={[styles.sectionCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
+          <View style={[styles.sectionCard, { backgroundColor: card }]}>
             <Pressable
               style={({ pressed }) => [
                 styles.settingsRow,
@@ -435,6 +438,10 @@ function AuthForm({
 ────────────────────────────────────────────── */
 function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: () => void }) {
   const colors = useColors();
+  const { resolvedScheme } = useTheme();
+  const isDark = resolvedScheme === "dark";
+  const card = isDark ? "#1C1C1E" : "#FFFFFF";
+  const bg   = isDark ? "#0A0A0A" : "#F2F2F7";
   const { user, logout } = useAuth();
   const router = useRouter();
   const { count: wishlistCount } = useWishlist();
@@ -493,7 +500,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
             </View>
           ) : (
             orders.map((order) => (
-              <View key={order.id} style={[styles.orderCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
+              <View key={order.id} style={[styles.orderCard, { backgroundColor: card }]}>
                 <View style={styles.orderCardTop}>
                   <View>
                     <Text style={[styles.orderNum, { color: colors.foreground }]}>
@@ -522,7 +529,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: bg }]}>
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         <View style={{ width: 38 }} />
         <Text style={[styles.acctTitle, { color: colors.foreground }]}>MY ACCOUNT</Text>
@@ -535,7 +542,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: botPad + 80 }}
       >
-        <View style={[styles.profileCard, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+        <View style={[styles.profileCard, { backgroundColor: card }]}>
           <View style={[styles.avatar, { backgroundColor: PRIMARY }]}>
             <Text style={styles.avatarText}>{initials.toUpperCase()}</Text>
           </View>
@@ -578,7 +585,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
         ].map((section) => (
           <View key={section.title} style={styles.section}>
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{section.title}</Text>
-            <View style={[styles.sectionCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
+            <View style={[styles.sectionCard, { backgroundColor: card }]}>
               {section.items.map((item, idx) => {
                 const isLast = idx === section.items.length - 1;
                 if ((item as any).toggle) {
@@ -812,8 +819,7 @@ const styles = StyleSheet.create({
   profileCard: {
     margin: 16,
     padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
+    borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
@@ -827,14 +833,14 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 2,
+    borderRadius: 6,
     marginTop: 4,
   },
   memberBadgeText: { fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 0.5 },
 
   section: { paddingHorizontal: 16, marginBottom: 16 },
   sectionLabel: { fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 1, marginBottom: 8 },
-  sectionCard: { borderRadius: 8, borderWidth: 1, overflow: "hidden" },
+  sectionCard: { borderRadius: 16, overflow: "hidden" },
   menuRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -858,7 +864,7 @@ const styles = StyleSheet.create({
   badgePillTxt: { color: "#fff", fontSize: 11, fontFamily: "Inter_700Bold" },
 
   /* ── Orders ── */
-  orderCard: { borderWidth: 1, borderRadius: 8, overflow: "hidden" },
+  orderCard: { borderRadius: 16, overflow: "hidden" },
   orderCardTop: {
     flexDirection: "row",
     alignItems: "center",
@@ -887,7 +893,7 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 14,
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 16,
     marginBottom: 16,
   },
   signOutTxt: { color: "#DC2626", fontFamily: "Inter_600SemiBold", fontSize: 14 },
