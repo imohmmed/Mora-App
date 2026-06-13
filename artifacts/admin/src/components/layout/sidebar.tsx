@@ -7,9 +7,7 @@ import {
   Users,
   FolderTree,
   Tags,
-  Megaphone,
   FileText,
-  Globe,
   Settings,
   BarChart3,
   ChevronDown,
@@ -57,7 +55,6 @@ const NAV: NavSection[] = [
     label: "Marketing",
     items: [
       { href: "/discounts", label: "Discounts", icon: Tags },
-      { href: "/campaigns", label: "Campaigns", icon: Megaphone },
     ],
   },
   {
@@ -72,9 +69,8 @@ const NAV: NavSection[] = [
     ],
   },
   {
-    label: "Markets & Analytics",
+    label: "Analytics",
     items: [
-      { href: "/markets", label: "Markets", icon: Globe },
       { href: "/analytics", label: "Analytics", icon: BarChart3 },
     ],
   },

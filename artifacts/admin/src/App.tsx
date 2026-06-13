@@ -23,12 +23,9 @@ import CollectionsHub from "@/pages/collections/hub";
 import CollectionForm from "@/pages/collections/collection-form";
 import Discounts from "@/pages/discounts";
 import NewDiscount from "@/pages/discounts/new";
-import Campaigns from "@/pages/campaigns";
-import CampaignDetail from "@/pages/campaigns/detail";
 import ContentHub from "@/pages/content";
 import BlogPostEditor from "@/pages/content/blog-new";
 import MenuEditor from "@/pages/content/menu-editor";
-import Markets from "@/pages/markets";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
 
@@ -62,16 +59,11 @@ function Router() {
         {/* Discounts */}
         <Route path="/discounts/new" component={NewDiscount} />
         <Route path="/discounts" component={Discounts} />
-        {/* Campaigns */}
-        <Route path="/campaigns/:id" component={CampaignDetail} />
-        <Route path="/campaigns" component={Campaigns} />
         {/* Content */}
         <Route path="/content/blog/new" component={BlogPostEditor} />
         <Route path="/content/menus/new" component={MenuEditor} />
         <Route path="/content/menus/:id" component={MenuEditor} />
         <Route path="/content" component={ContentHub} />
-        {/* Other */}
-        <Route path="/markets" component={Markets} />
         <Route path="/settings" component={Settings} />
         <Route component={NotFound} />
       </Switch>
