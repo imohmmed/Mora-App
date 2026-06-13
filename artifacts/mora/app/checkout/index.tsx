@@ -200,14 +200,19 @@ export default function CheckoutScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <View style={[{ flex: 1 }, { backgroundColor: bg }]}>
 
-        <View style={st.header}>
-          <View style={[st.header, { paddingTop: insets.top + 6, paddingHorizontal: 16 }]}>
-            <Pressable onPress={() => router.back()} hitSlop={12} style={st.backBtn}>
-              <Feather name="arrow-left" size={22} color={textCol} />
-            </Pressable>
-            <Text style={[st.headTitle, { color: textCol }]}>Checkout</Text>
-            <View style={{ width: 36 }} />
-          </View>
+        <View style={[st.header, { paddingTop: insets.top + 6, paddingHorizontal: 16 }]}>
+          <Pressable
+            onPress={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace("/(tabs)/cart" as any);
+            }}
+            hitSlop={16}
+            style={st.backBtn}
+          >
+            <Feather name="arrow-left" size={22} color={textCol} />
+          </Pressable>
+          <Text style={[st.headTitle, { color: textCol }]}>Checkout</Text>
+          <View style={{ width: 36 }} />
         </View>
 
         <StepIndicator isDark={isDark} />
