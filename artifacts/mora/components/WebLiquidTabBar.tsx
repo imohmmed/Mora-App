@@ -314,9 +314,7 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
   useGlassCSS();
   useGlassSVG();
 
-  if (keyboardOpen) return null;
-
-  // Animate pill position on tab switch
+  // Animate pill position on tab switch — hooks must all come before any early return
   const pillAnim = useRef(new Animated.Value(0)).current;
   const visibleRoutes = state.routes.filter((r) => !HIDDEN.has(r.name));
   const activeVisibleIndex = visibleRoutes.findIndex(
@@ -336,6 +334,9 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
       friction: 22,
     }).start();
   }, [pillTarget]);
+
+  // All hooks done — safe to bail out now
+  if (keyboardOpen) return null;
 
   // Glass colours.
   // Dark: high alpha so charcoal colour dominates over backdrop blur.
