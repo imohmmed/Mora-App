@@ -10,7 +10,6 @@ import {
   UIManager,
   View,
 } from "react-native";
-import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -26,6 +25,10 @@ import type { CartItem } from "@/lib/types";
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
+
+// ── expo-glass-effect (iOS 26+ Liquid Glass — graceful fallback) ───────────────
+let GlassViewComp: any = null;
+try { GlassViewComp = require("expo-glass-effect").GlassView; } catch {}
 
 const PRIMARY = "#0274C1";
 
@@ -253,15 +256,22 @@ export default function CartScreen() {
         ))}
       </ScrollView>
 
-      <BlurView
-        intensity={isDark ? 72 : 78}
-        tint={isDark ? "dark" : "extraLight"}
-        style={[s.bar, { borderTopColor: barBdr, paddingBottom: insets.bottom + 14, overflow: "hidden" }]}
-      >
-        {/* Liquid glass tint */}
-        <View style={[StyleSheet.absoluteFill, {
-          backgroundColor: isDark ? "rgba(10,10,10,0.28)" : "rgba(255,255,255,0.32)",
-        }]} pointerEvents="none" />
+      <View style={[
+        s.bar,
+        {
+          backgroundColor: GlassViewComp ? "transparent" : barBg,
+          borderTopColor: barBdr,
+          paddingBottom: insets.bottom + 14,
+        },
+      ]}>
+        {/* Liquid Glass background — expo-glass-effect (iOS 26+) */}
+        {GlassViewComp && (
+          <GlassViewComp
+            style={StyleSheet.absoluteFill}
+            glassEffectStyle="regular"
+            colorScheme={isDark ? "dark" : "light"}
+          />
+        )}
         <View style={{ flex: 1 }}>
           <Text style={[s.barLabel, { color: sub }]}>Subtotal</Text>
           <Text style={[s.barTotal, { color: textCol }]}>{formatIQD(subtotal)}</Text>
@@ -273,7 +283,7 @@ export default function CartScreen() {
           <Text style={s.checkTxt}>CHECKOUT</Text>
           <Feather name="arrow-right" size={15} color="#fff" />
         </Pressable>
-      </BlurView>
+      </View>
     </View>
   );
 }
