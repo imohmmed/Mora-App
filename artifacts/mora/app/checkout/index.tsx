@@ -16,7 +16,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import * as WebBrowser from "expo-web-browser";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
@@ -75,17 +74,47 @@ const si = StyleSheet.create({
 type FormState = { name: string; phone: string; city: string; district: string; street: string; note: string };
 type PayMethod = "cod" | "zaincash" | "fastpay" | "asiapay" | "nasswallet" | "alsaqi" | "qicard" | "fib" | "card";
 
-const PAY_METHODS: { id: PayMethod; label: string; subtitle: string; badge: string; color: string; online: boolean }[] = [
-  { id: "cod",        label: "Cash on Delivery", subtitle: "Pay when your order arrives",      badge: "💵",  color: "#22C55E", online: false },
-  { id: "zaincash",   label: "ZainCash",          subtitle: "Zain mobile wallet",               badge: "Z",   color: "#1E7D45", online: true  },
-  { id: "fastpay",    label: "FastPay",            subtitle: "FastPay digital wallet",           badge: "FP",  color: "#FF6B00", online: true  },
-  { id: "asiapay",    label: "AsiaPay",            subtitle: "Asia Hawala digital wallet",       badge: "AP",  color: "#0284C7", online: true  },
-  { id: "nasswallet", label: "Nass Wallet",        subtitle: "Nass digital wallet",              badge: "N",   color: "#7C3AED", online: true  },
-  { id: "alsaqi",     label: "Al Saqi",            subtitle: "Al Saqi payment",                  badge: "AS",  color: "#0D9488", online: true  },
-  { id: "qicard",     label: "QiCard",             subtitle: "QiCard prepaid card",              badge: "Q",   color: "#D97706", online: true  },
-  { id: "fib",        label: "FIB",                subtitle: "First Iraqi Bank",                 badge: "FIB", color: "#059669", online: true  },
-  { id: "card",       label: "Mastercard / Visa",  subtitle: "International debit or credit",    badge: "💳",  color: "#EB001B", online: true  },
+const PAY_METHODS: { id: PayMethod; label: string; subtitle: string; color: string; online: boolean }[] = [
+  { id: "card",       label: "Mastercard / Visa",  subtitle: "International debit or credit",    color: "#EB001B", online: true  },
+  { id: "zaincash",   label: "ZainCash",            subtitle: "Zain mobile wallet",               color: "#1E7D45", online: true  },
+  { id: "fastpay",    label: "FastPay",              subtitle: "FastPay digital wallet",           color: "#FF6B00", online: true  },
+  { id: "fib",        label: "FIB",                  subtitle: "First Iraqi Bank",                 color: "#059669", online: true  },
+  { id: "qicard",     label: "QiCard",               subtitle: "QiCard prepaid card",              color: "#D97706", online: true  },
+  { id: "nasswallet", label: "Nass Wallet",          subtitle: "Nass digital wallet",              color: "#7C3AED", online: true  },
+  { id: "asiapay",    label: "AsiaPay",              subtitle: "Asia Hawala digital wallet",       color: "#0284C7", online: true  },
+  { id: "alsaqi",     label: "Al Saqi",              subtitle: "Al Saqi payment",                  color: "#0D9488", online: true  },
+  { id: "cod",        label: "Cash on Delivery",    subtitle: "Pay when your order arrives",      color: "#22C55E", online: false },
 ];
+
+function PayMethodIcon({ id, color, size = 40, selected }: { id: PayMethod; color: string; size?: number; selected: boolean }) {
+  if (id === "card") {
+    return (
+      <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: -6 }}>
+          <View style={{ width: size * 0.52, height: size * 0.52, borderRadius: size * 0.26, backgroundColor: "#EB001B", opacity: selected ? 1 : 0.7 }} />
+          <View style={{ width: size * 0.52, height: size * 0.52, borderRadius: size * 0.26, backgroundColor: "#F79E1B", opacity: selected ? 0.95 : 0.65 }} />
+        </View>
+      </View>
+    );
+  }
+  if (id === "cod") {
+    return (
+      <View style={{ width: size, height: size, borderRadius: size * 0.28, backgroundColor: selected ? `${color}28` : "rgba(34,197,94,0.12)", alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ fontSize: size * 0.46 }}>💵</Text>
+      </View>
+    );
+  }
+  const labels: Record<string, string> = {
+    zaincash: "Z", fastpay: "FP", fib: "FIB", qicard: "QI", nasswallet: "N", asiapay: "AP", alsaqi: "AS",
+  };
+  const lbl = labels[id] || id.slice(0, 2).toUpperCase();
+  const fontSize = lbl.length > 2 ? size * 0.26 : lbl.length === 2 ? size * 0.32 : size * 0.42;
+  return (
+    <View style={{ width: size, height: size, borderRadius: size * 0.28, backgroundColor: selected ? `${color}28` : "rgba(128,128,128,0.1)", alignItems: "center", justifyContent: "center" }}>
+      <Text style={{ fontSize, fontWeight: "800", color: selected ? color : "rgba(128,128,128,0.6)", letterSpacing: -0.5 }}>{lbl}</Text>
+    </View>
+  );
+}
 
 export default function CheckoutScreen() {
   const { resolvedScheme } = useTheme();
@@ -97,7 +126,7 @@ export default function CheckoutScreen() {
   const { startOrderActivity } = useNotification();
 
   const [form, setForm] = useState<FormState>({ name: "", phone: "", city: "", district: "", street: "", note: "" });
-  const [payMethod, setPayMethod] = useState<PayMethod>("cod");
+  const [payMethod, setPayMethod] = useState<PayMethod>("card");
   const [submitting, setSubmitting] = useState(false);
   const [showCityPicker, setShowCityPicker] = useState(false);
 
@@ -189,12 +218,13 @@ export default function CheckoutScreen() {
 
       router.replace({
         pathname: "/checkout/complete",
-        params: { orderNumber, total: String(orderTotal), name: form.name, city: form.city, district: form.district, phone: form.phone, items: snapshot, paymentMethod: payMethod },
+        params: {
+          orderNumber, total: String(orderTotal), name: form.name,
+          city: form.city, district: form.district, phone: form.phone,
+          items: snapshot, paymentMethod: payMethod,
+          waylUrl: waylUrl || "",
+        },
       } as any);
-
-      if (isOnline && waylUrl) {
-        await WebBrowser.openBrowserAsync(waylUrl, { presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN });
-      }
     } catch (err: any) {
       setSubmitting(false);
       Alert.alert("Error", err.message || "Something went wrong. Please try again.");
@@ -256,31 +286,38 @@ export default function CheckoutScreen() {
           <View style={[st.group, { backgroundColor: card }]}>
             {PAY_METHODS.map((m, idx) => {
               const isSelected = payMethod === m.id;
-              const iconBg = isSelected ? `${m.color}28` : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)");
-              const isEmoji = /\p{Emoji}/u.test(m.badge);
               return (
                 <React.Fragment key={m.id}>
                   <Pressable
                     onPress={() => setPayMethod(m.id)}
-                    style={[st.payCard, isSelected && { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : `${m.color}08` }]}
+                    style={[st.payCard, isSelected && { backgroundColor: isDark ? `${m.color}10` : `${m.color}08` }]}
                   >
-                    <View style={[st.payIcon, { backgroundColor: iconBg }]}>
-                      {isEmoji
-                        ? <Text style={{ fontSize: 18 }}>{m.badge}</Text>
-                        : <Text style={{ fontSize: m.badge.length > 2 ? 10 : 13, fontWeight: "800", color: isSelected ? m.color : (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)") }}>{m.badge}</Text>
-                      }
-                    </View>
+                    <PayMethodIcon id={m.id} color={m.color} size={42} selected={isSelected} />
                     <View style={{ flex: 1, gap: 2 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <Text style={[st.payTitle, { color: textCol }]}>{m.label}</Text>
-                        {m.online && <View style={[st.waylBadge]}><Text style={st.waylBadgeTxt}>Wayl</Text></View>}
-                      </View>
+                      <Text style={[st.payTitle, { color: isSelected ? m.color : textCol }]}>{m.label}</Text>
                       <Text style={[st.paySub, { color: sub }]}>{m.subtitle}</Text>
                     </View>
                     <View style={[st.radio, { borderColor: isSelected ? m.color : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
                       {isSelected && <View style={[st.radioDot, { backgroundColor: m.color }]} />}
                     </View>
                   </Pressable>
+                  {/* Card expand — accepted networks */}
+                  {isSelected && m.id === "card" && (
+                    <View style={[st.cardExpand, { backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(235,0,27,0.04)", borderTopColor: divClr }]}>
+                      <Feather name="lock" size={12} color={sub} />
+                      <Text style={[st.cardExpandTxt, { color: sub }]}>Secured via Wayl — enter card details on the next page</Text>
+                      <View style={{ flexDirection: "row", gap: 6, marginTop: 8 }}>
+                        {/* Mini MC icon */}
+                        <View style={{ flexDirection: "row" }}>
+                          <View style={{ width: 22, height: 14, borderRadius: 3, backgroundColor: "#EB001B" }} />
+                          <View style={{ width: 22, height: 14, borderRadius: 3, backgroundColor: "#F79E1B", marginLeft: -8, opacity: 0.92 }} />
+                        </View>
+                        <View style={{ backgroundColor: "#1A1F71", borderRadius: 3, paddingHorizontal: 5, paddingVertical: 1 }}>
+                          <Text style={{ fontSize: 8, fontWeight: "900", color: "#fff", fontStyle: "italic", letterSpacing: 0.5 }}>VISA</Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
                   {idx < PAY_METHODS.length - 1 && <Divider color={divClr} />}
                 </React.Fragment>
               );
@@ -416,8 +453,8 @@ const st = StyleSheet.create({
   radioDot:    { width: 10, height: 10, borderRadius: 5 },
   badge:       { backgroundColor: "rgba(59,130,246,0.15)", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   badgeTxt:    { fontSize: 9, fontWeight: "700", color: "#3B82F6", letterSpacing: 0.3 },
-  waylBadge:   { backgroundColor: "rgba(124,58,237,0.14)", borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2 },
-  waylBadgeTxt:{ fontSize: 9, fontWeight: "700", color: "#7C3AED", letterSpacing: 0.3 },
+  cardExpand:    { paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, gap: 4 },
+  cardExpandTxt: { fontSize: 11, lineHeight: 16, flex: 1 },
   noteInput:   { padding: 16, fontSize: 14, minHeight: 72, textAlignVertical: "top" },
   summaryRow:  { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
   summaryImg:  { width: 42, height: 52, borderRadius: 8 },

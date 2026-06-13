@@ -2,12 +2,14 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import * as WebBrowser from "expo-web-browser";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -63,17 +65,41 @@ export default function OrderCompleteScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const { orderNumber, total, name, city, district, phone, items: itemsRaw, paymentMethod } =
-    useLocalSearchParams<{ orderNumber: string; total: string; name: string; city: string; district: string; phone: string; items: string; paymentMethod?: string }>();
+  const { orderNumber, total, name, city, district, phone, items: itemsRaw, paymentMethod, waylUrl } =
+    useLocalSearchParams<{ orderNumber: string; total: string; name: string; city: string; district: string; phone: string; items: string; paymentMethod?: string; waylUrl?: string }>();
 
-  const isCOD  = !paymentMethod || paymentMethod === "cod";
-  const isWayl = paymentMethod === "wayl";
+  const isCOD    = !paymentMethod || paymentMethod === "cod";
+  const isOnline = !isCOD;
+  const isWayl   = isOnline; // kept for legacy JSX refs
 
   let parsedItems: ItemSnap[] = [];
   try { parsedItems = JSON.parse(itemsRaw || "[]"); } catch {}
   const totalNum = Number(total) || 0;
 
   const [payStatus, setPayStatus] = useState<PayStatus>(isCOD ? "paid" : "pending");
+  const [openingPayment, setOpeningPayment] = useState(false);
+
+  const payMethodLabel: Record<string, string> = {
+    card: "Mastercard / Visa", zaincash: "ZainCash", fastpay: "FastPay",
+    fib: "FIB", qicard: "QiCard", nasswallet: "Nass Wallet",
+    asiapay: "AsiaPay", alsaqi: "Al Saqi",
+  };
+
+  const openWayl = async () => {
+    if (!waylUrl) return;
+    setOpeningPayment(true);
+    try {
+      if (Platform.OS === "web") {
+        (window as Window & typeof globalThis).location.href = waylUrl;
+      } else {
+        await WebBrowser.openBrowserAsync(waylUrl, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        });
+      }
+    } finally {
+      setOpeningPayment(false);
+    }
+  };
   const [verifying, setVerifying] = useState(false);
 
   const bg      = isDark ? "#0A0A0A" : "#F2F2F7";
@@ -149,9 +175,22 @@ export default function OrderCompleteScreen() {
           </Animated.View>
         </View>
 
+        {/* PAY NOW button — primary CTA for online payments */}
+        {isOnline && payStatus === "pending" && !!waylUrl && (
+          <View style={s.verifyWrap}>
+            <Pressable onPress={openWayl} disabled={openingPayment}
+              style={({ pressed }) => [s.payNowBtn, pressed && { opacity: 0.85 }, openingPayment && { opacity: 0.7 }]}>
+              {openingPayment
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <><Feather name="credit-card" size={16} color="#fff" /><Text style={s.payNowTxt}>PAY NOW</Text></>
+              }
+            </Pressable>
+          </View>
+        )}
+
         {/* Wayl verify button */}
         {isWayl && payStatus === "pending" && (
-          <View style={s.verifyWrap}>
+          <View style={[s.verifyWrap, { marginTop: !!waylUrl ? 0 : undefined }]}>
             <Pressable onPress={verifyPayment} disabled={verifying}
               style={({ pressed }) => [s.verifyBtn, pressed && { opacity: 0.85 }, verifying && { opacity: 0.7 }]}>
               {verifying
@@ -203,7 +242,7 @@ export default function OrderCompleteScreen() {
           {[
             { icon: "map-pin", label: "Address",  value: [district, city].filter(Boolean).join(", ") || "—" },
             { icon: "phone",   label: "Phone",    value: phone || "—" },
-            { icon: isWayl ? "credit-card" : "dollar-sign", label: "Payment", value: isWayl ? "Online (Wayl)" : "Cash on Delivery" },
+            { icon: isOnline ? "credit-card" : "dollar-sign", label: "Payment", value: isOnline ? (payMethodLabel[paymentMethod || ""] || "Online Payment") : "Cash on Delivery" },
           ].map((row, idx) => (
             <React.Fragment key={row.label}>
               {idx > 0 && <View style={[s.divider, { backgroundColor: divClr }]} />}
@@ -242,6 +281,8 @@ const s = StyleSheet.create({
   orderBadgeTxt:{ fontSize: 13, fontWeight: "700", letterSpacing: 0.3 },
   heroSub:      { fontSize: 13, textAlign: "center", lineHeight: 19, maxWidth: 280 },
   verifyWrap:   { paddingHorizontal: 16, marginBottom: 8, gap: 8 },
+  payNowBtn:    { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#EB001B", height: 54, borderRadius: 50, marginBottom: 8 },
+  payNowTxt:    { color: "#fff", fontSize: 15, fontWeight: "800", letterSpacing: 1 },
   verifyBtn:    { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: WAYL_BLUE, height: 48, borderRadius: 50 },
   verifyTxt:    { color: "#fff", fontSize: 13, fontWeight: "700", letterSpacing: 0.8 },
   verifyHint:   { textAlign: "center", fontSize: 11 },
