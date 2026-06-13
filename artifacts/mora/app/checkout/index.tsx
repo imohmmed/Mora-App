@@ -27,9 +27,9 @@ import { CompactPicker } from "@/components/CompactPicker";
 const PRIMARY = "#0274C1";
 
 const PAYMENT_LOGOS = [
-  { key: "mastercard", src: require("@/assets/payment/mastercard.png") as number },
+  { key: "mastercard", src: require("@/assets/payment/visa.webp")      as number },
   { key: "zaincash",   src: require("@/assets/payment/zaincash.png")   as number },
-  { key: "asiapay",    src: require("@/assets/payment/asiapay.png")    as number },
+  { key: "fastpay",    src: require("@/assets/payment/fastpay.png")    as number },
   { key: "fib",        src: require("@/assets/payment/fib.jpeg")       as number },
   { key: "qicard",     src: require("@/assets/payment/qicard.png")     as number },
 ];

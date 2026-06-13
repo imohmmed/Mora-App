@@ -17,11 +17,11 @@ const BASE = "/api";
 const SNAP_KEY = "mora_store_wayl_snap";
 
 const PAYMENT_LOGOS = [
-  { key: "mastercard", src: "/payment/mastercard.png" },
-  { key: "zaincash",   src: "/payment/zaincash.png"   },
-  { key: "asiapay",    src: "/payment/asiapay.png"    },
-  { key: "fib",        src: "/payment/fib.jpeg"       },
-  { key: "qicard",     src: "/payment/qicard.png"     },
+  { key: "mastercard", src: "/payment/visa.webp"   },
+  { key: "zaincash",   src: "/payment/zaincash.png" },
+  { key: "fastpay",    src: "/payment/fastpay.png"  },
+  { key: "fib",        src: "/payment/fib.jpeg"     },
+  { key: "qicard",     src: "/payment/qicard.png"   },
 ];
 
 function fmtIQD(n: number) {
