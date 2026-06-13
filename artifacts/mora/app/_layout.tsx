@@ -100,6 +100,34 @@ function useChatwoot() {
   }, []);
 }
 
+// ─── Chatwoot dark mode (web only) — CSS filter on the cross-origin iframe ───
+// Server-side Chatwoot settings override any colorScheme we pass via SDK/URL.
+// The only client-side escape hatch: apply a CSS filter to the iframe *element*
+// in our own DOM (not inside it — that would need same-origin).
+function ChatwootDarkMode() {
+  const { resolvedScheme } = useTheme();
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    const id = "mora-chatwoot-dark-filter";
+    let el = document.getElementById(id) as HTMLStyleElement | null;
+    if (!el) {
+      el = document.createElement("style");
+      el.id = id;
+      document.head.appendChild(el);
+    }
+    if (resolvedScheme === "dark") {
+      // invert colours + rotate hue back so blues/greens stay roughly correct
+      el.textContent = `
+        iframe[src*="chat.moramoda.tech"] {
+          filter: invert(0.92) hue-rotate(180deg) contrast(0.9) !important;
+        }`;
+    } else {
+      el.textContent = "";
+    }
+  }, [resolvedScheme]);
+  return null;
+}
+
 // ─── Chatwoot identity (web only, needs AuthContext) ─────────────────────────
 // Sets the logged-in user's email on the Chatwoot contact so the backend can
 // match the contact to a push token and send notifications.
@@ -170,6 +198,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <ThemeProvider>
+          <ChatwootDarkMode />
           <LanguageProvider>
             <QueryClientProvider client={queryClient}>
               <AuthProvider>
