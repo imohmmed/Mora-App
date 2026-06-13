@@ -65,12 +65,24 @@ export default function OrderCompleteScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const { orderNumber, total, name, city, district, phone, items: itemsRaw, paymentMethod, waylUrl } =
-    useLocalSearchParams<{ orderNumber: string; total: string; name: string; city: string; district: string; phone: string; items: string; paymentMethod?: string; waylUrl?: string }>();
+  const params = useLocalSearchParams<{ orderNumber: string; total: string; name: string; city: string; district: string; phone: string; items: string; paymentMethod?: string; waylUrl?: string; fromWayl?: string }>();
+
+  // Web: load snapshot from sessionStorage when returning from Wayl
+  const [snapData, setSnapData] = useState<{ orderNumber: string; total: string; name: string; city: string; district: string; phone: string; snapshot: string } | null>(null);
+
+  const orderNumber = params.orderNumber || snapData?.orderNumber || "";
+  const total       = params.total       || snapData?.total       || "0";
+  const name        = params.name        || snapData?.name        || "";
+  const city        = params.city        || snapData?.city        || "";
+  const district    = params.district    || snapData?.district    || "";
+  const phone       = params.phone       || snapData?.phone       || "";
+  const itemsRaw    = params.items       || snapData?.snapshot    || "[]";
+  const paymentMethod = params.paymentMethod ?? (snapData ? "online" : undefined);
+  const waylUrl     = params.waylUrl;
 
   const isCOD    = !paymentMethod || paymentMethod === "cod";
   const isOnline = !isCOD;
-  const isWayl   = isOnline; // kept for legacy JSX refs
+  const isWayl   = isOnline;
 
   let parsedItems: ItemSnap[] = [];
   try { parsedItems = JSON.parse(itemsRaw || "[]"); } catch {}
@@ -112,6 +124,21 @@ export default function OrderCompleteScreen() {
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
+  // Web: load snapshot from sessionStorage when returning from Wayl redirect
+  useEffect(() => {
+    if (Platform.OS === "web" && params.fromWayl === "1" && typeof sessionStorage !== "undefined") {
+      const stored = sessionStorage.getItem("mora_wayl_snap");
+      if (stored) {
+        try {
+          const data = JSON.parse(stored) as { orderNumber: string; total: number; name: string; city: string; district: string; phone: string; snapshot: string };
+          setSnapData({ orderNumber: data.orderNumber, total: String(data.total), name: data.name, city: data.city, district: data.district, phone: data.phone, snapshot: data.snapshot });
+          sessionStorage.removeItem("mora_wayl_snap");
+          setTimeout(() => verifyPayment(data.orderNumber), 2000);
+        } catch {}
+      }
+    }
+  }, []);
+
   useEffect(() => {
     Animated.sequence([
       Animated.spring(scaleAnim, { toValue: 1, damping: 12, stiffness: 150, useNativeDriver: true }),
@@ -128,11 +155,12 @@ export default function OrderCompleteScreen() {
     }
   }, []);
 
-  const verifyPayment = async () => {
-    if (!orderNumber) return;
+  const verifyPayment = async (forceOrderNumber?: string) => {
+    const num = forceOrderNumber || orderNumber;
+    if (!num) return;
     setVerifying(true);
     try {
-      const res = await fetch(`${getBaseUrl()}/store/wayl/status/${orderNumber}`);
+      const res = await fetch(`${getBaseUrl()}/store/wayl/status/${num}`);
       const json = await res.json() as { data: { status: string; paid: boolean } | null };
       if (json.data?.paid || json.data?.status === "completed") {
         setPayStatus("paid");

@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import * as WebBrowser from "expo-web-browser";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
@@ -24,6 +25,14 @@ import { formatIQD } from "@/lib/format";
 import { CompactPicker } from "@/components/CompactPicker";
 
 const PRIMARY = "#0274C1";
+
+const PAYMENT_LOGOS = [
+  { key: "mastercard", src: require("@/assets/payment/mastercard.png") as number },
+  { key: "zaincash",   src: require("@/assets/payment/zaincash.png")   as number },
+  { key: "asiapay",    src: require("@/assets/payment/asiapay.png")    as number },
+  { key: "fib",        src: require("@/assets/payment/fib.jpeg")       as number },
+  { key: "qicard",     src: require("@/assets/payment/qicard.png")     as number },
+];
 
 const IRAQ_GOVERNORATES = [
   "Baghdad", "Basra", "Nineveh", "Erbil", "Sulaymaniyah",
@@ -72,49 +81,7 @@ const si = StyleSheet.create({
 });
 
 type FormState = { name: string; phone: string; city: string; district: string; street: string; note: string };
-type PayMethod = "cod" | "zaincash" | "fastpay" | "asiapay" | "nasswallet" | "alsaqi" | "qicard" | "fib" | "card";
-
-const PAY_METHODS: { id: PayMethod; label: string; subtitle: string; color: string; online: boolean }[] = [
-  { id: "card",       label: "Mastercard / Visa",  subtitle: "International debit or credit",    color: "#EB001B", online: true  },
-  { id: "zaincash",   label: "ZainCash",            subtitle: "Zain mobile wallet",               color: "#1E7D45", online: true  },
-  { id: "fastpay",    label: "FastPay",              subtitle: "FastPay digital wallet",           color: "#FF6B00", online: true  },
-  { id: "fib",        label: "FIB",                  subtitle: "First Iraqi Bank",                 color: "#059669", online: true  },
-  { id: "qicard",     label: "QiCard",               subtitle: "QiCard prepaid card",              color: "#D97706", online: true  },
-  { id: "nasswallet", label: "Nass Wallet",          subtitle: "Nass digital wallet",              color: "#7C3AED", online: true  },
-  { id: "asiapay",    label: "AsiaPay",              subtitle: "Asia Hawala digital wallet",       color: "#0284C7", online: true  },
-  { id: "alsaqi",     label: "Al Saqi",              subtitle: "Al Saqi payment",                  color: "#0D9488", online: true  },
-  { id: "cod",        label: "Cash on Delivery",    subtitle: "Pay when your order arrives",      color: "#22C55E", online: false },
-];
-
-function PayMethodIcon({ id, color, size = 40, selected }: { id: PayMethod; color: string; size?: number; selected: boolean }) {
-  if (id === "card") {
-    return (
-      <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: -6 }}>
-          <View style={{ width: size * 0.52, height: size * 0.52, borderRadius: size * 0.26, backgroundColor: "#EB001B", opacity: selected ? 1 : 0.7 }} />
-          <View style={{ width: size * 0.52, height: size * 0.52, borderRadius: size * 0.26, backgroundColor: "#F79E1B", opacity: selected ? 0.95 : 0.65 }} />
-        </View>
-      </View>
-    );
-  }
-  if (id === "cod") {
-    return (
-      <View style={{ width: size, height: size, borderRadius: size * 0.28, backgroundColor: selected ? `${color}28` : "rgba(34,197,94,0.12)", alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ fontSize: size * 0.46 }}>💵</Text>
-      </View>
-    );
-  }
-  const labels: Record<string, string> = {
-    zaincash: "Z", fastpay: "FP", fib: "FIB", qicard: "QI", nasswallet: "N", asiapay: "AP", alsaqi: "AS",
-  };
-  const lbl = labels[id] || id.slice(0, 2).toUpperCase();
-  const fontSize = lbl.length > 2 ? size * 0.26 : lbl.length === 2 ? size * 0.32 : size * 0.42;
-  return (
-    <View style={{ width: size, height: size, borderRadius: size * 0.28, backgroundColor: selected ? `${color}28` : "rgba(128,128,128,0.1)", alignItems: "center", justifyContent: "center" }}>
-      <Text style={{ fontSize, fontWeight: "800", color: selected ? color : "rgba(128,128,128,0.6)", letterSpacing: -0.5 }}>{lbl}</Text>
-    </View>
-  );
-}
+type PayMethod = "cod" | "online";
 
 export default function CheckoutScreen() {
   const { resolvedScheme } = useTheme();
@@ -126,7 +93,7 @@ export default function CheckoutScreen() {
   const { startOrderActivity } = useNotification();
 
   const [form, setForm] = useState<FormState>({ name: "", phone: "", city: "", district: "", street: "", note: "" });
-  const [payMethod, setPayMethod] = useState<PayMethod>("card");
+  const [payMethod, setPayMethod] = useState<PayMethod>("cod");
   const [submitting, setSubmitting] = useState(false);
   const [showCityPicker, setShowCityPicker] = useState(false);
 
@@ -196,7 +163,7 @@ export default function CheckoutScreen() {
         message: "Your order has been placed!",
       });
 
-      const isOnline = PAY_METHODS.find((m) => m.id === payMethod)?.online ?? false;
+      const isOnline = payMethod === "online";
       let waylUrl: string | null = null;
 
       if (isOnline) {
@@ -208,18 +175,38 @@ export default function CheckoutScreen() {
               orderNumber,
               total: orderTotal,
               lineItems: items.map((i) => ({ title: i.title, quantity: i.quantity, price: i.price })),
-              redirectionUrl: `https://${process.env.EXPO_PUBLIC_DOMAIN || "moramoda.tech"}/checkout/complete`,
+              redirectionUrl: `https://${process.env.EXPO_PUBLIC_DOMAIN || "moramoda.tech"}/checkout/complete?fromWayl=1`,
             }),
           });
           const waylJson = await waylRes.json() as { data: { url?: string } | null; error?: string };
           waylUrl = waylJson.data?.url || null;
         } catch {
-          // Non-fatal — order is placed, continue without payment URL
+          // Non-fatal
         }
       }
 
       clearCart();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      if (isOnline && waylUrl) {
+        if (Platform.OS === "web") {
+          sessionStorage.setItem("mora_wayl_snap", JSON.stringify({
+            orderNumber, total: orderTotal, name: form.name,
+            city: form.city, district: form.district, phone: form.phone, snapshot,
+          }));
+          (window as Window & typeof globalThis).location.href = waylUrl;
+          return;
+        } else {
+          await WebBrowser.openBrowserAsync(waylUrl, {
+            presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+          });
+          router.replace({
+            pathname: "/checkout/complete",
+            params: { orderNumber, total: String(orderTotal), name: form.name, city: form.city, district: form.district, phone: form.phone, items: snapshot, paymentMethod: "online", waylUrl: "" },
+          } as any);
+          return;
+        }
+      }
 
       router.replace({
         pathname: "/checkout/complete",
@@ -289,44 +276,57 @@ export default function CheckoutScreen() {
           {/* Payment Method */}
           <Text style={[st.sectionLbl, { color: sub }]}>PAYMENT METHOD</Text>
           <View style={[st.group, { backgroundColor: card }]}>
-            {PAY_METHODS.map((m, idx) => {
-              const isSelected = payMethod === m.id;
-              return (
-                <React.Fragment key={m.id}>
-                  <Pressable
-                    onPress={() => setPayMethod(m.id)}
-                    style={[st.payCard, isSelected && { backgroundColor: isDark ? `${m.color}10` : `${m.color}08` }]}
-                  >
-                    <PayMethodIcon id={m.id} color={m.color} size={42} selected={isSelected} />
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <Text style={[st.payTitle, { color: isSelected ? m.color : textCol }]}>{m.label}</Text>
-                      <Text style={[st.paySub, { color: sub }]}>{m.subtitle}</Text>
-                    </View>
-                    <View style={[st.radio, { borderColor: isSelected ? m.color : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
-                      {isSelected && <View style={[st.radioDot, { backgroundColor: m.color }]} />}
-                    </View>
-                  </Pressable>
-                  {/* Card expand — accepted networks */}
-                  {isSelected && m.id === "card" && (
-                    <View style={[st.cardExpand, { backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(235,0,27,0.04)", borderTopColor: divClr }]}>
-                      <Feather name="lock" size={12} color={sub} />
-                      <Text style={[st.cardExpandTxt, { color: sub }]}>Secured via Wayl — enter card details on the next page</Text>
-                      <View style={{ flexDirection: "row", gap: 6, marginTop: 8 }}>
-                        {/* Mini MC icon */}
-                        <View style={{ flexDirection: "row" }}>
-                          <View style={{ width: 22, height: 14, borderRadius: 3, backgroundColor: "#EB001B" }} />
-                          <View style={{ width: 22, height: 14, borderRadius: 3, backgroundColor: "#F79E1B", marginLeft: -8, opacity: 0.92 }} />
-                        </View>
-                        <View style={{ backgroundColor: "#1A1F71", borderRadius: 3, paddingHorizontal: 5, paddingVertical: 1 }}>
-                          <Text style={{ fontSize: 8, fontWeight: "900", color: "#fff", fontStyle: "italic", letterSpacing: 0.5 }}>VISA</Text>
-                        </View>
-                      </View>
-                    </View>
-                  )}
-                  {idx < PAY_METHODS.length - 1 && <Divider color={divClr} />}
-                </React.Fragment>
-              );
-            })}
+
+            {/* Cash on Delivery */}
+            <Pressable
+              onPress={() => setPayMethod("cod")}
+              style={[st.payCard, payMethod === "cod" && { backgroundColor: isDark ? "rgba(34,197,94,0.08)" : "rgba(34,197,94,0.06)" }]}
+            >
+              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: payMethod === "cod" ? "rgba(34,197,94,0.18)" : (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"), alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 22 }}>💵</Text>
+              </View>
+              <View style={{ flex: 1, gap: 3 }}>
+                <Text style={[st.payTitle, { color: payMethod === "cod" ? "#22C55E" : textCol }]}>Cash on Delivery</Text>
+                <Text style={[st.paySub, { color: sub }]}>Pay in cash when your order arrives</Text>
+              </View>
+              <View style={[st.radio, { borderColor: payMethod === "cod" ? "#22C55E" : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
+                {payMethod === "cod" && <View style={[st.radioDot, { backgroundColor: "#22C55E" }]} />}
+              </View>
+            </Pressable>
+
+            <Divider color={divClr} />
+
+            {/* Online Payment — all logos */}
+            <Pressable
+              onPress={() => setPayMethod("online")}
+              style={[st.payCard, payMethod === "online" && { backgroundColor: isDark ? "rgba(2,116,193,0.08)" : "rgba(2,116,193,0.06)" }]}
+            >
+              <View style={{ width: 44, alignItems: "flex-start", gap: 2 }}>
+                <View style={{ flexDirection: "row", gap: 3 }}>
+                  {PAYMENT_LOGOS.slice(0, 3).map((logo) => (
+                    <Image key={logo.key} source={logo.src} style={{ width: 13, height: 13, borderRadius: 3 }} contentFit="cover" />
+                  ))}
+                </View>
+                <View style={{ flexDirection: "row", gap: 3 }}>
+                  {PAYMENT_LOGOS.slice(3).map((logo) => (
+                    <Image key={logo.key} source={logo.src} style={{ width: 13, height: 13, borderRadius: 3 }} contentFit="cover" />
+                  ))}
+                </View>
+              </View>
+              <View style={{ flex: 1, gap: 5 }}>
+                <Text style={[st.payTitle, { color: payMethod === "online" ? PRIMARY : textCol }]}>Online Payment</Text>
+                <View style={{ flexDirection: "row", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  {PAYMENT_LOGOS.map((logo) => (
+                    <Image key={logo.key} source={logo.src} style={{ width: 28, height: 28, borderRadius: 7 }} contentFit="cover" />
+                  ))}
+                </View>
+                <Text style={[st.paySub, { color: sub }]}>Card, wallet & more · secured via Wayl</Text>
+              </View>
+              <View style={[st.radio, { borderColor: payMethod === "online" ? PRIMARY : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
+                {payMethod === "online" && <View style={[st.radioDot, { backgroundColor: PRIMARY }]} />}
+              </View>
+            </Pressable>
+
           </View>
 
           {/* Note */}
@@ -379,14 +379,14 @@ export default function CheckoutScreen() {
             disabled={submitting}
             style={({ pressed }) => [
               st.placeBtn,
-              PAY_METHODS.find(m => m.id === payMethod)?.online && { backgroundColor: "#7C3AED" },
+              payMethod === "online" && { backgroundColor: "#7C3AED" },
               pressed && { opacity: 0.85 },
               submitting && { opacity: 0.7 },
             ]}
           >
             {submitting
               ? <ActivityIndicator color="#fff" />
-              : PAY_METHODS.find(m => m.id === payMethod)?.online
+              : payMethod === "online"
                 ? <><Feather name="credit-card" size={16} color="#fff" /><Text style={st.placeTxt}>PROCEED TO PAYMENT</Text></>
                 : <><Feather name="check-circle" size={16} color="#fff" /><Text style={st.placeTxt}>PLACE ORDER</Text></>
             }
@@ -416,31 +416,6 @@ function FieldRow({ label, value, onChangeText, placeholder, keyboardType, textC
   );
 }
 
-function PayOption({ selected, onPress, icon, iconColor, iconBg, title, subtitle, textCol, sub, isDark, badge }: {
-  selected: boolean; onPress: () => void; icon: any; iconColor: string; iconBg: string;
-  title: string; subtitle: string; textCol: string; sub: string; isDark: boolean; badge?: string;
-}) {
-  const selectedBorder = icon === "credit-card" ? "rgba(59,130,246,0.3)" : "rgba(2,116,193,0.3)";
-  const selectedCheck  = icon === "credit-card" ? "#3B82F6" : PRIMARY;
-  return (
-    <Pressable onPress={onPress} style={[st.payCard, selected && { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)" }]}>
-      <View style={[st.payIcon, { backgroundColor: iconBg }]}>
-        <Feather name={icon} size={18} color={iconColor} />
-      </View>
-      <View style={{ flex: 1, gap: 2 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Text style={[st.payTitle, { color: textCol }]}>{title}</Text>
-          {badge && <View style={st.badge}><Text style={st.badgeTxt}>{badge}</Text></View>}
-        </View>
-        <Text style={[st.paySub, { color: sub }]}>{subtitle}</Text>
-      </View>
-      <View style={[st.radio, { borderColor: selected ? selectedCheck : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
-        {selected && <View style={[st.radioDot, { backgroundColor: selectedCheck }]} />}
-      </View>
-    </Pressable>
-  );
-}
-
 const st = StyleSheet.create({
   header:      { flexDirection: "row", alignItems: "center" },
   backBtn:     { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
@@ -451,15 +426,10 @@ const st = StyleSheet.create({
   fieldLbl:    { fontSize: 12, fontWeight: "500", width: 108, flexShrink: 0 },
   fieldInput:  { flex: 1, fontSize: 14, fontWeight: "500", paddingVertical: 2 },
   payCard:     { flexDirection: "row", alignItems: "center", padding: 14, gap: 12 },
-  payIcon:     { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
   payTitle:    { fontSize: 14, fontWeight: "600" },
   paySub:      { fontSize: 11, lineHeight: 15 },
   radio:       { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
   radioDot:    { width: 10, height: 10, borderRadius: 5 },
-  badge:       { backgroundColor: "rgba(59,130,246,0.15)", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  badgeTxt:    { fontSize: 9, fontWeight: "700", color: "#3B82F6", letterSpacing: 0.3 },
-  cardExpand:    { paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, gap: 4 },
-  cardExpandTxt: { fontSize: 11, lineHeight: 16, flex: 1 },
   noteInput:   { padding: 16, fontSize: 14, minHeight: 72, textAlignVertical: "top" },
   summaryRow:  { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
   summaryImg:  { width: 42, height: 52, borderRadius: 8 },
