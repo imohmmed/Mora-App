@@ -30,7 +30,8 @@ export async function adminFetch<T = unknown>(
 
   if (res.status === 401) {
     clearAdminToken();
-    window.location.reload();
+    window.location.href = "/login";
+    return { data: null as unknown as T, meta: {}, error: "Unauthorized" };
   }
 
   return res.json();

@@ -105,10 +105,10 @@ export default function Customers() {
                     {customer.firstName} {customer.lastName}
                   </TableCell>
                   <TableCell>{customer.email}</TableCell>
-                  <TableCell>{(customer.address as { country?: string })?.country || "—"}</TableCell>
+                  <TableCell>{(customer.address as { city?: string; district?: string })?.city || (customer.address as { district?: string })?.district || "—"}</TableCell>
                   <TableCell className="text-right">{customer.ordersCount ?? 0}</TableCell>
                   <TableCell className="text-right font-medium">
-                    ${(customer.totalSpent ?? 0).toFixed(2)}
+                    {(customer.totalSpent ?? 0).toLocaleString("en-US")} IQD
                   </TableCell>
                   <TableCell className="text-right">
                     <AlertDialog>
@@ -169,7 +169,7 @@ export default function Customers() {
                       <p className="text-sm text-muted-foreground truncate">{customer.email}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="font-semibold">${(customer.totalSpent ?? 0).toFixed(2)}</p>
+                      <p className="font-semibold">{(customer.totalSpent ?? 0).toLocaleString("en-US")} IQD</p>
                       <p className="text-xs text-muted-foreground">{customer.ordersCount ?? 0} orders</p>
                     </div>
                   </div>

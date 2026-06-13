@@ -179,9 +179,11 @@ export default function CustomerDetail() {
                   <div className="flex items-start gap-3">
                     <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
                     <div className="text-sm text-muted-foreground">
-                      <p>{(customer.address as any).address1}</p>
-                      <p>{(customer.address as any).city}, {(customer.address as any).province}</p>
-                      <p>{(customer.address as any).country}</p>
+                      {(customer.address as any).street && <p>{(customer.address as any).street}</p>}
+                      <p>
+                        {[(customer.address as any).district, (customer.address as any).city]
+                          .filter(Boolean).join(", ") || "—"}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -224,7 +226,7 @@ export default function CustomerDetail() {
                 <CardDescription>Total Spent</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${(customer.totalSpent ?? 0).toFixed(2)}</div>
+                <div className="text-2xl font-bold">{(customer.totalSpent ?? 0).toLocaleString("en-US")} IQD</div>
               </CardContent>
             </Card>
             <Card>
@@ -274,7 +276,7 @@ export default function CustomerDetail() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          ${order.total.toFixed(2)}
+                          {(order.total ?? 0).toLocaleString("en-US")} IQD
                         </TableCell>
                       </TableRow>
                     ))}
