@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent,
@@ -15,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   GripVertical, Plus, Trash2, X, Search, ChevronDown, ChevronRight,
   BookImage, Layers, Zap, Tag, TrendingUp, Star, Eye, EyeOff, Image as ImageIcon,
-  FolderOpen,
+  FolderOpen, Pencil, Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -683,26 +684,13 @@ function QuickSectionsSection() {
 
 function CollectionsSection() {
   const [sectionOpen, setSectionOpen] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: "", description: "", image: "" });
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  const { data: cols = [] } = useQuery<Collection[]>({
+  const { data: cols = [] } = useQuery<(Collection & { collectionType?: string })[]>({
     queryKey: ["admin-collections-hub"],
-    queryFn: () => apiFetch<Collection[]>("/admin/collections"),
+    queryFn: () => apiFetch<(Collection & { collectionType?: string })[]>("/admin/collections"),
     staleTime: 30_000,
-  });
-
-  const createCol = useMutation({
-    mutationFn: (data: object) => apiFetch("/admin/collections", { method: "POST", body: JSON.stringify(data) }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin-collections-hub"] });
-      setForm({ title: "", description: "", image: "" });
-      setShowForm(false);
-      toast({ title: "Collection created" });
-    },
-    onError: (e) => toast({ title: "Error", description: (e as Error).message, variant: "destructive" }),
   });
 
   const deleteCol = useMutation({
@@ -735,7 +723,7 @@ function CollectionsSection() {
 
           <div className="space-y-2">
             {cols.map((col) => (
-              <div key={col.id} className="flex items-center gap-3 p-3 border rounded-xl bg-background hover:bg-accent/10 transition-colors">
+              <div key={col.id} className="flex items-center gap-3 p-3 border rounded-xl bg-background hover:bg-accent/10 transition-colors group">
                 <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
                   {col.image
                     ? <img src={col.image} alt={col.title} className="w-full h-full object-cover" />
@@ -743,63 +731,47 @@ function CollectionsSection() {
                   }
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate">{col.title}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-sm truncate">{col.title}</p>
+                    {col.collectionType === "smart" ? (
+                      <Badge variant="secondary" className="text-[10px] gap-0.5 flex-shrink-0">
+                        <Wand2 className="w-2.5 h-2.5" /> Smart
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] flex-shrink-0">Manual</Badge>
+                    )}
+                  </div>
                   {col.description && (
                     <p className="text-xs text-muted-foreground truncate">{col.description}</p>
                   )}
                 </div>
-                <span className="text-xs text-muted-foreground flex-shrink-0">{col.productsCount ?? 0} products</span>
-                <Button
-                  variant="ghost" size="icon"
-                  className="h-7 w-7 text-destructive flex-shrink-0"
-                  onClick={() => deleteCol.mutate(col.id)}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Link href={`/collections/${col.id}/edit`}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="ghost" size="icon"
+                    className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => deleteCol.mutate(col.id)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
               </div>
             ))}
 
-            {cols.length === 0 && !showForm && (
+            {cols.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4">No collections yet.</p>
             )}
           </div>
 
-          {showForm ? (
-            <div className="border rounded-xl p-4 space-y-3 bg-muted/10">
-              <p className="text-sm font-semibold">New Collection</p>
-              <div className="space-y-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Title *</Label>
-                  <Input className="h-8" placeholder="e.g. Summer Dresses"
-                    value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Description</Label>
-                  <Input className="h-8" placeholder="Short description..."
-                    value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Cover Image URL</Label>
-                  <Input className="h-8" placeholder="https://..."
-                    value={form.image} onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))} />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  type="button" size="sm"
-                  disabled={!form.title.trim() || createCol.isPending}
-                  onClick={() => createCol.mutate(form)}
-                >
-                  {createCol.isPending ? "Creating..." : "Create Collection"}
-                </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
-              </div>
-            </div>
-          ) : (
-            <Button type="button" variant="outline" className="gap-2" onClick={() => setShowForm(true)}>
+          <Link href="/collections/new">
+            <Button type="button" variant="outline" className="gap-2">
               <Plus className="w-4 h-4" /> New Collection
             </Button>
-          )}
+          </Link>
         </div>
       )}
     </div>

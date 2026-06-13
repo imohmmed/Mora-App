@@ -231,6 +231,10 @@ ensureColumn("products", "option_definitions", "TEXT NOT NULL DEFAULT '[]'");
 ensureColumn("products", "seo_title", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("products", "seo_description", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("products", "url_slug", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("collections", "background_image", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("collections", "collection_type", "TEXT NOT NULL DEFAULT 'manual'");
+ensureColumn("collections", "conditions", "TEXT NOT NULL DEFAULT '[]'");
+ensureColumn("collections", "conditions_match", "TEXT NOT NULL DEFAULT 'all'");
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS product_collections (

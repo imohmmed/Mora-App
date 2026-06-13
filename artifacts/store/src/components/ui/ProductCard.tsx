@@ -84,10 +84,10 @@ export function ProductCard({ product, showQuickAdd }: { product: Product; showQ
         <div className="text-xs text-muted-foreground uppercase tracking-wider">{product.category}</div>
         <h3 className="font-medium text-sm line-clamp-1">{product.title}</h3>
         <div className="flex gap-2 items-center text-sm">
-          <span className="font-bold">${product.price.toFixed(2)}</span>
+          <span className="font-bold">{Math.round(product.price).toLocaleString()} IQD</span>
           {product.comparePrice && product.comparePrice > product.price && (
             <span className="text-destructive line-through text-xs">
-              ${product.comparePrice.toFixed(2)}
+              {Math.round(product.comparePrice).toLocaleString()} IQD
             </span>
           )}
         </div>

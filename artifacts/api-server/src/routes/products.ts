@@ -175,6 +175,45 @@ router.delete("/admin/products/:id", (req, res) => {
 
 // ─── Admin: collections ───────────────────────────────────────────────────────
 
+type SmartCondition = { field: string; operator: string; value: string };
+
+function buildSmartWhere(conditions: SmartCondition[], match: string): { where: string; params: unknown[] } {
+  const clauses: string[] = [];
+  const params: unknown[] = [];
+  for (const cond of conditions) {
+    const { field, operator, value } = cond;
+    if (value === undefined || value === null || value === "") continue;
+    if (["title", "vendor", "category"].includes(field)) {
+      switch (operator) {
+        case "is_equal_to":     clauses.push(`${field}=?`);         params.push(value); break;
+        case "is_not_equal_to": clauses.push(`${field}!=?`);        params.push(value); break;
+        case "contains":        clauses.push(`${field} LIKE ?`);    params.push(`%${value}%`); break;
+        case "not_contains":    clauses.push(`${field} NOT LIKE ?`);params.push(`%${value}%`); break;
+        case "starts_with":     clauses.push(`${field} LIKE ?`);    params.push(`${value}%`); break;
+      }
+    } else if (field === "tag") {
+      switch (operator) {
+        case "is_equal_to":     clauses.push(`tags LIKE ?`);     params.push(`%"${value}"%`); break;
+        case "is_not_equal_to": clauses.push(`tags NOT LIKE ?`); params.push(`%"${value}"%`); break;
+        case "contains":        clauses.push(`tags LIKE ?`);     params.push(`%${value}%`); break;
+        case "not_contains":    clauses.push(`tags NOT LIKE ?`); params.push(`%${value}%`); break;
+      }
+    } else if (["price", "compare_price"].includes(field)) {
+      const num = parseFloat(value);
+      if (isNaN(num)) continue;
+      switch (operator) {
+        case "is_equal_to":     clauses.push(`${field}=?`); params.push(num); break;
+        case "is_not_equal_to": clauses.push(`${field}!=?`);params.push(num); break;
+        case "greater_than":    clauses.push(`${field}>?`); params.push(num); break;
+        case "less_than":       clauses.push(`${field}<?`); params.push(num); break;
+      }
+    }
+  }
+  if (clauses.length === 0) return { where: "1=1", params: [] };
+  const joiner = match === "any" ? " OR " : " AND ";
+  return { where: `(${clauses.join(joiner)})`, params };
+}
+
 router.use("/admin/collections", requireAdmin);
 
 router.get("/admin/collections", (_req, res) => {
@@ -188,11 +227,36 @@ router.get("/admin/collections/:id", (req, res) => {
   res.json({ data: col, meta: {}, error: null });
 });
 
+router.get("/admin/collections/:id/products", requireAdmin, (req, res) => {
+  const col = db.prepare(`SELECT * FROM collections WHERE id=?`).get(req.params["id"]) as Row | undefined;
+  if (!col) { res.status(404).json({ data: null, meta: {}, error: "Not found" }); return; }
+  let rows: Row[];
+  if (col["collection_type"] === "smart") {
+    const conds: SmartCondition[] = JSON.parse((col["conditions"] as string) || "[]");
+    const match = (col["conditions_match"] as string) || "all";
+    const { where, params } = buildSmartWhere(conds, match);
+    rows = db.prepare(`SELECT * FROM products WHERE status='active' AND ${where}`).all(...params) as Row[];
+  } else {
+    rows = db.prepare(`SELECT p.* FROM products p JOIN product_collections pc ON pc.product_id=p.id WHERE pc.collection_id=? AND p.status='active'`).all(req.params["id"]) as Row[];
+  }
+  res.json({ data: parseRows(rows), meta: { total: rows.length }, error: null });
+});
+
+router.post("/admin/collections/smart-preview", requireAdmin, (req, res) => {
+  const { conditions = [], match = "all" } = req.body as { conditions?: SmartCondition[]; match?: string };
+  const { where, params } = buildSmartWhere(conditions, match);
+  const rows = db.prepare(`SELECT * FROM products WHERE status='active' AND ${where} LIMIT 50`).all(...params) as Row[];
+  res.json({ data: parseRows(rows), meta: { total: rows.length }, error: null });
+});
+
 router.post("/admin/collections", (req, res) => {
   const id = `col_${Date.now()}`;
   const b = req.body as Record<string, unknown>;
-  db.prepare(`INSERT INTO collections (id,title,description,image,products_count,created_at) VALUES (?,?,?,?,?,?)`)
-    .run(id, b["title"] ?? "", b["description"] ?? "", b["image"] ?? "", 0, new Date().toISOString());
+  const type = (b["collectionType"] as string) || "manual";
+  const conds = b["conditions"] ? JSON.stringify(b["conditions"]) : "[]";
+  const match = (b["conditionsMatch"] as string) || "all";
+  db.prepare(`INSERT INTO collections (id,title,description,image,background_image,collection_type,conditions,conditions_match,products_count,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, b["title"] ?? "", b["description"] ?? "", b["image"] ?? "", b["backgroundImage"] ?? "", type, conds, match, 0, new Date().toISOString());
   const col = parseOne(db.prepare(`SELECT * FROM collections WHERE id=?`).get(id) as Row | undefined);
   res.status(201).json({ data: col, meta: {}, error: null });
 });
@@ -201,7 +265,9 @@ router.put("/admin/collections/:id", (req, res) => {
   const id = req.params["id"];
   if (!db.prepare(`SELECT id FROM collections WHERE id=?`).get(id)) { res.status(404).json({ data: null, meta: {}, error: "Collection not found" }); return; }
   const b = req.body as Record<string, unknown>;
-  db.prepare(`UPDATE collections SET title=COALESCE(?,title), description=COALESCE(?,description), image=COALESCE(?,image) WHERE id=?`).run(b["title"] ?? null, b["description"] ?? null, b["image"] ?? null, id);
+  const conds = b["conditions"] !== undefined ? JSON.stringify(b["conditions"]) : null;
+  db.prepare(`UPDATE collections SET title=COALESCE(?,title), description=COALESCE(?,description), image=COALESCE(?,image), background_image=COALESCE(?,background_image), collection_type=COALESCE(?,collection_type), conditions=COALESCE(?,conditions), conditions_match=COALESCE(?,conditions_match) WHERE id=?`)
+    .run(b["title"] ?? null, b["description"] ?? null, b["image"] ?? null, b["backgroundImage"] ?? null, b["collectionType"] ?? null, conds, b["conditionsMatch"] ?? null, id);
   const col = parseOne(db.prepare(`SELECT * FROM collections WHERE id=?`).get(id) as Row | undefined);
   res.json({ data: col, meta: {}, error: null });
 });

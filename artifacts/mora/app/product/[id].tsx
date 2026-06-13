@@ -134,9 +134,16 @@ function RelatedCard({
         <Text style={[styles.relatedTitle, { color: colors.foreground }]} numberOfLines={2}>
           {product.title}
         </Text>
-        <Text style={[styles.relatedPrice, { color: PRIMARY }]}>
-          {formatIQD(product.price)}
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text style={[styles.relatedPrice, { color: PRIMARY }]}>
+            {formatIQD(product.price)}
+          </Text>
+          {hasDiscount && (
+            <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: "#E53935", textDecorationLine: "line-through" }}>
+              {formatIQD(product.comparePrice!)}
+            </Text>
+          )}
+        </View>
       </View>
     </Pressable>
   );

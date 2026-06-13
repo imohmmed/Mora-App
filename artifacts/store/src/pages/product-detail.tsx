@@ -254,12 +254,12 @@ export default function ProductDetail() {
               </h1>
               <div className="flex items-center gap-4 text-xl">
                 <span className="font-bold">
-                  ${selectedVariant?.price.toFixed(2)}
+                  {Math.round(selectedVariant?.price ?? 0).toLocaleString()} IQD
                 </span>
                 {product.comparePrice &&
                   product.comparePrice > (selectedVariant?.price || 0) && (
                     <span className="text-destructive line-through text-base">
-                      ${product.comparePrice.toFixed(2)}
+                      {Math.round(product.comparePrice).toLocaleString()} IQD
                     </span>
                   )}
               </div>

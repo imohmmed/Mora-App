@@ -20,6 +20,7 @@ import CustomerDetail from "@/pages/customers/detail";
 import CustomerSegments from "@/pages/customers/segments";
 import Companies from "@/pages/customers/companies";
 import CollectionsHub from "@/pages/collections/hub";
+import CollectionForm from "@/pages/collections/collection-form";
 import Discounts from "@/pages/discounts";
 import NewDiscount from "@/pages/discounts/new";
 import Campaigns from "@/pages/campaigns";
@@ -54,6 +55,8 @@ function Router() {
         <Route path="/customers/companies" component={Companies} />
         <Route path="/customers/:id" component={CustomerDetail} />
         <Route path="/customers" component={Customers} />
+        <Route path="/collections/new" component={CollectionForm} />
+        <Route path="/collections/:id/edit" component={CollectionForm} />
         <Route path="/collections/special" component={CollectionsHub} />
         <Route path="/collections" component={CollectionsHub} />
         {/* Discounts */}
