@@ -12,12 +12,14 @@ import bannersRouter from "./banners.js";
 import storiesRouter from "./stories.js";
 import contentRouter from "./content.js";
 import notificationsRouter from "./notifications.js";
+import waylRouter from "./wayl.js";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(productsRouter);
 router.use(ordersRouter);
+router.use(waylRouter);
 router.use(customersRouter);
 router.use(marketingRouter);
 router.use(analyticsRouter);

@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Pressable,
   ScrollView,
@@ -14,25 +15,23 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
 import { formatIQD } from "@/lib/format";
 
-const PRIMARY = "#0274C1";
+const PRIMARY   = "#0274C1";
+const WAYL_BLUE = "#3B82F6";
 
-type ItemSnap = {
-  title: string;
-  quantity: number;
-  price: number;
-  image?: string;
-  size?: string;
-  color?: string;
-};
+function getBaseUrl() {
+  const d = process.env.EXPO_PUBLIC_DOMAIN;
+  return d ? `https://${d}/api` : "/api";
+}
+
+type PayStatus = "pending" | "paid" | "failed";
+type ItemSnap = { title: string; quantity: number; price: number; image?: string; size?: string; color?: string };
 
 function StepIndicator({ isDark }: { isDark: boolean }) {
   const steps = ["Cart", "Checkout", "Done"];
-  const inactiveTxt = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)";
   return (
     <View style={si.container}>
       {steps.map((label, i) => {
         const step = i + 1;
-        const done = step <= 3;
         return (
           <React.Fragment key={label}>
             <View style={si.stepWrap}>
@@ -40,7 +39,7 @@ function StepIndicator({ isDark }: { isDark: boolean }) {
                 <Feather name="check" size={11} color="#fff" />
               </View>
               <Text style={{ fontSize: 9, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase",
-                color: step === 3 ? PRIMARY : isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)", marginTop: 5 }}>
+                color: step === 3 ? PRIMARY : isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.4)", marginTop: 5 }}>
                 {label}
               </Text>
             </View>
@@ -51,7 +50,6 @@ function StepIndicator({ isDark }: { isDark: boolean }) {
     </View>
   );
 }
-
 const si = StyleSheet.create({
   container: { flexDirection: "row", alignItems: "center", paddingHorizontal: 30, marginTop: 8, marginBottom: 4 },
   stepWrap:  { alignItems: "center" },
@@ -65,71 +63,127 @@ export default function OrderCompleteScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const { orderNumber, total, name, city, district, phone, items: itemsRaw } = useLocalSearchParams<{
-    orderNumber: string; total: string; name: string;
-    city: string; district: string; phone: string; items: string;
-  }>();
+  const { orderNumber, total, name, city, district, phone, items: itemsRaw, paymentMethod } =
+    useLocalSearchParams<{ orderNumber: string; total: string; name: string; city: string; district: string; phone: string; items: string; paymentMethod?: string }>();
+
+  const isCOD  = !paymentMethod || paymentMethod === "cod";
+  const isWayl = paymentMethod === "wayl";
 
   let parsedItems: ItemSnap[] = [];
   try { parsedItems = JSON.parse(itemsRaw || "[]"); } catch {}
-
   const totalNum = Number(total) || 0;
 
-  const bg       = isDark ? "#0A0A0A" : "#F2F2F7";
-  const card     = isDark ? "#1C1C1E" : "#FFFFFF";
-  const textCol  = isDark ? "#FFFFFF" : "#1A1A1A";
-  const sub      = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.42)";
-  const divColor = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
+  const [payStatus, setPayStatus] = useState<PayStatus>(isCOD ? "paid" : "pending");
+  const [verifying, setVerifying] = useState(false);
+
+  const bg      = isDark ? "#0A0A0A" : "#F2F2F7";
+  const card    = isDark ? "#1C1C1E" : "#FFFFFF";
+  const textCol = isDark ? "#FFFFFF" : "#1A1A1A";
+  const sub     = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.42)";
+  const divClr  = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.sequence([
       Animated.spring(scaleAnim, { toValue: 1, damping: 12, stiffness: 150, useNativeDriver: true }),
       Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
     ]).start();
+
+    if (isWayl && payStatus === "pending") {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.08, duration: 900, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+        ])
+      ).start();
+    }
   }, []);
+
+  const verifyPayment = async () => {
+    if (!orderNumber) return;
+    setVerifying(true);
+    try {
+      const res = await fetch(`${getBaseUrl()}/store/wayl/status/${orderNumber}`);
+      const json = await res.json() as { data: { status: string; paid: boolean } | null };
+      if (json.data?.paid || json.data?.status === "completed") {
+        setPayStatus("paid");
+      } else if (json.data?.status === "failed" || json.data?.status === "expired") {
+        setPayStatus("failed");
+      }
+    } catch { /* ignore */ }
+    setVerifying(false);
+  };
+
+  const heroColor  = payStatus === "paid" ? PRIMARY : payStatus === "failed" ? "#EF4444" : WAYL_BLUE;
+  const heroIcon   = payStatus === "paid" ? "check" : payStatus === "failed" ? "x" : "clock";
+  const heroTitle  = payStatus === "paid" ? (isCOD ? "Order Placed!" : "Payment Confirmed!") : payStatus === "failed" ? "Payment Failed" : "Awaiting Payment";
+  const heroSubtitle = payStatus === "paid"
+    ? `Thank you${name ? `, ${name.split(" ")[0]}` : ""}! Your order is being prepared.`
+    : payStatus === "failed"
+    ? "Your payment was not completed. Please try again."
+    : "Complete your payment in the browser, then tap Verify below.";
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
       <View style={[s.header, { paddingTop: insets.top + 6 }]}>
         <Text style={[s.headTitle, { color: textCol }]}>Order Confirmed</Text>
       </View>
-
       <StepIndicator isDark={isDark} />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 110 }}>
 
+        {/* Hero */}
         <View style={s.heroWrap}>
-          <Animated.View style={[s.heroCircle, { transform: [{ scale: scaleAnim }] }]}>
-            <Feather name="check" size={40} color="#fff" />
+          <Animated.View style={[s.heroCircle, { backgroundColor: heroColor, shadowColor: heroColor, transform: [{ scale: isWayl && payStatus === "pending" ? pulseAnim : scaleAnim }] }]}>
+            <Feather name={heroIcon as any} size={38} color="#fff" />
           </Animated.View>
           <Animated.View style={{ opacity: fadeAnim, alignItems: "center", gap: 6 }}>
-            <Text style={[s.heroTitle, { color: textCol }]}>Order Placed!</Text>
-            <View style={s.orderNumBadge}>
-              <Text style={s.orderNum}>{orderNumber}</Text>
+            <Text style={[s.heroTitle, { color: textCol }]}>{heroTitle}</Text>
+            <View style={[s.orderBadge, { backgroundColor: `${heroColor}20`, borderColor: `${heroColor}40` }]}>
+              <Text style={[s.orderBadgeTxt, { color: heroColor }]}>{orderNumber}</Text>
             </View>
-            <Text style={[s.heroSub, { color: sub }]}>
-              Thank you{name ? `, ${name.split(" ")[0]}` : ""}! We'll prepare your order right away.
-            </Text>
+            <Text style={[s.heroSub, { color: sub }]}>{heroSubtitle}</Text>
           </Animated.View>
         </View>
 
+        {/* Wayl verify button */}
+        {isWayl && payStatus === "pending" && (
+          <View style={s.verifyWrap}>
+            <Pressable onPress={verifyPayment} disabled={verifying}
+              style={({ pressed }) => [s.verifyBtn, pressed && { opacity: 0.85 }, verifying && { opacity: 0.7 }]}>
+              {verifying
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <><Feather name="refresh-cw" size={15} color="#fff" /><Text style={s.verifyTxt}>VERIFY PAYMENT</Text></>
+              }
+            </Pressable>
+            <Text style={[s.verifyHint, { color: sub }]}>Paid already? Tap to confirm your payment status.</Text>
+          </View>
+        )}
+
+        {/* Payment method badge */}
+        {isWayl && payStatus !== "pending" && (
+          <View style={[s.payBadgeWrap, { backgroundColor: card }]}>
+            <Feather name={payStatus === "paid" ? "check-circle" : "x-circle"} size={16} color={payStatus === "paid" ? "#22C55E" : "#EF4444"} />
+            <Text style={[s.payBadgeTxt, { color: payStatus === "paid" ? "#22C55E" : "#EF4444" }]}>
+              {payStatus === "paid" ? "Payment Confirmed · Wayl" : "Payment Not Completed"}
+            </Text>
+          </View>
+        )}
+
+        {/* Items */}
         <Text style={[s.sectionLbl, { color: sub }]}>ORDER ITEMS</Text>
         <View style={[s.card, { backgroundColor: card }]}>
           {parsedItems.map((item, idx) => (
             <React.Fragment key={idx}>
-              {idx > 0 && <View style={[s.divider, { backgroundColor: divColor }]} />}
+              {idx > 0 && <View style={[s.divider, { backgroundColor: divClr }]} />}
               <View style={s.itemRow}>
-                {item.image && (
-                  <Image source={{ uri: item.image }} style={s.itemImg} contentFit="cover" />
-                )}
+                {item.image && <Image source={{ uri: item.image }} style={s.itemImg} contentFit="cover" />}
                 <View style={{ flex: 1 }}>
                   <Text style={[s.itemTitle, { color: textCol }]} numberOfLines={1}>{item.title}</Text>
-                  {(item.size || item.color) && (
-                    <Text style={[s.itemSub, { color: sub }]}>{[item.size, item.color].filter(Boolean).join(" · ")}</Text>
-                  )}
+                  {(item.size || item.color) && <Text style={[s.itemSub, { color: sub }]}>{[item.size, item.color].filter(Boolean).join(" · ")}</Text>}
                 </View>
                 <View style={{ alignItems: "flex-end", gap: 2 }}>
                   <Text style={[s.itemQty, { color: sub }]}>×{item.quantity}</Text>
@@ -138,51 +192,37 @@ export default function OrderCompleteScreen() {
               </View>
             </React.Fragment>
           ))}
-          <View style={[s.divider, { backgroundColor: divColor }]} />
-          <View style={s.rowSpc}>
-            <Text style={[s.rowLbl, { color: sub }]}>Shipping</Text>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: "#22C55E" }}>Free</Text>
-          </View>
-          <View style={s.rowSpc}>
-            <Text style={[s.rowLbl, { color: textCol, fontWeight: "700" }]}>Total</Text>
-            <Text style={[s.rowVal, { color: PRIMARY }]}>{formatIQD(totalNum)}</Text>
-          </View>
+          <View style={[s.divider, { backgroundColor: divClr }]} />
+          <View style={s.rowSpc}><Text style={[s.rowLbl, { color: sub }]}>Shipping</Text><Text style={{ fontSize: 13, fontWeight: "600", color: "#22C55E" }}>Free</Text></View>
+          <View style={s.rowSpc}><Text style={[s.rowLbl, { color: textCol, fontWeight: "700" }]}>Total</Text><Text style={[s.rowVal, { color: PRIMARY }]}>{formatIQD(totalNum)}</Text></View>
         </View>
 
+        {/* Delivery Details */}
         <Text style={[s.sectionLbl, { color: sub }]}>DELIVERY DETAILS</Text>
         <View style={[s.card, { backgroundColor: card }]}>
-          <View style={s.detailRow}>
-            <Feather name="map-pin" size={16} color={PRIMARY} />
-            <View style={{ flex: 1 }}>
-              <Text style={[s.detailTitle, { color: textCol }]}>Delivery Address</Text>
-              <Text style={[s.detailSub, { color: sub }]}>{[district, city].filter(Boolean).join(", ") || "—"}</Text>
-            </View>
-          </View>
-          <View style={[s.divider, { backgroundColor: divColor }]} />
-          <View style={s.detailRow}>
-            <Feather name="phone" size={16} color={PRIMARY} />
-            <View style={{ flex: 1 }}>
-              <Text style={[s.detailTitle, { color: textCol }]}>Phone</Text>
-              <Text style={[s.detailSub, { color: sub }]}>{phone || "—"}</Text>
-            </View>
-          </View>
-          <View style={[s.divider, { backgroundColor: divColor }]} />
-          <View style={s.detailRow}>
-            <Feather name="dollar-sign" size={16} color={PRIMARY} />
-            <View style={{ flex: 1 }}>
-              <Text style={[s.detailTitle, { color: textCol }]}>Payment Method</Text>
-              <Text style={[s.detailSub, { color: sub }]}>Cash on Delivery</Text>
-            </View>
-          </View>
+          {[
+            { icon: "map-pin", label: "Address",  value: [district, city].filter(Boolean).join(", ") || "—" },
+            { icon: "phone",   label: "Phone",    value: phone || "—" },
+            { icon: isWayl ? "credit-card" : "dollar-sign", label: "Payment", value: isWayl ? "Online (Wayl)" : "Cash on Delivery" },
+          ].map((row, idx) => (
+            <React.Fragment key={row.label}>
+              {idx > 0 && <View style={[s.divider, { backgroundColor: divClr }]} />}
+              <View style={s.detailRow}>
+                <Feather name={row.icon as any} size={15} color={PRIMARY} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.detailTitle, { color: textCol }]}>{row.label}</Text>
+                  <Text style={[s.detailSub, { color: sub }]}>{row.value}</Text>
+                </View>
+              </View>
+            </React.Fragment>
+          ))}
         </View>
 
       </ScrollView>
 
       <View style={[s.footer, { backgroundColor: bg, paddingBottom: insets.bottom + 12 }]}>
-        <Pressable
-          onPress={() => router.replace("/(tabs)" as any)}
-          style={({ pressed }) => [s.contBtn, pressed && { opacity: 0.82 }]}
-        >
+        <Pressable onPress={() => router.replace("/(tabs)" as any)}
+          style={({ pressed }) => [s.contBtn, pressed && { opacity: 0.82 }]}>
           <Text style={s.contTxt}>CONTINUE SHOPPING</Text>
           <Feather name="arrow-right" size={15} color="#fff" />
         </Pressable>
@@ -192,31 +232,37 @@ export default function OrderCompleteScreen() {
 }
 
 const s = StyleSheet.create({
-  root:        { flex: 1 },
-  header:      { paddingHorizontal: 20, paddingBottom: 8, alignItems: "center" },
-  headTitle:   { fontSize: 17, fontWeight: "700" },
-  heroWrap:    { alignItems: "center", paddingVertical: 28, paddingHorizontal: 24, gap: 16 },
-  heroCircle:  { width: 80, height: 80, borderRadius: 40, backgroundColor: PRIMARY, alignItems: "center", justifyContent: "center", marginBottom: 4, shadowColor: PRIMARY, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 8 },
-  heroTitle:   { fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
-  orderNumBadge: { backgroundColor: PRIMARY, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 5 },
-  orderNum:    { color: "#fff", fontSize: 14, fontWeight: "700", letterSpacing: 0.5 },
-  heroSub:     { fontSize: 14, textAlign: "center", lineHeight: 20 },
-  sectionLbl:  { fontSize: 11, fontWeight: "700", letterSpacing: 0.8, marginTop: 18, marginBottom: 8, marginHorizontal: 20 },
-  card:        { marginHorizontal: 16, borderRadius: 16, overflow: "hidden" },
-  itemRow:     { flexDirection: "row", alignItems: "center", gap: 10, padding: 14 },
-  itemImg:     { width: 44, height: 52, borderRadius: 8 },
-  itemTitle:   { fontSize: 13, fontWeight: "600" },
-  itemSub:     { fontSize: 11, marginTop: 2 },
-  itemQty:     { fontSize: 11, fontWeight: "600" },
-  itemPrice:   { fontSize: 13, fontWeight: "700" },
-  divider:     { height: 1, marginHorizontal: 16 },
-  rowSpc:      { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10 },
-  rowLbl:      { fontSize: 14, fontWeight: "500" },
-  rowVal:      { fontSize: 16, fontWeight: "800" },
-  detailRow:   { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
-  detailTitle: { fontSize: 13, fontWeight: "600", marginBottom: 2 },
-  detailSub:   { fontSize: 12 },
-  footer:      { paddingHorizontal: 16, paddingTop: 12 },
-  contBtn:     { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#111", height: 54, borderRadius: 50 },
-  contTxt:     { color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 0.8 },
+  root:         { flex: 1 },
+  header:       { paddingHorizontal: 20, paddingBottom: 4, alignItems: "center" },
+  headTitle:    { fontSize: 17, fontWeight: "700" },
+  heroWrap:     { alignItems: "center", paddingVertical: 24, paddingHorizontal: 24, gap: 14 },
+  heroCircle:   { width: 78, height: 78, borderRadius: 39, alignItems: "center", justifyContent: "center", marginBottom: 4, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 16, elevation: 10 },
+  heroTitle:    { fontSize: 24, fontWeight: "800", letterSpacing: -0.5 },
+  orderBadge:   { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5, borderWidth: 1 },
+  orderBadgeTxt:{ fontSize: 13, fontWeight: "700", letterSpacing: 0.3 },
+  heroSub:      { fontSize: 13, textAlign: "center", lineHeight: 19, maxWidth: 280 },
+  verifyWrap:   { paddingHorizontal: 16, marginBottom: 8, gap: 8 },
+  verifyBtn:    { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: WAYL_BLUE, height: 48, borderRadius: 50 },
+  verifyTxt:    { color: "#fff", fontSize: 13, fontWeight: "700", letterSpacing: 0.8 },
+  verifyHint:   { textAlign: "center", fontSize: 11 },
+  payBadgeWrap: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 16, marginBottom: 4, padding: 12, borderRadius: 12 },
+  payBadgeTxt:  { fontSize: 12, fontWeight: "600" },
+  sectionLbl:   { fontSize: 11, fontWeight: "700", letterSpacing: 0.8, marginTop: 18, marginBottom: 8, marginHorizontal: 20 },
+  card:         { marginHorizontal: 16, borderRadius: 16, overflow: "hidden" },
+  itemRow:      { flexDirection: "row", alignItems: "center", gap: 10, padding: 14 },
+  itemImg:      { width: 42, height: 52, borderRadius: 8 },
+  itemTitle:    { fontSize: 13, fontWeight: "600" },
+  itemSub:      { fontSize: 11, marginTop: 2 },
+  itemQty:      { fontSize: 11, fontWeight: "600" },
+  itemPrice:    { fontSize: 13, fontWeight: "700" },
+  divider:      { height: 1, marginHorizontal: 16 },
+  rowSpc:       { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10 },
+  rowLbl:       { fontSize: 14, fontWeight: "500" },
+  rowVal:       { fontSize: 16, fontWeight: "800" },
+  detailRow:    { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  detailTitle:  { fontSize: 13, fontWeight: "600", marginBottom: 2 },
+  detailSub:    { fontSize: 12 },
+  footer:       { paddingHorizontal: 16, paddingTop: 12 },
+  contBtn:      { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#111", height: 54, borderRadius: 50 },
+  contTxt:      { color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 0.8 },
 });

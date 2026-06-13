@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/hooks/use-cart";
 import { useStoreAuth } from "@/hooks/use-store-auth";
@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Check, ArrowLeft, Truck, MapPin, Phone, User,
-  Package, DollarSign, ChevronRight, Loader2, Eye, EyeOff
+  Check, ArrowLeft, Truck, MapPin, Phone, Package,
+  DollarSign, ChevronRight, Loader2, Eye, EyeOff,
+  CreditCard, Zap, RefreshCw
 } from "lucide-react";
 
 const BASE = "/api";
@@ -19,6 +20,10 @@ function fmtIQD(n: number) {
 }
 
 const STEPS = ["Information", "Payment", "Complete"];
+
+type PayMethod = "cod" | "wayl";
+type FormState = { name: string; phone: string; city: string; district: string; street: string; note: string };
+type OrderSnap = { items: ReturnType<typeof useCart>["items"]; subtotal: number; orderNumber: string; form: FormState; payMethod: PayMethod };
 
 function StepIndicator({ current }: { current: 1 | 2 | 3 }) {
   return (
@@ -49,73 +54,43 @@ function StepIndicator({ current }: { current: 1 | 2 | 3 }) {
   );
 }
 
-type FormState = {
-  name: string; phone: string; city: string; district: string; street: string; note: string;
-};
-
-type OrderSnap = {
-  items: ReturnType<typeof useCart>["items"];
-  subtotal: number;
-  total: number;
-  orderNumber: string;
-  form: FormState;
-};
-
 function LoginGate({ onLogin }: { onLogin: (email: string, password: string) => Promise<unknown> }) {
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw]     = useState(false);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
-
   const handle = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true); setError("");
-    try { await onLogin(email, password); }
-    catch (err: any) { setError(err.message || "Invalid email or password"); }
+    e.preventDefault(); setLoading(true); setError("");
+    try { await onLogin(email, password); } catch (err: any) { setError(err.message || "Invalid credentials"); }
     finally { setLoading(false); }
   };
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-      className="max-w-md mx-auto"
-    >
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="max-w-md mx-auto">
       <div className="flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-6 mx-auto">
-        <User className="h-7 w-7 text-primary" />
+        <Package className="h-7 w-7 text-primary" />
       </div>
       <h2 className="text-2xl font-bold tracking-tighter uppercase text-center mb-2">Sign In to Checkout</h2>
       <p className="text-muted-foreground text-center text-sm mb-8">
-        You need an account to place an order. Don't have one?{" "}
-        <Link href="/account" className="text-primary underline">Create account</Link>
+        Don't have an account?{" "}<Link href="/account" className="text-primary underline">Create one</Link>
       </p>
-
-      {error && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-
+      {error && <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-4 py-3 rounded mb-4">{error}</div>}
       <form onSubmit={handle} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="lg-email">Email</Label>
-          <Input id="lg-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-            placeholder="your@email.com" className="h-12" />
+          <Input id="lg-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" className="h-12" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="lg-pw">Password</Label>
           <div className="relative">
-            <Input id="lg-pw" type={showPw ? "text" : "password"} required value={password}
-              onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="h-12 pr-10" />
-            <button type="button" onClick={() => setShowPw(!showPw)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <Input id="lg-pw" type={showPw ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="h-12 pr-10" />
+            <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
               {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
         </div>
         <Button type="submit" className="w-full h-12 text-sm uppercase font-bold tracking-wider" disabled={loading}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-          {loading ? "Signing in..." : "Sign In & Continue"}
+          {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}{loading ? "Signing in..." : "Sign In & Continue"}
         </Button>
       </form>
     </motion.div>
@@ -131,19 +106,13 @@ function OrderSidebar({ items, subtotal }: { items: ReturnType<typeof useCart>["
           {items.map((item) => (
             <div key={item.variantId} className="flex gap-3 items-center">
               <div className="w-12 h-14 bg-background border border-border relative flex-shrink-0 overflow-hidden">
-                {item.image
-                  ? <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
-                  : <div className="w-full h-full flex items-center justify-center"><Package className="h-4 w-4 text-muted-foreground" /></div>
-                }
-                <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {item.quantity}
-                </span>
+                {item.image ? <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center"><Package className="h-4 w-4 text-muted-foreground" /></div>}
+                <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{item.quantity}</span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium line-clamp-1">{item.title}</p>
-                {(item.option1 || item.option2) && (
-                  <p className="text-xs text-muted-foreground">{item.option1}{item.option2 ? ` / ${item.option2}` : ""}</p>
-                )}
+                {(item.option1 || item.option2) && <p className="text-xs text-muted-foreground">{item.option1}{item.option2 ? ` / ${item.option2}` : ""}</p>}
               </div>
               <span className="text-sm font-bold flex-shrink-0">{fmtIQD(item.price * item.quantity)}</span>
             </div>
@@ -152,9 +121,7 @@ function OrderSidebar({ items, subtotal }: { items: ReturnType<typeof useCart>["
         <div className="border-t border-border pt-4 space-y-2 text-sm">
           <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="font-medium">{fmtIQD(subtotal)}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span className="text-green-600 font-medium">Free</span></div>
-          <div className="flex justify-between text-base font-bold border-t border-border pt-2 mt-2">
-            <span>Total</span><span>{fmtIQD(subtotal)}</span>
-          </div>
+          <div className="flex justify-between text-base font-bold border-t border-border pt-2 mt-2"><span>Total</span><span>{fmtIQD(subtotal)}</span></div>
         </div>
       </div>
     </div>
@@ -164,16 +131,36 @@ function OrderSidebar({ items, subtotal }: { items: ReturnType<typeof useCart>["
 export default function Checkout() {
   const { items, total, clearCart } = useCart();
   const { user, token, isLoading, login } = useStoreAuth();
-  const [, navigate] = useLocation();
 
-  const [step, setStep]     = useState<1 | 2 | 3>(1);
-  const [placing, setPlacing] = useState(false);
+  const [step, setStep]         = useState<1 | 2 | 3>(1);
+  const [payMethod, setPayMethod] = useState<PayMethod>("cod");
+  const [placing, setPlacing]   = useState(false);
   const [placeError, setPlaceError] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [payVerified, setPayVerified] = useState<boolean | null>(null);
   const orderRef = useRef<OrderSnap | null>(null);
 
-  const [form, setForm] = useState<FormState>({
-    name: "", phone: "", city: "", district: "", street: "", note: "",
-  });
+  const [form, setForm] = useState<FormState>({ name: "", phone: "", city: "", district: "", street: "", note: "" });
+
+  // Handle return from Wayl payment
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const waylReturn = params.get("wayl_return");
+    if (waylReturn === "1") {
+      const stored = localStorage.getItem("mora_wayl_pending");
+      if (stored) {
+        try {
+          const snap = JSON.parse(stored) as OrderSnap;
+          orderRef.current = snap;
+          clearCart();
+          setStep(3);
+          localStorage.removeItem("mora_wayl_pending");
+          // Clean up URL
+          window.history.replaceState({}, "", window.location.pathname);
+        } catch { /* ignore */ }
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -192,48 +179,56 @@ export default function Checkout() {
     setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const handleStep1 = (e: React.FormEvent) => {
-    e.preventDefault();
-    setStep(2);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    e.preventDefault(); setStep(2); window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const verifyWaylPayment = async (referenceId: string) => {
+    setVerifying(true);
+    try {
+      const res = await fetch(`${BASE}/store/wayl/status/${referenceId}`);
+      const json = await res.json() as { data: { paid: boolean; status: string } };
+      setPayVerified(json.data?.paid === true);
+    } catch { setPayVerified(false); }
+    setVerifying(false);
   };
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPlacing(true); setPlaceError("");
+    e.preventDefault(); setPlacing(true); setPlaceError("");
     try {
-      const res = await fetch(`${BASE}/store/orders`, {
+      const orderRes = await fetch(`${BASE}/store/orders`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
-          email:    user?.email || "",
-          subtotal: total,
-          shipping: 0,
-          shippingAddress: {
-            fullName: form.name, phone: form.phone,
-            city: form.city, district: form.district, street: form.street,
-          },
-          lineItems: items.map((i) => ({
-            variantId: i.variantId, title: i.title,
-            quantity: i.quantity, price: i.price,
-            option1: i.option1, option2: i.option2, image: i.image,
-          })),
-          paymentMethod: "cod",
-          note: form.note,
+          email: user?.email || "",
+          subtotal: total, shipping: 0,
+          shippingAddress: { fullName: form.name, phone: form.phone, city: form.city, district: form.district, street: form.street },
+          lineItems: items.map((i) => ({ variantId: i.variantId, title: i.title, quantity: i.quantity, price: i.price, option1: i.option1, option2: i.option2, image: i.image })),
+          paymentMethod: payMethod, note: form.note,
         }),
       });
-      const json = await res.json() as { data: { order_number?: string; total?: number } | null; error?: string };
-      if (!res.ok) throw new Error(json.error || "Order failed");
+      const orderJson = await orderRes.json() as { data: { order_number?: string; total?: number } | null; error?: string };
+      if (!orderRes.ok) throw new Error(orderJson.error || "Order failed");
 
-      orderRef.current = {
-        items: [...items],
-        subtotal: total,
-        total,
-        orderNumber: json.data?.order_number || "#—",
-        form: { ...form },
-      };
+      const orderNumber = orderJson.data?.order_number || "#—";
+      const snap: OrderSnap = { items: [...items], subtotal: total, orderNumber, form: { ...form }, payMethod };
+      orderRef.current = snap;
+
+      if (payMethod === "wayl") {
+        localStorage.setItem("mora_wayl_pending", JSON.stringify(snap));
+        const redirectionUrl = `${window.location.origin}${window.location.pathname}?wayl_return=1`;
+
+        const waylRes = await fetch(`${BASE}/store/wayl/create-link`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderNumber, total, redirectionUrl }),
+        });
+        const waylJson = await waylRes.json() as { data: { url?: string } | null; error?: string };
+        if (!waylRes.ok || !waylJson.data?.url) throw new Error(waylJson.error || "Could not create payment link");
+
+        window.location.href = waylJson.data.url;
+        return;
+      }
+
       clearCart();
       setStep(3);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -253,9 +248,7 @@ export default function Checkout() {
           </div>
           <p className="text-xl font-bold mb-2">Your cart is empty</p>
           <p className="text-muted-foreground mb-8">Add items before checking out.</p>
-          <Button asChild className="h-12 px-10 uppercase font-bold tracking-wider">
-            <Link href="/products">Shop Now</Link>
-          </Button>
+          <Button asChild className="h-12 px-10 uppercase font-bold tracking-wider"><Link href="/products">Shop Now</Link></Button>
         </div>
       </Layout>
     );
@@ -263,6 +256,7 @@ export default function Checkout() {
 
   if (step === 3) {
     const snap = orderRef.current!;
+    const isWayl = snap?.payMethod === "wayl";
     return (
       <Layout>
         <div className="container mx-auto px-4 py-16 max-w-2xl">
@@ -271,19 +265,41 @@ export default function Checkout() {
             <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/25">
               <Check className="h-10 w-10 text-primary-foreground" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tighter uppercase mb-2">Order Confirmed!</h1>
+            <h1 className="text-3xl font-bold tracking-tighter uppercase mb-2">Order Placed!</h1>
             <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full mb-3">
-              <span className="text-sm font-bold text-primary">{snap.orderNumber}</span>
+              <span className="text-sm font-bold text-primary">{snap?.orderNumber}</span>
             </div>
             <p className="text-muted-foreground">
-              Thank you{snap.form.name ? `, ${snap.form.name.split(" ")[0]}` : ""}! Your order is being processed.
+              Thank you{snap?.form.name ? `, ${snap.form.name.split(" ")[0]}` : ""}! We'll prepare your order right away.
             </p>
           </motion.div>
+
+          {/* Wayl payment status */}
+          {isWayl && (
+            <div className="border border-border p-4 mb-4 text-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-primary" />
+                  Online Payment Status
+                </span>
+                {payVerified === true && <span className="text-green-600 font-bold flex items-center gap-1"><Check className="h-4 w-4" />Confirmed</span>}
+                {payVerified === false && <span className="text-destructive font-bold">Not yet confirmed</span>}
+              </div>
+              <button
+                onClick={() => verifyWaylPayment(snap.orderNumber)}
+                disabled={verifying || payVerified === true}
+                className="flex items-center gap-2 text-primary hover:underline disabled:opacity-50 font-medium"
+              >
+                {verifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                {verifying ? "Checking…" : payVerified === true ? "Payment Confirmed" : "Verify Payment"}
+              </button>
+            </div>
+          )}
 
           <div className="bg-secondary/50 border border-border p-6 mb-4">
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Order Items</p>
             <div className="space-y-3 mb-4">
-              {snap.items.map((item) => (
+              {snap?.items.map((item) => (
                 <div key={item.variantId} className="flex justify-between items-center text-sm">
                   <span className="font-medium">{item.title} <span className="text-muted-foreground font-normal">×{item.quantity}</span></span>
                   <span className="font-bold">{fmtIQD(item.price * item.quantity)}</span>
@@ -292,37 +308,28 @@ export default function Checkout() {
             </div>
             <div className="border-t border-border pt-3 space-y-1 text-sm">
               <div className="flex justify-between text-muted-foreground"><span>Shipping</span><span className="text-green-600 font-medium">Free</span></div>
-              <div className="flex justify-between font-bold text-base"><span>Total</span><span>{fmtIQD(snap.total)}</span></div>
+              <div className="flex justify-between font-bold text-base"><span>Total</span><span>{fmtIQD(snap?.subtotal || 0)}</span></div>
             </div>
           </div>
 
           <div className="grid sm:grid-cols-3 gap-3 mb-8">
             <div className="bg-secondary/50 border border-border p-4 flex gap-3">
               <MapPin className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Delivery</p>
-                <p className="text-sm font-medium">{[snap.form.district, snap.form.city].filter(Boolean).join(", ") || "—"}</p>
-              </div>
+              <div><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Delivery</p>
+                <p className="text-sm font-medium">{[snap?.form.district, snap?.form.city].filter(Boolean).join(", ") || "—"}</p></div>
             </div>
             <div className="bg-secondary/50 border border-border p-4 flex gap-3">
               <Phone className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Phone</p>
-                <p className="text-sm font-medium">{snap.form.phone || "—"}</p>
-              </div>
+              <div><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Phone</p>
+                <p className="text-sm font-medium">{snap?.form.phone || "—"}</p></div>
             </div>
             <div className="bg-secondary/50 border border-border p-4 flex gap-3">
-              <DollarSign className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Payment</p>
-                <p className="text-sm font-medium">Cash on Delivery</p>
-              </div>
+              {isWayl ? <CreditCard className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" /> : <DollarSign className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />}
+              <div><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Payment</p>
+                <p className="text-sm font-medium">{isWayl ? "Online · Wayl" : "Cash on Delivery"}</p></div>
             </div>
           </div>
-
-          <Button asChild className="w-full h-12 uppercase font-bold tracking-wider">
-            <Link href="/products">Continue Shopping</Link>
-          </Button>
+          <Button asChild className="w-full h-12 uppercase font-bold tracking-wider"><Link href="/products">Continue Shopping</Link></Button>
         </div>
       </Layout>
     );
@@ -332,11 +339,8 @@ export default function Checkout() {
     <Layout>
       <div className="container mx-auto px-4 py-12 max-w-6xl">
         <StepIndicator current={step} />
-
         {isLoading ? (
-          <div className="flex items-center justify-center py-24">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          <div className="flex items-center justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
         ) : !user ? (
           <LoginGate onLogin={login} />
         ) : (
@@ -344,53 +348,25 @@ export default function Checkout() {
             <div className="lg:w-3/5">
               <AnimatePresence mode="wait">
                 {step === 1 && (
-                  <motion.form
-                    key="step1"
-                    initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }}
-                    transition={{ duration: 0.25 }}
-                    onSubmit={handleStep1} className="space-y-5"
-                  >
+                  <motion.form key="step1" initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={{ duration: 0.25 }} onSubmit={handleStep1} className="space-y-5">
                     <h2 className="text-xl font-bold tracking-tighter uppercase">Delivery Information</h2>
-
                     {user && (
                       <div className="flex items-center gap-2 bg-primary/8 border border-primary/20 px-4 py-3 text-sm rounded">
-                        <Check className="h-4 w-4 text-primary" />
-                        <span>Signed in as <strong>{user.email}</strong></span>
+                        <Check className="h-4 w-4 text-primary" /><span>Signed in as <strong>{user.email}</strong></span>
                       </div>
                     )}
-
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Full Name</Label>
-                        <Input required className="h-12" value={form.name} onChange={upd("name")} placeholder="Ahmed Al-Rashidi" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Phone Number</Label>
-                        <Input required className="h-12" type="tel" value={form.phone} onChange={upd("phone")} placeholder="+964 7700000000" />
-                      </div>
+                      <div className="space-y-2"><Label>Full Name</Label><Input required className="h-12" value={form.name} onChange={upd("name")} placeholder="Ahmed Al-Rashidi" /></div>
+                      <div className="space-y-2"><Label>Phone Number</Label><Input required className="h-12" type="tel" value={form.phone} onChange={upd("phone")} placeholder="+964 770 000 0000" /></div>
                     </div>
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>City</Label>
-                        <Input required className="h-12" value={form.city} onChange={upd("city")} placeholder="Baghdad" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>District / Area</Label>
-                        <Input required className="h-12" value={form.district} onChange={upd("district")} placeholder="Al-Mansour" />
-                      </div>
+                      <div className="space-y-2"><Label>City</Label><Input required className="h-12" value={form.city} onChange={upd("city")} placeholder="Baghdad" /></div>
+                      <div className="space-y-2"><Label>District / Area</Label><Input required className="h-12" value={form.district} onChange={upd("district")} placeholder="Al-Mansour" /></div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Street / Additional Info <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                      <Input className="h-12" value={form.street} onChange={upd("street")} placeholder="Street 14, Building 3" />
-                    </div>
+                    <div className="space-y-2"><Label>Street <span className="text-muted-foreground font-normal">(optional)</span></Label><Input className="h-12" value={form.street} onChange={upd("street")} placeholder="Street 14, Building 3" /></div>
                     <div className="space-y-2">
                       <Label>Order Note <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                      <textarea
-                        value={form.note}
-                        onChange={upd("note") as any}
-                        placeholder="Any special instructions..."
-                        className="w-full border border-input bg-background px-3 py-3 text-sm rounded-md resize-none min-h-[80px] focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
+                      <textarea value={form.note} onChange={upd("note") as any} placeholder="Any special instructions..." className="w-full border border-input bg-background px-3 py-3 text-sm rounded-md resize-none min-h-[80px] focus:outline-none focus:ring-2 focus:ring-ring" />
                     </div>
                     <Button type="submit" className="w-full h-14 text-base uppercase font-bold tracking-wider">
                       Continue to Payment <ChevronRight className="h-4 w-4 ml-1" />
@@ -399,16 +375,9 @@ export default function Checkout() {
                 )}
 
                 {step === 2 && (
-                  <motion.form
-                    key="step2"
-                    initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }}
-                    transition={{ duration: 0.25 }}
-                    onSubmit={handlePlaceOrder} className="space-y-6"
-                  >
+                  <motion.form key="step2" initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={{ duration: 0.25 }} onSubmit={handlePlaceOrder} className="space-y-6">
                     <div className="flex items-center gap-3">
-                      <button type="button" onClick={() => setStep(1)} className="text-muted-foreground hover:text-foreground">
-                        <ArrowLeft className="h-5 w-5" />
-                      </button>
+                      <button type="button" onClick={() => setStep(1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft className="h-5 w-5" /></button>
                       <h2 className="text-xl font-bold tracking-tighter uppercase">Payment Method</h2>
                     </div>
 
@@ -417,43 +386,74 @@ export default function Checkout() {
                       <button type="button" onClick={() => setStep(1)} className="text-primary ml-2 underline text-xs">Edit</button>
                     </div>
 
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Select Payment Method</p>
-                      <label className="flex items-center gap-4 p-5 border-2 border-primary bg-primary/5 cursor-pointer">
-                        <div className="w-11 h-11 bg-primary/15 rounded-full flex items-center justify-center flex-shrink-0">
-                          <Truck className="h-5 w-5 text-primary" />
+                    <div className="space-y-3">
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Select Payment Method</p>
+
+                      {/* Cash on Delivery */}
+                      <label className={`flex items-center gap-4 p-4 border-2 cursor-pointer transition-all ${payMethod === "cod" ? "border-primary bg-primary/5" : "border-border hover:border-border/80"}`}
+                        onClick={() => setPayMethod("cod")}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${payMethod === "cod" ? "bg-primary/15" : "bg-secondary"}`}>
+                          <Truck className={`h-5 w-5 ${payMethod === "cod" ? "text-primary" : "text-muted-foreground"}`} />
                         </div>
                         <div className="flex-1">
                           <p className="font-bold text-sm">Cash on Delivery</p>
                           <p className="text-xs text-muted-foreground mt-0.5">Pay when your order arrives at your door</p>
                         </div>
-                        <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                          <Check className="h-3 w-3 text-primary-foreground" />
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${payMethod === "cod" ? "border-primary bg-primary" : "border-border"}`}>
+                          {payMethod === "cod" && <Check className="h-3 w-3 text-primary-foreground" />}
+                        </div>
+                      </label>
+
+                      {/* Online Payment (Wayl) */}
+                      <label className={`flex items-center gap-4 p-4 border-2 cursor-pointer transition-all ${payMethod === "wayl" ? "border-blue-500 bg-blue-500/5" : "border-border hover:border-border/80"}`}
+                        onClick={() => setPayMethod("wayl")}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${payMethod === "wayl" ? "bg-blue-500/15" : "bg-secondary"}`}>
+                          <CreditCard className={`h-5 w-5 ${payMethod === "wayl" ? "text-blue-500" : "text-muted-foreground"}`} />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <p className="font-bold text-sm">Online Payment</p>
+                            <span className="text-[9px] font-bold uppercase tracking-wider bg-blue-500/15 text-blue-500 px-1.5 py-0.5 rounded">Powered by Wayl</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Zain Cash · FastPay · Asia Hawala · Visa · Mastercard</p>
+                        </div>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${payMethod === "wayl" ? "border-blue-500 bg-blue-500" : "border-border"}`}>
+                          {payMethod === "wayl" && <Check className="h-3 w-3 text-white" />}
                         </div>
                       </label>
                     </div>
 
-                    <div className="bg-secondary/50 border border-border p-4 text-sm text-muted-foreground">
-                      <p className="font-semibold text-foreground mb-1 flex items-center gap-2">
-                        <Package className="h-4 w-4 text-primary" /> Order total: <span className="text-primary font-bold">{fmtIQD(total)}</span>
-                      </p>
-                      <p>The delivery team will collect payment upon arrival. Please have the exact amount ready.</p>
-                    </div>
-
-                    {placeError && (
-                      <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-4 py-3">
-                        {placeError}
+                    {payMethod === "cod" && (
+                      <div className="bg-secondary/50 border border-border p-4 text-sm text-muted-foreground">
+                        <p className="font-semibold text-foreground mb-1 flex items-center gap-2">
+                          <Package className="h-4 w-4 text-primary" /> Total: <span className="text-primary font-bold">{fmtIQD(total)}</span>
+                        </p>
+                        <p>The delivery team will collect payment upon arrival.</p>
+                      </div>
+                    )}
+                    {payMethod === "wayl" && (
+                      <div className="bg-blue-500/5 border border-blue-500/20 p-4 text-sm">
+                        <p className="font-semibold mb-1 flex items-center gap-2">
+                          <Zap className="h-4 w-4 text-blue-500" /> <span>Total: <span className="text-blue-600 font-bold">{fmtIQD(total)}</span></span>
+                        </p>
+                        <p className="text-muted-foreground">You'll be redirected to Wayl's secure payment page to complete your payment.</p>
                       </div>
                     )}
 
-                    <Button type="submit" className="w-full h-14 text-base uppercase font-bold tracking-wider" disabled={placing}>
-                      {placing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Placing Order...</> : `Place Order · ${fmtIQD(total)}`}
+                    {placeError && <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-4 py-3">{placeError}</div>}
+
+                    <Button type="submit" className={`w-full h-14 text-base uppercase font-bold tracking-wider ${payMethod === "wayl" ? "bg-blue-500 hover:bg-blue-600" : ""}`} disabled={placing}>
+                      {placing
+                        ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />{payMethod === "wayl" ? "Creating Payment Link..." : "Placing Order..."}</>
+                        : payMethod === "wayl"
+                        ? <><CreditCard className="h-4 w-4 mr-2" />Pay Online · {fmtIQD(total)}</>
+                        : `Place Order · ${fmtIQD(total)}`
+                      }
                     </Button>
                   </motion.form>
                 )}
               </AnimatePresence>
             </div>
-
             <OrderSidebar items={items} subtotal={total} />
           </div>
         )}
