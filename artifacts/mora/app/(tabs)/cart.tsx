@@ -175,7 +175,7 @@ export default function CartScreen() {
   const { resolvedScheme } = useTheme();
   const isDark      = resolvedScheme === "dark";
 
-  const bg      = isDark ? "#0A0A0A" : "#F2F2F7";
+  const bg      = isDark ? "#0A0A0A" : "#FFFFFF";
   const textCol = isDark ? "#FFFFFF" : "#1A1A1A";
   const sub     = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.42)";
   const barBg   = isDark ? "rgba(14,14,14,0.97)" : "rgba(255,255,255,0.97)";
@@ -299,7 +299,7 @@ const s = StyleSheet.create({
   bar:         { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 20, paddingTop: 16, borderTopWidth: 1 },
   barLabel:    { fontSize: 11, fontWeight: "500", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
   barTotal:    { fontSize: 18, fontWeight: "800", letterSpacing: -0.4 },
-  checkBtn:    { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#111", paddingHorizontal: 22, paddingVertical: 14, borderRadius: 50 },
+  checkBtn:    { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: PRIMARY, paddingHorizontal: 22, paddingVertical: 14, borderRadius: 50 },
   checkTxt:    { color: "#fff", fontSize: 14, fontWeight: "700", letterSpacing: 0.6 },
   emptyCircle: { width: 88, height: 88, borderRadius: 44, alignItems: "center", justifyContent: "center", marginBottom: 20 },
   emptyTitle:  { fontSize: 20, fontWeight: "700", marginBottom: 8 },
