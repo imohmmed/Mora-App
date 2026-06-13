@@ -5,20 +5,19 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 
-const CHAT_WIDGET_URL =
+const WIDGET_BASE =
   "https://chat.moramoda.tech/widget?website_token=WPeCyRzhWzff2TuFHRe27SaQ";
 
-function buildInjectedScript(
-  isDark: boolean,
+function buildIdentityScript(
   user: { id: string; firstName: string; lastName: string; email: string; phone?: string } | null
 ): string {
-  const scheme = isDark ? "dark" : "light";
+  if (!user) return "true;";
   const safe = (s: string) => s.replace(/[\\'"]/g, "");
-  const identityBlock = user
-    ? `
+  return `
 (function () {
   function setUser() {
     if (window.$chatwoot && typeof window.$chatwoot.setUser === 'function') {
@@ -31,27 +30,7 @@ function buildInjectedScript(
   }
   window.addEventListener('chatwoot:ready', setUser);
   setTimeout(setUser, 3000);
-})();`
-    : "";
-
-  return `
-(function() {
-  function applyScheme() {
-    try {
-      window.postMessage(JSON.stringify({ event: "set-color-scheme", darkMode: "${scheme}" }), "*");
-    } catch(e) {}
-    try {
-      if (window.$chatwoot && typeof window.$chatwoot.setColorScheme === 'function') {
-        window.$chatwoot.setColorScheme("${scheme}");
-      }
-    } catch(e) {}
-  }
-  applyScheme();
-  window.addEventListener('chatwoot:ready', function() { applyScheme(); });
-  setTimeout(applyScheme, 800);
-  setTimeout(applyScheme, 2500);
 })();
-${identityBlock}
 true;
 `;
 }
@@ -59,21 +38,22 @@ true;
 export default function ChatScreen() {
   const { resolvedScheme } = useTheme();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const isDark = resolvedScheme === "dark";
   const bg = isDark ? "#0D0D0F" : "#FFFFFF";
+
+  // Pass darkMode in URL so show.html.erb can apply it via Vuex directly
+  const widgetUrl = `${WIDGET_BASE}&darkMode=${isDark ? "dark" : "light"}`;
+
   const iframeRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // For web iframe: send theme whenever isDark changes or iframe loads
   const sendThemeToIframe = useCallback(() => {
     if (Platform.OS !== "web") return;
-    try {
-      const msg = JSON.stringify({
-        event: "set-color-scheme",
-        darkMode: isDark ? "dark" : "light",
-      });
-      iframeRef.current?.contentWindow?.postMessage(msg, "https://chat.moramoda.tech");
-    } catch {}
-  }, [isDark]);
+    // The URL already carries darkMode; reload the iframe if scheme changed
+    // (handled by React re-render with updated src)
+  }, []);
 
   useEffect(() => {
     sendThemeToIframe();
@@ -84,31 +64,39 @@ export default function ChatScreen() {
       <View style={[styles.container, { backgroundColor: bg }]}>
         {/* @ts-ignore */}
         <iframe
+          key={isDark ? "dark" : "light"}   /* force reload when scheme changes */
           ref={iframeRef}
-          src={CHAT_WIDGET_URL}
+          src={widgetUrl}
           style={{ width: "100%", height: "100%", border: "none", flex: 1 }}
           title="Mora Support"
           allow="microphone; camera"
-          onLoad={sendThemeToIframe}
         />
       </View>
     );
   }
 
+  // ── Native (iOS / Android) ────────────────────────────────────────────────
   const WebView = require("react-native-webview").WebView;
-  const injectedScript = buildInjectedScript(isDark, user);
+  const identityScript = buildIdentityScript(user);
+
+  // Bottom inset so the chat input is not hidden behind the tab bar
+  const tabBarHeight = 83 + insets.bottom;
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
       <WebView
-        source={{ uri: CHAT_WIDGET_URL }}
-        injectedJavaScript={injectedScript}
+        key={isDark ? "dark" : "light"}   /* reload when scheme changes */
+        source={{ uri: widgetUrl }}
+        injectedJavaScript={identityScript}
         onLoadEnd={() => setLoading(false)}
         style={{ flex: 1, backgroundColor: bg }}
         javaScriptEnabled
         domStorageEnabled
         allowsInlineMediaPlayback
         mediaPlaybackRequiresUserAction={false}
+        // Push WebView content up so the chat input clears the tab bar
+        contentInset={{ bottom: tabBarHeight }}
+        scrollIndicatorInsets={{ bottom: tabBarHeight }}
       />
       {loading && (
         <View style={[styles.loader, { backgroundColor: bg }]}>
