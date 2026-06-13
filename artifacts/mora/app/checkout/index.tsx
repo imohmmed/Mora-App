@@ -22,9 +22,17 @@ import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useNotification } from "@/context/NotificationContext";
 import { formatIQD } from "@/lib/format";
+import { AppleActionSheet } from "@/components/AppleActionSheet";
 
 const PRIMARY = "#0274C1";
 const WAYL_BLUE = "#3B82F6";
+
+const IRAQ_GOVERNORATES = [
+  "Baghdad", "Basra", "Nineveh", "Erbil", "Sulaymaniyah",
+  "Anbar", "Diyala", "Kirkuk", "Babylon", "Karbala",
+  "Najaf", "Dhi Qar", "Maysan", "Muthanna", "Qadisiyyah",
+  "Saladin", "Wasit", "Duhok",
+].map((g) => ({ label: g, value: g }));
 
 function getBaseUrl() {
   const d = process.env.EXPO_PUBLIC_DOMAIN;
@@ -80,6 +88,7 @@ export default function CheckoutScreen() {
   const [form, setForm] = useState<FormState>({ name: "", phone: "", city: "", district: "", street: "", note: "" });
   const [payMethod, setPayMethod] = useState<PayMethod>("cod");
   const [submitting, setSubmitting] = useState(false);
+  const [showCityPicker, setShowCityPicker] = useState(false);
 
   const bg      = isDark ? "#0A0A0A" : "#F2F2F7";
   const card    = isDark ? "#1C1C1E" : "#FFFFFF";
@@ -212,7 +221,13 @@ export default function CheckoutScreen() {
             <Divider color={divClr} />
             <FieldRow label="Phone"            value={form.phone}    onChangeText={set("phone")}    placeholder="+964 770 000 0000"  textCol={textCol} sub={sub} isDark={isDark} keyboardType="phone-pad" />
             <Divider color={divClr} />
-            <FieldRow label="City"             value={form.city}     onChangeText={set("city")}     placeholder="Baghdad"            textCol={textCol} sub={sub} isDark={isDark} />
+            <Pressable style={st.fieldRow} onPress={() => setShowCityPicker(true)}>
+              <Text style={[st.fieldLbl, { color: sub }]}>City</Text>
+              <Text style={[st.fieldInput, { color: form.city ? textCol : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)") }]}>
+                {form.city || "Select city..."}
+              </Text>
+              <Feather name="chevron-down" size={15} color={sub} />
+            </Pressable>
             <Divider color={divClr} />
             <FieldRow label="District / Area"  value={form.district} onChangeText={set("district")} placeholder="Al-Mansour"         textCol={textCol} sub={sub} isDark={isDark} />
             <Divider color={divClr} />
@@ -284,6 +299,15 @@ export default function CheckoutScreen() {
           </View>
 
         </ScrollView>
+
+        <AppleActionSheet
+          visible={showCityPicker}
+          title="Select Governorate"
+          options={IRAQ_GOVERNORATES}
+          selectedValue={form.city}
+          onSelect={(val) => { set("city")(val); setShowCityPicker(false); }}
+          onCancel={() => setShowCityPicker(false)}
+        />
 
         <View style={[st.footer, { backgroundColor: bg, paddingBottom: insets.bottom + 12 }]}>
           <Pressable
@@ -380,6 +404,6 @@ const st = StyleSheet.create({
   totalLbl:    { fontSize: 14, fontWeight: "500" },
   totalAmt:    { fontSize: 16, fontWeight: "800" },
   footer:      { paddingHorizontal: 16, paddingTop: 12 },
-  placeBtn:    { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#111", height: 54, borderRadius: 50 },
+  placeBtn:    { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: PRIMARY, height: 54, borderRadius: 50 },
   placeTxt:    { color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 0.8 },
 });
