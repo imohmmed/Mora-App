@@ -18,6 +18,7 @@ import { useQueries } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { MoraLogo } from "@/components/MoraLogo";
+import { formatIQD } from "@/lib/format";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { fetchProduct } from "@/lib/api";
@@ -99,11 +100,11 @@ function WishlistCard({
         </Text>
         <View style={styles.priceRow}>
           <Text style={[styles.cardPrice, { color: colors.foreground }]}>
-            ${product.price.toFixed(2)}
+            {formatIQD(product.price)}
           </Text>
           {product.comparePrice != null && product.comparePrice > product.price && (
             <Text style={[styles.comparePrice, { color: colors.mutedForeground }]}>
-              ${product.comparePrice.toFixed(2)}
+              {formatIQD(product.comparePrice)}
             </Text>
           )}
         </View>
