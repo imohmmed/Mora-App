@@ -224,7 +224,10 @@ export default function AuthScreen() {
       {/* ── Close (X) only — no back arrow ── */}
       <Pressable
         style={[styles.closeBtn, { top: topPad + 12 }]}
-        onPress={() => router.back()}
+        onPress={() => {
+          if (router.canGoBack()) router.back();
+          else router.replace("/(tabs)" as any);
+        }}
       >
         <Feather name="x" size={22} color={fg} />
       </Pressable>

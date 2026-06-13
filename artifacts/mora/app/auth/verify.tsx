@@ -66,7 +66,7 @@ export default function VerifyScreen() {
     } finally {
       setLoading(false);
     }
-  }, [phone, loginWithPhone, router]);
+  }, [phone, returnTo, loginWithPhone, router]);
 
   // ── Digit input ──────────────────────────────────────────────────────────
   const handleDigit = (value: string, index: number) => {

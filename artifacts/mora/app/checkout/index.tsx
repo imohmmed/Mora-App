@@ -72,7 +72,7 @@ export default function CheckoutScreen() {
   const isDark = resolvedScheme === "dark";
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user, token } = useAuth();
+  const { user, token, isLoading } = useAuth();
   const { items, subtotal, clearCart } = useCart();
 
   const [form, setForm] = useState<FormState>({ name: "", phone: "", city: "", district: "", street: "", note: "" });
@@ -86,19 +86,20 @@ export default function CheckoutScreen() {
   const divClr  = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
 
   useEffect(() => {
+    if (isLoading) return; // wait for auth state to hydrate
     if (!user) {
       router.replace({ pathname: "/auth", params: { returnTo: "/checkout" } } as any);
       return;
     }
     setForm((f) => ({
       ...f,
-      name:     `${user.firstName} ${user.lastName}`.trim(),
-      phone:    user.phone || "",
-      city:     user.address?.city || "",
-      district: user.address?.district || "",
-      street:   user.address?.street || "",
+      name:     f.name     || `${user.firstName} ${user.lastName}`.trim(),
+      phone:    f.phone    || user.phone || "",
+      city:     f.city     || user.address?.city || "",
+      district: f.district || user.address?.district || "",
+      street:   f.street   || user.address?.street || "",
     }));
-  }, [user]);
+  }, [user, isLoading]);
 
   const set = (key: keyof FormState) => (val: string) => setForm((f) => ({ ...f, [key]: val }));
 
@@ -167,6 +168,11 @@ export default function CheckoutScreen() {
     }
   };
 
+  if (isLoading) return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: isDark ? "#0A0A0A" : "#F2F2F7" }}>
+      <ActivityIndicator color="#0274C1" />
+    </View>
+  );
   if (!user) return null;
 
   return (
