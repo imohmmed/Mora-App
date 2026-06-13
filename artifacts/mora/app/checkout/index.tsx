@@ -35,10 +35,10 @@ const PAYMENT_LOGOS = [
 ];
 
 const IRAQ_GOVERNORATES = [
-  "Baghdad", "Basra", "Nineveh", "Erbil", "Sulaymaniyah",
-  "Anbar", "Diyala", "Kirkuk", "Babylon", "Karbala",
-  "Najaf", "Dhi Qar", "Maysan", "Muthanna", "Qadisiyyah",
-  "Saladin", "Wasit", "Duhok",
+  "بغداد", "البصرة", "نينوى", "أربيل", "السليمانية",
+  "الأنبار", "ديالى", "كركوك", "بابل", "كربلاء",
+  "النجف", "ذي قار", "ميسان", "المثنى", "القادسية",
+  "صلاح الدين", "واسط", "دهوك",
 ].map((g) => ({ label: g, value: g }));
 
 function getBaseUrl() {
