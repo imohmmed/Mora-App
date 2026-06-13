@@ -62,6 +62,7 @@ export function LiveActivityBanner() {
   const router = useRouter();
   const { cartActivity, orderActivity, endOrderActivity } = useNotification();
 
+  // All hooks must be declared before any conditional return (Rules of Hooks)
   const translateY = useRef(new Animated.Value(-120)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const scaleX = useRef(new Animated.Value(0.25)).current;
@@ -113,6 +114,10 @@ export function LiveActivityBanner() {
       ]).start();
     }
   }, [isVisible]);
+
+  // Live Activity / Dynamic Island is iOS-only.
+  // Web and Android don't have Dynamic Island — return nothing on those platforms.
+  if (Platform.OS !== "ios") return null;
 
   const topPad = Platform.OS === "ios" ? insets.top : insets.top + 4;
 
