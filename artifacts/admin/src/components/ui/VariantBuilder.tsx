@@ -356,6 +356,7 @@ export function VariantBuilder({
                     <th className="text-right px-3 py-2 font-medium whitespace-nowrap w-32">Compare (IQD)</th>
                     <th className="text-right px-3 py-2 font-medium whitespace-nowrap w-20">Stock</th>
                     <th className="text-right px-3 py-2 font-medium whitespace-nowrap w-28">Cost (IQD)</th>
+                    <th className="text-right px-3 py-2 font-medium whitespace-nowrap w-24">Margin</th>
                     <th className="text-right px-3 py-2 font-medium whitespace-nowrap w-32">SKU</th>
                   </tr>
                 </thead>
@@ -410,6 +411,16 @@ export function VariantBuilder({
                             value={v.cost}
                             onChange={(e) => updateVariantField(key, "cost", e.target.value)}
                           />
+                        </td>
+                        <td className="px-3 py-2 text-right whitespace-nowrap">
+                          {(() => {
+                            const p = parseFloat(v.price) || 0;
+                            const c = parseFloat(v.cost) || 0;
+                            if (!v.cost || !v.price || p === 0) return <span className="text-xs text-muted-foreground">—</span>;
+                            const margin = ((p - c) / p) * 100;
+                            const color = margin >= 50 ? "text-green-600" : margin >= 30 ? "text-amber-600" : "text-red-600";
+                            return <span className={`text-xs font-semibold ${color}`}>{margin.toFixed(1)}%</span>;
+                          })()}
                         </td>
                         <td className="px-3 py-2">
                           <Input

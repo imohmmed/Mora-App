@@ -1,19 +1,15 @@
 /**
  * QuickAddSheet — slides up when user taps ADD TO BAG.
  *
- * Dynamically renders a row of chips for every option axis
- * (option1, option2) found on the product's variants.
- * Labels are inferred: size-like values → "SIZE", otherwise
- * the raw axis position is used ("COLOR", "OPTION").
- *
- * Chips that are out-of-stock for the current combination are
- * shown struck-through and disabled.
+ * On iOS: GlassView background (expo-glass-effect) + glass chip buttons (@expo/ui).
+ * On Android / web: clean solid-card fallback.
  */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,16 +18,33 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { useTheme } from "@/context/ThemeContext";
+import { formatIQD } from "@/lib/format";
 import type { Product, Variant } from "@/lib/types";
 
 const PRIMARY = "#0274C1";
+const IS_IOS = Platform.OS === "ios";
 
-interface Props {
-  visible: boolean;
-  product: Product | null;
-  onClose: () => void;
-  onConfirm: (variant: Variant) => void;
-}
+// ── expo-glass-effect (iOS 26+ only, graceful fallback) ───────────────────────
+let GlassViewComp: any = null;
+try {
+  GlassViewComp = require("expo-glass-effect").GlassView;
+} catch {}
+
+// ── @expo/ui SwiftUI glass chip buttons (iOS only) ────────────────────────────
+let glassUIAvailable = false;
+let ExpoUIHost: any, ExpoButton: any;
+let glassEffectM: any, paddingM: any, tintM: any, frameM: any;
+try {
+  const ui = require("@expo/ui/swift-ui");
+  const mods = require("@expo/ui/swift-ui/modifiers");
+  ExpoUIHost = ui.Host;
+  ExpoButton = ui.Button;
+  glassEffectM = mods.glassEffect;
+  paddingM = mods.padding;
+  tintM = mods.tint;
+  frameM = mods.frame;
+  glassUIAvailable = true;
+} catch {}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -46,7 +59,16 @@ function inferLabel(values: string[]): string {
   return "OPTION";
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+interface Props {
+  visible: boolean;
+  product: Product | null;
+  onClose: () => void;
+  onConfirm: (variant: Variant) => void;
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   const { resolvedScheme } = useTheme();
@@ -58,7 +80,6 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   const [selectedOpt1, setSelectedOpt1] = useState<string | null>(null);
   const [selectedOpt2, setSelectedOpt2] = useState<string | null>(null);
 
-  // Reset selections whenever the product changes
   useEffect(() => {
     setSelectedOpt1(null);
     setSelectedOpt2(null);
@@ -78,10 +99,8 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
     }
   }, [visible]);
 
-  // ── All hooks must run before any conditional return (Rules of Hooks) ────
   const variants = product?.variants ?? [];
 
-  // ── Compute option axes ───────────────────────────────────────────────────
   const opt1Values = useMemo(() => (
     [...new Set(variants.map((v) => v.option1).filter((v): v is string => !!v && v !== "Default Title"))]
   ), [variants]);
@@ -92,11 +111,9 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
 
   const hasOpt1 = opt1Values.length > 0;
   const hasOpt2 = opt2Values.length > 0;
-
   const label1 = useMemo(() => inferLabel(opt1Values), [opt1Values]);
   const label2 = useMemo(() => inferLabel(opt2Values), [opt2Values]);
 
-  // ── Find matching variant ─────────────────────────────────────────────────
   const selectedVariant: Variant | null = useMemo(() => {
     if (hasOpt1 && !selectedOpt1) return null;
     if (hasOpt2 && !selectedOpt2) return null;
@@ -106,14 +123,10 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
     ) ?? null;
   }, [selectedOpt1, selectedOpt2, variants, hasOpt1, hasOpt2]);
 
-  // Early return AFTER all hooks
   if (!product) return null;
 
-  // Is an option1 value entirely out of stock across all option2s?
   const isOpt1OOS = (val: string) =>
     variants.filter((v) => v.option1 === val).every((v) => v.inventory === 0);
-
-  // Is an option2 value out of stock given the currently selected option1?
   const isOpt2OOS = (val: string) => {
     const related = variants.filter(
       (v) => v.option2 === val && (!selectedOpt1 || v.option1 === selectedOpt1)
@@ -130,24 +143,27 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
     onClose();
   };
 
-  // ── Button label ─────────────────────────────────────────────────────────
   const btnLabel = (() => {
     if (hasOpt1 && !selectedOpt1) return `SELECT ${label1}`;
     if (hasOpt2 && !selectedOpt2) return `SELECT ${label2}`;
     return "ADD TO BAG";
   })();
 
-  // ── Colours ──────────────────────────────────────────────────────────────
-  const bg         = isDark ? "#1C1C1E" : "#FFFFFF";
-  const handleCol  = isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.18)";
+  // ── Theme tokens ─────────────────────────────────────────────────────────────
+  const useGlass = IS_IOS && !!GlassViewComp;
+  const bg         = useGlass ? "transparent" : (isDark ? "#1C1C1E" : "#FFFFFF");
+  const handleCol  = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.20)";
   const textPri    = isDark ? "#FFFFFF" : "#000000";
   const textMuted  = isDark ? "rgba(255,255,255,0.50)" : "rgba(0,0,0,0.44)";
-  const chipBg     = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.05)";
-  const chipBorder = isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.12)";
+  const chipBg     = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)";
+  const chipBorder = isDark ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.14)";
   const imageBg    = isDark ? "#2C2C2E" : "#F2F2F7";
-  const divider    = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
+  const divider    = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)";
+  const sheetBg    = useGlass
+    ? (isDark ? "rgba(28,28,30,0.55)" : "rgba(255,255,255,0.55)")
+    : (isDark ? "#1C1C1E" : "#FFFFFF");
 
-  // ── Chip renderer ─────────────────────────────────────────────────────────
+  // ── Chip renderer ─────────────────────────────────────────────────────────────
   const renderChips = (
     values: string[],
     selected: string | null,
@@ -167,6 +183,32 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
         {values.map((val) => {
           const active = selected === val;
           const oos    = isOOS(val);
+
+          // ── iOS: glass chip button via @expo/ui ──────────────────────────
+          if (glassUIAvailable && IS_IOS && ExpoUIHost && ExpoButton) {
+            return (
+              <ExpoUIHost key={val} matchContents style={{ height: 44 }}>
+                <ExpoButton
+                  label={val}
+                  onPress={() => !oos && onSelect(val)}
+                  modifiers={[
+                    paddingM({ horizontal: 18, vertical: 9 }),
+                    glassEffectM({
+                      glass: {
+                        variant: "regular",
+                        interactive: !oos,
+                        tint: active ? PRIMARY : undefined,
+                      },
+                      shape: "roundedRectangle",
+                    }),
+                    tintM(active ? "#FFFFFF" : (oos ? "#999" : textPri)),
+                  ]}
+                />
+              </ExpoUIHost>
+            );
+          }
+
+          // ── Fallback chip ─────────────────────────────────────────────────
           return (
             <Pressable
               key={val}
@@ -194,7 +236,7 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
 
   return (
     <Modal transparent animationType="none" visible={visible} onRequestClose={onClose}>
-      {/* Backdrop */}
+      {/* ── Backdrop ──────────────────────────────────────────────────────── */}
       <Animated.View
         style={[styles.backdrop, { opacity: fadeAnim }]}
         pointerEvents={visible ? "auto" : "none"}
@@ -202,14 +244,25 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
 
-      {/* Sheet */}
+      {/* ── Sheet ─────────────────────────────────────────────────────────── */}
       <Animated.View
-        style={[styles.sheet, { backgroundColor: bg, transform: [{ translateY: slideAnim }] }]}
+        style={[
+          styles.sheet,
+          { backgroundColor: sheetBg, transform: [{ translateY: slideAnim }] },
+        ]}
       >
+        {/* Glass background layer (iOS 26+) */}
+        {useGlass && (
+          <GlassViewComp
+            style={[StyleSheet.absoluteFill, styles.glassBackground]}
+            glassEffectStyle="clear"
+          />
+        )}
+
         {/* Handle */}
         <View style={[styles.handle, { backgroundColor: handleCol }]} />
 
-        {/* ── Product mini-header ──────────────────────────────────────── */}
+        {/* ── Product mini-header ──────────────────────────────────────────── */}
         <View style={styles.productRow}>
           <View style={[styles.thumbBox, { backgroundColor: imageBg }]}>
             {product.images?.[0] ? (
@@ -229,49 +282,64 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
               {product.title}
             </Text>
             <Text style={[styles.priceText, { color: PRIMARY }]}>
-              ${product.price.toFixed(2)}
+              {formatIQD(product.price)}
             </Text>
           </View>
         </View>
 
-        {/* ── Option axes ──────────────────────────────────────────────── */}
+        {/* ── Option axes ──────────────────────────────────────────────────── */}
         {(hasOpt1 || hasOpt2) && (
           <View style={[styles.optionsWrap, { borderTopColor: divider }]}>
             {hasOpt1 && renderChips(
-              opt1Values,
-              selectedOpt1,
+              opt1Values, selectedOpt1,
               (v) => { setSelectedOpt1(v); setSelectedOpt2(null); },
-              isOpt1OOS,
-              label1,
+              isOpt1OOS, label1,
             )}
             {hasOpt2 && renderChips(
-              opt2Values,
-              selectedOpt2,
-              setSelectedOpt2,
-              isOpt2OOS,
-              label2,
+              opt2Values, selectedOpt2, setSelectedOpt2, isOpt2OOS, label2,
             )}
           </View>
         )}
 
-        {/* ── Add button ───────────────────────────────────────────────── */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.addBtn,
-            {
-              backgroundColor: canAdd
-                ? PRIMARY
-                : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
-              opacity: pressed ? 0.85 : 1,
-            },
-          ]}
-          onPress={handleAdd}
-          disabled={!canAdd}
-        >
-          <Text style={[styles.addBtnText, { color: canAdd ? "#FFF" : textMuted }]}>
-            {btnLabel}
-          </Text>
-        </Pressable>
+        {/* ── Add button ───────────────────────────────────────────────────── */}
+        {glassUIAvailable && IS_IOS && ExpoUIHost && ExpoButton ? (
+          <ExpoUIHost style={{ height: 54 }}>
+            <ExpoButton
+              label={btnLabel}
+              onPress={handleAdd}
+              modifiers={[
+                frameM({ maxWidth: 10000, height: 52 }),
+                glassEffectM({
+                  glass: {
+                    variant: "regular",
+                    interactive: canAdd,
+                    tint: canAdd ? PRIMARY : undefined,
+                  },
+                  shape: "roundedRectangle",
+                }),
+                tintM(canAdd ? "#FFFFFF" : textMuted),
+              ]}
+            />
+          </ExpoUIHost>
+        ) : (
+          <Pressable
+            style={({ pressed }) => [
+              styles.addBtn,
+              {
+                backgroundColor: canAdd
+                  ? PRIMARY
+                  : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+            onPress={handleAdd}
+            disabled={!canAdd}
+          >
+            <Text style={[styles.addBtnText, { color: canAdd ? "#FFF" : textMuted }]}>
+              {btnLabel}
+            </Text>
+          </Pressable>
+        )}
       </Animated.View>
     </Modal>
   );
@@ -287,16 +355,21 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingTop: 12,
-    paddingBottom: 40,
+    paddingBottom: 44,
     paddingHorizontal: 20,
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.18,
-    shadowRadius: 20,
+    shadowRadius: 24,
     elevation: 24,
+  },
+  glassBackground: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   handle: {
     width: 36,
@@ -313,12 +386,12 @@ const styles = StyleSheet.create({
   thumbBox: {
     width: 72,
     height: 88,
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: "hidden",
   },
   productMeta: {
     flex: 1,
-    gap: 3,
+    gap: 4,
     justifyContent: "center",
   },
   vendorText: {
@@ -350,16 +423,18 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     fontSize: 11,
     letterSpacing: 1,
+    textTransform: "uppercase",
   },
   chipRow: {
     flexDirection: "row",
     gap: 8,
-    paddingBottom: 2,
+    paddingBottom: 4,
+    alignItems: "center",
   },
   chip: {
     paddingHorizontal: 18,
     paddingVertical: 10,
-    borderRadius: 6,
+    borderRadius: 8,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
@@ -380,7 +455,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(150,150,150,0.6)",
   },
   addBtn: {
-    borderRadius: 10,
+    borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
   },

@@ -31,6 +31,7 @@ import type { Product, Banner, Variant } from "@/lib/types";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
+const IS_IOS = Platform.OS === "ios";
 
 const CATEGORIES = ["ALL", "WOMEN", "MEN", "BEAUTY", "SALE"];
 const CATEGORY_FILTERS: Record<string, string | undefined> = {
@@ -59,6 +60,27 @@ function getTag(product: Product): string | null {
   return null;
 }
 
+// ── Glass imports (iOS 26+, graceful fallback) ─────────────────────────────────
+let GlassViewComp: any = null;
+try { GlassViewComp = require("expo-glass-effect").GlassView; } catch {}
+
+let glassUIAvailable = false;
+let ExpoUIHost: any, ExpoButton: any;
+let glassEffectM: any, paddingM: any, tintM: any, frameM: any;
+try {
+  const ui = require("@expo/ui/swift-ui");
+  const mods = require("@expo/ui/swift-ui/modifiers");
+  ExpoUIHost = ui.Host;
+  ExpoButton = ui.Button;
+  glassEffectM = mods.glassEffect;
+  paddingM = mods.padding;
+  tintM = mods.tint;
+  frameM = mods.frame;
+  glassUIAvailable = true;
+} catch {}
+
+// ─── Product Card ──────────────────────────────────────────────────────────────
+
 function ProductCard({
   item,
   onAddToBag,
@@ -73,6 +95,8 @@ function ProductCard({
   const tag = getTag(item);
   const bg = cardColor(item.id);
   const imageUri = item.images?.[0];
+  const useGlass = IS_IOS && !!GlassViewComp;
+  const useGlassBtn = IS_IOS && glassUIAvailable;
 
   const handleLike = () => {
     toggle(item.id);
@@ -85,6 +109,7 @@ function ProductCard({
       testID={`product-${item.id}`}
       onPress={() => router.push(`/product/${item.id}`)}
     >
+      {/* ── Image area ── */}
       <View style={[styles.productImage, { backgroundColor: bg }]}>
         {imageUri ? (
           <Image
@@ -96,23 +121,45 @@ function ProductCard({
         ) : (
           <Feather name="shopping-bag" size={40} color={colors.mutedForeground} />
         )}
+
+        {/* Tag badge — glass on iOS 26+, solid on others */}
         {tag && (
-          <View
-            style={[
-              styles.productTag,
-              {
-                backgroundColor:
-                  tag === "SALE" ? "#E53935" : tag === "NEW" ? "#0274C1" : "#1A1A1A",
-              },
-            ]}
-          >
-            <Text style={styles.productTagText}>{tag}</Text>
-          </View>
+          useGlass ? (
+            <GlassViewComp
+              style={[styles.productTag, styles.productTagGlass]}
+              glassEffectStyle="clear"
+            >
+              <Text style={[
+                styles.productTagText,
+                { color: tag === "SALE" ? "#E53935" : "#0274C1" },
+              ]}>
+                {tag}
+              </Text>
+            </GlassViewComp>
+          ) : (
+            <View style={[styles.productTag, {
+              backgroundColor: tag === "SALE" ? "#E53935" : "#0274C1",
+            }]}>
+              <Text style={styles.productTagText}>{tag}</Text>
+            </View>
+          )
         )}
-        <Pressable style={styles.likeBtn} onPress={handleLike}>
-          <Feather name="heart" size={18} color={liked ? "#E53935" : "#1A1A1A"} />
+
+        {/* Wishlist button — glass on iOS 26+ */}
+        <Pressable style={styles.likeBtnWrap} onPress={handleLike}>
+          {useGlass ? (
+            <GlassViewComp style={styles.likeBtnGlass} glassEffectStyle="clear">
+              <Feather name="heart" size={16} color={liked ? "#E53935" : "#1A1A1A"} />
+            </GlassViewComp>
+          ) : (
+            <View style={[styles.likeBtnFallback, { backgroundColor: "rgba(255,255,255,0.92)" }]}>
+              <Feather name="heart" size={16} color={liked ? "#E53935" : "#1A1A1A"} />
+            </View>
+          )}
         </Pressable>
       </View>
+
+      {/* ── Info ── */}
       <View style={styles.productInfo}>
         <Text style={[styles.productBrand, { color: colors.mutedForeground }]}>
           {item.vendor ?? "Mora"}
@@ -125,20 +172,42 @@ function ProductCard({
             {formatIQD(item.price)}
           </Text>
           {item.comparePrice != null && item.comparePrice > item.price && (
-            <Text style={[styles.originalPrice, { color: "#E53935" }]}>
+            <Text style={styles.originalPrice}>
               {formatIQD(item.comparePrice)}
             </Text>
           )}
         </View>
-        <Pressable
-          style={styles.addToCartBtn}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            onAddToBag(item);
-          }}
-        >
-          <Text style={styles.addToCartText}>ADD TO BAG</Text>
-        </Pressable>
+
+        {/* Add to Bag — glass button on iOS, solid on others */}
+        {useGlassBtn ? (
+          <ExpoUIHost style={{ height: 38, marginTop: 6 }}>
+            <ExpoButton
+              label="ADD TO BAG"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                onAddToBag(item);
+              }}
+              modifiers={[
+                frameM({ maxWidth: 10000, height: 36 }),
+                glassEffectM({
+                  glass: { variant: "regular", interactive: true, tint: "#0274C1" },
+                  shape: "roundedRectangle",
+                }),
+                tintM("#FFFFFF"),
+              ]}
+            />
+          </ExpoUIHost>
+        ) : (
+          <Pressable
+            style={styles.addToCartBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onAddToBag(item);
+            }}
+          >
+            <Text style={styles.addToCartText}>ADD TO BAG</Text>
+          </Pressable>
+        )}
       </View>
     </Pressable>
   );
@@ -185,7 +254,7 @@ function BannerSlide({ banner }: { banner: Banner }) {
       {!!banner.imageUrl && (
         <Image
           source={{ uri: banner.imageUrl }}
-          style={[StyleSheet.absoluteFill, { opacity: 0.4 }]}
+          style={[StyleSheet.absoluteFill, { opacity: 0.45 }]}
           contentFit="cover"
         />
       )}
@@ -236,6 +305,7 @@ export default function HomeScreen() {
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
+
   const bottomPadding = isWeb ? 0 : insets.bottom;
 
   const mainScrollRef = useRef<ScrollView>(null);
@@ -247,16 +317,11 @@ export default function HomeScreen() {
     window.addEventListener("mora-scroll-home-top", handler);
     return () => window.removeEventListener("mora-scroll-home-top", handler);
   }, []);
+
   const categoryKey = CATEGORIES[activeCategory];
   const categoryFilter = CATEGORY_FILTERS[categoryKey ?? "ALL"];
 
-  const {
-    data,
-    isLoading,
-    isError,
-    refetch,
-    isRefetching,
-  } = useQuery({
+  const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["products", categoryKey],
     queryFn: () => fetchProducts({ category: categoryFilter, limit: 20 }),
   });
@@ -267,10 +332,7 @@ export default function HomeScreen() {
     staleTime: 300_000,
   });
 
-  const {
-    data: specialCollections,
-    isLoading: isCollectionsLoading,
-  } = useQuery({
+  const { data: specialCollections, isLoading: isCollectionsLoading } = useQuery({
     queryKey: ["special-collections"],
     queryFn: fetchSpecialCollections,
     staleTime: 120_000,
@@ -311,6 +373,7 @@ export default function HomeScreen() {
           onChange={setActiveCategory}
         />
 
+        {/* ── Banner Carousel ── */}
         <ScrollView
           horizontal
           pagingEnabled
@@ -363,6 +426,7 @@ export default function HomeScreen() {
           loading={isCollectionsLoading}
         />
 
+        {/* ── Trending section ── */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             {categoryKey === "ALL" ? "TRENDING NOW" : categoryKey}
@@ -416,6 +480,8 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+
+  /* ── Banner ── */
   banner: { height: 260, justifyContent: "flex-end", overflow: "hidden" },
   bannerContent: { padding: 24, paddingBottom: 28 },
   bannerTitle: {
@@ -443,6 +509,8 @@ const styles = StyleSheet.create({
     color: "#000000",
     letterSpacing: 1,
   },
+
+  /* ── Dots ── */
   dotsRow: {
     flexDirection: "row",
     justifyContent: "center",
@@ -451,6 +519,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   dot: { height: 6, borderRadius: 3 },
+
+  /* ── Section header ── */
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -461,17 +531,23 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1 },
   seeAll: { fontFamily: "Inter_500Medium", fontSize: 12, letterSpacing: 0.5 },
+
+  /* ── Grid ── */
   grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 16 },
+
+  /* ── Product card ── */
   productCard: { width: CARD_WIDTH },
   productImage: {
     width: "100%",
     height: CARD_WIDTH * 1.3,
-    borderRadius: 2,
+    borderRadius: 12,
     position: "relative",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
+
+  /* Tag badge */
   productTag: {
     position: "absolute",
     top: 10,
@@ -479,34 +555,55 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     zIndex: 1,
+    borderRadius: 6,
   },
-  productTagText: { color: "#FFFFFF", fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
-  likeBtn: {
+  productTagGlass: {
+    overflow: "hidden",
+  },
+  productTagText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.5,
+  },
+
+  /* Wishlist button */
+  likeBtnWrap: {
     position: "absolute",
     top: 10,
     right: 10,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 20,
-    padding: 6,
     zIndex: 1,
   },
+  likeBtnGlass: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  likeBtnFallback: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  /* Product info */
   productInfo: { paddingTop: 10, gap: 2 },
   productBrand: { fontFamily: "Inter_500Medium", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase" },
   productTitle: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18, marginTop: 2 },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
   productPrice: { fontFamily: "Inter_700Bold", fontSize: 14 },
-  originalPrice: { fontFamily: "Inter_400Regular", fontSize: 12, textDecorationLine: "line-through" },
-  errorBox: { alignItems: "center", paddingVertical: 40, gap: 12 },
-  errorText: { fontFamily: "Inter_400Regular", fontSize: 14 },
-  retryBtn: { paddingHorizontal: 20, paddingVertical: 10, borderWidth: 1, borderRadius: 4 },
-  retryText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
-  emptyBox: { alignItems: "center", paddingVertical: 40, gap: 12 },
-  emptyText: { fontFamily: "Inter_400Regular", fontSize: 14 },
+  originalPrice: { fontFamily: "Inter_400Regular", fontSize: 12, textDecorationLine: "line-through", color: "#E53935" },
+
+  /* Add to cart */
   addToCartBtn: {
     backgroundColor: "#0274C1",
-    paddingVertical: 8,
+    paddingVertical: 9,
     alignItems: "center",
-    borderRadius: 2,
+    borderRadius: 8,
     marginTop: 6,
   },
   addToCartText: {
@@ -515,4 +612,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 0.5,
   },
+
+  /* Error / empty */
+  errorBox: { alignItems: "center", paddingVertical: 40, gap: 12 },
+  errorText: { fontFamily: "Inter_400Regular", fontSize: 14 },
+  retryBtn: { paddingHorizontal: 20, paddingVertical: 10, borderWidth: 1, borderRadius: 8 },
+  retryText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  emptyBox: { alignItems: "center", paddingVertical: 40, gap: 12 },
+  emptyText: { fontFamily: "Inter_400Regular", fontSize: 14 },
 });

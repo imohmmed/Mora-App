@@ -23,6 +23,15 @@ import { AppleActionSheet } from "@/components/AppleActionSheet";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
 import { fetchOrders } from "@/lib/api";
+import { AccountExpoUI } from "@/components/AccountExpoUI";
+
+// ── glass detection (AccountExpoUI renders null if unavailable) ────────────────
+const IS_IOS = Platform.OS === "ios";
+let glassUIAvailable = false;
+try {
+  require("@expo/ui/swift-ui");
+  glassUIAvailable = true;
+} catch {}
 
 const PRIMARY = "#0274C1";
 
@@ -444,6 +453,19 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
     ? (user.firstName[0] ?? "") + (user.lastName[0] ?? "")
     : "M";
 
+  // ── iOS: native SwiftUI Form with Liquid Glass ────────────────────────────────
+  if (!showOrders && IS_IOS && glassUIAvailable) {
+    return (
+      <AccountExpoUI
+        user={user}
+        wishlistCount={wishlistCount}
+        onLogout={logout}
+        onOrdersPress={() => setShowOrders(true)}
+        onWishlistPress={() => router.push("/(tabs)/wishlist")}
+      />
+    );
+  }
+
   if (showOrders) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -489,7 +511,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
                   <Text style={[styles.orderItems, { color: colors.mutedForeground }]}>
                     {order.lineItems?.length ?? 0} item{(order.lineItems?.length ?? 0) !== 1 ? "s" : ""}
                   </Text>
-                  <Text style={[styles.orderTotal, { color: colors.foreground }]}>${order.total.toFixed(2)}</Text>
+                  <Text style={[styles.orderTotal, { color: colors.foreground }]}>{Math.round(order.total).toLocaleString("en-US")} IQD</Text>
                 </View>
               </View>
             ))

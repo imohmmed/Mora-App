@@ -1,5 +1,4 @@
 import React from "react";
-const PRIMARY = "#0274C1";
 import {
   Platform,
   Pressable,
@@ -8,23 +7,50 @@ import {
   Text,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { MoraLogo } from "@/components/MoraLogo";
 import { useCart } from "@/context/CartContext";
+import { formatIQD } from "@/lib/format";
+
+const PRIMARY = "#0274C1";
+const IS_IOS = Platform.OS === "ios";
+
+// ── Glass imports ──────────────────────────────────────────────────────────────
+let GlassViewComp: any = null;
+try { GlassViewComp = require("expo-glass-effect").GlassView; } catch {}
+
+let glassUIAvailable = false;
+let ExpoUIHost: any, ExpoButton: any;
+let glassEffectM: any, tintM: any, frameM: any;
+try {
+  const ui = require("@expo/ui/swift-ui");
+  const mods = require("@expo/ui/swift-ui/modifiers");
+  ExpoUIHost = ui.Host;
+  ExpoButton = ui.Button;
+  glassEffectM = mods.glassEffect;
+  tintM = mods.tint;
+  frameM = mods.frame;
+  glassUIAvailable = true;
+} catch {}
 
 export default function CartScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const { items, updateQty, subtotal } = useCart();
+  const useGlass = IS_IOS && !!GlassViewComp;
+  const useGlassBtn = IS_IOS && glassUIAvailable;
 
   const topPadding = isWeb ? 0 : insets.top;
   const bottomPadding = isWeb ? 0 : insets.bottom;
 
-  const delivery = subtotal > 50 ? 0 : 4.99;
+  const FREE_DELIVERY_THRESHOLD = 100_000;
+  const DELIVERY_FEE = 3_500;
+  const delivery = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const total = subtotal + delivery;
 
   const handleQty = (productId: string, variantId: string, delta: number) => {
@@ -35,34 +61,38 @@ export default function CartScreen() {
   if (items.length === 0) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View
-          style={[
-            styles.header,
-            { paddingTop: topPadding + 8, borderBottomColor: colors.border },
-          ]}
-        >
+        <View style={[styles.header, { paddingTop: topPadding + 8, borderBottomColor: colors.border }]}>
           <MoraLogo size="small" />
         </View>
         <View style={styles.emptyContainer}>
-          <View
-            style={[styles.emptyIconBg, { backgroundColor: colors.secondary }]}
-          >
+          <View style={[styles.emptyIconBg, { backgroundColor: colors.secondary }]}>
             <Feather name="shopping-bag" size={48} color={colors.mutedForeground} />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-            Your bag is empty
-          </Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Your bag is empty</Text>
           <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
             Add items to your bag to get started
           </Text>
-          <Pressable
-            style={({ pressed }) => [
-              styles.shopBtn,
-              { backgroundColor: "#0274C1", opacity: pressed ? 0.85 : 1 },
-            ]}
-          >
-            <Text style={styles.shopBtnText}>CONTINUE SHOPPING</Text>
-          </Pressable>
+          {useGlassBtn ? (
+            <ExpoUIHost style={{ height: 52, marginTop: 12 }}>
+              <ExpoButton
+                label="CONTINUE SHOPPING"
+                modifiers={[
+                  frameM({ maxWidth: 260, height: 50 }),
+                  glassEffectM({ glass: { variant: "regular", interactive: true, tint: PRIMARY }, shape: "roundedRectangle" }),
+                  tintM("#FFFFFF"),
+                ]}
+              />
+            </ExpoUIHost>
+          ) : (
+            <Pressable
+              style={({ pressed }) => [
+                styles.shopBtn,
+                { backgroundColor: PRIMARY, borderRadius: 10, opacity: pressed ? 0.85 : 1 },
+              ]}
+            >
+              <Text style={styles.shopBtnText}>CONTINUE SHOPPING</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     );
@@ -70,12 +100,8 @@ export default function CartScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.header,
-          { paddingTop: topPadding + 8, borderBottomColor: colors.border },
-        ]}
-      >
+      {/* ── Header ── */}
+      <View style={[styles.header, { paddingTop: topPadding + 8, borderBottomColor: colors.border }]}>
         <MoraLogo size="small" />
         <Text style={[styles.itemCount, { color: colors.mutedForeground }]}>
           {items.length} {items.length === 1 ? "item" : "items"}
@@ -86,11 +112,12 @@ export default function CartScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomPadding + 80 }}
       >
-        {subtotal < 50 ? (
+        {/* ── Free delivery banner ── */}
+        {subtotal < FREE_DELIVERY_THRESHOLD ? (
           <View style={[styles.deliveryBanner, { backgroundColor: colors.accent }]}>
-            <Feather name="package" size={15} color={colors.primary} />
-            <Text style={[styles.deliveryText, { color: colors.primary }]}>
-              Spend ${(50 - subtotal).toFixed(2)} more for FREE delivery
+            <Feather name="package" size={15} color={PRIMARY} />
+            <Text style={[styles.deliveryText, { color: PRIMARY }]}>
+              Spend {formatIQD(FREE_DELIVERY_THRESHOLD - subtotal)} more for FREE delivery
             </Text>
           </View>
         ) : (
@@ -102,23 +129,45 @@ export default function CartScreen() {
           </View>
         )}
 
-        <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 16 }}>
+        {/* ── Cart items ── */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 12 }}>
           {items.map((item) => (
             <View
               key={`${item.productId}-${item.variantId}`}
-              style={[styles.cartItem, { borderBottomColor: colors.border }]}
+              style={[
+                styles.cartItemCard,
+                {
+                  backgroundColor: useGlass ? "transparent" : colors.background,
+                  borderColor: colors.border,
+                  overflow: "hidden",
+                },
+              ]}
             >
+              {/* Glass background layer on iOS */}
+              {useGlass && (
+                <GlassViewComp
+                  style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
+                  glassEffectStyle="clear"
+                />
+              )}
+
               <View style={[styles.itemImage, { backgroundColor: colors.secondary }]}>
-                <Feather name="shopping-bag" size={32} color={colors.mutedForeground} />
+                {item.image ? (
+                  <Image
+                    source={{ uri: item.image }}
+                    style={StyleSheet.absoluteFill}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <Feather name="shopping-bag" size={28} color={colors.mutedForeground} />
+                )}
               </View>
+
               <View style={styles.itemDetails}>
                 <Text style={[styles.itemBrand, { color: colors.mutedForeground }]}>
                   {item.vendor}
                 </Text>
-                <Text
-                  style={[styles.itemTitle, { color: colors.foreground }]}
-                  numberOfLines={2}
-                >
+                <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={2}>
                   {item.title}
                 </Text>
                 {(item.size || item.color) && (
@@ -126,11 +175,12 @@ export default function CartScreen() {
                     {[item.size && `Size: ${item.size}`, item.color].filter(Boolean).join(" · ")}
                   </Text>
                 )}
+
                 <View style={styles.itemBottom}>
                   <Text style={[styles.itemPrice, { color: colors.foreground }]}>
-                    ${(item.price * item.quantity).toFixed(2)}
+                    {formatIQD(item.price * item.quantity)}
                   </Text>
-                  <View style={[styles.qtyRow, { borderColor: colors.border }]}>
+                  <View style={[styles.qtyRow, { borderColor: colors.border, backgroundColor: colors.secondary }]}>
                     <Pressable
                       onPress={() => handleQty(item.productId, item.variantId, -1)}
                       style={styles.qtyBtn}
@@ -138,7 +188,7 @@ export default function CartScreen() {
                       <Feather
                         name={item.quantity === 1 ? "trash-2" : "minus"}
                         size={14}
-                        color={item.quantity === 1 ? colors.destructive : colors.foreground}
+                        color={item.quantity === 1 ? "#E53935" : colors.foreground}
                       />
                     </Pressable>
                     <Text style={[styles.qtyText, { color: colors.foreground }]}>
@@ -157,56 +207,59 @@ export default function CartScreen() {
           ))}
         </View>
 
-        <View
-          style={[styles.summary, { marginHorizontal: 16, borderColor: colors.border }]}
-        >
-          <Text style={[styles.summaryTitle, { color: colors.foreground }]}>
-            ORDER SUMMARY
-          </Text>
+        {/* ── Order summary ── */}
+        <View style={[styles.summary, { marginHorizontal: 16, borderColor: colors.border, backgroundColor: useGlass ? "transparent" : colors.background, overflow: "hidden" }]}>
+          {useGlass && (
+            <GlassViewComp
+              style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
+              glassEffectStyle="clear"
+            />
+          )}
+          <Text style={[styles.summaryTitle, { color: colors.foreground }]}>ORDER SUMMARY</Text>
           <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>
-              Subtotal
-            </Text>
+            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Subtotal</Text>
             <Text style={[styles.summaryValue, { color: colors.foreground }]}>
-              ${subtotal.toFixed(2)}
+              {formatIQD(subtotal)}
             </Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>
-              Delivery
-            </Text>
-            <Text
-              style={[
-                styles.summaryValue,
-                { color: delivery === 0 ? "#43A047" : colors.foreground },
-              ]}
-            >
-              {delivery === 0 ? "FREE" : `$${delivery.toFixed(2)}`}
+            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Delivery</Text>
+            <Text style={[styles.summaryValue, { color: delivery === 0 ? "#43A047" : colors.foreground }]}>
+              {delivery === 0 ? "FREE" : formatIQD(delivery)}
             </Text>
           </View>
           <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
             <Text style={[styles.totalLabel, { color: colors.foreground }]}>Total</Text>
             <Text style={[styles.totalValue, { color: colors.foreground }]}>
-              ${total.toFixed(2)}
+              {formatIQD(total)}
             </Text>
           </View>
         </View>
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.checkoutBtn,
-            {
-              backgroundColor: PRIMARY,
-              marginHorizontal: 16,
-              marginTop: 16,
-              opacity: pressed ? 0.85 : 1,
-            },
-          ]}
-          testID="checkout-btn"
-        >
-          <Text style={styles.checkoutText}>PROCEED TO CHECKOUT</Text>
-          <Feather name="arrow-right" size={18} color="#FFFFFF" />
-        </Pressable>
+        {/* ── Checkout button ── */}
+        {useGlassBtn ? (
+          <ExpoUIHost style={{ height: 56, marginHorizontal: 16, marginTop: 16 }}>
+            <ExpoButton
+              label="PROCEED TO CHECKOUT"
+              modifiers={[
+                frameM({ maxWidth: 10000, height: 54 }),
+                glassEffectM({ glass: { variant: "regular", interactive: true, tint: PRIMARY }, shape: "roundedRectangle" }),
+                tintM("#FFFFFF"),
+              ]}
+            />
+          </ExpoUIHost>
+        ) : (
+          <Pressable
+            style={({ pressed }) => [
+              styles.checkoutBtn,
+              { backgroundColor: PRIMARY, marginHorizontal: 16, marginTop: 16, opacity: pressed ? 0.85 : 1 },
+            ]}
+            testID="checkout-btn"
+          >
+            <Text style={styles.checkoutText}>PROCEED TO CHECKOUT</Text>
+            <Feather name="arrow-right" size={18} color="#FFFFFF" />
+          </Pressable>
+        )}
       </ScrollView>
     </View>
   );
@@ -246,12 +299,8 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   shopBtn: { marginTop: 12, paddingHorizontal: 28, paddingVertical: 14 },
-  shopBtnText: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    fontSize: 13,
-    letterSpacing: 1,
-  },
+  shopBtnText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 13, letterSpacing: 1 },
+
   deliveryBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -260,21 +309,24 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   deliveryText: { fontFamily: "Inter_500Medium", fontSize: 13 },
-  cartItem: {
+
+  cartItemCard: {
     flexDirection: "row",
-    gap: 14,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
+    gap: 12,
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   itemImage: {
     width: 90,
     height: 110,
-    borderRadius: 2,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
+    overflow: "hidden",
   },
-  itemDetails: { flex: 1, gap: 4 },
+  itemDetails: { flex: 1, gap: 3 },
   itemBrand: {
     fontFamily: "Inter_500Medium",
     fontSize: 11,
@@ -289,12 +341,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 8,
   },
-  itemPrice: { fontFamily: "Inter_700Bold", fontSize: 16 },
+  itemPrice: { fontFamily: "Inter_700Bold", fontSize: 15 },
   qtyRow: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderRadius: 2,
+    borderRadius: 8,
   },
   qtyBtn: { padding: 8 },
   qtyText: {
@@ -302,11 +354,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     paddingHorizontal: 10,
   },
+
   summary: {
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 16,
     padding: 16,
-    marginTop: 24,
+    marginTop: 20,
     gap: 12,
   },
   summaryTitle: {
@@ -327,6 +380,7 @@ const styles = StyleSheet.create({
   },
   totalLabel: { fontFamily: "Inter_700Bold", fontSize: 15 },
   totalValue: { fontFamily: "Inter_700Bold", fontSize: 18 },
+
   checkoutBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -334,11 +388,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 16,
     marginBottom: 8,
+    borderRadius: 12,
   },
-  checkoutText: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    fontSize: 14,
-    letterSpacing: 1,
-  },
+  checkoutText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1 },
 });

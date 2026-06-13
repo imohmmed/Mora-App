@@ -20,10 +20,13 @@ import { useColors } from "@/hooks/useColors";
 import { searchProducts } from "@/lib/api";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
+import { formatIQD } from "@/lib/format";
 import type { Product } from "@/lib/types";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
+const IS_IOS = Platform.OS === "ios";
+const PRIMARY = "#0274C1";
 
 const TRENDING = ["Blazer", "Linen", "Dress", "Sandals", "Jeans", "Silk"];
 
@@ -47,10 +50,29 @@ function cardColor(id: string): string {
   return CARD_COLORS[h % CARD_COLORS.length];
 }
 
+// ── Glass imports ──────────────────────────────────────────────────────────────
+let GlassViewComp: any = null;
+try { GlassViewComp = require("expo-glass-effect").GlassView; } catch {}
+
+let glassUIAvailable = false;
+let ExpoUIHost: any, ExpoButton: any;
+let glassEffectM: any, paddingM: any, tintM: any, frameM: any;
+try {
+  const ui = require("@expo/ui/swift-ui");
+  const mods = require("@expo/ui/swift-ui/modifiers");
+  ExpoUIHost = ui.Host;
+  ExpoButton = ui.Button;
+  glassEffectM = mods.glassEffect;
+  paddingM = mods.padding;
+  tintM = mods.tint;
+  frameM = mods.frame;
+  glassUIAvailable = true;
+} catch {}
+
 function ResultSkeleton() {
   return (
     <View style={{ width: CARD_WIDTH }}>
-      <View style={[{ width: "100%", height: CARD_WIDTH * 1.3, borderRadius: 2, backgroundColor: "#F0F0F0" }]} />
+      <View style={[{ width: "100%", height: CARD_WIDTH * 1.3, borderRadius: 12, backgroundColor: "#F0F0F0" }]} />
       <View style={{ paddingTop: 8, gap: 6 }}>
         <View style={{ height: 10, width: 60, backgroundColor: "#E8E8E8", borderRadius: 4 }} />
         <View style={{ height: 12, width: 100, backgroundColor: "#E8E8E8", borderRadius: 4 }} />
@@ -64,9 +86,11 @@ function SearchResultCard({ item }: { item: Product }) {
   const colors = useColors();
   const router = useRouter();
   const { isWishlisted, toggle } = useWishlist();
-  const { addItem } = useCart();
   const liked = isWishlisted(item.id);
   const imageUri = item.images?.[0];
+  const useGlass = IS_IOS && !!GlassViewComp;
+  const useGlassBtn = IS_IOS && glassUIAvailable;
+  const hasDiscount = item.comparePrice != null && item.comparePrice > item.price;
 
   return (
     <Pressable
@@ -84,16 +108,27 @@ function SearchResultCard({ item }: { item: Product }) {
         ) : (
           <Feather name="shopping-bag" size={32} color={colors.mutedForeground} />
         )}
+
+        {/* Wishlist button */}
         <Pressable
-          style={styles.likeBtn}
+          style={styles.likeBtnWrap}
           onPress={() => {
             toggle(item.id);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           }}
         >
-          <Feather name="heart" size={16} color={liked ? "#E53935" : "#1A1A1A"} />
+          {useGlass ? (
+            <GlassViewComp style={styles.likeBtnGlass} glassEffectStyle="clear">
+              <Feather name="heart" size={15} color={liked ? "#E53935" : "#1A1A1A"} />
+            </GlassViewComp>
+          ) : (
+            <View style={[styles.likeBtnFallback, { backgroundColor: "rgba(255,255,255,0.92)" }]}>
+              <Feather name="heart" size={15} color={liked ? "#E53935" : "#1A1A1A"} />
+            </View>
+          )}
         </Pressable>
       </View>
+
       <View style={styles.resultInfo}>
         <Text style={[styles.resultBrand, { color: colors.mutedForeground }]}>
           {item.vendor ?? "Mora"}
@@ -103,11 +138,11 @@ function SearchResultCard({ item }: { item: Product }) {
         </Text>
         <View style={styles.resultPriceRow}>
           <Text style={[styles.resultPrice, { color: colors.foreground }]}>
-            ${item.price.toFixed(2)}
+            {formatIQD(item.price)}
           </Text>
-          {item.comparePrice != null && item.comparePrice > item.price && (
-            <Text style={[styles.resultOriginal, { color: colors.mutedForeground }]}>
-              ${item.comparePrice.toFixed(2)}
+          {hasDiscount && (
+            <Text style={styles.resultOriginal}>
+              {formatIQD(item.comparePrice!)}
             </Text>
           )}
         </View>
@@ -125,6 +160,8 @@ export default function SearchScreen() {
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const useGlass = IS_IOS && !!GlassViewComp;
+  const useGlassBtn = IS_IOS && glassUIAvailable;
 
   const topPadding = isWeb ? 0 : insets.top;
   const bottomPadding = isWeb ? 0 : insets.bottom;
@@ -146,18 +183,16 @@ export default function SearchScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.header,
-          { paddingTop: topPadding + 8, borderBottomColor: colors.border, backgroundColor: colors.background },
-        ]}
-      >
-        <View
-          style={[
-            styles.searchInputRow,
-            { backgroundColor: colors.secondary, borderColor: focused ? colors.primary : colors.border },
-          ]}
-        >
+      {/* ── Search header ── */}
+      <View style={[styles.header, { paddingTop: topPadding + 8, borderBottomColor: colors.border, backgroundColor: colors.background }]}>
+        <View style={[
+          styles.searchInputRow,
+          {
+            backgroundColor: colors.secondary,
+            borderColor: focused ? PRIMARY : colors.border,
+            borderRadius: 14,
+          },
+        ]}>
           <Feather name="search" size={16} color={colors.mutedForeground} />
           <TextInput
             ref={inputRef}
@@ -185,26 +220,44 @@ export default function SearchScreen() {
         keyboardShouldPersistTaps="handled"
         refreshControl={
           showResults ? (
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={PRIMARY} />
           ) : undefined
         }
       >
         {!showResults ? (
           <>
+            {/* ── Trending keywords ── */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>TRENDING</Text>
               <View style={styles.tagsWrap}>
-                {TRENDING.map((t) => (
-                  <Pressable
-                    key={t}
-                    style={[styles.tag, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-                    onPress={() => handleChangeText(t)}
-                  >
-                    <Text style={[styles.tagText, { color: colors.foreground }]}>{t}</Text>
-                  </Pressable>
-                ))}
+                {useGlassBtn
+                  ? TRENDING.map((t) => (
+                      <ExpoUIHost key={t} matchContents style={{ height: 38 }}>
+                        <ExpoButton
+                          label={t}
+                          onPress={() => handleChangeText(t)}
+                          modifiers={[
+                            paddingM({ horizontal: 16, vertical: 8 }),
+                            glassEffectM({ glass: { variant: "regular", interactive: true }, shape: "roundedRectangle" }),
+                            tintM(colors.foreground),
+                          ]}
+                        />
+                      </ExpoUIHost>
+                    ))
+                  : TRENDING.map((t) => (
+                      <Pressable
+                        key={t}
+                        style={[styles.tag, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+                        onPress={() => handleChangeText(t)}
+                      >
+                        <Text style={[styles.tagText, { color: colors.foreground }]}>{t}</Text>
+                      </Pressable>
+                    ))
+                }
               </View>
             </View>
+
+            {/* ── Browse categories ── */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>BROWSE</Text>
               <View style={styles.categoriesGrid}>
@@ -213,13 +266,25 @@ export default function SearchScreen() {
                     key={cat.label}
                     style={({ pressed }) => [
                       styles.categoryCard,
-                      { backgroundColor: cat.color, opacity: pressed ? 0.85 : 1 },
+                      {
+                        backgroundColor: useGlass ? "transparent" : cat.color,
+                        borderRadius: 16,
+                        overflow: "hidden",
+                        opacity: pressed ? 0.85 : 1,
+                      },
                     ]}
                     onPress={() => handleChangeText(cat.label)}
                     testID={`category-${cat.label}`}
                   >
-                    <Feather name={cat.icon} size={24} color="#1A1A1A" />
-                    <Text style={[styles.categoryLabel, { color: "#1A1A1A" }]}>{cat.label}</Text>
+                    {useGlass && (
+                      <GlassViewComp style={StyleSheet.absoluteFill} glassEffectStyle="clear" />
+                    )}
+                    <View style={[styles.categoryInner, { backgroundColor: useGlass ? "transparent" : cat.color }]}>
+                      <View style={[styles.categoryIconBg, { backgroundColor: useGlass ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.5)" }]}>
+                        <Feather name={cat.icon} size={22} color="#1A1A1A" />
+                      </View>
+                      <Text style={[styles.categoryLabel, { color: "#1A1A1A" }]}>{cat.label}</Text>
+                    </View>
                   </Pressable>
                 ))}
               </View>
@@ -277,57 +342,92 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 14,
     paddingVertical: 11,
-    borderRadius: 8,
     borderWidth: 1.5,
   },
   searchInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", padding: 0 },
+
   section: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8 },
   sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 13, letterSpacing: 1, marginBottom: 12 },
-  tagsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  tag: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 4, borderWidth: 1 },
+
+  tagsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" },
+  tag: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
   tagText: { fontFamily: "Inter_500Medium", fontSize: 14 },
+
   categoriesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   categoryCard: {
     width: (SCREEN_WIDTH - 56) / 2,
-    height: 90,
-    borderRadius: 4,
+    height: 100,
+    overflow: "hidden",
+  },
+  categoryInner: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 10,
   },
-  categoryLabel: { fontFamily: "Inter_600SemiBold", fontSize: 14, letterSpacing: 0.5 },
+  categoryIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  categoryLabel: { fontFamily: "Inter_600SemiBold", fontSize: 14, letterSpacing: 0.3 },
+
   errorBox: { alignItems: "center", paddingVertical: 60, gap: 12 },
   errorText: { fontFamily: "Inter_400Regular", fontSize: 14, textAlign: "center", paddingHorizontal: 32 },
-  retryBtn: { paddingHorizontal: 24, paddingVertical: 10, borderWidth: 1, borderRadius: 4 },
+  retryBtn: { paddingHorizontal: 24, paddingVertical: 10, borderWidth: 1, borderRadius: 8 },
   retryText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+
   resultsHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   resultsCount: { fontFamily: "Inter_400Regular", fontSize: 13 },
+
   grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 16, paddingTop: 16 },
+
+  /* Result card */
   resultCard: { width: CARD_WIDTH },
   resultImage: {
     width: "100%",
     height: CARD_WIDTH * 1.3,
-    borderRadius: 2,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
     overflow: "hidden",
   },
-  likeBtn: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 20,
-    padding: 6,
-    zIndex: 1,
+  likeBtnWrap: { position: "absolute", top: 8, right: 8, zIndex: 1 },
+  likeBtnGlass: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  likeBtnFallback: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
   },
   resultInfo: { paddingTop: 8, gap: 2 },
   resultBrand: { fontFamily: "Inter_500Medium", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase" },
   resultTitle: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18 },
   resultPriceRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
   resultPrice: { fontFamily: "Inter_700Bold", fontSize: 14 },
-  resultOriginal: { fontFamily: "Inter_400Regular", fontSize: 12, textDecorationLine: "line-through" },
+  resultOriginal: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    textDecorationLine: "line-through",
+    color: "#E53935",
+  },
+
   emptyResults: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 80, gap: 12 },
   emptyTitle: { fontFamily: "Inter_600SemiBold", fontSize: 18, textAlign: "center" },
   emptySubtitle: {

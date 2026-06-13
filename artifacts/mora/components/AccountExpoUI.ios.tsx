@@ -1,12 +1,19 @@
+/**
+ * AccountExpoUI.ios.tsx
+ * Native iOS SwiftUI Form with Liquid Glass — shown to logged-in users on iOS only.
+ * Falls back to null if @expo/ui is unavailable (Expo Go, old iOS).
+ */
 import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
+import type { AccountExpoUIProps } from "./AccountExpoUI";
+
+export type { AccountExpoUIProps };
 
 const PRIMARY = "#0274C1";
 
-// @expo/ui requires a custom dev build — not available in Expo Go.
 let glassAvailable = false;
 let Host: any, Form: any, Section: any, Label: any, Picker: any;
 let Slider: any, Stepper: any, UISwitch: any, UIText: any, ExpoButton: any;
@@ -19,86 +26,187 @@ try {
   glassAvailable = true;
 } catch {}
 
-export function AccountExpoUI() {
+export function AccountExpoUI({ user, wishlistCount, onLogout, onOrdersPress, onWishlistPress }: AccountExpoUIProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+
   const [pushNotifications, setPushNotifications] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [faceId, setFaceId] = useState(true);
-  const [currency, setCurrency] = useState<string>("USD");
+  const [currency, setCurrency] = useState<string>("IQD");
   const [size, setSize] = useState<string>("M");
-  const [priceAlert, setPriceAlert] = useState(120);
+  const [priceAlert, setPriceAlert] = useState(50_000);
   const [itemsPerPage, setItemsPerPage] = useState(20);
 
-  const tapHaptic = () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const tap = () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+  const displayName = user
+    ? `${user.firstName} ${user.lastName}`.trim()
+    : "Mora Member";
+  const email = user?.email ?? "";
 
   if (!glassAvailable) return null;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.titleBar,
-          { paddingTop: insets.top + 10, borderBottomColor: colors.border },
-        ]}
-      >
-        <Text style={[styles.title, { color: colors.foreground }]}>Account</Text>
+      {/* ── Title bar ── */}
+      <View style={[styles.titleBar, { paddingTop: insets.top + 10, borderBottomColor: colors.border }]}>
+        <Text style={[styles.title, { color: colors.foreground }]}>My Account</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Native iOS · Liquid Glass
+          Mora · Liquid Glass
         </Text>
       </View>
 
       <Host style={{ flex: 1 }} useViewportSizeMeasurement>
         <Form>
+          {/* ── Profile ── */}
           <Section>
-            <Label title="Ahmad M." systemImage="person.crop.circle.fill" color={PRIMARY} />
-            <UIText>ahmad@example.com</UIText>
-            <ExpoButton label="Edit Profile" systemImage="square.and.pencil" modifiers={[tintM(PRIMARY)]} onPress={tapHaptic} />
+            <Label title={displayName} systemImage="person.crop.circle.fill" color={PRIMARY} />
+            <UIText>{email}</UIText>
+            <ExpoButton
+              label="Edit Profile"
+              systemImage="square.and.pencil"
+              modifiers={[tintM(PRIMARY)]}
+              onPress={tap}
+            />
           </Section>
 
+          {/* ── My Account ── */}
           <Section title="My Account">
-            <ExpoButton label="My Orders" systemImage="shippingbox.fill" modifiers={[tintM(PRIMARY)]} onPress={tapHaptic} />
-            <ExpoButton label="Wishlist" systemImage="heart.fill" modifiers={[tintM(PRIMARY)]} onPress={tapHaptic} />
-            <ExpoButton label="Returns & Refunds" systemImage="arrow.uturn.backward" modifiers={[tintM(PRIMARY)]} onPress={tapHaptic} />
-            <ExpoButton label="Addresses" systemImage="mappin.and.ellipse" modifiers={[tintM(PRIMARY)]} onPress={tapHaptic} />
-            <ExpoButton label="Payment Methods" systemImage="creditcard.fill" modifiers={[tintM(PRIMARY)]} onPress={tapHaptic} />
+            <ExpoButton
+              label="My Orders"
+              systemImage="shippingbox.fill"
+              modifiers={[tintM(PRIMARY)]}
+              onPress={() => { tap(); onOrdersPress(); }}
+            />
+            <ExpoButton
+              label={wishlistCount > 0 ? `Wishlist (${wishlistCount})` : "Wishlist"}
+              systemImage="heart.fill"
+              modifiers={[tintM(PRIMARY)]}
+              onPress={() => { tap(); onWishlistPress(); }}
+            />
+            <ExpoButton
+              label="Returns & Refunds"
+              systemImage="arrow.uturn.backward"
+              modifiers={[tintM(PRIMARY)]}
+              onPress={tap}
+            />
+            <ExpoButton
+              label="Addresses"
+              systemImage="mappin.and.ellipse"
+              modifiers={[tintM(PRIMARY)]}
+              onPress={tap}
+            />
+            <ExpoButton
+              label="Payment Methods"
+              systemImage="creditcard.fill"
+              modifiers={[tintM(PRIMARY)]}
+              onPress={tap}
+            />
           </Section>
 
+          {/* ── Preferences ── */}
           <Section title="Preferences" footer="Manage how Mora communicates with you.">
-            <UISwitch value={pushNotifications} onValueChange={setPushNotifications} label="Push Notifications" color={PRIMARY} />
-            <UISwitch value={emailUpdates} onValueChange={setEmailUpdates} label="Email Updates" color={PRIMARY} />
-            <UISwitch value={darkMode} onValueChange={setDarkMode} label="Dark Mode" color={PRIMARY} />
-            <UISwitch value={faceId} onValueChange={setFaceId} label="Unlock with Face ID" color={PRIMARY} />
-            <Picker label="Currency" selection={currency} onSelectionChange={(v: string) => setCurrency(v)}>
+            <UISwitch
+              value={pushNotifications}
+              onValueChange={setPushNotifications}
+              label="Push Notifications"
+              color={PRIMARY}
+            />
+            <UISwitch
+              value={emailUpdates}
+              onValueChange={setEmailUpdates}
+              label="Email Updates"
+              color={PRIMARY}
+            />
+            <UISwitch
+              value={faceId}
+              onValueChange={setFaceId}
+              label="Unlock with Face ID"
+              color={PRIMARY}
+            />
+            <Picker
+              label="Currency"
+              selection={currency}
+              onSelectionChange={(v: string) => setCurrency(v)}
+            >
+              <UIText modifiers={[tagM("IQD")]}>IQD ع.د</UIText>
               <UIText modifiers={[tagM("USD")]}>USD $</UIText>
               <UIText modifiers={[tagM("EUR")]}>EUR €</UIText>
               <UIText modifiers={[tagM("GBP")]}>GBP £</UIText>
-              <UIText modifiers={[tagM("IQD")]}>IQD ع.د</UIText>
             </Picker>
           </Section>
 
-          <Section title="Shopping" footer={`Notify me when items drop below $${priceAlert}. Show ${itemsPerPage} items per page.`}>
-            <Picker label="Default Size" selection={size} onSelectionChange={(v: string) => setSize(v)}>
+          {/* ── Shopping Preferences ── */}
+          <Section
+            title="Shopping"
+            footer={`Notify when items drop below ${Math.round(priceAlert).toLocaleString()} IQD. Show ${itemsPerPage} items per page.`}
+          >
+            <Picker
+              label="Default Size"
+              selection={size}
+              onSelectionChange={(v: string) => setSize(v)}
+            >
               <UIText modifiers={[tagM("XS")]}>XS</UIText>
               <UIText modifiers={[tagM("S")]}>S</UIText>
               <UIText modifiers={[tagM("M")]}>M</UIText>
               <UIText modifiers={[tagM("L")]}>L</UIText>
               <UIText modifiers={[tagM("XL")]}>XL</UIText>
             </Picker>
-            <Slider value={priceAlert} min={0} max={500} step={10} onValueChange={(v: number) => setPriceAlert(Math.round(v))} label={<UIText>Price alert: ${priceAlert}</UIText>} />
-            <Stepper label="Items per page" defaultValue={20} min={10} max={50} step={10} onValueChanged={(v: number) => setItemsPerPage(v)} />
+            <Slider
+              value={priceAlert}
+              min={10_000}
+              max={500_000}
+              step={5_000}
+              onValueChange={(v: number) => setPriceAlert(Math.round(v))}
+              label={<UIText>Price alert: {Math.round(priceAlert).toLocaleString()} IQD</UIText>}
+            />
+            <Stepper
+              label="Items per page"
+              defaultValue={20}
+              min={10}
+              max={50}
+              step={10}
+              onValueChanged={(v: number) => setItemsPerPage(v)}
+            />
           </Section>
 
+          {/* ── Support ── */}
           <Section title="Support">
-            <ExpoButton label="Help & FAQs" systemImage="questionmark.circle.fill" modifiers={[tintM(PRIMARY)]} onPress={tapHaptic} />
-            <ExpoButton label="Contact Us" systemImage="bubble.left.fill" modifiers={[tintM(PRIMARY)]} onPress={tapHaptic} />
-            <ExpoButton label="About Mora" systemImage="info.circle.fill" modifiers={[tintM(PRIMARY)]} onPress={tapHaptic} />
-            <ExpoButton label="Privacy Policy" systemImage="lock.shield.fill" modifiers={[tintM(PRIMARY)]} onPress={tapHaptic} />
+            <ExpoButton
+              label="Help & FAQs"
+              systemImage="questionmark.circle.fill"
+              modifiers={[tintM(PRIMARY)]}
+              onPress={tap}
+            />
+            <ExpoButton
+              label="Contact Us"
+              systemImage="bubble.left.fill"
+              modifiers={[tintM(PRIMARY)]}
+              onPress={tap}
+            />
+            <ExpoButton
+              label="About Mora"
+              systemImage="info.circle.fill"
+              modifiers={[tintM(PRIMARY)]}
+              onPress={tap}
+            />
+            <ExpoButton
+              label="Privacy Policy"
+              systemImage="lock.shield.fill"
+              modifiers={[tintM(PRIMARY)]}
+              onPress={tap}
+            />
           </Section>
 
+          {/* ── Sign Out ── */}
           <Section>
-            <ExpoButton role="destructive" label="Sign Out" systemImage="rectangle.portrait.and.arrow.right" onPress={tapHaptic} />
+            <ExpoButton
+              role="destructive"
+              label="Sign Out"
+              systemImage="rectangle.portrait.and.arrow.right"
+              onPress={() => { tap(); onLogout(); }}
+            />
           </Section>
         </Form>
       </Host>
@@ -108,7 +216,11 @@ export function AccountExpoUI() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  titleBar: { paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
+  titleBar: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+  },
   title: { fontFamily: "Inter_700Bold", fontSize: 28, letterSpacing: -0.5 },
   subtitle: { fontFamily: "Inter_500Medium", fontSize: 12, marginTop: 2 },
 });
