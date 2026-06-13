@@ -18,7 +18,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
@@ -82,6 +82,7 @@ export default function AuthScreen() {
   const isDark = resolvedScheme === "dark";
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const { loginWithSocial } = useAuth();
   const { lang, language, setLang } = useLanguage();
 
@@ -121,7 +122,7 @@ export default function AuthScreen() {
     setLoading(true); setError("");
     try {
       await sendPhoneOTP(e164);
-      router.push({ pathname: "/auth/verify", params: { phone: e164 } });
+      router.push({ pathname: "/auth/verify", params: { phone: e164, returnTo: returnTo || "" } });
     } catch (err: any) {
       setError(err.message ?? t.errSend);
     } finally { setLoading(false); }
@@ -133,7 +134,7 @@ export default function AuthScreen() {
     try {
       const { uid, email, name } = await signInWithGoogle();
       await loginWithSocial(uid, name, email);
-      router.replace("/(tabs)/account");
+      router.replace(((returnTo as string) || "/(tabs)/account") as any);
     } catch (err: any) {
       setError(err.message ?? t.errGoogle);
     } finally { setGLoading(false); }
@@ -145,7 +146,7 @@ export default function AuthScreen() {
     try {
       const { uid, email, name } = await signInWithApple();
       await loginWithSocial(uid, name, email);
-      router.replace("/(tabs)/account");
+      router.replace(((returnTo as string) || "/(tabs)/account") as any);
     } catch (err: any) {
       setError(err.message ?? t.errApple);
     } finally { setALoading(false); }

@@ -16,9 +16,11 @@ function makeToken(): string {
 function getUser(token: string) {
   const session = db.prepare(`SELECT customer_id FROM sessions WHERE token=?`).get(token) as Row | undefined;
   if (!session) return null;
-  const c = db.prepare(`SELECT id,first_name,last_name,email,orders_count,total_spent,phone,created_at FROM customers WHERE id=?`).get(session["customer_id"] as string) as Row | undefined;
+  const c = db.prepare(`SELECT id,first_name,last_name,email,orders_count,total_spent,phone,address,created_at FROM customers WHERE id=?`).get(session["customer_id"] as string) as Row | undefined;
   if (!c) return null;
-  return { id: c["id"], firstName: c["first_name"], lastName: c["last_name"], email: c["email"], ordersCount: c["orders_count"], totalSpent: c["total_spent"], phone: c["phone"], createdAt: c["created_at"] };
+  let addr: Record<string, string> = {};
+  try { addr = JSON.parse((c["address"] as string) || "{}"); } catch { addr = {}; }
+  return { id: c["id"], firstName: c["first_name"], lastName: c["last_name"], email: c["email"], ordersCount: c["orders_count"], totalSpent: c["total_spent"], phone: c["phone"], address: addr, createdAt: c["created_at"] };
 }
 
 router.post("/store/auth/register", (req, res) => {

@@ -1,394 +1,289 @@
-import React from "react";
+import React, { useCallback, useRef } from "react";
 import {
+  Animated,
+  LayoutAnimation,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  UIManager,
   View,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { useColors } from "@/hooks/useColors";
-import { MoraLogo } from "@/components/MoraLogo";
+import Swipeable from "react-native-gesture-handler/Swipeable";
+import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { formatIQD } from "@/lib/format";
+import type { CartItem } from "@/lib/types";
+
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const PRIMARY = "#0274C1";
-const IS_IOS = Platform.OS === "ios";
 
-// ── Glass imports ──────────────────────────────────────────────────────────────
-let GlassViewComp: any = null;
-try { GlassViewComp = require("expo-glass-effect").GlassView; } catch {}
+function StepIndicator({ current, isDark }: { current: 1 | 2 | 3; isDark: boolean }) {
+  const steps = ["Cart", "Checkout", "Done"];
+  const inactiveCircle = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
+  const inactiveText   = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)";
+  const inactiveLine   = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
 
-let glassUIAvailable = false;
-let ExpoUIHost: any, ExpoButton: any;
-let glassEffectM: any, tintM: any, frameM: any;
-try {
-  const ui = require("@expo/ui/swift-ui");
-  const mods = require("@expo/ui/swift-ui/modifiers");
-  ExpoUIHost = ui.Host;
-  ExpoButton = ui.Button;
-  glassEffectM = mods.glassEffect;
-  tintM = mods.tint;
-  frameM = mods.frame;
-  glassUIAvailable = true;
-} catch {}
+  return (
+    <View style={si.container}>
+      {steps.map((label, i) => {
+        const step   = i + 1;
+        const done   = step < current;
+        const active = step === current;
+        return (
+          <React.Fragment key={label}>
+            <View style={si.stepWrap}>
+              <View style={[si.circle, {
+                backgroundColor: active || done ? PRIMARY : "transparent",
+                borderColor: active || done ? PRIMARY : inactiveCircle,
+              }]}>
+                {done
+                  ? <Feather name="check" size={11} color="#fff" />
+                  : <Text style={{ fontSize: 11, fontWeight: "700", color: active ? "#fff" : inactiveText }}>{step}</Text>
+                }
+              </View>
+              <Text style={{ fontSize: 9, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase",
+                color: active ? PRIMARY : inactiveText, marginTop: 5 }}>
+                {label}
+              </Text>
+            </View>
+            {i < 2 && <View style={[si.line, { backgroundColor: step < current ? PRIMARY : inactiveLine }]} />}
+          </React.Fragment>
+        );
+      })}
+    </View>
+  );
+}
+
+const si = StyleSheet.create({
+  container: { flexDirection: "row", alignItems: "center", paddingHorizontal: 30, marginTop: 10, marginBottom: 4 },
+  stepWrap:  { alignItems: "center" },
+  circle:    { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  line:      { flex: 1, height: 1.5, marginBottom: 16 },
+});
+
+function CartItemRow({
+  item,
+  isDark,
+  onRemove,
+  onInc,
+  onDec,
+}: {
+  item: CartItem;
+  isDark: boolean;
+  onRemove: () => void;
+  onInc: () => void;
+  onDec: () => void;
+}) {
+  const swipeRef = useRef<InstanceType<typeof Swipeable>>(null);
+  const card    = isDark ? "#1C1C1E" : "#FFFFFF";
+  const textCol = isDark ? "#FFFFFF" : "#1A1A1A";
+  const sub     = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.42)";
+  const btnBdr  = isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.12)";
+
+  const renderRightActions = (progress: Animated.AnimatedInterpolation<number>) => {
+    const scale   = progress.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1], extrapolate: "clamp" });
+    const opacity = progress.interpolate({ inputRange: [0, 0.6], outputRange: [0, 1], extrapolate: "clamp" });
+    return (
+      <View style={cs.swipeOuter}>
+        <Pressable style={cs.swipeBtn} onPress={() => { swipeRef.current?.close(); onRemove(); }}>
+          <Animated.View style={{ alignItems: "center", transform: [{ scale }], opacity }}>
+            <Feather name="trash-2" size={20} color="#fff" />
+            <Text style={cs.swipeLbl}>Remove</Text>
+          </Animated.View>
+        </Pressable>
+      </View>
+    );
+  };
+
+  return (
+    <Swipeable
+      ref={swipeRef}
+      renderRightActions={renderRightActions}
+      rightThreshold={40}
+      overshootRight={false}
+    >
+      <View style={[cs.card, { backgroundColor: card }]}>
+        <View style={cs.imgWrap}>
+          {item.image ? (
+            <Image source={{ uri: item.image }} style={cs.img} contentFit="cover" />
+          ) : (
+            <View style={[cs.img, { backgroundColor: isDark ? "#2C2C2E" : "#F0F0F0", alignItems: "center", justifyContent: "center" }]}>
+              <Feather name="image" size={22} color={sub} />
+            </View>
+          )}
+        </View>
+
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text style={[cs.titleTxt, { color: textCol }]} numberOfLines={2}>{item.title}</Text>
+          {(item.size || item.color) && (
+            <Text style={{ fontSize: 11, color: sub }}>
+              {[item.size, item.color].filter(Boolean).join("  ·  ")}
+            </Text>
+          )}
+          <Text style={cs.price}>{formatIQD(item.price)}</Text>
+        </View>
+
+        <View style={cs.qtyCol}>
+          <Pressable onPress={onInc} style={[cs.qBtn, { borderColor: btnBdr }]} hitSlop={8}>
+            <Feather name="plus" size={13} color={textCol} />
+          </Pressable>
+          <Text style={[cs.qtyNum, { color: textCol }]}>{item.quantity}</Text>
+          <Pressable onPress={onDec} style={[cs.qBtn, { borderColor: btnBdr }]} hitSlop={8}>
+            <Feather name={item.quantity === 1 ? "trash-2" : "minus"} size={13}
+              color={item.quantity === 1 ? "#FF3B30" : textCol} />
+          </Pressable>
+        </View>
+      </View>
+    </Swipeable>
+  );
+}
+
+const cs = StyleSheet.create({
+  card:      { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 14, marginHorizontal: 16, marginBottom: 8, borderRadius: 18 },
+  imgWrap:   { width: 72, height: 90, borderRadius: 12, overflow: "hidden", flexShrink: 0 },
+  img:       { width: "100%", height: "100%" },
+  titleTxt:  { fontSize: 13, fontWeight: "600", lineHeight: 18 },
+  price:     { fontSize: 14, fontWeight: "700", color: PRIMARY, marginTop: 2 },
+  qtyCol:    { alignItems: "center", gap: 8 },
+  qBtn:      { width: 28, height: 28, borderRadius: 14, borderWidth: 1.2, alignItems: "center", justifyContent: "center" },
+  qtyNum:    { fontSize: 14, fontWeight: "700", minWidth: 18, textAlign: "center" },
+  swipeOuter:{ width: 80, marginBottom: 8, marginRight: 16 },
+  swipeBtn:  { flex: 1, backgroundColor: "#FF3B30", borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  swipeLbl:  { color: "#fff", fontSize: 10, fontWeight: "600", marginTop: 4 },
+});
 
 export default function CartScreen() {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const isWeb = Platform.OS === "web";
-  const { items, updateQty, subtotal } = useCart();
-  const useGlass = IS_IOS && !!GlassViewComp;
-  const useGlassBtn = IS_IOS && glassUIAvailable;
+  const { items, subtotal, removeItem, updateQty } = useCart();
+  const { user }    = useAuth();
+  const router      = useRouter();
+  const insets      = useSafeAreaInsets();
+  const { resolvedScheme } = useTheme();
+  const isDark      = resolvedScheme === "dark";
 
-  const topPadding = isWeb ? 0 : insets.top;
-  const bottomPadding = isWeb ? 0 : insets.bottom;
+  const bg      = isDark ? "#0A0A0A" : "#F2F2F7";
+  const textCol = isDark ? "#FFFFFF" : "#1A1A1A";
+  const sub     = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.42)";
+  const barBg   = isDark ? "rgba(14,14,14,0.97)" : "rgba(255,255,255,0.97)";
+  const barBdr  = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)";
 
-  const FREE_DELIVERY_THRESHOLD = 100_000;
-  const DELIVERY_FEE = 3_500;
-  const delivery = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
-  const total = subtotal + delivery;
+  const totalQty = items.reduce((s, i) => s + i.quantity, 0);
 
-  const handleQty = (productId: string, variantId: string, delta: number) => {
+  const handleRemove = useCallback((productId: string, variantId: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    removeItem(productId, variantId);
+  }, [removeItem]);
+
+  const handleDec = useCallback((productId: string, variantId: string, qty: number) => {
+    if (qty <= 1) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      removeItem(productId, variantId);
+    } else {
+      Haptics.selectionAsync();
+      updateQty(productId, variantId, -1);
+    }
+  }, [removeItem, updateQty]);
+
+  const handleInc = useCallback((productId: string, variantId: string) => {
+    Haptics.selectionAsync();
+    updateQty(productId, variantId, 1);
+  }, [updateQty]);
+
+  const handleCheckout = () => {
+    if (!user) {
+      router.push({ pathname: "/auth", params: { returnTo: "/checkout" } });
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    updateQty(productId, variantId, delta);
+    router.push("/checkout");
   };
 
   if (items.length === 0) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { paddingTop: topPadding + 8, borderBottomColor: colors.border }]}>
-          <MoraLogo size="small" />
+      <View style={[s.root, s.center, { backgroundColor: bg, paddingTop: insets.top }]}>
+        <View style={[s.emptyCircle, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" }]}>
+          <Feather name="shopping-bag" size={36} color={sub} />
         </View>
-        <View style={styles.emptyContainer}>
-          <View style={[styles.emptyIconBg, { backgroundColor: colors.secondary }]}>
-            <Feather name="shopping-bag" size={48} color={colors.mutedForeground} />
-          </View>
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Your bag is empty</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
-            Add items to your bag to get started
-          </Text>
-          {useGlassBtn ? (
-            <ExpoUIHost style={{ height: 52, marginTop: 12 }}>
-              <ExpoButton
-                label="CONTINUE SHOPPING"
-                modifiers={[
-                  frameM({ maxWidth: 260, height: 50 }),
-                  glassEffectM({ glass: { variant: "regular", interactive: true, tint: PRIMARY }, shape: "roundedRectangle" }),
-                  tintM("#FFFFFF"),
-                ]}
-              />
-            </ExpoUIHost>
-          ) : (
-            <Pressable
-              style={({ pressed }) => [
-                styles.shopBtn,
-                { backgroundColor: PRIMARY, borderRadius: 10, opacity: pressed ? 0.85 : 1 },
-              ]}
-            >
-              <Text style={styles.shopBtnText}>CONTINUE SHOPPING</Text>
-            </Pressable>
-          )}
-        </View>
+        <Text style={[s.emptyTitle, { color: textCol }]}>Your cart is empty</Text>
+        <Text style={[s.emptySub, { color: sub }]}>Add items to get started</Text>
+        <Pressable style={s.shopBtn} onPress={() => router.push("/(tabs)" as any)}>
+          <Text style={s.shopBtnTxt}>SHOP NOW</Text>
+        </Pressable>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* ── Header ── */}
-      <View style={[styles.header, { paddingTop: topPadding + 8, borderBottomColor: colors.border }]}>
-        <MoraLogo size="small" />
-        <Text style={[styles.itemCount, { color: colors.mutedForeground }]}>
-          {items.length} {items.length === 1 ? "item" : "items"}
-        </Text>
+    <View style={[s.root, { backgroundColor: bg }]}>
+      <View style={[s.header, { paddingTop: insets.top + 6 }]}>
+        <Text style={[s.pageTitle, { color: textCol }]}>MY CART</Text>
+        <View style={s.badge}>
+          <Text style={s.badgeTxt}>{totalQty}</Text>
+        </View>
       </View>
+
+      <StepIndicator current={1} isDark={isDark} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: bottomPadding + 80 }}
+        contentContainerStyle={{ paddingTop: 10, paddingBottom: 130 }}
       >
-        {/* ── Free delivery banner ── */}
-        {subtotal < FREE_DELIVERY_THRESHOLD ? (
-          <View style={[styles.deliveryBanner, { backgroundColor: colors.accent }]}>
-            <Feather name="package" size={15} color={PRIMARY} />
-            <Text style={[styles.deliveryText, { color: PRIMARY }]}>
-              Spend {formatIQD(FREE_DELIVERY_THRESHOLD - subtotal)} more for FREE delivery
-            </Text>
-          </View>
-        ) : (
-          <View style={[styles.deliveryBanner, { backgroundColor: "#E8F5E9" }]}>
-            <Feather name="check-circle" size={15} color="#43A047" />
-            <Text style={[styles.deliveryText, { color: "#43A047" }]}>
-              You qualify for FREE delivery!
-            </Text>
-          </View>
-        )}
-
-        {/* ── Cart items ── */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 12 }}>
-          {items.map((item) => (
-            <View
-              key={`${item.productId}-${item.variantId}`}
-              style={[
-                styles.cartItemCard,
-                {
-                  backgroundColor: useGlass ? "transparent" : colors.background,
-                  borderColor: colors.border,
-                  overflow: "hidden",
-                },
-              ]}
-            >
-              {/* Glass background layer on iOS */}
-              {useGlass && (
-                <GlassViewComp
-                  style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
-                  glassEffectStyle="clear"
-                />
-              )}
-
-              <View style={[styles.itemImage, { backgroundColor: colors.secondary }]}>
-                {item.image ? (
-                  <Image
-                    source={{ uri: item.image }}
-                    style={StyleSheet.absoluteFill}
-                    contentFit="cover"
-                  />
-                ) : (
-                  <Feather name="shopping-bag" size={28} color={colors.mutedForeground} />
-                )}
-              </View>
-
-              <View style={styles.itemDetails}>
-                <Text style={[styles.itemBrand, { color: colors.mutedForeground }]}>
-                  {item.vendor}
-                </Text>
-                <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={2}>
-                  {item.title}
-                </Text>
-                {(item.size || item.color) && (
-                  <Text style={[styles.itemMeta, { color: colors.mutedForeground }]}>
-                    {[item.size && `Size: ${item.size}`, item.color].filter(Boolean).join(" · ")}
-                  </Text>
-                )}
-
-                <View style={styles.itemBottom}>
-                  <Text style={[styles.itemPrice, { color: colors.foreground }]}>
-                    {formatIQD(item.price * item.quantity)}
-                  </Text>
-                  <View style={[styles.qtyRow, { borderColor: colors.border, backgroundColor: colors.secondary }]}>
-                    <Pressable
-                      onPress={() => handleQty(item.productId, item.variantId, -1)}
-                      style={styles.qtyBtn}
-                    >
-                      <Feather
-                        name={item.quantity === 1 ? "trash-2" : "minus"}
-                        size={14}
-                        color={item.quantity === 1 ? "#E53935" : colors.foreground}
-                      />
-                    </Pressable>
-                    <Text style={[styles.qtyText, { color: colors.foreground }]}>
-                      {item.quantity}
-                    </Text>
-                    <Pressable
-                      onPress={() => handleQty(item.productId, item.variantId, 1)}
-                      style={styles.qtyBtn}
-                    >
-                      <Feather name="plus" size={14} color={colors.foreground} />
-                    </Pressable>
-                  </View>
-                </View>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* ── Order summary ── */}
-        <View style={[styles.summary, { marginHorizontal: 16, borderColor: colors.border, backgroundColor: useGlass ? "transparent" : colors.background, overflow: "hidden" }]}>
-          {useGlass && (
-            <GlassViewComp
-              style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
-              glassEffectStyle="clear"
-            />
-          )}
-          <Text style={[styles.summaryTitle, { color: colors.foreground }]}>ORDER SUMMARY</Text>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Subtotal</Text>
-            <Text style={[styles.summaryValue, { color: colors.foreground }]}>
-              {formatIQD(subtotal)}
-            </Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Delivery</Text>
-            <Text style={[styles.summaryValue, { color: delivery === 0 ? "#43A047" : colors.foreground }]}>
-              {delivery === 0 ? "FREE" : formatIQD(delivery)}
-            </Text>
-          </View>
-          <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
-            <Text style={[styles.totalLabel, { color: colors.foreground }]}>Total</Text>
-            <Text style={[styles.totalValue, { color: colors.foreground }]}>
-              {formatIQD(total)}
-            </Text>
-          </View>
-        </View>
-
-        {/* ── Checkout button ── */}
-        {useGlassBtn ? (
-          <ExpoUIHost style={{ height: 56, marginHorizontal: 16, marginTop: 16 }}>
-            <ExpoButton
-              label="PROCEED TO CHECKOUT"
-              modifiers={[
-                frameM({ maxWidth: 10000, height: 54 }),
-                glassEffectM({ glass: { variant: "regular", interactive: true, tint: PRIMARY }, shape: "roundedRectangle" }),
-                tintM("#FFFFFF"),
-              ]}
-            />
-          </ExpoUIHost>
-        ) : (
-          <Pressable
-            style={({ pressed }) => [
-              styles.checkoutBtn,
-              { backgroundColor: PRIMARY, marginHorizontal: 16, marginTop: 16, opacity: pressed ? 0.85 : 1 },
-            ]}
-            testID="checkout-btn"
-          >
-            <Text style={styles.checkoutText}>PROCEED TO CHECKOUT</Text>
-            <Feather name="arrow-right" size={18} color="#FFFFFF" />
-          </Pressable>
-        )}
+        {items.map((item) => (
+          <CartItemRow
+            key={`${item.productId}-${item.variantId}`}
+            item={item}
+            isDark={isDark}
+            onRemove={() => handleRemove(item.productId, item.variantId)}
+            onInc={() => handleInc(item.productId, item.variantId)}
+            onDec={() => handleDec(item.productId, item.variantId, item.quantity)}
+          />
+        ))}
       </ScrollView>
+
+      <View style={[s.bar, { backgroundColor: barBg, borderTopColor: barBdr, paddingBottom: insets.bottom + 14 }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={[s.barLabel, { color: sub }]}>Subtotal</Text>
+          <Text style={[s.barTotal, { color: textCol }]}>{formatIQD(subtotal)}</Text>
+        </View>
+        <Pressable
+          onPress={handleCheckout}
+          style={({ pressed }) => [s.checkBtn, pressed && { opacity: 0.82 }]}
+        >
+          <Text style={s.checkTxt}>CHECKOUT</Text>
+          <Feather name="arrow-right" size={15} color="#fff" />
+        </Pressable>
+      </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  itemCount: { fontFamily: "Inter_500Medium", fontSize: 14 },
-  emptyContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    paddingHorizontal: 32,
-  },
-  emptyIconBg: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  emptyTitle: { fontFamily: "Inter_700Bold", fontSize: 22, textAlign: "center" },
-  emptySubtitle: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 15,
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  shopBtn: { marginTop: 12, paddingHorizontal: 28, paddingVertical: 14 },
-  shopBtnText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 13, letterSpacing: 1 },
-
-  deliveryBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  deliveryText: { fontFamily: "Inter_500Medium", fontSize: 13 },
-
-  cartItemCard: {
-    flexDirection: "row",
-    gap: 12,
-    padding: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  itemImage: {
-    width: 90,
-    height: 110,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-    overflow: "hidden",
-  },
-  itemDetails: { flex: 1, gap: 3 },
-  itemBrand: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 11,
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-  },
-  itemTitle: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 20 },
-  itemMeta: { fontFamily: "Inter_400Regular", fontSize: 13 },
-  itemBottom: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 8,
-  },
-  itemPrice: { fontFamily: "Inter_700Bold", fontSize: 15 },
-  qtyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 8,
-  },
-  qtyBtn: { padding: 8 },
-  qtyText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-    paddingHorizontal: 10,
-  },
-
-  summary: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 20,
-    gap: 12,
-  },
-  summaryTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 13,
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  summaryRow: { flexDirection: "row", justifyContent: "space-between" },
-  summaryLabel: { fontFamily: "Inter_400Regular", fontSize: 14 },
-  summaryValue: { fontFamily: "Inter_500Medium", fontSize: 14 },
-  totalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    borderTopWidth: 1,
-    paddingTop: 12,
-    marginTop: 4,
-  },
-  totalLabel: { fontFamily: "Inter_700Bold", fontSize: 15 },
-  totalValue: { fontFamily: "Inter_700Bold", fontSize: 18 },
-
-  checkoutBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    paddingVertical: 16,
-    marginBottom: 8,
-    borderRadius: 12,
-  },
-  checkoutText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1 },
+const s = StyleSheet.create({
+  root:        { flex: 1 },
+  center:      { alignItems: "center", justifyContent: "center" },
+  header:      { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingBottom: 2, gap: 10 },
+  pageTitle:   { fontSize: 22, fontWeight: "800", letterSpacing: -0.5, flex: 1 },
+  badge:       { backgroundColor: PRIMARY, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3 },
+  badgeTxt:    { color: "#fff", fontSize: 12, fontWeight: "700" },
+  bar:         { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 20, paddingTop: 16, borderTopWidth: 1 },
+  barLabel:    { fontSize: 11, fontWeight: "500", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
+  barTotal:    { fontSize: 18, fontWeight: "800", letterSpacing: -0.4 },
+  checkBtn:    { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#111", paddingHorizontal: 22, paddingVertical: 14, borderRadius: 50 },
+  checkTxt:    { color: "#fff", fontSize: 14, fontWeight: "700", letterSpacing: 0.6 },
+  emptyCircle: { width: 88, height: 88, borderRadius: 44, alignItems: "center", justifyContent: "center", marginBottom: 20 },
+  emptyTitle:  { fontSize: 20, fontWeight: "700", marginBottom: 8 },
+  emptySub:    { fontSize: 14, marginBottom: 36 },
+  shopBtn:     { backgroundColor: "#111", paddingHorizontal: 36, paddingVertical: 14, borderRadius: 50 },
+  shopBtnTxt:  { color: "#fff", fontSize: 14, fontWeight: "700", letterSpacing: 1 },
 });

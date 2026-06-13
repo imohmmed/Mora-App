@@ -11,6 +11,7 @@ export type AuthUser = {
   ordersCount: number;
   totalSpent: number;
   phone?: string;
+  address?: { city?: string; district?: string; street?: string };
   createdAt: string;
 };
 

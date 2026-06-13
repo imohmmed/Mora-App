@@ -31,7 +31,7 @@ export default function VerifyScreen() {
   const isDark = resolvedScheme === "dark";
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { phone } = useLocalSearchParams<{ phone: string }>();
+  const { phone, returnTo } = useLocalSearchParams<{ phone: string; returnTo?: string }>();
   const { loginWithPhone } = useAuth();
 
   const [digits, setDigits] = useState<string[]>(Array(BOX_COUNT).fill(""));
@@ -58,7 +58,7 @@ export default function VerifyScreen() {
     try {
       const { uid, phone: verifiedPhone } = await verifyOTP(code);
       await loginWithPhone(verifiedPhone || phone, uid);
-      router.replace("/(tabs)/account");
+      router.replace(((returnTo as string) || "/(tabs)/account") as any);
     } catch (err: any) {
       setError(err.message ?? "رمز التحقق غير صحيح");
       setDigits(Array(BOX_COUNT).fill(""));

@@ -39,6 +39,59 @@ router.get("/store/orders/:id", (req, res) => {
   res.json({ data: order, meta: {}, error: null });
 });
 
+// ─── Store: customer place order ─────────────────────────────────────────────
+
+router.post("/store/orders", (req, res) => {
+  const id = `ord_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const now = new Date().toISOString();
+  const b = req.body as Record<string, unknown>;
+  const count = (db.prepare(`SELECT COUNT(*) AS n FROM orders`).get() as Row)["n"] as number;
+  const orderNum = `#${1000 + count + 1}`;
+
+  const subtotal = Number(b["subtotal"]) || 0;
+  const shipping = Number(b["shipping"]) || 0;
+  const total = subtotal + shipping;
+
+  // Resolve customer from Bearer token if present
+  let customerId: string | null = null;
+  let email = (b["email"] as string) || "";
+  const authHeader = req.headers["authorization"];
+  if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+    try {
+      const sess = db.prepare(`SELECT customer_id FROM sessions WHERE token=?`).get(authHeader.slice(7)) as Row | undefined;
+      if (sess) {
+        customerId = sess["customer_id"] as string;
+        const cust = db.prepare(`SELECT email FROM customers WHERE id=?`).get(customerId) as Row | undefined;
+        if (cust && !email) email = cust["email"] as string;
+      }
+    } catch { /* ignore */ }
+  }
+
+  db.prepare(
+    `INSERT INTO orders (id,order_number,customer_id,email,status,financial_status,fulfillment_status,subtotal,shipping,tax,total,currency,shipping_address,line_items,note,tags,is_draft,is_abandoned,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+  ).run(
+    id, orderNum, customerId, email,
+    "pending", "pending", "unfulfilled",
+    subtotal, shipping, 0, total, "IQD",
+    JSON.stringify(b["shippingAddress"] ?? {}),
+    JSON.stringify(b["lineItems"] ?? []),
+    (b["note"] as string) ?? "", "[]",
+    0, 0, now, now
+  );
+
+  if (customerId) {
+    db.prepare(`UPDATE customers SET orders_count = orders_count + 1, total_spent = total_spent + ?, updated_at=? WHERE id=?`)
+      .run(total, now, customerId);
+  }
+
+  logActivity("order.created", "Orders", "order", id, `Order ${orderNum}`, email || "Guest",
+    { orderNumber: orderNum, email, total, currency: "IQD", paymentMethod: (b["paymentMethod"] as string) ?? "cod" });
+
+  const order = parseOne(db.prepare(`SELECT * FROM orders WHERE id=?`).get(id) as Row | undefined);
+  res.status(201).json({ data: order, meta: {}, error: null });
+});
+
 // ─── Admin endpoints ──────────────────────────────────────────────────────────
 
 router.use("/admin/orders", requireAdmin);
