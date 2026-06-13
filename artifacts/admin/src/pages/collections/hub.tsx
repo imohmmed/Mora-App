@@ -43,11 +43,17 @@ type Product = {
 
 // ─── API helpers ────────────────────────────────────────────────────────────
 
+const ADMIN_TOKEN = "dev-token-mora";
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     ...init,
-    credentials: "include",
-    headers: { "Content-Type": "application/json", Accept: "application/json", ...(init?.headers ?? {}) },
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${ADMIN_TOKEN}`,
+      ...(init?.headers ?? {}),
+    },
   });
   const json = await res.json() as { data: T; error?: string };
   if (!res.ok) throw new Error((json as { error?: string }).error ?? `Error ${res.status}`);
@@ -497,8 +503,9 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
 
   const { data: allProducts = [] } = useQuery<Product[]>({
     queryKey: ["admin-all-products"],
-    queryFn: () => fetch(`${API}/admin/products?limit=200`, { credentials: "include" })
-      .then((r) => r.json()).then((j: { data: Product[] }) => j.data),
+    queryFn: () => fetch(`${API}/admin/products?limit=200`, {
+      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+    }).then((r) => r.json()).then((j: { data: Product[] }) => j.data),
     staleTime: 60_000,
     enabled: showPicker,
   });

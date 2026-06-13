@@ -61,11 +61,17 @@ const NUM_OPS = [
 
 // ─── API Helper ────────────────────────────────────────────────────────────────
 
+const ADMIN_TOKEN = "dev-token-mora";
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     ...init,
-    credentials: "include",
-    headers: { "Content-Type": "application/json", Accept: "application/json", ...(init?.headers ?? {}) },
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${ADMIN_TOKEN}`,
+      ...(init?.headers ?? {}),
+    },
   });
   const json = await res.json() as { data: T; error?: string };
   if (!res.ok) throw new Error((json as { error?: string }).error ?? `Error ${res.status}`);
