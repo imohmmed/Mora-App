@@ -506,9 +506,9 @@ export default function Products() {
                       <h3 className="font-bold text-lg mb-2">{product.title}</h3>
                       <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{product.description}</p>
                       <div className="flex items-center gap-3">
-                        <span className="font-bold">${product.price.toFixed(2)}</span>
+                        <span className="font-bold">{Math.round(product.price).toLocaleString("en-US")} IQD</span>
                         {product.comparePrice && product.comparePrice > product.price && (
-                          <span className="text-muted-foreground line-through text-sm">${product.comparePrice.toFixed(2)}</span>
+                          <span className="text-destructive line-through text-sm">{Math.round(product.comparePrice).toLocaleString("en-US")} IQD</span>
                         )}
                       </div>
                     </div>

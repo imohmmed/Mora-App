@@ -1,5 +1,5 @@
 import { Router } from "express";
-import db, { parseRows, parseOne } from "../lib/db.js";
+import db, { parseRows, parseOne, logActivity } from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
 import type { Row } from "../lib/types.js";
 
@@ -100,18 +100,29 @@ router.post("/admin/products", (req, res) => {
   const slug = (b["urlSlug"] as string | undefined) || (b["title"] as string || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || id;
   db.prepare(`INSERT INTO products (id,title,vendor,category,description,price,compare_price,cost,images,tags,status,option_definitions,seo_title,seo_description,url_slug,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(id, b["title"] ?? "", b["vendor"] ?? "", b["category"] ?? "women", b["description"] ?? "", b["price"] ?? 0, b["compareAtPrice"] ?? null, b["cost"] ?? null, JSON.stringify(b["images"] ?? []), JSON.stringify(b["tags"] ?? []), b["status"] ?? "draft", JSON.stringify(b["optionDefinitions"] ?? []), b["seoTitle"] ?? "", b["seoDescription"] ?? "", slug, now, now);
+  const title = b["title"] as string ?? "";
+  logActivity("product.created", "Products", "product", id, title, "Admin",
+    { title, price: b["price"], category: b["category"], status: b["status"] ?? "draft" });
   const product = parseOne(db.prepare(`SELECT * FROM products WHERE id=?`).get(id) as Row | undefined);
   res.status(201).json({ data: product, meta: {}, error: null });
 });
 
 router.put("/admin/products/:id", (req, res) => {
   const id = req.params["id"];
-  const existing = db.prepare(`SELECT id FROM products WHERE id=?`).get(id);
+  const existing = db.prepare(`SELECT id, title, status FROM products WHERE id=?`).get(id) as Row | undefined;
   if (!existing) { res.status(404).json({ data: null, meta: {}, error: "Product not found" }); return; }
   const b = req.body as Record<string, unknown>;
   const now = new Date().toISOString();
   db.prepare(`UPDATE products SET title=COALESCE(?,title), vendor=COALESCE(?,vendor), category=COALESCE(?,category), description=COALESCE(?,description), price=COALESCE(?,price), compare_price=?, cost=COALESCE(?,cost), images=COALESCE(?,images), tags=COALESCE(?,tags), status=COALESCE(?,status), option_definitions=COALESCE(?,option_definitions), seo_title=COALESCE(?,seo_title), seo_description=COALESCE(?,seo_description), url_slug=COALESCE(?,url_slug), updated_at=? WHERE id=?`)
     .run(b["title"] ?? null, b["vendor"] ?? null, b["category"] ?? null, b["description"] ?? null, b["price"] ?? null, b["compareAtPrice"] ?? null, b["cost"] ?? null, b["images"] !== undefined ? JSON.stringify(b["images"]) : null, b["tags"] !== undefined ? JSON.stringify(b["tags"]) : null, b["status"] ?? null, b["optionDefinitions"] !== undefined ? JSON.stringify(b["optionDefinitions"]) : null, b["seoTitle"] ?? null, b["seoDescription"] ?? null, b["urlSlug"] ?? null, now, id);
+  const currentTitle = (b["title"] as string | undefined) ?? (existing["title"] as string);
+  const prevStatus   = existing["status"] as string;
+  const newStatus    = (b["status"] as string | undefined) ?? prevStatus;
+  const action = newStatus !== prevStatus
+    ? (newStatus === "active" ? "product.published" : newStatus === "archived" ? "product.archived" : "product.updated")
+    : "product.updated";
+  logActivity(action, "Products", "product", id, currentTitle, "Admin",
+    { title: currentTitle, status: newStatus, price: b["price"] });
   const product = parseOne(db.prepare(`SELECT * FROM products WHERE id=?`).get(id) as Row | undefined);
   res.json({ data: product, meta: {}, error: null });
 });

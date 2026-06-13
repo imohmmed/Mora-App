@@ -244,6 +244,22 @@ db.exec(`
   );
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS activity_log (
+    id           TEXT PRIMARY KEY,
+    action       TEXT NOT NULL,
+    category     TEXT NOT NULL,
+    entity_type  TEXT NOT NULL,
+    entity_id    TEXT,
+    entity_title TEXT NOT NULL DEFAULT '',
+    actor        TEXT NOT NULL DEFAULT 'Admin',
+    metadata     TEXT NOT NULL DEFAULT '{}',
+    created_at   TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_act_created ON activity_log(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_act_category ON activity_log(category);
+`);
+
 // ─── Seed helpers ─────────────────────────────────────────────────────────────
 
 const iso = (daysAgo: number) =>
@@ -826,5 +842,117 @@ const csNow = new Date().toISOString();
   insertContentSection.run(id, key, title, items, sort_order, "active", csNow);
 });
 } // ── end seed block 2 ─────────────────────────────────────────────────────────
+
+// ─── Activity Log seed (idempotent — runs once when table is empty) ───────────
+
+{
+  const empty = ((db.prepare("SELECT COUNT(*) as n FROM activity_log").get() as Row)["n"] as number) === 0;
+  if (empty) {
+    const ins = db.prepare(`INSERT OR IGNORE INTO activity_log (id,action,category,entity_type,entity_id,entity_title,actor,metadata,created_at) VALUES (?,?,?,?,?,?,?,?,?)`);
+    const seedActs = db.transaction(() => {
+      // Orders
+      for (const o of (db.prepare("SELECT * FROM orders WHERE is_draft=0").all() as Row[])) {
+        const num = o["order_number"] as string;
+        const cr  = o["created_at"]   as string;
+        const tot = o["total"]        as number;
+        ins.run(`s_oc_${o["id"]}`, "order.created",          "Orders", "order", o["id"], `Order ${num}`, "Admin",
+          JSON.stringify({ orderNumber: num, email: o["email"], total: tot, status: o["status"] }), cr);
+        if (o["financial_status"] === "paid" || o["status"] === "processing") {
+          ins.run(`s_op_${o["id"]}`, "order.payment_received", "Orders", "order", o["id"], `Order ${num}`, "System",
+            JSON.stringify({ orderNumber: num, amount: tot }), new Date(new Date(cr).getTime() + 900_000).toISOString());
+        }
+        if (o["fulfillment_status"] === "fulfilled") {
+          ins.run(`s_of_${o["id"]}`, "order.fulfilled",        "Orders", "order", o["id"], `Order ${num}`, "Admin",
+            JSON.stringify({ orderNumber: num, email: o["email"] }), new Date(new Date(cr).getTime() + 10_800_000).toISOString());
+        }
+        if ((o["status"] as string) === "cancelled") {
+          ins.run(`s_ocan_${o["id"]}`, "order.cancelled",     "Orders", "order", o["id"], `Order ${num}`, "Admin",
+            JSON.stringify({ orderNumber: num }), new Date(new Date(cr).getTime() + 21_600_000).toISOString());
+        }
+        if (o["financial_status"] === "refunded") {
+          ins.run(`s_oref_${o["id"]}`, "order.refunded",      "Orders", "order", o["id"], `Order ${num}`, "Admin",
+            JSON.stringify({ orderNumber: num, amount: tot }), new Date(new Date(cr).getTime() + 43_200_000).toISOString());
+        }
+      }
+      // Products
+      for (const p of (db.prepare("SELECT * FROM products").all() as Row[])) {
+        const title = p["title"] as string;
+        const cr    = p["created_at"] as string;
+        ins.run(`s_pc_${p["id"]}`, "product.created",   "Products", "product", p["id"], title, "Admin",
+          JSON.stringify({ title, price: p["price"], category: p["category"], status: p["status"] }), cr);
+        if (p["status"] === "active") {
+          ins.run(`s_pp_${p["id"]}`, "product.published", "Products", "product", p["id"], title, "Admin",
+            JSON.stringify({ title, price: p["price"] }), new Date(new Date(cr).getTime() + 1_800_000).toISOString());
+        }
+      }
+      // Customers
+      for (const c of (db.prepare("SELECT * FROM customers").all() as Row[])) {
+        const name = `${c["first_name"]} ${c["last_name"]}`;
+        ins.run(`s_cuc_${c["id"]}`, "customer.registered", "Customers", "customer", c["id"], name, "System",
+          JSON.stringify({ name, email: c["email"], phone: c["phone"] }), c["created_at"]);
+      }
+      // Discounts
+      for (const d of (db.prepare("SELECT * FROM discounts").all() as Row[])) {
+        const code = (d["code"] as string) || (d["title"] as string);
+        ins.run(`s_dc_${d["id"]}`, "discount.created", "Discounts", "discount", d["id"], code, "Admin",
+          JSON.stringify({ code, type: d["type"], value: d["value"], status: d["status"] }), d["created_at"]);
+      }
+      // Collections
+      for (const c of (db.prepare("SELECT * FROM collections").all() as Row[])) {
+        ins.run(`s_cc_${c["id"]}`, "collection.created", "Collections", "collection", c["id"], c["title"] as string, "Admin",
+          JSON.stringify({ title: c["title"] }), c["created_at"]);
+      }
+      // Blog posts
+      for (const b of (db.prepare("SELECT * FROM blog_posts").all() as Row[])) {
+        const act = (b["status"] as string) === "published" ? "blog.published" : "blog.drafted";
+        ins.run(`s_bc_${b["id"]}`, act, "Blog", "blog_post", b["id"], b["title"] as string, "Admin",
+          JSON.stringify({ title: b["title"], status: b["status"] }), b["created_at"]);
+      }
+    });
+    seedActs();
+  }
+}
+
+// ─── Activity log helpers ─────────────────────────────────────────────────────
+
+export function logActivity(
+  action: string, category: string, entityType: string,
+  entityId: string | null, entityTitle: string,
+  actor = "Admin", metadata: Record<string, unknown> = {}
+) {
+  try {
+    db.prepare(`INSERT INTO activity_log (id,action,category,entity_type,entity_id,entity_title,actor,metadata,created_at) VALUES (?,?,?,?,?,?,?,?,?)`)
+      .run(`act_${Date.now()}_${Math.random().toString(36).substring(2,8)}`,
+        action, category, entityType, entityId, entityTitle, actor,
+        JSON.stringify(metadata), new Date().toISOString());
+  } catch { /* non-blocking */ }
+}
+
+export function getActivityLog(limit = 50, offset = 0, category?: string, search?: string) {
+  const conds: string[] = [];
+  const ps: (string | number)[] = [];
+  if (category && category !== "all") { conds.push("category=?"); ps.push(category); }
+  if (search) {
+    conds.push("(entity_title LIKE ? OR action LIKE ? OR actor LIKE ?)");
+    const s = `%${search}%`; ps.push(s, s, s);
+  }
+  const where = conds.length ? " WHERE " + conds.join(" AND ") : "";
+  const rows  = db.prepare(`SELECT * FROM activity_log${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`).all(...ps, limit, offset) as Row[];
+  const total = ((db.prepare(`SELECT COUNT(*) as n FROM activity_log${where}`).get(...ps) as Row)["n"]) as number;
+  return {
+    total,
+    items: rows.map(r => ({
+      id:          r["id"]           as string,
+      action:      r["action"]       as string,
+      category:    r["category"]     as string,
+      entityType:  r["entity_type"]  as string,
+      entityId:    r["entity_id"]    as string | null,
+      entityTitle: r["entity_title"] as string,
+      actor:       r["actor"]        as string,
+      metadata:    (() => { try { return JSON.parse(r["metadata"] as string || "{}"); } catch { return {}; } })() as Record<string, unknown>,
+      createdAt:   r["created_at"]   as string,
+    })),
+  };
+}
 
 export default db;

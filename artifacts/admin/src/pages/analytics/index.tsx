@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { adminFetch } from "@/lib/api";
-import { useAdminGetLiveOrders, useAdminGetAnalyticsReports } from "@workspace/api-client-react";
+import { useAdminGetLiveOrders } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,8 @@ import { Link } from "wouter";
 import {
   Calendar, ChevronDown, RefreshCw, TrendingUp, TrendingDown,
   Minus, Users, ShoppingCart, Package, DollarSign, Activity,
-  Info, ArrowUpRight, ExternalLink,
+  Info, ArrowUpRight, ExternalLink, Search, X, ChevronRight,
+  Tag, Layers, BookOpen, Settings, User, Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -840,60 +841,325 @@ function LiveView() {
   );
 }
 
-// ─── Reports Tab ──────────────────────────────────────────────────────────────
+// ─── Activity Log Types ───────────────────────────────────────────────────────
 
-function ReportsTab() {
-  const { data: reportsRes, isLoading } = useAdminGetAnalyticsReports();
-  const reports = (reportsRes?.data ?? []) as Array<{ name: string; value: string; change: string }>;
+type ActivityItem = {
+  id: string;
+  action: string;
+  category: string;
+  entityType: string;
+  entityId: string | null;
+  entityTitle: string;
+  actor: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+};
 
-  const changeColor = (c: string) =>
-    c.startsWith("+") ? "text-green-600" : c.startsWith("-") ? "text-red-600" : "text-muted-foreground";
+// ─── Activity helpers ─────────────────────────────────────────────────────────
 
-  const ChangeIcon = ({ c }: { c: string }) =>
-    c.startsWith("+") ? <TrendingUp className="h-3 w-3 text-green-600" /> :
-    c.startsWith("-") ? <TrendingDown className="h-3 w-3 text-red-600" /> :
-    <Minus className="h-3 w-3 text-muted-foreground" />;
+const ACTION_META: Record<string, { label: string; color: string; bg: string }> = {
+  "order.created":          { label: "Order created",          color: "text-blue-700",   bg: "bg-blue-50"   },
+  "order.payment_received": { label: "Payment received",       color: "text-green-700",  bg: "bg-green-50"  },
+  "order.fulfilled":        { label: "Order fulfilled",        color: "text-teal-700",   bg: "bg-teal-50"   },
+  "order.cancelled":        { label: "Order cancelled",        color: "text-red-700",    bg: "bg-red-50"    },
+  "order.refunded":         { label: "Order refunded",         color: "text-orange-700", bg: "bg-orange-50" },
+  "order.processing":       { label: "Order processing",       color: "text-indigo-700", bg: "bg-indigo-50" },
+  "order.completed":        { label: "Order completed",        color: "text-green-700",  bg: "bg-green-50"  },
+  "order.deleted":          { label: "Order deleted",          color: "text-red-700",    bg: "bg-red-50"    },
+  "order.updated":          { label: "Order updated",          color: "text-slate-700",  bg: "bg-slate-50"  },
+  "product.created":        { label: "Product added",          color: "text-violet-700", bg: "bg-violet-50" },
+  "product.published":      { label: "Product published",      color: "text-green-700",  bg: "bg-green-50"  },
+  "product.updated":        { label: "Product updated",        color: "text-slate-700",  bg: "bg-slate-50"  },
+  "product.archived":       { label: "Product archived",       color: "text-gray-700",   bg: "bg-gray-50"   },
+  "customer.registered":    { label: "Customer registered",    color: "text-pink-700",   bg: "bg-pink-50"   },
+  "discount.created":       { label: "Discount created",       color: "text-amber-700",  bg: "bg-amber-50"  },
+  "collection.created":     { label: "Collection created",     color: "text-cyan-700",   bg: "bg-cyan-50"   },
+  "blog.published":         { label: "Blog post published",    color: "text-lime-700",   bg: "bg-lime-50"   },
+  "blog.drafted":           { label: "Blog post drafted",      color: "text-gray-700",   bg: "bg-gray-50"   },
+};
+
+const CATEGORY_ICON: Record<string, React.ReactNode> = {
+  Orders:      <ShoppingCart className="h-3.5 w-3.5" />,
+  Products:    <Package       className="h-3.5 w-3.5" />,
+  Customers:   <User          className="h-3.5 w-3.5" />,
+  Discounts:   <Tag           className="h-3.5 w-3.5" />,
+  Collections: <Layers        className="h-3.5 w-3.5" />,
+  Blog:        <BookOpen      className="h-3.5 w-3.5" />,
+  Settings:    <Settings      className="h-3.5 w-3.5" />,
+};
+
+const CATEGORY_BADGE: Record<string, string> = {
+  Orders:      "bg-blue-100 text-blue-800",
+  Products:    "bg-violet-100 text-violet-800",
+  Customers:   "bg-pink-100 text-pink-800",
+  Discounts:   "bg-amber-100 text-amber-800",
+  Collections: "bg-cyan-100 text-cyan-800",
+  Blog:        "bg-lime-100 text-lime-800",
+  Settings:    "bg-gray-100 text-gray-800",
+};
+
+function fmtTs(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) +
+    " at " + d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+}
+
+function fmtRelative(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1)  return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)  return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+// ─── Activity Detail Panel ────────────────────────────────────────────────────
+
+function ActivityDetailPanel({ item, onClose }: { item: ActivityItem; onClose: () => void }) {
+  const meta = ACTION_META[item.action] ?? { label: item.action, color: "text-slate-700", bg: "bg-slate-50" };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-medium">Store Reports</CardTitle>
-        <p className="text-xs text-muted-foreground">Computed from real order and customer data. Comparison: last 30 days vs. prior 30 days.</p>
-      </CardHeader>
-      <CardContent className="pt-0">
+    <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
+      <div
+        className="w-full max-w-md h-full bg-background border-l shadow-2xl flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div className="flex items-center gap-3">
+            <div className={cn("w-9 h-9 rounded-full flex items-center justify-center", meta.bg)}>
+              <span className={cn("text-lg", meta.color)}>
+                {CATEGORY_ICON[item.category] ?? <Activity className="h-4 w-4" />}
+              </span>
+            </div>
+            <div>
+              <p className="font-semibold text-sm leading-tight">{meta.label}</p>
+              <p className="text-xs text-muted-foreground">{item.entityTitle}</p>
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          {/* Info grid */}
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { label: "Category",   value: item.category },
+              { label: "Done by",    value: item.actor },
+              { label: "Date & time",value: fmtTs(item.createdAt), full: true },
+              { label: "Action",     value: item.action },
+              ...(item.entityId ? [{ label: "Entity ID", value: item.entityId }] : []),
+            ].map(({ label, value, full }) => (
+              <div key={label} className={cn("space-y-1", full && "col-span-2")}>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+                <p className="text-sm font-medium break-all">{value}</p>
+              </div>
+            ))}
+          </div>
+
+          <Separator />
+
+          {/* Metadata */}
+          {Object.keys(item.metadata).length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Details</p>
+              <div className="rounded-lg border divide-y">
+                {Object.entries(item.metadata).map(([k, v]) => (
+                  <div key={k} className="flex justify-between items-start px-4 py-2.5 gap-4">
+                    <span className="text-xs text-muted-foreground capitalize shrink-0">
+                      {k.replace(/([A-Z])/g, " $1").replace(/_/g, " ")}
+                    </span>
+                    <span className="text-xs font-medium text-right break-all">
+                      {typeof v === "object" ? JSON.stringify(v) : String(v ?? "—")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Reports / Activity Log Tab ───────────────────────────────────────────────
+
+const ALL_CATEGORIES = ["All", "Orders", "Products", "Customers", "Discounts", "Collections", "Blog"];
+
+function ReportsTab() {
+  const [search, setSearch]       = useState("");
+  const [category, setCategory]   = useState("All");
+  const [selected, setSelected]   = useState<ActivityItem | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [search]);
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["activity-log", category, debouncedSearch],
+    queryFn: () => {
+      const params = new URLSearchParams({ limit: "80" });
+      if (category !== "All") params.set("category", category);
+      if (debouncedSearch)    params.set("search",   debouncedSearch);
+      return adminFetch<ActivityItem[]>(`/admin/analytics/activity?${params}`).then(r => r.data ?? []);
+    },
+    staleTime: 30_000,
+  });
+  const items = data ?? [];
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Activity Log</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Every store event — who did it and when</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        </Button>
+      </div>
+
+      {/* Search + filters */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search activities…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9 h-9 text-sm"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {ALL_CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
+                category === cat
+                  ? "bg-foreground text-background border-foreground"
+                  : "bg-background text-muted-foreground border-border hover:border-foreground/40 hover:text-foreground"
+              )}
+            >
+              {cat !== "All" && CATEGORY_ICON[cat]}
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="border rounded-xl overflow-hidden">
+        {/* Column headers */}
+        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-0 border-b bg-muted/30 px-4 py-2.5">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Activity</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-28 text-center">Category</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-24 text-center">By</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-28 text-right">When</span>
+        </div>
+
         {isLoading ? (
-          <div className="space-y-3">
-            {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+          <div className="divide-y">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3.5">
+                <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3.5 w-48" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+                <Skeleton className="h-5 w-20" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            ))}
+          </div>
+        ) : items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+              <Activity className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="font-medium text-sm">No activity found</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {search ? `No results for "${search}"` : "No events in this category yet"}
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/40">
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs">Report</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground text-xs">Value</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground text-xs">vs. prior period</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {reports.map((report, i) => (
-                  <tr key={i} className="hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-3 font-medium">{report.name}</td>
-                    <td className="px-4 py-3 text-right font-semibold">{report.value}</td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={cn("font-medium flex items-center justify-end gap-1", changeColor(report.change))}>
-                        <ChangeIcon c={report.change} />
-                        {report.change}
+          <div className="divide-y">
+            {items.map(item => {
+              const meta = ACTION_META[item.action] ?? { label: item.action, color: "text-slate-700", bg: "bg-slate-50" };
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setSelected(item)}
+                  className="w-full grid grid-cols-[1fr_auto_auto_auto] gap-0 items-center px-4 py-3.5 hover:bg-muted/30 transition-colors text-left group"
+                >
+                  {/* Activity */}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", meta.bg)}>
+                      <span className={meta.color}>
+                        {CATEGORY_ICON[item.category] ?? <Activity className="h-3.5 w-3.5" />}
                       </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{meta.label}</p>
+                      <p className="text-xs text-muted-foreground truncate">{item.entityTitle}</p>
+                    </div>
+                  </div>
+
+                  {/* Category */}
+                  <div className="w-28 flex justify-center">
+                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium", CATEGORY_BADGE[item.category] ?? "bg-gray-100 text-gray-800")}>
+                      {item.category}
+                    </span>
+                  </div>
+
+                  {/* Actor */}
+                  <div className="w-24 flex justify-center">
+                    <span className="text-xs text-muted-foreground font-medium">{item.actor}</span>
+                  </div>
+
+                  {/* Time */}
+                  <div className="w-28 flex items-center justify-end gap-1">
+                    <span className="text-xs text-muted-foreground">{fmtRelative(item.createdAt)}</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
-      </CardContent>
-    </Card>
+
+        {/* Footer count */}
+        {!isLoading && items.length > 0 && (
+          <div className="px-4 py-2.5 border-t bg-muted/20 text-xs text-muted-foreground text-right">
+            {items.length} event{items.length !== 1 ? "s" : ""}
+            {(search || category !== "All") ? " (filtered)" : ""}
+          </div>
+        )}
+      </div>
+
+      {/* Detail panel */}
+      {selected && <ActivityDetailPanel item={selected} onClose={() => setSelected(null)} />}
+    </div>
   );
 }
 

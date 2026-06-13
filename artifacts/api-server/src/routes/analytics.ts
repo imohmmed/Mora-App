@@ -1,5 +1,5 @@
 import { Router } from "express";
-import db, { parseRows, getAnalyticsSummary, getRevenueByDay, getTopProducts, getAnalyticsForRange } from "../lib/db.js";
+import db, { parseRows, getAnalyticsSummary, getRevenueByDay, getTopProducts, getAnalyticsForRange, getActivityLog } from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
 import type { Row } from "../lib/types.js";
 
@@ -106,6 +106,17 @@ router.put("/admin/markets/:id", (req, res) => {
 router.delete("/admin/markets/:id", (req, res) => {
   db.prepare(`DELETE FROM markets WHERE id=?`).run(req.params["id"]);
   res.json({ data: { deleted: true }, meta: {}, error: null });
+});
+
+// ─── Activity Log ─────────────────────────────────────────────────────────────
+
+router.get("/admin/analytics/activity", (req, res) => {
+  const limit    = Math.min(100, Math.max(1, parseInt((req.query["limit"]    as string) ?? "60")));
+  const offset   = Math.max(0,              parseInt((req.query["offset"]   as string) ?? "0"));
+  const category = (req.query["category"] as string | undefined)?.trim() || undefined;
+  const search   = (req.query["search"]   as string | undefined)?.trim() || undefined;
+  const result = getActivityLog(limit, offset, category, search);
+  res.json({ data: result.items, meta: { total: result.total, limit, offset }, error: null });
 });
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
