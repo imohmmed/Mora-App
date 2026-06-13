@@ -9,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Settings as SettingsIcon, Truck, Receipt, MapPin, Bell, Wallet, Trash2, Plus } from "lucide-react";
+import { Settings as SettingsIcon, Truck, Receipt, MapPin, Bell, Wallet, Trash2, Plus, Users as UsersIcon } from "lucide-react";
+import { useAdminAuth } from "@/context/AdminAuthContext";
+import { TeamTab } from "./TeamTab";
 
 type ShippingMethod = { id: string; label: string; duration: string; price: number };
 type TaxRegion = { id: string; region: string; rate: number };
@@ -81,6 +83,7 @@ const PAYMENT_FIELDS: { key: keyof PaymentMethods; label: string; desc: string }
 const genId = (prefix: string) => `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
 export default function Settings() {
+  const { isOwner } = useAdminAuth();
   const { data: response, isLoading } = useAdminGetSettings();
   const updateSettings = useAdminUpdateSettings();
   const queryClient = useQueryClient();
@@ -224,6 +227,12 @@ export default function Settings() {
             <Wallet className="w-4 h-4" />
             Payments
           </TabsTrigger>
+          {isOwner && (
+            <TabsTrigger value="team" className="gap-2">
+              <UsersIcon className="w-4 h-4" />
+              Team
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* GENERAL */}
@@ -571,6 +580,13 @@ export default function Settings() {
 
           {saveButton}
         </TabsContent>
+
+        {/* TEAM */}
+        {isOwner && (
+          <TabsContent value="team" className="space-y-6">
+            <TeamTab />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

@@ -1,9 +1,13 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AdminLayout } from "@/components/layout/admin-layout";
+import { AdminAuthProvider, useAdminAuth } from "@/context/AdminAuthContext";
+import { Loader2 } from "lucide-react";
 import NotFound from "@/pages/not-found";
+import Login from "@/pages/login";
 
 import Dashboard from "@/pages/dashboard";
 import Orders from "@/pages/orders";
@@ -32,7 +36,20 @@ import Notifications from "@/pages/notifications";
 
 const queryClient = new QueryClient();
 
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
+
 function Router() {
+  const { user, isLoading } = useAdminAuth();
+
+  if (isLoading) return <LoadingScreen />;
+  if (!user) return <Login />;
+
   return (
     <AdminLayout>
       <Switch>
@@ -40,7 +57,6 @@ function Router() {
         <Route path="/analytics" component={Analytics} />
         <Route path="/orders" component={Orders} />
         <Route path="/orders/:id" component={OrderDetail} />
-        {/* Products — specific sub-routes BEFORE :id wildcard */}
         <Route path="/products/new" component={NewProduct} />
         <Route path="/products/inventory" component={Inventory} />
         <Route path="/products/purchase-orders" component={PurchaseOrders} />
@@ -48,7 +64,6 @@ function Router() {
         <Route path="/products/gift-cards" component={GiftCards} />
         <Route path="/products/:id" component={ProductDetail} />
         <Route path="/products" component={Products} />
-        {/* Customers — specific sub-routes BEFORE :id wildcard */}
         <Route path="/customers/segments" component={CustomerSegments} />
         <Route path="/customers/companies" component={Companies} />
         <Route path="/customers/:id" component={CustomerDetail} />
@@ -57,10 +72,8 @@ function Router() {
         <Route path="/collections/:id/edit" component={CollectionForm} />
         <Route path="/collections/special" component={CollectionsHub} />
         <Route path="/collections" component={CollectionsHub} />
-        {/* Discounts */}
         <Route path="/discounts/new" component={NewDiscount} />
         <Route path="/discounts" component={Discounts} />
-        {/* Content */}
         <Route path="/content/blog/new" component={BlogPostEditor} />
         <Route path="/content/menus/new" component={MenuEditor} />
         <Route path="/content/menus/:id" component={MenuEditor} />
@@ -73,16 +86,22 @@ function Router() {
   );
 }
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string;
+
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <QueryClientProvider client={queryClient}>
+        <AdminAuthProvider>
+          <TooltipProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <Router />
+            </WouterRouter>
+            <Toaster />
+          </TooltipProvider>
+        </AdminAuthProvider>
+      </QueryClientProvider>
+    </GoogleOAuthProvider>
   );
 }
 

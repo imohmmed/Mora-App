@@ -81,8 +81,18 @@ router.post("/store/orders", (req, res) => {
   );
 
   if (customerId) {
-    db.prepare(`UPDATE customers SET orders_count = orders_count + 1, total_spent = total_spent + ?, updated_at=? WHERE id=?`)
-      .run(total, now, customerId);
+    const addr = (b["shippingAddress"] as Record<string, string> | undefined) ?? {};
+    const customerAddress = JSON.stringify({
+      city: addr["city"] || "",
+      district: addr["district"] || "",
+      street: addr["street"] || "",
+    });
+    db.prepare(`UPDATE customers SET
+      orders_count = orders_count + 1,
+      total_spent  = total_spent + ?,
+      address      = ?,
+      updated_at   = ?
+    WHERE id = ?`).run(total, customerAddress, now, customerId);
   }
 
   logActivity("order.created", "Orders", "order", id, `Order ${orderNum}`, email || "Guest",

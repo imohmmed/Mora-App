@@ -1,29 +1,17 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  LayoutDashboard,
-  ShoppingCart,
-  Package,
-  Users,
-  FolderTree,
-  Tags,
-  FileText,
-  Settings,
-  BarChart3,
-  ChevronDown,
-  ChevronRight,
-  UserSearch,
-  Boxes,
-  File,
-  List as ListIcon,
-  Warehouse,
-  Bell,
+  LayoutDashboard, ShoppingCart, Package, Users, FolderTree, Tags, FileText,
+  Settings, BarChart3, ChevronDown, ChevronRight, UserSearch, Boxes, File,
+  List as ListIcon, Warehouse, Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAdminAuth, type AdminPermissions } from "@/context/AdminAuthContext";
 
 type NavLeaf = { href: string; label: string; icon?: React.ElementType };
 type NavSection = {
   label?: string;
+  permission?: keyof AdminPermissions;
   items: (NavLeaf & { icon: React.ElementType })[];
   sub?: NavLeaf[];
 };
@@ -34,6 +22,7 @@ const NAV: NavSection[] = [
   },
   {
     label: "Store",
+    permission: "orders",
     items: [
       { href: "/orders", label: "Orders", icon: ShoppingCart },
       { href: "/products", label: "Products", icon: Package },
@@ -45,6 +34,7 @@ const NAV: NavSection[] = [
   },
   {
     label: "Customers",
+    permission: "customers",
     items: [
       { href: "/customers", label: "All Customers", icon: Users },
     ],
@@ -54,6 +44,7 @@ const NAV: NavSection[] = [
   },
   {
     label: "Marketing",
+    permission: "marketing",
     items: [
       { href: "/discounts", label: "Discounts", icon: Tags },
       { href: "/notifications", label: "Notifications", icon: Bell },
@@ -61,6 +52,7 @@ const NAV: NavSection[] = [
   },
   {
     label: "Content",
+    permission: "content",
     items: [
       { href: "/content", label: "Blog Posts", icon: FileText },
     ],
@@ -72,6 +64,7 @@ const NAV: NavSection[] = [
   },
   {
     label: "Analytics",
+    permission: "analytics",
     items: [
       { href: "/analytics", label: "Analytics", icon: BarChart3 },
     ],
@@ -85,15 +78,15 @@ const BOTTOM: (NavLeaf & { icon: React.ElementType })[] = [
 export function SidebarContent() {
   const [location] = useLocation();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const { hasPermission } = useAdminAuth();
 
   const isActive = (href: string) => {
     const path = href.split("?")[0];
     return path === "/" ? location === "/" : location.startsWith(path);
   };
 
-  const toggleSection = (label: string) => {
+  const toggleSection = (label: string) =>
     setCollapsed((prev) => ({ ...prev, [label]: !prev[label] }));
-  };
 
   const renderLeaf = (item: NavLeaf & { icon?: React.ElementType }, indent = false) => {
     const active = isActive(item.href);
@@ -117,19 +110,21 @@ export function SidebarContent() {
     );
   };
 
+  // Filter sections based on permissions
+  const visibleSections = NAV.filter((section) => {
+    if (!section.permission) return true;
+    return hasPermission(section.permission);
+  });
+
   return (
     <>
-      {/* Logo */}
       <div className="px-4 py-4 flex items-center gap-2 border-b flex-shrink-0">
         <span className="font-bold text-xl text-foreground tracking-tight">Mora</span>
-        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase tracking-wider">
-          Admin
-        </span>
+        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase tracking-wider">Admin</span>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
-        {NAV.map((section, si) => {
+        {visibleSections.map((section, si) => {
           const isCollapsed = section.label ? collapsed[section.label] : false;
           return (
             <div key={si} className={cn("space-y-0.5", si > 0 && "pt-2")}>
@@ -139,11 +134,7 @@ export function SidebarContent() {
                   className="w-full flex items-center justify-between px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {section.label}
-                  {isCollapsed ? (
-                    <ChevronRight className="h-3 w-3" />
-                  ) : (
-                    <ChevronDown className="h-3 w-3" />
-                  )}
+                  {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                 </button>
               )}
               {!isCollapsed && (
@@ -161,7 +152,6 @@ export function SidebarContent() {
         })}
       </nav>
 
-      {/* Bottom */}
       <div className="p-2 border-t flex-shrink-0">
         {BOTTOM.map((item) => renderLeaf(item))}
       </div>

@@ -49,3 +49,10 @@ externalPort = 3000
 [[ports]]
 localPort = 26252
 externalPort = 4200
+
+[userenv]
+
+[userenv.shared]
+GOOGLE_ADMIN_CLIENT_ID = "217089651267-ksup6l16jnvgep4aqol6t4spnms23tpu.apps.googleusercontent.com"
+VITE_GOOGLE_CLIENT_ID = "217089651267-ksup6l16jnvgep4aqol6t4spnms23tpu.apps.googleusercontent.com"
+ADMIN_JWT_SECRET = "79c8cbc6d4be7dc14c60aaf0207506292458264b3e15f29a8e75a608d9c4ed60cebf31946aac0d669ec22e206fa30c1f"

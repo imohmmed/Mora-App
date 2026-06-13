@@ -10,6 +10,7 @@ import {
   UIManager,
   View,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -252,7 +253,15 @@ export default function CartScreen() {
         ))}
       </ScrollView>
 
-      <View style={[s.bar, { backgroundColor: barBg, borderTopColor: barBdr, paddingBottom: insets.bottom + 14 }]}>
+      <BlurView
+        intensity={isDark ? 72 : 78}
+        tint={isDark ? "dark" : "extraLight"}
+        style={[s.bar, { borderTopColor: barBdr, paddingBottom: insets.bottom + 14, overflow: "hidden" }]}
+      >
+        {/* Liquid glass tint */}
+        <View style={[StyleSheet.absoluteFill, {
+          backgroundColor: isDark ? "rgba(10,10,10,0.28)" : "rgba(255,255,255,0.32)",
+        }]} pointerEvents="none" />
         <View style={{ flex: 1 }}>
           <Text style={[s.barLabel, { color: sub }]}>Subtotal</Text>
           <Text style={[s.barTotal, { color: textCol }]}>{formatIQD(subtotal)}</Text>
@@ -264,7 +273,7 @@ export default function CartScreen() {
           <Text style={s.checkTxt}>CHECKOUT</Text>
           <Feather name="arrow-right" size={15} color="#fff" />
         </Pressable>
-      </View>
+      </BlurView>
     </View>
   );
 }

@@ -286,6 +286,33 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_nlog_created ON notification_log(created_at DESC);
 `);
 
+// ─── Admin users (Google OAuth) ──────────────────────────────────────────────
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS admin_users (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    email       TEXT    NOT NULL UNIQUE,
+    name        TEXT    NOT NULL,
+    role        TEXT    NOT NULL DEFAULT 'admin',
+    permissions TEXT    NOT NULL DEFAULT '{}',
+    is_active   INTEGER NOT NULL DEFAULT 1,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    last_login  TEXT
+  );
+`);
+
+// Seed super-owner (always upserted with full permissions)
+const OWNER_EMAIL = "aaaa35059@gmail.com";
+const OWNER_PERMS = JSON.stringify({
+  orders: true, products: true, customers: true,
+  analytics: true, marketing: true, content: true, settings: true,
+});
+db.prepare(`
+  INSERT INTO admin_users (email, name, role, permissions, is_active, created_at)
+  VALUES (?, 'Owner', 'owner', ?, 1, datetime('now'))
+  ON CONFLICT(email) DO UPDATE SET role='owner', is_active=1
+`).run(OWNER_EMAIL, OWNER_PERMS);
+
 // ─── Seed helpers ─────────────────────────────────────────────────────────────
 
 const iso = (daysAgo: number) =>
