@@ -295,8 +295,26 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
   const insets = useSafeAreaInsets();
   const { totalItems } = useCart();
 
+  // Hide the tab bar while the on-screen keyboard is open (iOS Safari).
+  // visualViewport.height shrinks when the keyboard appears; we compare
+  // it against window.innerHeight to measure the keyboard height.
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const vv = (window as any).visualViewport as VisualViewport | undefined;
+    if (!vv) return;
+    const onResize = () => {
+      const kbH = window.innerHeight - vv.height;
+      setKeyboardOpen(kbH > 80);
+    };
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
+  }, []);
+
   useGlassCSS();
   useGlassSVG();
+
+  if (keyboardOpen) return null;
 
   // Animate pill position on tab switch
   const pillAnim = useRef(new Animated.Value(0)).current;
