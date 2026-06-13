@@ -261,7 +261,8 @@ export default function CartScreen() {
         {
           backgroundColor: GlassViewComp ? "transparent" : barBg,
           borderTopColor: barBdr,
-          paddingBottom: insets.bottom + 14,
+          paddingBottom: Platform.OS === "web" ? 14 : insets.bottom + 14,
+          bottom: Platform.OS === "web" ? 84 : 0,
         },
       ]}>
         {/* Liquid Glass background — expo-glass-effect (iOS 26+) */}
