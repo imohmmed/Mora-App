@@ -50,16 +50,40 @@ function useChatwoot() {
     const BASE_URL = "https://chat.moramoda.tech";
     if ((window as any).chatwootSDK) return;
 
+    // Read current resolved scheme from localStorage + system preference
+    const getScheme = (): "dark" | "light" => {
+      try {
+        const stored = localStorage.getItem("mora_theme_mode_v1");
+        if (stored === "dark") return "dark";
+        if (stored === "light") return "light";
+      } catch {}
+      return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
+    };
+
+    // Update Chatwoot color scheme at any time
+    const updateChatwoot = (scheme: "dark" | "light") => {
+      // Try the public $chatwoot API first
+      if ((window as any).$chatwoot?.setColorScheme) {
+        (window as any).$chatwoot.setColorScheme(scheme);
+        return;
+      }
+      // Fallback: postMessage to any Chatwoot iframe in the page
+      const msg = JSON.stringify({ event: "set-color-scheme", darkMode: scheme });
+      document.querySelectorAll<HTMLIFrameElement>('iframe[src*="chat.moramoda.tech"]')
+        .forEach((f) => { try { f.contentWindow?.postMessage(msg, "*"); } catch {} });
+    };
+
     // CSS to permanently hide the floating launcher bubble
-    const style = document.createElement("style");
-    style.id = "mora-chatwoot-hide-bubble";
-    style.textContent = `
-      .woot-widget-bubble,
-      .woot--bubble-holder,
-      #chatwoot-holder .woot-widget-bubble,
-      .chatwoot-widget__bubble { display: none !important; opacity: 0 !important; }
-    `;
-    document.head.appendChild(style);
+    if (!document.getElementById("mora-chatwoot-hide-bubble")) {
+      const style = document.createElement("style");
+      style.id = "mora-chatwoot-hide-bubble";
+      style.textContent = `
+        .woot-widget-bubble, .woot--bubble-holder,
+        #chatwoot-holder .woot-widget-bubble,
+        .chatwoot-widget__bubble { display: none !important; opacity: 0 !important; }
+      `;
+      document.head.appendChild(style);
+    }
 
     const script = document.createElement("script");
     script.src = BASE_URL + "/packs/js/sdk.js";
@@ -72,13 +96,28 @@ function useChatwoot() {
         position: "right",
         locale: "ar",
         type: "standard",
+        colorScheme: getScheme(),
       });
-      // Belt-and-suspenders: also call the API to hide the bubble
       window.addEventListener("chatwoot:ready", () => {
         (window as any).$chatwoot?.toggleBubbleVisibility("hide");
-      });
+        updateChatwoot(getScheme());
+      }, { once: true });
     };
     document.head.appendChild(script);
+
+    // React to theme changes: localStorage (manual toggle) + system media query
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "mora_theme_mode_v1") updateChatwoot(getScheme());
+    };
+    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
+    const onMqChange = () => updateChatwoot(getScheme());
+    window.addEventListener("storage", onStorage);
+    mq?.addEventListener?.("change", onMqChange);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      mq?.removeEventListener?.("change", onMqChange);
+    };
   }, []);
 }
 
