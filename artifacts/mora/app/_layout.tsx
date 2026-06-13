@@ -61,13 +61,6 @@ function useChatwoot() {
     `;
     document.head.appendChild(style);
 
-    // Detect dark mode: check stored pref first, fall back to system
-    const stored = localStorage.getItem("mora_theme_mode_v1");
-    let prefersDark: boolean;
-    if (stored === "dark") prefersDark = true;
-    else if (stored === "light") prefersDark = false;
-    else prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
-
     const script = document.createElement("script");
     script.src = BASE_URL + "/packs/js/sdk.js";
     script.async = true;
@@ -79,7 +72,6 @@ function useChatwoot() {
         position: "right",
         locale: "ar",
         type: "standard",
-        colorScheme: prefersDark ? "dark" : "light",
       });
       // Belt-and-suspenders: also call the API to hide the bubble
       window.addEventListener("chatwoot:ready", () => {
@@ -87,45 +79,7 @@ function useChatwoot() {
       });
     };
     document.head.appendChild(script);
-
-    // Re-sync color scheme if system theme changes while app is open
-    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
-    const onSchemeChange = () => {
-      const nowDark = mq?.matches ?? false;
-      // Chatwoot doesn't expose setColorScheme publicly, so we rely on the
-      // initial detection above. For a full update, the user can reload.
-    };
-    mq?.addEventListener?.("change", onSchemeChange);
-    return () => mq?.removeEventListener?.("change", onSchemeChange);
   }, []);
-}
-
-// ─── Chatwoot dark mode (web only) — CSS filter on the cross-origin iframe ───
-// Server-side Chatwoot settings override any colorScheme we pass via SDK/URL.
-// The only client-side escape hatch: apply a CSS filter to the iframe *element*
-// in our own DOM (not inside it — that would need same-origin).
-function ChatwootDarkMode() {
-  const { resolvedScheme } = useTheme();
-  useEffect(() => {
-    if (Platform.OS !== "web" || typeof document === "undefined") return;
-    const id = "mora-chatwoot-dark-filter";
-    let el = document.getElementById(id) as HTMLStyleElement | null;
-    if (!el) {
-      el = document.createElement("style");
-      el.id = id;
-      document.head.appendChild(el);
-    }
-    if (resolvedScheme === "dark") {
-      // invert colours + rotate hue back so blues/greens stay roughly correct
-      el.textContent = `
-        iframe[src*="chat.moramoda.tech"] {
-          filter: invert(0.92) hue-rotate(180deg) contrast(0.9) !important;
-        }`;
-    } else {
-      el.textContent = "";
-    }
-  }, [resolvedScheme]);
-  return null;
 }
 
 // ─── Chatwoot identity (web only, needs AuthContext) ─────────────────────────
@@ -198,7 +152,6 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <ThemeProvider>
-          <ChatwootDarkMode />
           <LanguageProvider>
             <QueryClientProvider client={queryClient}>
               <AuthProvider>
