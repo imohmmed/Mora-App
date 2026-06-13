@@ -1,20 +1,19 @@
 /**
- * CompactPicker — small native-style bottom-sheet picker.
- * Shows a compact scrollable list (max ~300 px) that slides up from the
- * bottom, similar to iOS/Android native <select>.
+ * CompactPicker — identical style to AppleActionSheet but with a scrollable
+ * options list (maxHeight 300) so it never covers the full screen.
  */
 
 import React, { useEffect, useRef } from "react";
 import {
   Animated,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 
 const PRIMARY = "#0274C1";
@@ -46,10 +45,11 @@ export function CompactPicker({
   const { resolvedScheme } = useTheme();
   const isDark = resolvedScheme === "dark";
 
-  const card   = isDark ? "#2C2C2E" : "#FFFFFF";
-  const fg     = isDark ? "#FFFFFF" : "#000000";
-  const muted  = isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.35)";
-  const divClr = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
+  const cardBg   = isDark ? "rgba(44,44,46,0.92)"  : "rgba(242,242,247,0.92)";
+  const cancelBg = isDark ? "rgba(44,44,46,0.92)"  : "rgba(242,242,247,0.92)";
+  const textColor  = isDark ? "#FFFFFF" : "#000000";
+  const titleColor = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)";
+  const divider    = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)";
 
   useEffect(() => {
     if (visible) {
@@ -57,8 +57,8 @@ export function CompactPicker({
         Animated.spring(slideAnim, {
           toValue: 0,
           useNativeDriver: true,
-          tension: 300,
-          friction: 28,
+          tension: 280,
+          friction: 26,
         }),
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -90,23 +90,30 @@ export function CompactPicker({
       statusBarTranslucent
       onRequestClose={onCancel}
     >
-      <Animated.View style={[s.backdrop, { opacity: fadeAnim }]}>
+      <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} />
       </Animated.View>
 
       <Animated.View
-        style={[s.sheet, { transform: [{ translateY: slideAnim }] }]}
+        style={[styles.sheetWrapper, { transform: [{ translateY: slideAnim }] }]}
       >
-        {/* Main card */}
-        <View style={[s.card, { backgroundColor: card }]}>
-          {title && (
-            <View style={[s.titleRow, { borderBottomColor: divClr }]}>
-              <Text style={[s.title, { color: muted }]}>{title}</Text>
-            </View>
-          )}
+        {/* Options card with scrollable list */}
+        <View
+          style={[styles.card, { backgroundColor: cardBg }]}
+          // @ts-ignore web className
+          className="mora-sheet-card"
+        >
+          {title ? (
+            <>
+              <View style={styles.titleRow}>
+                <Text style={[styles.titleText, { color: titleColor }]}>{title}</Text>
+              </View>
+              <View style={[styles.divider, { backgroundColor: divider }]} />
+            </>
+          ) : null}
 
           <ScrollView
-            style={s.list}
+            style={styles.scroll}
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
@@ -116,27 +123,30 @@ export function CompactPicker({
               return (
                 <React.Fragment key={opt.value}>
                   <Pressable
-                    onPress={() => onSelect(opt.value)}
                     style={({ pressed }) => [
-                      s.row,
-                      pressed && { opacity: 0.55 },
+                      styles.optionRow,
+                      pressed && {
+                        backgroundColor: isDark
+                          ? "rgba(255,255,255,0.06)"
+                          : "rgba(0,0,0,0.04)",
+                      },
                     ]}
+                    onPress={() => onSelect(opt.value)}
                   >
                     <Text
                       style={[
-                        s.rowLabel,
-                        { color: isSelected ? PRIMARY : fg },
-                        isSelected && s.rowLabelBold,
+                        styles.optionLabel,
+                        { color: isSelected ? PRIMARY : textColor },
                       ]}
                     >
                       {opt.label}
                     </Text>
                     {isSelected && (
-                      <Feather name="check" size={16} color={PRIMARY} />
+                      <Text style={[styles.checkmark, { color: PRIMARY }]}>✓</Text>
                     )}
                   </Pressable>
                   {!isLast && (
-                    <View style={[s.divider, { backgroundColor: divClr }]} />
+                    <View style={[styles.divider, { backgroundColor: divider }]} />
                   )}
                 </React.Fragment>
               );
@@ -144,89 +154,89 @@ export function CompactPicker({
           </ScrollView>
         </View>
 
-        {/* Cancel pill */}
+        {/* Cancel — separate card */}
         <Pressable
-          onPress={onCancel}
           style={({ pressed }) => [
-            s.cancelBtn,
-            { backgroundColor: card },
-            pressed && { opacity: 0.7 },
+            styles.cancelCard,
+            { backgroundColor: cancelBg, opacity: pressed ? 0.85 : 1 },
           ]}
+          onPress={onCancel}
         >
-          <Text style={[s.cancelTxt, { color: PRIMARY }]}>Cancel</Text>
+          <Text style={[styles.cancelText, { color: PRIMARY }]}>Cancel</Text>
         </Pressable>
       </Animated.View>
+
+      {Platform.OS === "web" && (
+        // @ts-ignore
+        <style>{`
+          .mora-sheet-card {
+            backdrop-filter: blur(48px) saturate(200%);
+            -webkit-backdrop-filter: blur(48px) saturate(200%);
+          }
+        `}</style>
+      )}
     </Modal>
   );
 }
 
-const s = StyleSheet.create({
+const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.40)",
   },
-  sheet: {
+  sheetWrapper: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 10,
-    paddingBottom: 34,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
     gap: 8,
   },
   card: {
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 8,
   },
-  titleRow: {
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.3,
-    textTransform: "uppercase",
-  },
-  list: {
+  scroll: {
     maxHeight: 300,
   },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
+  titleRow: {
     paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: "center",
   },
-  rowLabel: {
-    fontSize: 17,
+  titleText: {
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
-  },
-  rowLabelBold: {
-    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginLeft: 20,
   },
-  cancelBtn: {
-    borderRadius: 14,
-    paddingVertical: 16,
+  optionRow: {
+    flexDirection: "row",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
-    shadowRadius: 8,
-    elevation: 4,
+    justifyContent: "space-between",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    minHeight: 56,
   },
-  cancelTxt: {
+  optionLabel: {
+    fontSize: 17,
+    fontFamily: "Inter_400Regular",
+  },
+  checkmark: {
+    fontSize: 18,
+    fontFamily: "Inter_600SemiBold",
+    marginLeft: 12,
+  },
+  cancelCard: {
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 18,
+  },
+  cancelText: {
     fontSize: 17,
     fontFamily: "Inter_600SemiBold",
   },
