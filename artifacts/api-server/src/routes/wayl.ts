@@ -12,7 +12,7 @@ async function waylFetch(method: string, path: string, body?: object) {
   const res = await fetch(`${WAYL_BASE}${path}`, {
     method,
     headers: {
-      Authorization: `Bearer ${key}`,
+      "X-WAYL-AUTHENTICATION": key,
       "Content-Type": "application/json",
     },
     ...(body ? { body: JSON.stringify(body) } : {}),

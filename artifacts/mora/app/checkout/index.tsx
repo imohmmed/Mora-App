@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import * as WebBrowser from "expo-web-browser";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
@@ -72,15 +73,18 @@ const si = StyleSheet.create({
 });
 
 type FormState = { name: string; phone: string; city: string; district: string; street: string; note: string };
-type PayMethod = "cod" | "zaincash" | "fastpay" | "asiahawala" | "mastercard" | "visa";
+type PayMethod = "cod" | "zaincash" | "fastpay" | "asiapay" | "nasswallet" | "alsaqi" | "qicard" | "fib" | "card";
 
-const PAY_METHODS: { id: PayMethod; label: string; subtitle: string; logo: string; color: string }[] = [
-  { id: "cod",       label: "Cash on Delivery", subtitle: "Pay when your order arrives",   logo: "💵", color: "#22C55E"  },
-  { id: "zaincash",  label: "ZainCash",          subtitle: "Zain mobile wallet",            logo: "⚡", color: "#F97316"  },
-  { id: "fastpay",   label: "FastPay",            subtitle: "FastPay digital wallet",        logo: "🚀", color: "#8B5CF6"  },
-  { id: "asiahawala",label: "Asia Hawala",        subtitle: "Cash transfer via Asia Hawala", logo: "🌐", color: "#06B6D4"  },
-  { id: "mastercard",label: "Mastercard",         subtitle: "Debit or credit card",          logo: "💳", color: "#EB001B"  },
-  { id: "visa",      label: "Visa",               subtitle: "Debit or credit card",          logo: "💳", color: "#1A1F71"  },
+const PAY_METHODS: { id: PayMethod; label: string; subtitle: string; badge: string; color: string; online: boolean }[] = [
+  { id: "cod",        label: "Cash on Delivery", subtitle: "Pay when your order arrives",      badge: "💵",  color: "#22C55E", online: false },
+  { id: "zaincash",   label: "ZainCash",          subtitle: "Zain mobile wallet",               badge: "Z",   color: "#1E7D45", online: true  },
+  { id: "fastpay",    label: "FastPay",            subtitle: "FastPay digital wallet",           badge: "FP",  color: "#FF6B00", online: true  },
+  { id: "asiapay",    label: "AsiaPay",            subtitle: "Asia Hawala digital wallet",       badge: "AP",  color: "#0284C7", online: true  },
+  { id: "nasswallet", label: "Nass Wallet",        subtitle: "Nass digital wallet",              badge: "N",   color: "#7C3AED", online: true  },
+  { id: "alsaqi",     label: "Al Saqi",            subtitle: "Al Saqi payment",                  badge: "AS",  color: "#0D9488", online: true  },
+  { id: "qicard",     label: "QiCard",             subtitle: "QiCard prepaid card",              badge: "Q",   color: "#D97706", online: true  },
+  { id: "fib",        label: "FIB",                subtitle: "First Iraqi Bank",                 badge: "FIB", color: "#059669", online: true  },
+  { id: "card",       label: "Mastercard / Visa",  subtitle: "International debit or credit",    badge: "💳",  color: "#EB001B", online: true  },
 ];
 
 export default function CheckoutScreen() {
@@ -163,6 +167,23 @@ export default function CheckoutScreen() {
         message: "Your order has been placed!",
       });
 
+      const isOnline = PAY_METHODS.find((m) => m.id === payMethod)?.online ?? false;
+      let waylUrl: string | null = null;
+
+      if (isOnline) {
+        try {
+          const waylRes = await fetch(`${base}/store/wayl/create-link`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orderNumber, total: orderTotal }),
+          });
+          const waylJson = await waylRes.json() as { data: { url?: string } | null; error?: string };
+          waylUrl = waylJson.data?.url || null;
+        } catch {
+          // Non-fatal — order is placed, continue without payment URL
+        }
+      }
+
       clearCart();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
@@ -170,6 +191,10 @@ export default function CheckoutScreen() {
         pathname: "/checkout/complete",
         params: { orderNumber, total: String(orderTotal), name: form.name, city: form.city, district: form.district, phone: form.phone, items: snapshot, paymentMethod: payMethod },
       } as any);
+
+      if (isOnline && waylUrl) {
+        await WebBrowser.openBrowserAsync(waylUrl, { presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN });
+      }
     } catch (err: any) {
       setSubmitting(false);
       Alert.alert("Error", err.message || "Something went wrong. Please try again.");
@@ -231,20 +256,25 @@ export default function CheckoutScreen() {
           <View style={[st.group, { backgroundColor: card }]}>
             {PAY_METHODS.map((m, idx) => {
               const isSelected = payMethod === m.id;
-              const iconBg = isSelected
-                ? `${m.color}22`
-                : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)";
+              const iconBg = isSelected ? `${m.color}28` : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)");
+              const isEmoji = /\p{Emoji}/u.test(m.badge);
               return (
                 <React.Fragment key={m.id}>
                   <Pressable
                     onPress={() => setPayMethod(m.id)}
-                    style={[st.payCard, isSelected && { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)" }]}
+                    style={[st.payCard, isSelected && { backgroundColor: isDark ? "rgba(255,255,255,0.03)" : `${m.color}08` }]}
                   >
                     <View style={[st.payIcon, { backgroundColor: iconBg }]}>
-                      <Text style={{ fontSize: 18 }}>{m.logo}</Text>
+                      {isEmoji
+                        ? <Text style={{ fontSize: 18 }}>{m.badge}</Text>
+                        : <Text style={{ fontSize: m.badge.length > 2 ? 10 : 13, fontWeight: "800", color: isSelected ? m.color : (isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.4)") }}>{m.badge}</Text>
+                      }
                     </View>
                     <View style={{ flex: 1, gap: 2 }}>
-                      <Text style={[st.payTitle, { color: textCol }]}>{m.label}</Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Text style={[st.payTitle, { color: textCol }]}>{m.label}</Text>
+                        {m.online && <View style={[st.waylBadge]}><Text style={st.waylBadgeTxt}>Wayl</Text></View>}
+                      </View>
                       <Text style={[st.paySub, { color: sub }]}>{m.subtitle}</Text>
                     </View>
                     <View style={[st.radio, { borderColor: isSelected ? m.color : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
@@ -307,16 +337,16 @@ export default function CheckoutScreen() {
             disabled={submitting}
             style={({ pressed }) => [
               st.placeBtn,
+              PAY_METHODS.find(m => m.id === payMethod)?.online && { backgroundColor: "#7C3AED" },
               pressed && { opacity: 0.85 },
               submitting && { opacity: 0.7 },
             ]}
           >
             {submitting
               ? <ActivityIndicator color="#fff" />
-              : <>
-                  <Feather name="check-circle" size={16} color="#fff" />
-                  <Text style={st.placeTxt}>PLACE ORDER</Text>
-                </>
+              : PAY_METHODS.find(m => m.id === payMethod)?.online
+                ? <><Feather name="credit-card" size={16} color="#fff" /><Text style={st.placeTxt}>PROCEED TO PAYMENT</Text></>
+                : <><Feather name="check-circle" size={16} color="#fff" /><Text style={st.placeTxt}>PLACE ORDER</Text></>
             }
           </Pressable>
         </View>
@@ -386,6 +416,8 @@ const st = StyleSheet.create({
   radioDot:    { width: 10, height: 10, borderRadius: 5 },
   badge:       { backgroundColor: "rgba(59,130,246,0.15)", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   badgeTxt:    { fontSize: 9, fontWeight: "700", color: "#3B82F6", letterSpacing: 0.3 },
+  waylBadge:   { backgroundColor: "rgba(124,58,237,0.14)", borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2 },
+  waylBadgeTxt:{ fontSize: 9, fontWeight: "700", color: "#7C3AED", letterSpacing: 0.3 },
   noteInput:   { padding: 16, fontSize: 14, minHeight: 72, textAlignVertical: "top" },
   summaryRow:  { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
   summaryImg:  { width: 42, height: 52, borderRadius: 8 },
