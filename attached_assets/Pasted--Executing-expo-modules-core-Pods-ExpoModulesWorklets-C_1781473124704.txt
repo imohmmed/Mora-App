@@ -1,0 +1,66 @@
+ Executing expo-modules-core Pods/ExpoModulesWorklets » [CP-User] [Expo] Switch ExpoModulesWorklets XCFramework for build configuration
+
+❌  (/Users/expo/workingdir/build/artifacts/mora/ios/build/Build/Intermediates.noindex/ArchiveIntermediates/Mora/BuildProductsPath/Debug-iphoneos/XCFrameworkIntermediates/ExpoModulesCore/ExpoModulesCore.framework/Modules/ExpoModulesCore.swiftmodule/arm64-apple-ios.private.swiftinterface:13:19)
+
+  11 | @_exported import ExpoModulesCore
+  12 | @_exported import ExpoModulesCore
+> 13 | @_exported import ExpoModulesJSI
+     |                   ^ no such module 'ExpoModulesJSI'
+  14 | @_exported import Foundation
+  15 | import ObjectiveC
+  16 | import RegexBuilder
+
+❌  (../../node_modules/.pnpm/expo-system-ui@56.0.5_expo@56.0.11_react-native-web@0.21.2_react-dom@19.1.0_react@19.2._d06771c6bef0bdbf6682e8d0f7b8770f/node_modules/expo-system-ui/ios/ExpoSystemUI/ExpoSystemUIModule.swift:3:8)
+
+  1 | // Copyright 2021-present 650 Industries. (AKA Expo) All rights reserved.
+  2 |
+> 3 | import ExpoModulesCore
+    |        ^ failed to build module 'ExpoModulesCore' for importation due to the errors above; the textual interface may be broken by project issues or a compiler bug
+  4 |
+  5 | public class ExpoSystemUIModule: Module {
+  6 |   private static let colorKey = "ExpoSystemUI.backgroundColor"
+
+❌  (/Users/expo/workingdir/build/artifacts/mora/ios/build/Build/Intermediates.noindex/ArchiveIntermediates/Mora/BuildProductsPath/Debug-iphoneos/XCFrameworkIntermediates/ExpoModulesCore/ExpoModulesCore.framework/Modules/ExpoModulesCore.swiftmodule/arm64-apple-ios.private.swiftinterface:13:19)
+
+  11 | @_exported import ExpoModulesCore
+  12 | @_exported import ExpoModulesCore
+> 13 | @_exported import ExpoModulesJSI
+     |                   ^ no such module 'ExpoModulesJSI'
+  14 | @_exported import Foundation
+  15 | import ObjectiveC
+  16 | import RegexBuilder
+› Executing expo-location Pods/ExpoLocation » [CP-User] [Expo] Switch ExpoLocation XCFramework for build configuration
+› Executing expo-image Pods/ExpoImage » [CP-User] [Expo] Switch ExpoImage XCFramework for build configuration
+› Preparing expo-symbols Pods/ExpoSymbols » ExpoSymbols-Info.plist
+› Executing expo-modules-core Pods/ExpoModulesWorklets » [CP] Copy XCFrameworks
+› Executing expo-location Pods/ExpoLocation » [CP] Copy XCFrameworks
+⚠️  Pods/RNCAsyncStorage-RNCAsyncStorage_resources: iOS@9.0 deployment version mismatch, expected >= 2.0 <= 26.4.99
+▸ ** ARCHIVE FAILED **
+▸ The following build commands failed:
+▸ 	SwiftEmitModule normal arm64 Emitting\ module\ for\ ExpoSystemUI (in target 'ExpoSystemUI' from project 'Pods')
+▸ 	SwiftCompile normal arm64 /Users/expo/workingdir/build/node_modules/.pnpm/expo-system-ui@56.0.5_expo@56.0.11_react-native-web@0.21.2_react-dom@19.1.0_react@19.2._d06771c6bef0bdbf6682e8d0f7b8770f/node_modules/expo-system-ui/ios/ExpoSystemUI/ExpoSystemUIModule.swift (in target 'ExpoSystemUI' from project 'Pods')
+▸ 	Archiving workspace Mora with scheme Mora
+▸ (3 failures)
+
+Exit status: 65
++---------------------------------------+
+|           Build environment           |
++-------------+-------------------------+
+| xcode_path  | /Applications/Xcode.app |
+| gym_version | 2.233.1                 |
+| sdk         | iPhoneOS26.4.sdk        |
++-------------+-------------------------+
+Looks like fastlane ran into a build/archive error with your project
+It's hard to tell what's causing the error, so we wrote some guides on how
+to troubleshoot build and signing issues: https://docs.fastlane.tools/codesigning/getting-started/
+Before submitting an issue on GitHub, please follow the guide above and make
+sure your project is set up correctly.
+fastlane uses `xcodebuild` commands to generate your binary, you can see the
+the full commands printed out in yellow in the above log.
+Make sure to inspect the output above, as usually you'll find more error information there
+[!] Error building the application - see the log above
+Error: The "Run fastlane" step failed because of an error in the Xcode build process. We automatically detected following errors in your Xcode build logs:
+- no such module 'ExpoModulesJSI'
+- failed to build module 'ExpoModulesCore' for importation due to the errors above; the textual interface may be broken by project issues or a compiler bug
+- no such module 'ExpoModulesJSI'
+Refer to "Xcode Logs" below for additional, more detailed logs.
