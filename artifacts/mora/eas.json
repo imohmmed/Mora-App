@@ -10,6 +10,7 @@
       "cache": {
         "disabled": true
       },
+      "prebuildCommand": "npx expo prebuild --clean --platform ios && node scripts/patch-podfile.js",
       "ios": {
         "simulator": false,
         "resourceClass": "m-medium",

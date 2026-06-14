@@ -67,8 +67,7 @@
           "defaultChannel": "default"
         }
       ],
-      "@bacons/apple-targets",
-      "./plugins/withSkipExpoModulesJSI"
+      "@bacons/apple-targets"
     ],
     "experiments": {
       "typedRoutes": true,
