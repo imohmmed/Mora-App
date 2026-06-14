@@ -13,7 +13,7 @@
       "ios": {
         "simulator": false,
         "resourceClass": "m-medium",
-        "image": "macos-sequoia-15.4-xcode-16.3"
+        "image": "latest"
       },
       "env": {
         "EXPO_PUBLIC_DOMAIN": "moramoda.tech"
@@ -24,7 +24,7 @@
       "distribution": "internal",
       "ios": {
         "simulator": true,
-        "image": "macos-sequoia-15.4-xcode-16.3"
+        "image": "latest"
       },
       "env": {
         "EXPO_PUBLIC_DOMAIN": "moramoda.tech"
@@ -34,7 +34,7 @@
       "distribution": "internal",
       "ios": {
         "resourceClass": "m-medium",
-        "image": "macos-sequoia-15.4-xcode-16.3"
+        "image": "latest"
       },
       "android": {
         "buildType": "apk"
@@ -48,7 +48,7 @@
       "ios": {
         "resourceClass": "m-medium",
         "simulator": false,
-        "image": "macos-sequoia-15.4-xcode-16.3"
+        "image": "latest"
       },
       "android": {
         "buildType": "app-bundle"
