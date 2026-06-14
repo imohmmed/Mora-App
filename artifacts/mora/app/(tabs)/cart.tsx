@@ -1,6 +1,5 @@
 import React, { useCallback, useRef } from "react";
 import {
-  Animated,
   LayoutAnimation,
   Platform,
   Pressable,
@@ -15,7 +14,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import Swipeable from "react-native-gesture-handler/Swipeable";
+import ReanimatedSwipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
+import Animated, { interpolate, useAnimatedStyle, type SharedValue } from "react-native-reanimated";
 import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
@@ -89,29 +89,35 @@ function CartItemRow({
   onInc: () => void;
   onDec: () => void;
 }) {
-  const swipeRef = useRef<InstanceType<typeof Swipeable>>(null);
+  const swipeRef = useRef<SwipeableMethods>(null);
   const card    = isDark ? "#1C1C1E" : "#FFFFFF";
   const textCol = isDark ? "#FFFFFF" : "#1A1A1A";
   const sub     = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.42)";
   const btnBdr  = isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.12)";
 
-  const renderRightActions = (progress: Animated.AnimatedInterpolation<number>) => {
-    const scale   = progress.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1], extrapolate: "clamp" });
-    const opacity = progress.interpolate({ inputRange: [0, 0.6], outputRange: [0, 1], extrapolate: "clamp" });
-    return (
-      <View style={cs.swipeOuter}>
-        <Pressable style={cs.swipeBtn} onPress={() => { swipeRef.current?.close(); onRemove(); }}>
-          <Animated.View style={{ alignItems: "center", transform: [{ scale }], opacity }}>
-            <Feather name="trash-2" size={20} color="#fff" />
-            <Text style={cs.swipeLbl}>Remove</Text>
-          </Animated.View>
-        </Pressable>
-      </View>
-    );
+  const renderRightActions = (progress: SharedValue<number>) => {
+    const AnimatedContent = () => {
+      const style = useAnimatedStyle(() => ({
+        transform: [{ scale: interpolate(progress.value, [0, 1], [0.6, 1], "clamp") }],
+        opacity: interpolate(progress.value, [0, 0.6], [0, 1], "clamp"),
+        alignItems: "center" as const,
+      }));
+      return (
+        <View style={cs.swipeOuter}>
+          <Pressable style={cs.swipeBtn} onPress={() => { swipeRef.current?.close(); onRemove(); }}>
+            <Animated.View style={style}>
+              <Feather name="trash-2" size={20} color="#fff" />
+              <Text style={cs.swipeLbl}>Remove</Text>
+            </Animated.View>
+          </Pressable>
+        </View>
+      );
+    };
+    return <AnimatedContent />;
   };
 
   return (
-    <Swipeable
+    <ReanimatedSwipeable
       ref={swipeRef}
       renderRightActions={renderRightActions}
       rightThreshold={40}
@@ -149,7 +155,7 @@ function CartItemRow({
           </Pressable>
         </View>
       </View>
-    </Swipeable>
+    </ReanimatedSwipeable>
   );
 }
 
