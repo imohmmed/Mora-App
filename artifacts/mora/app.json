@@ -39,7 +39,6 @@
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [
-      "./plugins/withSkipExpoModulesJSI",
       [
         "expo-build-properties",
         {
