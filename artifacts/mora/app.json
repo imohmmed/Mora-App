@@ -44,7 +44,6 @@
         "expo-build-properties",
         {
           "ios": {
-            "useFrameworks": "static",
             "deploymentTarget": "16.4",
             "xcodeProjectBuildProperties": {
               "SWIFT_STRICT_CONCURRENCY": "minimal"
