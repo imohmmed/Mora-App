@@ -14,7 +14,7 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "app.mora1.com",
       "appleTeamId": "PM27C7JC3M",
       "associatedDomains": [
