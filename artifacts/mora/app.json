@@ -44,12 +44,14 @@
         {
           "ios": {
             "deploymentTarget": "16.4",
+            "useFrameworks": "static",
             "xcodeProjectBuildProperties": {
               "SWIFT_STRICT_CONCURRENCY": "minimal"
             }
           }
         }
       ],
+      "./plugins/withSkipExpoModulesJSI",
       [
         "expo-router",
         {
