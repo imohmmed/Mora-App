@@ -9,79 +9,91 @@ function loadConfigPlugins() {
   return require("@expo/config-plugins");
 }
 
-const INJECTED_CODE = [
-  "  # __SKIP_EXPO_MODULES_JSI__",
-  "  installer.pods_project.targets.each do |target|",
-  '    next unless target.name == "ExpoModulesJSI"',
-  "    target.build_phases.each do |phase|",
-  "      next unless phase.is_a?(Xcodeproj::Project::Object::PBXShellScriptBuildPhase)",
-  '      next unless phase.shell_script.to_s.include?("xcframework")',
-  "      phase.shell_script = 'echo \"ExpoModulesJSI xcframework skipped\"; exit 0'",
-  "    end",
+// Our xcframework patch lines (without indentation — added dynamically)
+const PATCH_LINES = [
+  "# __SKIP_EXPO_MODULES_JSI__",
+  "installer.pods_project.targets.each do |target|",
+  '  next unless target.name == "ExpoModulesJSI"',
+  "  target.build_phases.each do |phase|",
+  "    next unless phase.is_a?(Xcodeproj::Project::Object::PBXShellScriptBuildPhase)",
+  '    next unless phase.shell_script.to_s.include?("xcframework")',
+  "    phase.shell_script = 'echo \"ExpoModulesJSI xcframework skipped\"; exit 0'",
   "  end",
-].join("\n");
+  "end",
+];
+
+function escRe(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 /**
- * Find all `post_install do |var|...end` blocks in the Podfile.
- *
- * Key insight: `post_install` and its closing `end` are ALWAYS at column 0.
- * Every `end` INSIDE the block is indented (≥1 space).
- * This avoids fragile depth-counting across Ruby's many block styles.
+ * Find all post_install blocks regardless of indentation level.
+ * Uses same-indent matching for the closing 'end'.
  */
-function extractPostInstalls(lines) {
-  const bodies = [];
-  const removedRanges = [];
+function findPostInstalls(lines) {
+  const blocks = [];
   let i = 0;
-
   while (i < lines.length) {
-    if (/^post_install do \|\w+\|/.test(lines[i])) {
-      const blockStart = i;
+    const m = lines[i].match(/^(\s*)post_install do \|\w+\|/);
+    if (m) {
+      const indent = m[1]; // e.g. "  " or ""
+      const start = i;
       const body = [];
       i++;
-
+      const closingRe = new RegExp(`^${escRe(indent)}end\\s*$`);
       while (i < lines.length) {
-        const line = lines[i];
-        // Closing `end` is at column 0 (no leading whitespace)
-        if (/^end\s*$/.test(line)) {
-          removedRanges.push([blockStart, i]);
+        if (closingRe.test(lines[i])) {
+          blocks.push({ start, end: i, indent, body: body.join("\n") });
           i++;
           break;
         }
-        body.push(line);
+        body.push(lines[i]);
         i++;
       }
-
-      bodies.push(body.join("\n"));
     } else {
       i++;
     }
   }
-
-  return { bodies, removedRanges };
+  return blocks;
 }
 
-function mergePostInstalls(podfile) {
+function patchPodfile(podfile) {
   const lines = podfile.split("\n");
-  const { bodies, removedRanges } = extractPostInstalls(lines);
+  const blocks = findPostInstalls(lines);
 
-  if (bodies.length === 0) {
-    return podfile + "\npost_install do |installer|\n" + INJECTED_CODE + "\nend\n";
+  console.log(`[withSkipExpoModulesJSI] Found ${blocks.length} post_install block(s)`);
+
+  const contentIndent = (blocks[0]?.indent ?? "") + "  ";
+  const patchCode = PATCH_LINES.map((l) => (l ? contentIndent + l : "")).join("\n");
+
+  if (blocks.length === 0) {
+    // No post_install at all — add a top-level one
+    return podfile + "\npost_install do |installer|\n" + patchCode + "\nend\n";
   }
 
-  // Remove all existing blocks (reverse order keeps indices valid)
+  // Strategy:
+  //  1. Inject our patch + any extra blocks' bodies INTO the FIRST block
+  //  2. Remove all extra blocks (indices may shift — process in reverse)
+  const extraBodies = blocks
+    .slice(1)
+    .map((b) => b.body)
+    .filter(Boolean)
+    .join("\n");
+
+  const insertion =
+    (extraBodies ? extraBodies + "\n" : "") + patchCode;
+
   const resultLines = lines.slice();
-  for (const [start, end] of removedRanges.slice().reverse()) {
-    resultLines.splice(start, end - start + 1);
+
+  // Remove extra blocks in reverse order (preserves indices of earlier lines)
+  for (const block of blocks.slice(1).reverse()) {
+    resultLines.splice(block.start, block.end - block.start + 1);
   }
 
-  // One merged block: all original bodies + our patch
-  const mergedBody = bodies.join("\n") + "\n" + INJECTED_CODE;
-  return (
-    resultLines.join("\n") +
-    "\npost_install do |installer|\n" +
-    mergedBody +
-    "\nend\n"
-  );
+  // Insert into first block right after the opening `post_install do` line
+  resultLines.splice(blocks[0].start + 1, 0, ...insertion.split("\n"));
+
+  return resultLines.join("\n");
 }
 
 module.exports = function withSkipExpoModulesJSI(config) {
@@ -102,11 +114,9 @@ module.exports = function withSkipExpoModulesJSI(config) {
         return cfg;
       }
 
-      const patched = mergePostInstalls(podfile);
+      const patched = patchPodfile(podfile);
       fs.writeFileSync(podfilePath, patched);
-      console.log(
-        "[withSkipExpoModulesJSI] post_install blocks merged and patched ✓"
-      );
+      console.log("[withSkipExpoModulesJSI] Podfile patched ✓");
       return cfg;
     },
   ]);
