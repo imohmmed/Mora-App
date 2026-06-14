@@ -44,7 +44,7 @@
         {
           "ios": {
             "useFrameworks": "static",
-            "deploymentTarget": "15.1",
+            "deploymentTarget": "16.4",
             "xcodeProjectBuildProperties": {
               "SWIFT_STRICT_CONCURRENCY": "minimal"
             }
