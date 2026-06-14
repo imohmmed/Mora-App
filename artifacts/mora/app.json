@@ -39,6 +39,7 @@
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [
+      "./plugins/withSkipExpoModulesJSI",
       [
         "expo-build-properties",
         {
@@ -67,8 +68,7 @@
           "defaultChannel": "default"
         }
       ],
-      "@bacons/apple-targets",
-      "./plugins/withSkipExpoModulesJSI"
+      "@bacons/apple-targets"
     ],
     "experiments": {
       "typedRoutes": true,
