@@ -10,7 +10,6 @@
       "cache": {
         "disabled": true
       },
-      "prebuildCommand": "bash scripts/prebuild.sh",
       "ios": {
         "simulator": false,
         "resourceClass": "m-medium",
