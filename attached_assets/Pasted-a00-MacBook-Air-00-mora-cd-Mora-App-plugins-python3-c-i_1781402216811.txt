@@ -1,0 +1,43 @@
+a00@MacBook-Air-00 mora % cd ~/Mora-App
+
+# أضف السطر قبل آخر ] في plugins
+python3 -c "
+import json
+with open('artifacts/mora/app.json') as f: d = json.load(f)
+plugins = d['expo']['plugins']
+if './plugins/withSkipExpoModulesJSI' not in plugins:
+    plugins.append('./plugins/withSkipExpoModulesJSI')
+with open('artifacts/mora/app.json', 'w') as f: json.dump(d, f, indent=2)
+print('Done ✓')
+"
+
+rm -rf artifacts/mora/ios
+cd artifacts/mora
+eas build --platform ios --profile development
+zsh: command not found: #
+Done ✓
+Unable to resolve a valid config plugin for ./plugins/withSkipExpoModulesJSI.
+• No "app.plugin.js" file found in ./plugins/withSkipExpoModulesJSI: config plugins are typically exported from an "app.plugin.js" file in the package root.
+• main export of ./plugins/withSkipExpoModulesJSI does not appear to be a config plugin: the following error was thrown when importing /Users/a00/Mora-App/artifacts/mora/plugins/withSkipExpoModulesJSI.js: Cannot find module '@expo/config-plugins'
+Require stack:
+- /Users/a00/Mora-App/artifacts/mora/plugins/withSkipExpoModulesJSI.js
+- /opt/homebrew/lib/node_modules/eas-cli/node_modules/@expo/config-plugins/build/utils/plugin-resolver.js
+- /opt/homebrew/lib/node_modules/eas-cli/node_modules/@expo/config-plugins/build/plugins/withStaticPlugin.js
+- /opt/homebrew/lib/node_modules/eas-cli/node_modules/@expo/config-plugins/build/plugins/withPlugins.js
+- /opt/homebrew/lib/node_modules/eas-cli/node_modules/@expo/config-plugins/build/index.js
+- /opt/homebrew/lib/node_modules/eas-cli/build/build/android/syncProjectConfiguration.js
+- /opt/homebrew/lib/node_modules/eas-cli/build/build/android/build.js
+- /opt/homebrew/lib/node_modules/eas-cli/build/build/runBuildAndSubmit.js
+- /opt/homebrew/lib/node_modules/eas-cli/build/commands/build/index.js
+- /opt/homebrew/lib/node_modules/eas-cli/node_modules/@oclif/core/lib/module-loader.js
+- /opt/homebrew/lib/node_modules/eas-cli/node_modules/@oclif/core/lib/help/index.js
+- /opt/homebrew/lib/node_modules/eas-cli/node_modules/@oclif/core/lib/errors/handle.js
+- /opt/homebrew/lib/node_modules/eas-cli/node_modules/@oclif/core/lib/errors/index.js
+- /opt/homebrew/lib/node_modules/eas-cli/node_modules/@oclif/core/lib/config/config.js
+- /opt/homebrew/lib/node_modules/eas-cli/node_modules/@oclif/core/lib/config/index.js
+- /opt/homebrew/lib/node_modules/eas-cli/node_modules/@oclif/core/lib/command.js
+- /opt/homebrew/lib/node_modules/eas-cli/node_modules/@oclif/core/lib/index.js
+- /opt/homebrew/lib/node_modules/eas-cli/bin/run MODULE_NOT_FOUND
+Verify that ./plugins/withSkipExpoModulesJSI includes a config plugin. If it does not, then remove the entry from plugins in your app config file. Learn more: https://docs.expo.dev/guides/config-plugins/
+    Error: build command failed.
+a00@MacBook-Air-00 mora % 

@@ -1,51 +1,56 @@
-const { withDangerousMod } = require("@expo/config-plugins");
 const path = require("path");
 const fs = require("fs");
 
+// Resolve @expo/config-plugins from mora's own node_modules (pnpm workspace)
+const { withDangerousMod } = (() => {
+  try {
+    return require("@expo/config-plugins");
+  } catch {
+    const resolved = require.resolve("@expo/config-plugins", {
+      paths: [path.resolve(__dirname, "..")],
+    });
+    return require(resolved);
+  }
+})();
+
 /**
- * Removes the ExpoModulesJSI xcframework build script phase from the
- * generated Pods project. The script tries to resolve SPM packages from
- * GitHub and consistently fails on EAS Build workers (network timeout /
- * React-Native SPM manifest not available for the pinned version).
- *
- * The xcframework is only a performance optimisation and is not required
- * for the app to run correctly.
+ * Patches the generated Podfile to stub out the ExpoModulesJSI xcframework
+ * build phase. That phase runs a Swift Package Manager resolution against
+ * github.com/facebook/react-native which consistently times-out / fails on
+ * EAS Build workers. Stubbing the shell script lets the archive proceed
+ * without the xcframework (it is a performance optimisation, not required
+ * for functionality).
  */
-const withSkipExpoModulesJSI = (config) => {
-  return withDangerousMod(config, [
+const withSkipExpoModulesJSI = (config) =>
+  withDangerousMod(config, [
     "ios",
     async (config) => {
       const podfilePath = path.join(
         config.modRequest.platformProjectRoot,
         "Podfile"
       );
-
       if (!fs.existsSync(podfilePath)) return config;
 
       let podfile = fs.readFileSync(podfilePath, "utf8");
+      const marker = "# __SKIP_EXPO_MODULES_JSI_XCFRAMEWORK__";
+      if (podfile.includes(marker)) return config;
 
-      const patch = `
-# ── Fix: skip ExpoModulesJSI xcframework SPM build (fails on EAS) ──────────
+      const hook = `
+${marker}
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     next unless target.name == 'ExpoModulesJSI'
     target.build_phases.each do |phase|
       next unless phase.is_a?(Xcodeproj::Project::Object::PBXShellScriptBuildPhase)
       next unless phase.shell_script.to_s.include?('xcframework')
-      phase.shell_script = 'echo "ExpoModulesJSI xcframework skipped on EAS"; exit 0'
+      phase.shell_script = 'echo "xcframework skipped"; exit 0'
     end
   end
 end
 `;
-
-      if (!podfile.include("ExpoModulesJSI xcframework skipped on EAS")) {
-        podfile = podfile + "\n" + patch;
-        fs.writeFileSync(podfilePath, podfile);
-      }
-
+      fs.writeFileSync(podfilePath, podfile + "\n" + hook);
       return config;
     },
   ]);
-};
 
 module.exports = withSkipExpoModulesJSI;
