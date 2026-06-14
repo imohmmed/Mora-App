@@ -40,6 +40,16 @@
     },
     "plugins": [
       [
+        "expo-build-properties",
+        {
+          "ios": {
+            "xcodeProjectBuildProperties": {
+              "SWIFT_STRICT_CONCURRENCY": "minimal"
+            }
+          }
+        }
+      ],
+      [
         "expo-router",
         {
           "origin": "https://mora1.com"
