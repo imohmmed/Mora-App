@@ -24,6 +24,7 @@ import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
 import { fetchOrders } from "@/lib/api";
 import { AccountExpoUI } from "@/components/AccountExpoUI";
+import { useNativeReady } from "@/hooks/useNativeReady";
 
 // ── glass detection (AccountExpoUI renders null if unavailable) ────────────────
 const IS_IOS = Platform.OS === "ios";
@@ -461,7 +462,8 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
     : "M";
 
   // ── iOS: native SwiftUI Form with Liquid Glass ────────────────────────────────
-  if (!showOrders && IS_IOS && glassUIAvailable) {
+  const nativeReady = useNativeReady();
+  if (!showOrders && IS_IOS && glassUIAvailable && nativeReady) {
     return (
       <AccountExpoUI
         user={user}

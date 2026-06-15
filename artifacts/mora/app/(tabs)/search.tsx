@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { useNativeReady } from "@/hooks/useNativeReady";
 import {
   Dimensions,
   Platform,
@@ -50,7 +51,7 @@ function cardColor(id: string): string {
   return CARD_COLORS[h % CARD_COLORS.length];
 }
 
-// ── Glass imports ──────────────────────────────────────────────────────────────
+// ── Glass imports (iOS 26+, graceful fallback) ─────────────────────────────────
 let GlassViewComp: any = null;
 try { GlassViewComp = require("expo-glass-effect").GlassView; } catch {}
 
@@ -88,8 +89,9 @@ function SearchResultCard({ item }: { item: Product }) {
   const { isWishlisted, toggle } = useWishlist();
   const liked = isWishlisted(item.id);
   const imageUri = item.images?.[0];
-  const useGlass = IS_IOS && !!GlassViewComp;
-  const useGlassBtn = IS_IOS && glassUIAvailable;
+  const nativeReady = useNativeReady();
+  const useGlass = IS_IOS && !!GlassViewComp && nativeReady;
+  const useGlassBtn = IS_IOS && glassUIAvailable && nativeReady;
   const hasDiscount = item.comparePrice != null && item.comparePrice > item.price;
 
   return (
@@ -160,8 +162,9 @@ export default function SearchScreen() {
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const useGlass = IS_IOS && !!GlassViewComp;
-  const useGlassBtn = IS_IOS && glassUIAvailable;
+  const nativeReady2 = useNativeReady();
+  const useGlass = IS_IOS && !!GlassViewComp && nativeReady2;
+  const useGlassBtn = IS_IOS && glassUIAvailable && nativeReady2;
 
   const topPadding = isWeb ? 0 : insets.top;
   const bottomPadding = isWeb ? 0 : insets.bottom;

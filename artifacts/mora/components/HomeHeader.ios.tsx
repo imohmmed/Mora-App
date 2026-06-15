@@ -5,6 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
+import { useNativeReady } from "@/hooks/useNativeReady";
 
 const PRIMARY = "#0274C1";
 
@@ -187,7 +188,8 @@ function FallbackHeader({ notificationCount = 0, favoritesCount = 0, cartCount =
 }
 
 export function HomeHeader(props: HomeHeaderProps) {
-  if (!glassAvailable) return <FallbackHeader {...props} />;
+  const nativeReady = useNativeReady();
+  if (!glassAvailable || !nativeReady) return <FallbackHeader {...props} />;
   return <GlassHeader {...props} />;
 }
 

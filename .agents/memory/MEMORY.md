@@ -4,3 +4,4 @@
 - [IQD Pricing & Content Sections](iqd-content-sections.md) — All prices in IQD (×1300 from USD), formatIQD() in lib/format.ts, warranty+testimonials via content_sections API
 - [bacons apple-targets pnpm fix](bacons-apple-targets-pnpm.md) — @bacons/apple-targets needs @expo/image-utils symlinked into its node_modules; metro blockList fix for _tmp_ dirs
 - [Live Activities Architecture](live-activities.md) — Full Live Activity + Dynamic Island stack for iOS order tracking
+- [SwiftUI first-render crash fix](swiftui-native-ready.md) — useNativeReady hook defers glass/SwiftUI by one render cycle; applied to all 7 glass components

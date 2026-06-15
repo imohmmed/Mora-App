@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
+import { useNativeReady } from "@/hooks/useNativeReady";
 
 const PRIMARY = "#0274C1";
 
@@ -100,7 +101,8 @@ function FallbackCategoryTabs({ categories, activeIndex, onChange }: CategoryTab
 }
 
 export function CategoryTabs(props: CategoryTabsProps) {
-  if (!glassAvailable) return <FallbackCategoryTabs {...props} />;
+  const nativeReady = useNativeReady();
+  if (!glassAvailable || !nativeReady) return <FallbackCategoryTabs {...props} />;
   return <GlassCategoryTabs {...props} />;
 }
 

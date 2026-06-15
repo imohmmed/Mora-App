@@ -6,6 +6,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNativeReady } from "@/hooks/useNativeReady";
 import {
   Animated,
   Modal,
@@ -150,7 +151,8 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   })();
 
   // ── Theme tokens ─────────────────────────────────────────────────────────────
-  const useGlass = IS_IOS && !!GlassViewComp;
+  const nativeReady = useNativeReady();
+  const useGlass = IS_IOS && !!GlassViewComp && nativeReady;
   const bg         = useGlass ? "transparent" : (isDark ? "#1C1C1E" : "#FFFFFF");
   const handleCol  = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.20)";
   const textPri    = isDark ? "#FFFFFF" : "#000000";
@@ -185,7 +187,7 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
           const oos    = isOOS(val);
 
           // ── iOS: glass chip button via @expo/ui ──────────────────────────
-          if (glassUIAvailable && IS_IOS && ExpoUIHost && ExpoButton) {
+          if (glassUIAvailable && IS_IOS && ExpoUIHost && ExpoButton && nativeReady) {
             return (
               <ExpoUIHost key={val} matchContents style={{ height: 44 }}>
                 <ExpoButton
@@ -302,7 +304,7 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
         )}
 
         {/* ── Add button ───────────────────────────────────────────────────── */}
-        {glassUIAvailable && IS_IOS && ExpoUIHost && ExpoButton ? (
+        {glassUIAvailable && IS_IOS && ExpoUIHost && ExpoButton && nativeReady ? (
           <ExpoUIHost style={{ height: 54 }}>
             <ExpoButton
               label={btnLabel}

@@ -18,6 +18,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
+import { useNativeReady } from "@/hooks/useNativeReady";
 import { HomeHeader } from "@/components/HomeHeader";
 import { CategoryTabs } from "@/components/CategoryTabs";
 import { SpecialCollectionsGrid } from "@/components/SpecialCollectionsGrid";
@@ -95,8 +96,9 @@ function ProductCard({
   const tag = getTag(item);
   const bg = cardColor(item.id);
   const imageUri = item.images?.[0];
-  const useGlass = IS_IOS && !!GlassViewComp;
-  const useGlassBtn = IS_IOS && glassUIAvailable;
+  const nativeReady = useNativeReady();
+  const useGlass = IS_IOS && !!GlassViewComp && nativeReady;
+  const useGlassBtn = IS_IOS && glassUIAvailable && nativeReady;
 
   const handleLike = () => {
     toggle(item.id);
