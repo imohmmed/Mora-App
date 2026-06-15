@@ -150,7 +150,7 @@ overrides:
   '@expo/ngrok-bin>@expo/ngrok-bin-sunos-x64': '-'
   '@expo/ngrok-bin>@expo/ngrok-bin-win32-ia32': '-'
   '@expo/ngrok-bin>@expo/ngrok-bin-win32-x64': '-'
-  '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
+  drizzle-kit>@esbuild-kit/esm-loader: npm:tsx@^4.21.0
   esbuild: 0.27.3
 
 packageExtensionsChecksum: sha256-D/slycCKtDP3DAVOcF4Wfp194tRsQmoOyefC34tUCSY=
