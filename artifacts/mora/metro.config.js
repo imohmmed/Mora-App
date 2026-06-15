@@ -6,9 +6,6 @@ const workspaceRoot = path.resolve(projectRoot, "../..");
 
 const config = getDefaultConfig(projectRoot);
 
-// Explicitly set transformer path to avoid pnpm isolation resolution issues
-config.transformer.babelTransformerPath = require.resolve("metro-babel-transformer");
-
 // Monorepo support: let Metro find modules installed at workspace root
 config.watchFolders = [workspaceRoot];
 config.resolver.nodeModulesPaths = [
