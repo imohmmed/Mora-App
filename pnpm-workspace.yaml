@@ -68,6 +68,12 @@ catalog:
 
 autoInstallPeers: false
 
+packageExtensions:
+  "@bacons/apple-targets@*":
+    dependencies:
+      "@expo/plist": "*"
+      "@expo/image-utils": "*"
+
 onlyBuiltDependencies:
   - '@swc/core'
   - esbuild

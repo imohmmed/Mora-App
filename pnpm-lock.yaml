@@ -153,6 +153,8 @@ overrides:
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   esbuild: 0.27.3
 
+packageExtensionsChecksum: sha256-D/slycCKtDP3DAVOcF4Wfp194tRsQmoOyefC34tUCSY=
+
 importers:
 
   .:
@@ -647,7 +649,7 @@ importers:
     dependencies:
       '@bacons/apple-targets':
         specifier: ^4.0.7
-        version: 4.0.7(expo@56.0.11)
+        version: 4.0.7(expo@56.0.11)(typescript@5.9.3)
       '@expo/image-utils':
         specifier: ^0.10.1
         version: 0.10.1(typescript@5.9.3)
@@ -7525,15 +7527,18 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@bacons/apple-targets@4.0.7(expo@56.0.11)':
+  '@bacons/apple-targets@4.0.7(expo@56.0.11)(typescript@5.9.3)':
     dependencies:
       '@bacons/xcode': 1.0.0-alpha.32
+      '@expo/image-utils': 0.10.1(typescript@5.9.3)
+      '@expo/plist': 0.7.0
       '@react-native/normalize-colors': 0.79.7
       debug: 4.4.3
       expo: 56.0.11(@babel/core@7.29.0)(@expo/metro-runtime@56.0.15)(expo-router@56.2.10)(react-dom@19.1.0(react@19.1.0))(react-native-web@0.21.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native-webview@13.16.1(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native-worklets@0.9.2(@babel/core@7.29.0)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
       glob: 10.5.0
     transitivePeerDependencies:
       - supports-color
+      - typescript
 
   '@bacons/xcode@1.0.0-alpha.32':
     dependencies:
