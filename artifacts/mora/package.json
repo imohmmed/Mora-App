@@ -24,6 +24,7 @@
     "@workspace/api-client-react": "workspace:*",
     "babel-plugin-react-compiler": "^19.0.0-beta-e993439-20250117",
     "expo": "~56.0.11",
+    "expo-dev-client": "~5.1.8",
     "expo-build-properties": "~56.0.18",
     "expo-blur": "~56.0.3",
     "expo-constants": "~56.0.18",
