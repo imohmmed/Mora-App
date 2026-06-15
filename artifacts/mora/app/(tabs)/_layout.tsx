@@ -1,7 +1,7 @@
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
-import React from "react";
+import React, { Component } from "react";
 import { Platform, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -184,11 +184,38 @@ function ClassicTabLayout() {
   );
 }
 
-export default function TabLayout() {
-  if (isLiquidGlassAvailable() && NativeTabs) {
-    return <NativeTabLayout />;
+// ─── Error boundary wrapping NativeTabLayout ──────────────────────────────
+// iOS 26 Liquid Glass native tabs can crash on first render if the
+// SwiftUI host isn't ready yet. We catch that and fall back to ClassicTabLayout.
+type TabBoundaryState = { crashed: boolean };
+
+class NativeTabBoundary extends Component<
+  { children: React.ReactNode; fallback: React.ReactNode },
+  TabBoundaryState
+> {
+  state: TabBoundaryState = { crashed: false };
+
+  static getDerivedStateFromError(): TabBoundaryState {
+    return { crashed: true };
   }
-  return <ClassicTabLayout />;
+
+  render() {
+    if (this.state.crashed) return this.props.fallback;
+    return this.props.children;
+  }
+}
+
+export default function TabLayout() {
+  const classic = <ClassicTabLayout />;
+
+  if (isLiquidGlassAvailable() && NativeTabs) {
+    return (
+      <NativeTabBoundary fallback={classic}>
+        <NativeTabLayout />
+      </NativeTabBoundary>
+    );
+  }
+  return classic;
 }
 
 const styles = StyleSheet.create({
