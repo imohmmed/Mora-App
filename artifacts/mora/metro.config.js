@@ -1,11 +1,19 @@
 const { getDefaultConfig } = require("expo/metro-config");
 const path = require("path");
 
-const config = getDefaultConfig(__dirname);
+const projectRoot = __dirname;
+const workspaceRoot = path.resolve(projectRoot, "../..");
+
+const config = getDefaultConfig(projectRoot);
+
+// Monorepo support: let Metro find modules installed at workspace root
+config.watchFolders = [workspaceRoot];
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, "node_modules"),
+  path.resolve(workspaceRoot, "node_modules"),
+];
 
 // Exclude pnpm post-install temp build dirs from the file watcher.
-// Metro's FallbackWatcher crashes when it tries to watch a directory
-// that gets cleaned up after package post-install scripts (e.g. @isaacs/cliui_tmp_*).
 const originalBlockList = config.resolver.blockList || [];
 const blockListArray = Array.isArray(originalBlockList)
   ? originalBlockList
