@@ -1,0 +1,60 @@
+PS C:\Users\SWAGY> git clone https://github.com/imohmmed/Mora-App
+Cloning into 'Mora-App'...
+remote: Enumerating objects: 2699, done.
+remote: Counting objects: 100% (1137/1137), done.
+remote: Compressing objects: 100% (539/539), done.
+remote: Total 2699 (delta 762), reused 926 (delta 586), pack-reused 1562 (from 1)
+Receiving objects: 100% (2699/2699), 181.33 MiB | 5.80 MiB/s, done.
+Resolving deltas: 100% (1651/1651), done.
+PS C:\Users\SWAGY> cd Mora-App/artifacts/mora         
+PS C:\Users\SWAGY\Mora-App\artifacts\mora> eas login
+(node:1012) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+You are already logged in as itmohmmed.
+√ Do you want to continue? ... yes
+Waiting for browser login...
+If your browser doesn't automatically open, visit this link to log in: https://expo.dev/login?client_id=eas-cli&redirect_uri=http://localhost:52501/auth/callback&response_type=code&code_challenge=I9cpKUWbfPNxUzKn3J6xYw6bKcjAzRmDqHsoPeNVbXM&code_challenge_method=S256&state=zJGl0MtrDMLfhd_1hlrp5ayCH3-2NvpP-5urPnn2fzQ&confirm_account=true
+Logged in
+PS C:\Users\SWAGY\Mora-App\artifacts\mora> eas build --platform ios --profile development
+(node:18388) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+You want to build a development client build for platforms: iOS
+However, we detected that you don't have expo-dev-client installed for your project.
+√ Do you want EAS CLI to install expo-dev-client for you? ... yes
+
+Running expo install expo-dev-client
+
+The `expo` package was not found. Follow the installation directions at https://docs.expo.dev/bare/installing-expo-modules/
+    Error: build command failed.
+PS C:\Users\SWAGY\Mora-App\artifacts\mora> 
+PS C:\Users\SWAGY\Mora-App\artifacts\mora> cd C:\Users\SWAGY\Mora-App
+PS C:\Users\SWAGY\Mora-App> # خذ التحديثات الجديدة
+PS C:\Users\SWAGY\Mora-App> git pull
+remote: Enumerating objects: 11, done.
+remote: Counting objects: 100% (11/11), done.
+remote: Compressing objects: 100% (1/1), done.
+remote: Total 6 (delta 5), reused 6 (delta 5), pack-reused 0 (from 0)
+Unpacking objects: 100% (6/6), 4.13 KiB | 603.00 KiB/s, done.
+From https://github.com/imohmmed/Mora-App
+   fe0be51..b165847  main       -> origin/main
+Updating fe0be51..b165847
+Fast-forward
+ artifacts/mora/package.json |   1 +
+ pnpm-lock.yaml              | 246 ++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 247 insertions(+)
+PS C:\Users\SWAGY\Mora-App> # ابنِ مجدداً (EAS ما تسأل عن expo-dev-client هاللحظة)
+PS C:\Users\SWAGY\Mora-App> cd artifacts/mora
+PS C:\Users\SWAGY\Mora-App\artifacts\mora> eas build --platform ios --profile development
+(node:21684) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+You want to build a development client build for platforms: iOS
+However, we detected that you don't have expo-dev-client installed for your project.
+√ Do you want EAS CLI to install expo-dev-client for you? ... yes
+
+Running expo install expo-dev-client
+
+The `expo` package was not found. Follow the installation directions at https://docs.expo.dev/bare/installing-expo-modules/
+    Error: build command failed.
+PS C:\Users\SWAGY\Mora-App\artifacts\mora> 
