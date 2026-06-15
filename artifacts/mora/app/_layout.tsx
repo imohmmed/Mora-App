@@ -24,7 +24,7 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { LiveActivityBanner } from "@/components/LiveActivityBanner";
 
-SplashScreen.preventAutoHideAsync();
+try { SplashScreen.preventAutoHideAsync(); } catch {}
 
 // ─── Prevent iOS Safari zoom on input focus (font-size < 16px triggers zoom) ──
 function useNoInputZoom() {

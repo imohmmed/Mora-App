@@ -65,6 +65,7 @@
           "defaultChannel": "default"
         }
       ],
+      "react-native-keyboard-controller",
       "@bacons/apple-targets"
     ],
     "experiments": {

@@ -77,6 +77,10 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           Please reload the app to continue.
         </Text>
 
+        <Text style={[styles.errorHint, { color: colors.mutedForeground }]} selectable>
+          {error.message}
+        </Text>
+
         <Pressable
           onPress={handleRestart}
           style={({ pressed }) => [
@@ -197,6 +201,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
     lineHeight: 24,
+  },
+  errorHint: {
+    fontSize: 12,
+    textAlign: "center",
+    lineHeight: 18,
+    opacity: 0.6,
+    paddingHorizontal: 8,
   },
   topButton: {
     position: "absolute",
