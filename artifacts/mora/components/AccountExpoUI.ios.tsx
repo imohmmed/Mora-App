@@ -16,14 +16,15 @@ const PRIMARY = "#0274C1";
 
 let glassAvailable = false;
 let Host: any, Form: any, Section: any, Label: any, Picker: any;
-let Slider: any, Stepper: any, UISwitch: any, UIText: any, ExpoButton: any;
+let Slider: any, Stepper: any, UIToggle: any, UIText: any, ExpoButton: any;
 let tagM: any, tintM: any;
 try {
   const ui = require("@expo/ui/swift-ui");
   const mods = require("@expo/ui/swift-ui/modifiers");
-  ({ Host, Form, Section, Label, Picker, Slider, Stepper, Switch: UISwitch, Text: UIText, Button: ExpoButton } = ui);
+  ({ Host, Form, Section, Label, Picker, Slider, Stepper, Toggle: UIToggle, Text: UIText, Button: ExpoButton } = ui);
   ({ tag: tagM, tint: tintM } = mods);
-  glassAvailable = true;
+  // Only mark available if every component we actually render is defined
+  glassAvailable = !!(Host && Form && Section && ExpoButton && UIToggle && Picker && Slider && Stepper && Label && UIText);
 } catch {}
 
 export function AccountExpoUI({ user, wishlistCount, onLogout, onOrdersPress, onWishlistPress }: AccountExpoUIProps) {
@@ -107,23 +108,23 @@ export function AccountExpoUI({ user, wishlistCount, onLogout, onOrdersPress, on
 
           {/* ── Preferences ── */}
           <Section title="Preferences" footer="Manage how Mora communicates with you.">
-            <UISwitch
-              value={pushNotifications}
-              onValueChange={setPushNotifications}
+            <UIToggle
+              isOn={pushNotifications}
+              onIsOnChange={setPushNotifications}
               label="Push Notifications"
-              color={PRIMARY}
+              modifiers={tintM ? [tintM(PRIMARY)] : []}
             />
-            <UISwitch
-              value={emailUpdates}
-              onValueChange={setEmailUpdates}
+            <UIToggle
+              isOn={emailUpdates}
+              onIsOnChange={setEmailUpdates}
               label="Email Updates"
-              color={PRIMARY}
+              modifiers={tintM ? [tintM(PRIMARY)] : []}
             />
-            <UISwitch
-              value={faceId}
-              onValueChange={setFaceId}
+            <UIToggle
+              isOn={faceId}
+              onIsOnChange={setFaceId}
               label="Unlock with Face ID"
-              color={PRIMARY}
+              modifiers={tintM ? [tintM(PRIMARY)] : []}
             />
             <Picker
               label="Currency"
