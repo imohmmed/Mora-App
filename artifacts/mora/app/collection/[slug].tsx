@@ -22,6 +22,7 @@ import { useCart } from "@/context/CartContext";
 import { fetchSpecialCollection, searchProducts } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { FloatingTabBar } from "@/components/FloatingTabBar";
+import { GlassBackButton } from "@/components/GlassBackButton";
 import type { Product } from "@/lib/types";
 
 const { width } = Dimensions.get("window");
@@ -201,13 +202,10 @@ export default function CollectionScreen() {
         pointerEvents="box-none"
       >
         {/* Back button */}
-        <Pressable
-          style={[styles.iconBtn, { backgroundColor: scrolled ? ICON_BG_SCROLLED : ICON_BG_TOP }]}
+        <GlassBackButton
           onPress={() => { Keyboard.dismiss(); router.back(); }}
-          testID="back-btn"
-        >
-          <Feather name="arrow-left" size={20} color={iconColor} />
-        </Pressable>
+          color={scrolled ? undefined : "#ffffff"}
+        />
 
         {/* Flex spacer — title removed to avoid clashing with expanding search bar */}
         <View style={{ flex: 1 }} />

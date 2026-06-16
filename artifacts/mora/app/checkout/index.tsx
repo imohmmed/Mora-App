@@ -24,6 +24,7 @@ import { useCart } from "@/context/CartContext";
 import { useNotification } from "@/context/NotificationContext";
 import { formatIQD } from "@/lib/format";
 import { CompactPicker } from "@/components/CompactPicker";
+import { GlassBackButton } from "@/components/GlassBackButton";
 
 const PRIMARY = "#0274C1";
 
@@ -245,16 +246,12 @@ export default function CheckoutScreen() {
       <View style={[{ flex: 1 }, { backgroundColor: bg }]}>
 
         <View style={[st.header, { paddingTop: insets.top + 6, paddingHorizontal: 16 }]}>
-          <Pressable
+          <GlassBackButton
             onPress={() => {
               if (router.canGoBack()) router.back();
               else router.replace("/(tabs)/cart" as any);
             }}
-            hitSlop={16}
-            style={st.backBtn}
-          >
-            <Feather name="arrow-left" size={22} color={textCol} />
-          </Pressable>
+          />
           <Text style={[st.headTitle, { color: textCol }]}>Checkout</Text>
           <View style={{ width: 36 }} />
         </View>

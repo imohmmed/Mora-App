@@ -1,7 +1,8 @@
 /**
  * FloatingTabBar — standalone glass tab bar for pages OUTSIDE the (tabs) group.
- * Renders only on web. Uses useRouter + usePathname instead of tab navigator props.
- * Glass CSS/SVG is injected idempotently (safe even if WebLiquidTabBar already injected it).
+ * • iOS  : Liquid Glass (GlassEffectContainer) on iOS 26+, BlurView on older iOS
+ * • Web  : CSS backdrop-filter glass pill
+ * Uses useRouter + usePathname instead of tab navigator props.
  */
 
 import React, { useEffect, useRef } from "react";
@@ -12,23 +13,45 @@ import {
   StyleSheet,
   Text,
   View,
+  useColorScheme,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter, usePathname } from "expo-router";
 import { useCart } from "@/context/CartContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useNativeReady } from "@/hooks/useNativeReady";
+import { isIOS26Plus } from "@/components/LiquidGlassBg";
+
+// ── @expo/ui — Liquid Glass for iOS 26+ ───────────────────────────────────────
+let GlassEffectContainer: any = null;
+let ExpoButton: any = null;
+let buttonStyleMod: any = null;
+let frameMod: any = null;
+try {
+  const ui   = require("@expo/ui/swift-ui");
+  const mods = require("@expo/ui/swift-ui/modifiers");
+  GlassEffectContainer = ui.GlassEffectContainer;
+  ExpoButton           = ui.Button;
+  buttonStyleMod       = mods.buttonStyle;
+  frameMod             = mods.frame;
+} catch {}
+
+// ── SF Symbols (graceful fallback to Feather) ─────────────────────────────────
+let SymbolView: any = null;
+try { SymbolView = require("expo-symbols").SymbolView; } catch {}
 
 const PRIMARY = "#0274C1";
 
 type IconName = React.ComponentProps<typeof Feather>["name"];
 
-const TABS: { name: string; icon: IconName; path: string | null }[] = [
-  { name: "index",   icon: "home",           path: "/" },
-  { name: "search",  icon: "search",         path: "/search" },
-  { name: "chat",    icon: "message-circle", path: null },
-  { name: "cart",    icon: "shopping-bag",   path: "/cart" },
-  { name: "account", icon: "user",           path: "/account" },
+const TABS: { name: string; icon: IconName; sf: string; sfActive: string; path: string | null }[] = [
+  { name: "index",   icon: "home",           sf: "house",           sfActive: "house.fill",         path: "/" },
+  { name: "search",  icon: "search",         sf: "magnifyingglass", sfActive: "magnifyingglass",     path: "/search" },
+  { name: "chat",    icon: "message-circle", sf: "message.circle",  sfActive: "message.circle.fill", path: "/(tabs)/chat" },
+  { name: "cart",    icon: "shopping-bag",   sf: "bag",             sfActive: "bag.fill",            path: "/cart" },
+  { name: "account", icon: "user",           sf: "person",          sfActive: "person.fill",         path: "/account" },
 ];
 
 function getActiveRoute(pathname: string): string | null {
@@ -133,10 +156,132 @@ function useGlassSVG() {
 }
 
 export function FloatingTabBar() {
+  if (Platform.OS === "ios") return <StandaloneIOSTabBar />;
   if (Platform.OS !== "web") return null;
-
   return <FloatingTabBarInner />;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// iOS — Standalone tab bar (no Tabs navigator context needed)
+// ─────────────────────────────────────────────────────────────────────────────
+function StandaloneIOSTabBar() {
+  const insets      = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const isDark      = colorScheme === "dark";
+  const router      = useRouter();
+  const pathname    = usePathname();
+  const { totalItems } = useCart();
+  const nativeReady = useNativeReady();
+
+  const activeRoute = getActiveRoute(pathname);
+  const useGlass    = nativeReady && isIOS26Plus && !!GlassEffectContainer && !!ExpoButton;
+
+  const handlePress = (tab: typeof TABS[0]) => {
+    if (!tab.path) return;
+    if (tab.name === "index") {
+      router.push("/");
+      return;
+    }
+    router.push(tab.path as any);
+  };
+
+  const cartIdx = TABS.findIndex((t) => t.name === "cart");
+  const ITEM_W  = 60;
+
+  // ── Liquid Glass (iOS 26+) ─────────────────────────────────────────────────
+  if (useGlass) {
+    return (
+      <View
+        style={[ios.glassWrapper, { bottom: Math.max(insets.bottom, 12) + 4 }]}
+        pointerEvents="box-none"
+      >
+        <GlassEffectContainer spacing={2} style={ios.glassRow}>
+          {TABS.map((tab) => {
+            const focused = tab.name === activeRoute;
+            return (
+              <ExpoButton
+                key={tab.name}
+                systemImage={focused ? tab.sfActive : tab.sf}
+                onPress={() => handlePress(tab)}
+                modifiers={[
+                  buttonStyleMod("glass"),
+                  frameMod({ width: 58, height: 52 }),
+                ]}
+              />
+            );
+          })}
+        </GlassEffectContainer>
+        {totalItems > 0 && (
+          <View pointerEvents="none" style={[ios.floatBadge, { left: cartIdx * ITEM_W + ITEM_W - 8 }]}>
+            <Text style={ios.badgeTxt}>{totalItems > 9 ? "9+" : totalItems}</Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  // ── BlurView fallback (iOS < 26) ───────────────────────────────────────────
+  const active   = isDark ? "#FFFFFF" : "#000000";
+  const inactive = isDark ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.30)";
+
+  return (
+    <View style={[ios.blurWrapper, { height: 54 + insets.bottom }]}>
+      <BlurView
+        intensity={90}
+        tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterial"}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={[ios.blurRow, { paddingBottom: insets.bottom }]}>
+        {TABS.map((tab) => {
+          const focused = tab.name === activeRoute;
+          const color   = focused ? active : inactive;
+          return (
+            <Pressable
+              key={tab.name}
+              style={ios.blurItem}
+              onPress={() => handlePress(tab)}
+              accessibilityRole="button"
+            >
+              <View>
+                {SymbolView ? (
+                  <SymbolView
+                    name={(focused ? tab.sfActive : tab.sf) as any}
+                    tintColor={color}
+                    size={23}
+                  />
+                ) : (
+                  <Feather name={tab.icon} size={22} color={color} />
+                )}
+                {tab.name === "cart" && totalItems > 0 && (
+                  <View style={ios.badge}>
+                    <Text style={ios.badgeTxt}>{totalItems > 9 ? "9+" : totalItems}</Text>
+                  </View>
+                )}
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const ios = StyleSheet.create({
+  glassWrapper: { position: "absolute", left: 0, right: 0, alignItems: "center" },
+  glassRow:     { flexDirection: "row" },
+  floatBadge: {
+    position: "absolute", top: -4, minWidth: 15, height: 15, borderRadius: 8,
+    backgroundColor: PRIMARY, alignItems: "center", justifyContent: "center", paddingHorizontal: 3,
+  },
+  blurWrapper: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(128,128,128,0.25)" },
+  blurRow:  { flex: 1, flexDirection: "row", alignItems: "center" },
+  blurItem: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 8 },
+  badge: {
+    position: "absolute", top: -3, right: -7, minWidth: 15, height: 15, borderRadius: 8,
+    backgroundColor: PRIMARY, alignItems: "center", justifyContent: "center", paddingHorizontal: 3,
+  },
+  badgeTxt: { color: "#fff", fontSize: 8, fontWeight: "700" },
+});
 
 function FloatingTabBarInner() {
   const { resolvedScheme } = useTheme();

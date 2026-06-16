@@ -17,6 +17,7 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { MoraLogo } from "@/components/MoraLogo";
 import { FloatingTabBar } from "@/components/FloatingTabBar";
+import { GlassBackButton } from "@/components/GlassBackButton";
 import { fetchProduct, fetchProducts, fetchContentSections } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { useCart } from "@/context/CartContext";
@@ -250,24 +251,7 @@ export default function ProductDetailScreen() {
           },
         ]}
       >
-        {isIOS26Plus ? (
-          <Pressable
-            onPress={() => router.back()}
-            style={styles.glassIconBtn}
-            testID="back-btn"
-          >
-            <LiquidGlassBg />
-            <Feather name="arrow-left" size={20} color={colors.foreground} />
-          </Pressable>
-        ) : (
-          <Pressable
-            onPress={() => router.back()}
-            style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.6 }]}
-            testID="back-btn"
-          >
-            <Feather name="arrow-left" size={22} color={colors.foreground} />
-          </Pressable>
-        )}
+        <GlassBackButton onPress={() => router.back()} />
         <MoraLogo size="small" />
         {isIOS26Plus ? (
           <Pressable

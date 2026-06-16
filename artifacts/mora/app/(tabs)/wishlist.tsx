@@ -17,7 +17,7 @@ import { useRouter } from "expo-router";
 import { useQueries } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
-import { MoraLogo } from "@/components/MoraLogo";
+import { GlassBackButton } from "@/components/GlassBackButton";
 import { formatIQD } from "@/lib/format";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
@@ -125,6 +125,7 @@ function WishlistCard({
 export default function WishlistScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const isWeb = Platform.OS === "web";
   const { ids } = useWishlist();
   const { addItem } = useCart();
@@ -177,12 +178,15 @@ export default function WishlistScreen() {
           { paddingTop: topPadding + 8, borderBottomColor: colors.border },
         ]}
       >
-        <MoraLogo size="small" />
-        {wishlistIds.length > 0 && (
-          <Text style={[styles.itemCount, { color: colors.mutedForeground }]}>
-            {wishlistIds.length} saved
-          </Text>
-        )}
+        <GlassBackButton onPress={() => router.back()} />
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Wishlist</Text>
+        <View style={styles.headerRight}>
+          {wishlistIds.length > 0 && (
+            <Text style={[styles.itemCount, { color: colors.mutedForeground }]}>
+              {wishlistIds.length} saved
+            </Text>
+          )}
+        </View>
       </View>
 
       {wishlistIds.length === 0 ? (
@@ -260,9 +264,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 12,
   },
-  itemCount: { fontFamily: "Inter_500Medium", fontSize: 14 },
+  headerTitle: { fontFamily: "Inter_700Bold", fontSize: 18, flex: 1, textAlign: "center" },
+  headerRight: { width: 42, alignItems: "flex-end" as const },
+  itemCount: { fontFamily: "Inter_500Medium", fontSize: 13 },
   emptyContainer: {
     flex: 1,
     alignItems: "center",

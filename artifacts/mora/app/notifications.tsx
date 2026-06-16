@@ -1,7 +1,6 @@
 import React from "react";
 import {
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -10,6 +9,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/useColors";
+import { GlassBackButton } from "@/components/GlassBackButton";
+import { FloatingTabBar } from "@/components/FloatingTabBar";
 
 export default function NotificationsScreen() {
   const colors = useColors();
@@ -21,16 +22,12 @@ export default function NotificationsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.6 }]}
-        >
-          <Feather name="arrow-left" size={22} color={colors.foreground} />
-        </Pressable>
+        <GlassBackButton onPress={() => router.back()} />
         <Text style={[styles.title, { color: colors.foreground }]}>Notifications</Text>
         <View style={styles.spacer} />
       </View>
 
+      <FloatingTabBar />
       <View style={styles.emptyWrap}>
         <View style={[styles.emptyIconBg, { backgroundColor: colors.secondary }]}>
           <Feather name="bell" size={48} color={colors.mutedForeground} />
