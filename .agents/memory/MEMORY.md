@@ -4,6 +4,7 @@
 - [IQD Pricing & Content Sections](iqd-content-sections.md) — All prices in IQD (×1300 from USD), formatIQD() in lib/format.ts, warranty+testimonials via content_sections API
 - [bacons apple-targets pnpm fix](bacons-apple-targets-pnpm.md) — @bacons/apple-targets needs @expo/image-utils symlinked into its node_modules; metro blockList fix for _tmp_ dirs
 - [Live Activities Architecture](live-activities.md) — Full Live Activity + Dynamic Island stack for iOS order tracking
+- [@expo/ui Host wrapper](expo-ui-host-wrapper.md) — SwiftUI views (GlassEffectContainer etc.) MUST be inside <Host> or Fabric crashes at launch (SwiftUIVirtualViewObjC SIGABRT)
 - [iOS Native Crash — expo-glass-effect](ios-glass-crash.md) — EXC_BAD_ACCESS in registerNativeViews on iOS 26 beta; use @expo/ui instead
 - [react-native-keyboard-controller crash](keyboard-controller-crash.md) — KeyboardProvider useEffect calls undefined native fn on iOS production; remove from _layout.tsx
 - [LiquidGlassBg pattern](liquid-glass-pattern.md) — @expo/ui Host+GlassEffectContainer+VStack(glassEffect) as reusable background layer for iOS 26+
