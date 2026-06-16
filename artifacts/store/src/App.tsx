@@ -13,6 +13,7 @@ import CollectionDetail from "@/pages/collection-detail";
 import Search from "@/pages/search";
 import Cart from "@/pages/cart";
 import Checkout from "@/pages/checkout";
+import CheckoutComplete from "@/pages/checkout-complete";
 import Blog from "@/pages/blog";
 import BlogDetail from "@/pages/blog-detail";
 import Account from "@/pages/account";
@@ -46,6 +47,7 @@ function Router() {
       <Route path="/search" component={Search} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
+      <Route path="/checkout/complete" component={CheckoutComplete} />
       <Route path="/blog" component={Blog} />
       <Route path="/blog/:id" component={BlogDetail} />
       <Route path="/account/orders" component={AccountOrders} />

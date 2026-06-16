@@ -291,12 +291,16 @@ export default function HomeScreen() {
 
   const flatListRef = useRef<FlatList>(null);
   useEffect(() => {
-    if (Platform.OS !== "web" || typeof window === "undefined") return;
-    const handler = () => {
-      flatListRef.current?.scrollToOffset?.({ offset: 0, animated: true });
-    };
-    window.addEventListener("mora-scroll-home-top", handler);
-    return () => window.removeEventListener("mora-scroll-home-top", handler);
+    const scrollTop = () => flatListRef.current?.scrollToOffset?.({ offset: 0, animated: true });
+    // Native: TabEvents bus
+    const { TabEvents, TAB_HOME_SCROLL_TOP } = require("@/lib/tabEvents") as typeof import("@/lib/tabEvents");
+    const offNative = TabEvents.on(TAB_HOME_SCROLL_TOP, scrollTop);
+    // Web: window event (legacy + WebLiquidTabBar)
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      window.addEventListener("mora-scroll-home-top", scrollTop);
+      return () => { offNative(); window.removeEventListener("mora-scroll-home-top", scrollTop); };
+    }
+    return offNative;
   }, []);
 
   const categoryKey = CATEGORIES[activeCategory];

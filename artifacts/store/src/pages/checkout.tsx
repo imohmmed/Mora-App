@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/hooks/use-cart";
 import { useStoreAuth } from "@/hooks/use-store-auth";
@@ -8,8 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Check, ArrowLeft, MapPin, Phone,
-  DollarSign, Loader2, Eye, EyeOff,
+  Check, ArrowLeft, Loader2, Eye, EyeOff,
   ShoppingBag, User, Package,
 } from "lucide-react";
 
@@ -265,9 +264,8 @@ function OrderSidebar({ items, subtotal }: { items: ReturnType<typeof useCart>["
 export default function Checkout() {
   const { items, total, clearCart } = useCart();
   const { user, token, isLoading, login, register, updateProfile } = useStoreAuth();
+  const [, navigate] = useLocation();
 
-  // null = form/login, non-null = order placed
-  const [snap, setSnap]         = useState<OrderSnap | null>(null);
   const [placing, setPlacing]   = useState(false);
   const [placeError, setPlaceError] = useState("");
 
@@ -318,8 +316,8 @@ export default function Checkout() {
 
       const placed: OrderSnap = { items: [...items], subtotal: total, orderNumber, form: { ...form } };
       clearCart();
-      setSnap(placed);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      sessionStorage.setItem("mora_order_snap", JSON.stringify(placed));
+      navigate("/checkout/complete");
 
       // Save address back to profile (best-effort, non-blocking)
       updateProfile({ phone: form.phone, address: { city: form.city, district: form.district, street: form.street } }).catch(() => {});
@@ -331,15 +329,14 @@ export default function Checkout() {
   };
 
   // ── Derived view key for AnimatePresence ──────────────────────────────────
-  type ViewKey = "empty" | "loading" | "login" | "form" | "success";
+  type ViewKey = "empty" | "loading" | "login" | "form";
   const viewKey: ViewKey =
-    snap                            ? "success"
-    : items.length === 0            ? "empty"
-    : isLoading                     ? "loading"
-    : !user                         ? "login"
-    :                                 "form";
+    items.length === 0 ? "empty"
+    : isLoading        ? "loading"
+    : !user            ? "login"
+    :                    "form";
 
-  const stepNum: 1 | 2 | 3 = viewKey === "success" ? 3 : 2;
+  const stepNum: 1 | 2 | 3 = 2;
 
   return (
     <Layout>
@@ -478,88 +475,6 @@ export default function Checkout() {
               </div>
 
               <OrderSidebar items={items} subtotal={total} />
-            </motion.div>
-          )}
-
-          {/* ── Success / Complete ───────────────────────────────────────── */}
-          {viewKey === "success" && snap && (
-            <motion.div key="success"
-              initial={TX.enter} animate={TX.show} exit={TX.exit}
-              transition={TX.transition}
-              className="max-w-2xl mx-auto"
-            >
-              {/* Hero */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.88 }} animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: "spring", stiffness: 230, damping: 18, delay: 0.05 }}
-                className="text-center mb-10"
-              >
-                <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/30">
-                  <Check className="h-10 w-10 text-primary-foreground" />
-                </div>
-                <h1 className="text-3xl font-black tracking-tighter uppercase mb-3">Order Placed!</h1>
-                <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 px-5 py-2 rounded-full mb-4">
-                  <span className="text-sm font-bold text-primary tracking-wide">{snap.orderNumber}</span>
-                </div>
-                <p className="text-muted-foreground">
-                  Thank you{snap.form.name ? `, ${snap.form.name.split(" ")[0]}` : ""}! We'll prepare your order right away.
-                </p>
-              </motion.div>
-
-              {/* Items */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.12 }}
-                className="border border-border bg-secondary/30 p-6 mb-4"
-              >
-                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-4">Order Items</p>
-                <div className="space-y-3 mb-4">
-                  {snap.items.map((item) => (
-                    <div key={item.variantId} className="flex justify-between items-center text-sm gap-3">
-                      <span className="font-medium line-clamp-1 flex-1">
-                        {item.title}{" "}
-                        <span className="text-muted-foreground font-normal">×{item.quantity}</span>
-                      </span>
-                      <span className="font-bold flex-shrink-0">{fmtIQD(item.price * item.quantity)}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="border-t border-border pt-3 space-y-1.5 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Shipping</span>
-                    <span className="text-green-600 font-semibold">Free</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-base">
-                    <span>Total</span>
-                    <span>{fmtIQD(snap.subtotal)}</span>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Delivery details */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="grid sm:grid-cols-3 gap-3 mb-8"
-              >
-                {[
-                  { icon: MapPin,     label: "Delivery", value: [snap.form.district, snap.form.city].filter(Boolean).join(", ") || "—" },
-                  { icon: Phone,      label: "Phone",    value: snap.form.phone || "—" },
-                  { icon: DollarSign, label: "Payment",  value: "Cash on Delivery" },
-                ].map(({ icon: Icon, label, value }) => (
-                  <div key={label} className="border border-border bg-secondary/30 p-4 flex gap-3">
-                    <Icon className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">{label}</p>
-                      <p className="text-sm font-medium">{value}</p>
-                    </div>
-                  </div>
-                ))}
-              </motion.div>
-
-              <Button asChild className="w-full h-12 uppercase font-bold tracking-wider text-sm">
-                <Link href="/products">Continue Shopping</Link>
-              </Button>
             </motion.div>
           )}
 

@@ -23,6 +23,7 @@ import { useCart } from "@/context/CartContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useNativeReady } from "@/hooks/useNativeReady";
 import { isIOS26Plus } from "@/components/LiquidGlassBg";
+import { TabEvents, TAB_HOME_SCROLL_TOP, TAB_SEARCH_FOCUS } from "@/lib/tabEvents";
 
 // ── @expo/ui — Liquid Glass for iOS 26+ ───────────────────────────────────────
 let GlassEffectContainer: any = null;
@@ -179,7 +180,19 @@ function StandaloneIOSTabBar() {
   const handlePress = (tab: typeof TABS[0]) => {
     if (!tab.path) return;
     if (tab.name === "index") {
+      if (activeRoute === "index") {
+        TabEvents.emit(TAB_HOME_SCROLL_TOP);
+        return;
+      }
       router.push("/");
+      return;
+    }
+    if (tab.name === "search") {
+      if (activeRoute === "search") {
+        TabEvents.emit(TAB_SEARCH_FOCUS);
+        return;
+      }
+      router.push(tab.path as any);
       return;
     }
     router.push(tab.path as any);

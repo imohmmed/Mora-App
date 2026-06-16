@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import { useNativeReady } from "@/hooks/useNativeReady";
 import {
@@ -198,6 +198,18 @@ export default function SearchScreen() {
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Tab re-press → focus keyboard ──────────────────────────────────────────
+  useEffect(() => {
+    const focusInput = () => inputRef.current?.focus();
+    const { TabEvents, TAB_SEARCH_FOCUS } = require("@/lib/tabEvents") as typeof import("@/lib/tabEvents");
+    const offNative = TabEvents.on(TAB_SEARCH_FOCUS, focusInput);
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      window.addEventListener("mora-focus-search", focusInput);
+      return () => { offNative(); window.removeEventListener("mora-focus-search", focusInput); };
+    }
+    return offNative;
+  }, []);
   const nativeReady2 = useNativeReady();
   const useGlass = IS_IOS && !!GlassViewComp && nativeReady2;
   const useGlassBtn = IS_IOS && glassUIAvailable && nativeReady2;

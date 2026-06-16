@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCart } from "@/context/CartContext";
 import { useNativeReady } from "@/hooks/useNativeReady";
 import { isIOS26Plus } from "@/components/LiquidGlassBg";
+import { TabEvents, TAB_HOME_SCROLL_TOP, TAB_SEARCH_FOCUS } from "@/lib/tabEvents";
 
 // ── Inline TabBar props type (avoids importing from private expo-router path) ──
 type TabBarProps = {
@@ -77,7 +78,15 @@ export function NativeGlassTabBar({ state, navigation }: TabBarProps) {
   const handlePress = (route: (typeof state.routes)[number]) => {
     const idx       = state.routes.findIndex(r => r.key === route.key);
     const isFocused = state.index === idx;
-    const ev        = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+    if (isFocused && route.name === "index") {
+      TabEvents.emit(TAB_HOME_SCROLL_TOP);
+      return;
+    }
+    if (isFocused && route.name === "search") {
+      TabEvents.emit(TAB_SEARCH_FOCUS);
+      return;
+    }
+    const ev = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
     if (!isFocused && !ev.defaultPrevented) navigation.navigate(route.name);
   };
 

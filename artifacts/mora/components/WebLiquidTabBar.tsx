@@ -414,6 +414,11 @@ export function WebLiquidTabBar({ state, navigation, descriptors }: BottomTabBar
               window.dispatchEvent(new CustomEvent("mora-scroll-home-top"));
               return;
             }
+            // Search tab re-press while already on search — focus keyboard
+            if (focused && route.name === "search" && typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("mora-focus-search"));
+              return;
+            }
             const event = navigation.emit({
               type: "tabPress",
               target: route.key,
