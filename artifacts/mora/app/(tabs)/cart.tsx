@@ -1,5 +1,4 @@
 import React, { useCallback, useRef } from "react";
-import { useNativeReady } from "@/hooks/useNativeReady";
 import {
   LayoutAnimation,
   Platform,
@@ -27,9 +26,6 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// ── expo-glass-effect (iOS 26+ Liquid Glass — graceful fallback) ───────────────
-let GlassViewComp: any = null;
-try { GlassViewComp = require("expo-glass-effect").GlassView; } catch {}
 
 const PRIMARY = "#0274C1";
 
@@ -182,7 +178,6 @@ export default function CartScreen() {
   const { resolvedScheme } = useTheme();
   const isDark      = resolvedScheme === "dark";
 
-  const nativeReady = useNativeReady();
   const bg      = isDark ? "#0A0A0A" : "#FFFFFF";
   const textCol = isDark ? "#FFFFFF" : "#1A1A1A";
   const sub     = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.42)";
@@ -267,20 +262,12 @@ export default function CartScreen() {
       <View style={[
         s.bar,
         {
-          backgroundColor: GlassViewComp && nativeReady ? "transparent" : barBg,
+          backgroundColor: barBg,
           borderTopColor: barBdr,
           paddingBottom: Platform.OS === "web" ? 14 : insets.bottom + 14,
           bottom: Platform.OS === "web" ? 84 : 0,
         },
       ]}>
-        {/* Liquid Glass background — expo-glass-effect (iOS 26+, deferred until native bridge ready) */}
-        {GlassViewComp && nativeReady && (
-          <GlassViewComp
-            style={StyleSheet.absoluteFill}
-            glassEffectStyle="regular"
-            colorScheme={isDark ? "dark" : "light"}
-          />
-        )}
         <View style={{ flex: 1 }}>
           <Text style={[s.barLabel, { color: sub }]}>Subtotal</Text>
           <Text style={[s.barTotal, { color: textCol }]}>{formatIQD(subtotal)}</Text>

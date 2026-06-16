@@ -1,14 +1,16 @@
 /**
- * Tab layout — Safe Liquid Glass tab bar, no @expo/ui SwiftUI components.
+ * Tab layout — BlurView tab bar (expo-blur, stable on all iOS versions).
  *
  * Tab bar strategy:
- *  • iOS 26+ : GlassView (expo-glass-effect) as tabBarBackground → true Liquid Glass bg
- *  • iOS < 26 : BlurView as tabBarBackground
- *  • Android  : solid bg
- *  • Web      : WebLiquidTabBar custom tabBar renderer
+ *  • iOS     : BlurView (systemChromeMaterial) as tabBarBackground
+ *  • Android : solid bg
+ *  • Web     : WebLiquidTabBar custom tabBar renderer
  *
- * IMPORTANT: We export ErrorBoundary so expo-router uses our custom error UI
- * (with full error text) instead of its silent default "Something went wrong".
+ * NOTE: expo-glass-effect was removed — it caused EXC_BAD_ACCESS (SIGSEGV)
+ * during AppContext.registerNativeViews() on iOS 26 beta (null pointer in
+ * ViewModuleWrapper.name()). Using expo-blur instead.
+ *
+ * IMPORTANT: We export ErrorBoundary so expo-router uses our custom error UI.
  */
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
@@ -25,7 +27,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 import { useCart } from "@/context/CartContext";
-import { useNativeReady } from "@/hooks/useNativeReady";
 import { WebLiquidTabBar } from "@/components/WebLiquidTabBar";
 import { ErrorFallback } from "@/components/ErrorFallback";
 
@@ -33,14 +34,6 @@ import { ErrorFallback } from "@/components/ErrorFallback";
 let SymbolView: any = null;
 try { SymbolView = require("expo-symbols").SymbolView; } catch {}
 
-// ── expo-glass-effect (GlassView — stable, NOT @expo/ui) ─────────────────────
-let GlassView: any = null;
-let isLiquidGlassAvail: () => boolean = () => false;
-try {
-  const g = require("expo-glass-effect");
-  GlassView = g.GlassView;
-  isLiquidGlassAvail = g.isLiquidGlassAvailable ?? (() => false);
-} catch {}
 
 // ── Segment-level ErrorBoundary for expo-router ───────────────────────────────
 // expo-router catches errors in each route segment before they bubble to our
@@ -65,9 +58,6 @@ export default function TabLayout() {
   const insets      = useSafeAreaInsets();
   const { totalItems } = useCart();
 
-  // Defer glass until native bridge is ready (prevents first-render crashes)
-  const nativeReady  = useNativeReady();
-  const glassEnabled = isIOS && nativeReady && !!GlassView && isLiquidGlassAvail();
 
   const active   = isDark ? "#FFFFFF" : "#000000";
   const inactive = isDark ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.30)";
@@ -99,24 +89,13 @@ export default function TabLayout() {
               position: "absolute",
               height: TAB_H + insets.bottom,
               backgroundColor: "transparent",
-              borderTopWidth: glassEnabled ? 0 : StyleSheet.hairlineWidth,
+              borderTopWidth: StyleSheet.hairlineWidth,
               borderTopColor: String(colors.border),
               elevation: 0,
             },
         tabBarItemStyle: { paddingVertical: 6 },
-        // ── SAFE glass background — only expo-glass-effect GlassView ──────────
-        // NO @expo/ui components here (they caused native crashes)
         tabBarBackground: () => {
           if (isWeb) return null;
-          if (glassEnabled) {
-            return (
-              <GlassView
-                style={StyleSheet.absoluteFill}
-                glassEffectStyle="regular"
-                colorScheme={isDark ? "dark" : "light"}
-              />
-            );
-          }
           if (isIOS) {
             return (
               <BlurView

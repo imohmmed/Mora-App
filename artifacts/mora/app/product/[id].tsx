@@ -13,10 +13,9 @@ import {
   View,
 } from "react-native";
 
-// ── Glass imports (iOS 26+ only, graceful fallback) ────────────────────────────
+// expo-glass-effect removed — caused EXC_BAD_ACCESS on iOS 26 beta during native view registration
 const IS_IOS = Platform.OS === "ios";
-let GlassViewComp: any = null;
-try { GlassViewComp = require("expo-glass-effect").GlassView; } catch {}
+const GlassViewComp: any = null;
 
 let glassUIAvailable = false;
 let ExpoUIHost: any, ExpoButton: any;

@@ -25,11 +25,8 @@ import type { Product, Variant } from "@/lib/types";
 const PRIMARY = "#0274C1";
 const IS_IOS = Platform.OS === "ios";
 
-// ── expo-glass-effect (iOS 26+ only, graceful fallback) ───────────────────────
-let GlassViewComp: any = null;
-try {
-  GlassViewComp = require("expo-glass-effect").GlassView;
-} catch {}
+// expo-glass-effect removed — caused EXC_BAD_ACCESS on iOS 26 beta during native view registration
+const GlassViewComp: any = null;
 
 // ── @expo/ui SwiftUI glass chip buttons (iOS only) ────────────────────────────
 let glassUIAvailable = false;

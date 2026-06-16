@@ -61,9 +61,8 @@ function getTag(product: Product): string | null {
   return null;
 }
 
-// ── Glass imports (iOS 26+, graceful fallback) ─────────────────────────────────
-let GlassViewComp: any = null;
-try { GlassViewComp = require("expo-glass-effect").GlassView; } catch {}
+// expo-glass-effect removed — caused EXC_BAD_ACCESS on iOS 26 beta during native view registration
+const GlassViewComp: any = null;
 
 let glassUIAvailable = false;
 let ExpoUIHost: any, ExpoButton: any;

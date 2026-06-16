@@ -51,9 +51,8 @@ function cardColor(id: string): string {
   return CARD_COLORS[h % CARD_COLORS.length];
 }
 
-// ── Glass imports (iOS 26+, graceful fallback) ─────────────────────────────────
-let GlassViewComp: any = null;
-try { GlassViewComp = require("expo-glass-effect").GlassView; } catch {}
+// expo-glass-effect removed — caused EXC_BAD_ACCESS on iOS 26 beta during native view registration
+const GlassViewComp: any = null;
 
 let glassUIAvailable = false;
 let ExpoUIHost: any, ExpoButton: any;
