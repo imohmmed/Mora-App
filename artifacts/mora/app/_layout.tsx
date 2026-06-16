@@ -9,11 +9,24 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
-import { Platform } from "react-native";
+import { Alert, Platform } from "react-native";
 import { useAuth } from "@/context/AuthContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+
+// ─── صيد الأخطاء الداخلية وعرضها كـ Alert على الشاشة مباشرة ────────────────
+if (Platform.OS !== "web") {
+  const handler = (error: Error, isFatal?: boolean) => {
+    Alert.alert(
+      isFatal ? "💥 خطأ قاتل" : "⚠️ خطأ",
+      `النوع: ${error.name}\n\nالسبب: ${error.message}\n\n${(error.stack ?? "").slice(0, 400)}`,
+      [{ text: "حسناً" }],
+    );
+  };
+  // @ts-ignore — ErrorUtils موجود في RN runtime
+  if (global.ErrorUtils) global.ErrorUtils.setGlobalHandler(handler);
+}
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CartProvider } from "@/context/CartContext";

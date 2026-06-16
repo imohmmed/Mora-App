@@ -273,8 +273,8 @@ export default function CartScreen() {
           bottom: Platform.OS === "web" ? 84 : 0,
         },
       ]}>
-        {/* Liquid Glass background — expo-glass-effect (iOS 26+) */}
-        {GlassViewComp && (
+        {/* Liquid Glass background — expo-glass-effect (iOS 26+, deferred until native bridge ready) */}
+        {GlassViewComp && nativeReady && (
           <GlassViewComp
             style={StyleSheet.absoluteFill}
             glassEffectStyle="regular"

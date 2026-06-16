@@ -219,7 +219,7 @@ export default function OrderCompleteScreen() {
         {/* Wayl verify button */}
         {isWayl && payStatus === "pending" && (
           <View style={[s.verifyWrap, { marginTop: !!waylUrl ? 0 : undefined }]}>
-            <Pressable onPress={verifyPayment} disabled={verifying}
+            <Pressable onPress={() => verifyPayment()} disabled={verifying}
               style={({ pressed }) => [s.verifyBtn, pressed && { opacity: 0.85 }, verifying && { opacity: 0.7 }]}>
               {verifying
                 ? <ActivityIndicator color="#fff" size="small" />

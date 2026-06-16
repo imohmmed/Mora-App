@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/hooks/use-cart";
@@ -8,27 +8,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Check, ArrowLeft, MapPin, Phone, Package,
+  Check, ArrowLeft, MapPin, Phone,
   DollarSign, Loader2, Eye, EyeOff,
-  ShoppingBag, User, ChevronRight,
+  ShoppingBag, User, ChevronRight, Package,
 } from "lucide-react";
 
-const BASE = "/api";
+const BASE     = "/api";
 const SNAP_KEY = "mora_store_wayl_snap";
 
 const PAYMENT_LOGOS = [
-  { key: "mastercard", src: "/payment/visa.webp"   },
-  { key: "zaincash",   src: "/payment/zaincash.png" },
-  { key: "fastpay",    src: "/payment/fastpay.png"  },
-  { key: "fib",        src: "/payment/fib.jpeg"     },
-  { key: "qicard",     src: "/payment/qicard.png"   },
+  { key: "mastercard", src: "/payment/visa.webp"    },
+  { key: "zaincash",   src: "/payment/zaincash.png"  },
+  { key: "fastpay",    src: "/payment/fastpay.png"   },
+  { key: "fib",        src: "/payment/fib.jpeg"      },
+  { key: "qicard",     src: "/payment/qicard.png"    },
 ];
 
 function fmtIQD(n: number) {
   return n.toLocaleString("en-US") + " IQD";
 }
 
-type Step = 1 | 2;
 type FormState = {
   name: string; phone: string;
   city: string; district: string; street: string; note: string;
@@ -42,37 +41,65 @@ type OrderSnap = {
 
 const STEP_LABELS = ["Cart", "Checkout", "Complete"];
 
+// ── Page transition variants ──────────────────────────────────────────────────
+const TX = {
+  enter: { opacity: 0, x: 40,  scale: 0.98 },
+  show:  { opacity: 1, x: 0,   scale: 1    },
+  exit:  { opacity: 0, x: -30, scale: 0.98 },
+  transition: { duration: 0.26, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] },
+};
+
+// ── Step indicator ────────────────────────────────────────────────────────────
 function StepIndicator({ current }: { current: 1 | 2 | 3 }) {
   return (
     <div className="flex items-center mb-10">
       {STEP_LABELS.map((label, i) => {
-        const step = (i + 1) as 1 | 2 | 3;
+        const step  = (i + 1) as 1 | 2 | 3;
         const done   = step < current;
         const active = step === current;
         return (
           <React.Fragment key={label}>
             <div className="flex items-center gap-2">
-              <div className={`
-                w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2
-                transition-all duration-300
-                ${done || active
-                  ? "bg-primary border-primary text-primary-foreground"
-                  : "border-border text-muted-foreground bg-background"}
-              `}>
-                {done ? <Check className="h-3.5 w-3.5" /> : step}
-              </div>
-              <span className={`
-                text-[11px] font-bold uppercase tracking-widest hidden sm:block transition-colors
-                ${active ? "text-foreground" : done ? "text-primary" : "text-muted-foreground"}
-              `}>
+              <motion.div
+                animate={{
+                  scale: active ? 1.1 : 1,
+                  backgroundColor: done || active ? "hsl(var(--primary))" : "transparent",
+                  borderColor:     done || active ? "hsl(var(--primary))" : "hsl(var(--border))",
+                }}
+                transition={{ duration: 0.35, type: "spring", stiffness: 220, damping: 18 }}
+                className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold"
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  {done ? (
+                    <motion.span key="check"
+                      initial={{ scale: 0.4, opacity: 0 }}
+                      animate={{ scale: 1,   opacity: 1 }}
+                      exit={{    scale: 0.4, opacity: 0 }}
+                      className="text-primary-foreground"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                    </motion.span>
+                  ) : (
+                    <motion.span key="num"
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      className={active ? "text-primary-foreground" : "text-muted-foreground"}
+                    >
+                      {step}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+              <span className={`text-[11px] font-bold uppercase tracking-widest hidden sm:block transition-colors duration-300
+                ${active ? "text-foreground" : done ? "text-primary" : "text-muted-foreground"}`}>
                 {label}
               </span>
             </div>
             {i < STEP_LABELS.length - 1 && (
-              <div className={`
-                flex-1 h-px mx-3 transition-all duration-500
-                ${step < current ? "bg-primary" : "bg-border"}
-              `} />
+              <motion.div
+                animate={{ backgroundColor: step < current ? "hsl(var(--primary))" : "hsl(var(--border))" }}
+                transition={{ duration: 0.5 }}
+                className="flex-1 h-px mx-3"
+              />
             )}
           </React.Fragment>
         );
@@ -81,6 +108,7 @@ function StepIndicator({ current }: { current: 1 | 2 | 3 }) {
   );
 }
 
+// ── Login gate ────────────────────────────────────────────────────────────────
 function LoginGate({ onLogin }: { onLogin: (email: string, pw: string) => Promise<unknown> }) {
   const [email, setEmail]     = useState("");
   const [pw, setPw]           = useState("");
@@ -97,24 +125,20 @@ function LoginGate({ onLogin }: { onLogin: (email: string, pw: string) => Promis
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-      className="max-w-sm mx-auto"
-    >
+    <div className="max-w-sm mx-auto">
       <div className="flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-6 mx-auto">
         <ShoppingBag className="h-7 w-7 text-primary" />
       </div>
-      <h2 className="text-2xl font-bold tracking-tighter uppercase text-center mb-2">
-        Sign In to Checkout
-      </h2>
+      <h2 className="text-2xl font-bold tracking-tighter uppercase text-center mb-2">Sign In to Checkout</h2>
       <p className="text-muted-foreground text-center text-sm mb-8">
         Don&apos;t have an account?{" "}
         <Link href="/account" className="text-primary underline">Create one</Link>
       </p>
       {error && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-4 py-3 rounded-md mb-5">
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-4 py-3 rounded-md mb-5">
           {error}
-        </div>
+        </motion.div>
       )}
       <form onSubmit={handle} className="space-y-4">
         <div className="space-y-2">
@@ -138,10 +162,11 @@ function LoginGate({ onLogin }: { onLogin: (email: string, pw: string) => Promis
           {loading ? "Signing in…" : "Sign In & Continue"}
         </Button>
       </form>
-    </motion.div>
+    </div>
   );
 }
 
+// ── Order sidebar ─────────────────────────────────────────────────────────────
 function OrderSidebar({ items, subtotal }: { items: ReturnType<typeof useCart>["items"]; subtotal: number }) {
   return (
     <div className="lg:w-2/5">
@@ -193,49 +218,50 @@ function OrderSidebar({ items, subtotal }: { items: ReturnType<typeof useCart>["
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
 export default function Checkout() {
   const { items, total, clearCart } = useCart();
   const { user, token, isLoading, login } = useStoreAuth();
 
-  const [step, setStep]         = useState<Step>(1);
+  // null = form/login, non-null = order placed
+  const [snap, setSnap]         = useState<OrderSnap | null>(null);
   const [payMethod, setPayMethod] = useState<"cod" | "online">("cod");
   const [placing, setPlacing]   = useState(false);
   const [placeError, setPlaceError] = useState("");
-  const orderRef = useRef<OrderSnap | null>(null);
 
   const [form, setForm] = useState<FormState>({
     name: "", phone: "", city: "", district: "", street: "", note: "",
   });
 
-  // Detect return from Wayl payment (web)
+  // Detect return from Wayl payment
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("paid") === "1") {
       try {
-        const snap = sessionStorage.getItem(SNAP_KEY);
-        if (snap) {
-          const { items: snapItems, subtotal: snapSubtotal, orderNumber, form: snapForm } = JSON.parse(snap) as OrderSnap;
-          orderRef.current = { items: snapItems, subtotal: snapSubtotal, orderNumber, form: snapForm };
+        const stored = sessionStorage.getItem(SNAP_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored) as { items: OrderSnap["items"]; subtotal: number; orderNumber: string; form: FormState };
+          setSnap(parsed);
           sessionStorage.removeItem(SNAP_KEY);
           clearCart();
-          setStep(2);
           window.scrollTo({ top: 0, behavior: "smooth" });
         }
       } catch {}
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Auto-fill form from user profile
   useEffect(() => {
-    if (user) {
-      setForm((f) => ({
-        ...f,
-        name:     f.name     || `${user.firstName} ${user.lastName}`.trim(),
-        phone:    f.phone    || user.phone || "",
-        city:     f.city     || user.address?.["city"]     || "",
-        district: f.district || user.address?.["district"] || "",
-        street:   f.street   || user.address?.["street"]   || "",
-      }));
-    }
+    if (!user) return;
+    setForm((f) => ({
+      ...f,
+      name:     f.name     || `${user.firstName} ${user.lastName}`.trim(),
+      phone:    f.phone    || user.phone || "",
+      city:     f.city     || user.address?.["city"]     || "",
+      district: f.district || user.address?.["district"] || "",
+      street:   f.street   || user.address?.["street"]   || "",
+    }));
   }, [user]);
 
   const upd = (key: keyof FormState) =>
@@ -254,19 +280,10 @@ export default function Checkout() {
         },
         body: JSON.stringify({
           email: user?.email || "",
-          subtotal: total,
-          shipping: 0,
-          shippingAddress: {
-            fullName: form.name, phone: form.phone,
-            city: form.city, district: form.district, street: form.street,
-          },
-          lineItems: items.map((i) => ({
-            variantId: i.variantId, title: i.title,
-            quantity: i.quantity, price: i.price,
-            option1: i.option1, option2: i.option2, image: i.image,
-          })),
-          paymentMethod: payMethod,
-          note: form.note,
+          subtotal: total, shipping: 0,
+          shippingAddress: { fullName: form.name, phone: form.phone, city: form.city, district: form.district, street: form.street },
+          lineItems: items.map((i) => ({ variantId: i.variantId, title: i.title, quantity: i.quantity, price: i.price, option1: i.option1, option2: i.option2, image: i.image })),
+          paymentMethod: payMethod, note: form.note,
         }),
       });
       const json = await res.json() as { data: { order_number?: string; orderNumber?: string } | null; error?: string };
@@ -274,13 +291,13 @@ export default function Checkout() {
 
       const orderNumber = json.data?.order_number || json.data?.orderNumber || "#—";
 
+      // Online payment → redirect to Wayl
       if (payMethod === "online") {
         const waylRes = await fetch(`${BASE}/store/wayl/create-link`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            orderNumber,
-            total,
+            orderNumber, total,
             lineItems: items.map((i) => ({ title: i.title, quantity: i.quantity, price: i.price })),
             redirectionUrl: `${window.location.origin}/checkout?paid=1`,
           }),
@@ -288,15 +305,18 @@ export default function Checkout() {
         const waylJson = await waylRes.json() as { data: { url?: string } | null; error?: string };
         const waylUrl = waylJson.data?.url;
         if (waylUrl) {
-          sessionStorage.setItem(SNAP_KEY, JSON.stringify({ items: [...items], subtotal: total, orderNumber, form: { ...form } }));
+          sessionStorage.setItem(SNAP_KEY, JSON.stringify({
+            items: [...items], subtotal: total, orderNumber, form: { ...form },
+          }));
           window.location.href = waylUrl;
           return;
         }
       }
 
-      orderRef.current = { items: [...items], subtotal: total, orderNumber, form: { ...form } };
+      // COD or failed online → show success
+      const placed: OrderSnap = { items: [...items], subtotal: total, orderNumber, form: { ...form } };
       clearCart();
-      setStep(2);
+      setSnap(placed);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err: unknown) {
       setPlaceError((err as Error).message || "Something went wrong. Please try again.");
@@ -305,132 +325,71 @@ export default function Checkout() {
     }
   };
 
-  if (items.length === 0 && step < 2) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-24 text-center">
-          <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto mb-8">
-            <ShoppingBag className="h-9 w-9 text-muted-foreground" />
-          </div>
-          <p className="text-xl font-bold mb-2">Your cart is empty</p>
-          <p className="text-muted-foreground mb-8">Add items to your cart before checking out.</p>
-          <Button asChild className="h-12 px-10 uppercase font-bold tracking-wider text-sm">
-            <Link href="/products">Browse Products</Link>
-          </Button>
-        </div>
-      </Layout>
-    );
-  }
+  // ── Derived view key for AnimatePresence ──────────────────────────────────
+  type ViewKey = "empty" | "loading" | "login" | "form" | "success";
+  const viewKey: ViewKey =
+    snap                            ? "success"
+    : items.length === 0            ? "empty"
+    : isLoading                     ? "loading"
+    : !user                         ? "login"
+    :                                 "form";
 
-  if (step === 2) {
-    const snap = orderRef.current!;
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-16 max-w-2xl">
-          <StepIndicator current={3} />
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: "spring", stiffness: 260, damping: 22 }}
-            className="text-center mb-10"
-          >
-            <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/30">
-              <Check className="h-10 w-10 text-primary-foreground" />
-            </div>
-            <h1 className="text-3xl font-black tracking-tighter uppercase mb-3">Order Placed!</h1>
-            <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 px-5 py-2 rounded-full mb-4">
-              <span className="text-sm font-bold text-primary tracking-wide">{snap?.orderNumber}</span>
-            </div>
-            <p className="text-muted-foreground">
-              Thank you{snap?.form.name ? `, ${snap.form.name.split(" ")[0]}` : ""}! We'll prepare your order right away.
-            </p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="border border-border bg-secondary/30 p-6 mb-4"
-          >
-            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-4">Order Items</p>
-            <div className="space-y-3 mb-4">
-              {snap?.items.map((item) => (
-                <div key={item.variantId} className="flex justify-between items-center text-sm gap-3">
-                  <span className="font-medium line-clamp-1 flex-1">
-                    {item.title}{" "}
-                    <span className="text-muted-foreground font-normal">×{item.quantity}</span>
-                  </span>
-                  <span className="font-bold flex-shrink-0">{fmtIQD(item.price * item.quantity)}</span>
-                </div>
-              ))}
-            </div>
-            <div className="border-t border-border pt-3 space-y-1.5 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Shipping</span>
-                <span className="text-green-600 font-semibold">Free</span>
-              </div>
-              <div className="flex justify-between font-bold text-base">
-                <span>Total</span>
-                <span>{fmtIQD(snap?.subtotal || 0)}</span>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className="grid sm:grid-cols-3 gap-3 mb-8"
-          >
-            {[
-              {
-                icon: MapPin,
-                label: "Delivery",
-                value: [snap?.form.district, snap?.form.city].filter(Boolean).join(", ") || "—",
-              },
-              { icon: Phone, label: "Phone", value: snap?.form.phone || "—" },
-              { icon: DollarSign, label: "Payment", value: "Cash on Delivery" },
-            ].map(({ icon: Icon, label, value }) => (
-              <div key={label} className="border border-border bg-secondary/30 p-4 flex gap-3">
-                <Icon className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">{label}</p>
-                  <p className="text-sm font-medium">{value}</p>
-                </div>
-              </div>
-            ))}
-          </motion.div>
-
-          <Button asChild className="w-full h-12 uppercase font-bold tracking-wider text-sm">
-            <Link href="/products">Continue Shopping</Link>
-          </Button>
-        </div>
-      </Layout>
-    );
-  }
+  const stepNum: 1 | 2 | 3 = viewKey === "success" ? 3 : 2;
 
   return (
     <Layout>
       <div className="container mx-auto px-4 py-12 max-w-6xl">
-        <StepIndicator current={2} />
+        <StepIndicator current={stepNum} />
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-24">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : !user ? (
-          <LoginGate onLogin={login} />
-        ) : (
-          <div className="flex flex-col lg:flex-row gap-10">
-            <div className="lg:w-3/5">
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.form
-                  key="checkout"
-                  initial={{ opacity: 0, x: 24 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -24 }}
-                  transition={{ duration: 0.22, ease: "easeInOut" }}
-                  onSubmit={handlePlaceOrder}
-                  className="space-y-6"
-                >
+        <AnimatePresence mode="wait" initial={false}>
+
+          {/* ── Empty cart ───────────────────────────────────────────────── */}
+          {viewKey === "empty" && (
+            <motion.div key="empty"
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="text-center py-24"
+            >
+              <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto mb-8">
+                <ShoppingBag className="h-9 w-9 text-muted-foreground" />
+              </div>
+              <p className="text-xl font-bold mb-2">Your cart is empty</p>
+              <p className="text-muted-foreground mb-8">Add items to your cart before checking out.</p>
+              <Button asChild className="h-12 px-10 uppercase font-bold tracking-wider text-sm">
+                <Link href="/products">Browse Products</Link>
+              </Button>
+            </motion.div>
+          )}
+
+          {/* ── Loading ──────────────────────────────────────────────────── */}
+          {viewKey === "loading" && (
+            <motion.div key="loading"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex items-center justify-center py-24"
+            >
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </motion.div>
+          )}
+
+          {/* ── Login gate ───────────────────────────────────────────────── */}
+          {viewKey === "login" && (
+            <motion.div key="login"
+              initial={TX.enter} animate={TX.show} exit={TX.exit}
+              transition={TX.transition}
+            >
+              <LoginGate onLogin={login} />
+            </motion.div>
+          )}
+
+          {/* ── Checkout form ────────────────────────────────────────────── */}
+          {viewKey === "form" && (
+            <motion.div key="form"
+              initial={TX.enter} animate={TX.show} exit={TX.exit}
+              transition={TX.transition}
+              className="flex flex-col lg:flex-row gap-10"
+            >
+              <div className="lg:w-3/5">
+                <form onSubmit={handlePlaceOrder} className="space-y-6">
+
                   <div className="flex items-center gap-3">
                     <Link href="/cart" className="text-muted-foreground hover:text-foreground transition-colors p-1 -ml-1">
                       <ArrowLeft className="h-5 w-5" />
@@ -438,9 +397,9 @@ export default function Checkout() {
                     <h2 className="text-xl font-bold tracking-tighter uppercase">Delivery Information</h2>
                   </div>
 
-                  <div className="flex items-center gap-2 bg-primary/8 border border-primary/20 px-4 py-3 rounded text-sm">
+                  <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 px-4 py-3 rounded text-sm">
                     <User className="h-4 w-4 text-primary flex-shrink-0" />
-                    <span>Signed in as <strong>{user.email}</strong></span>
+                    <span>Signed in as <strong>{user?.email}</strong></span>
                   </div>
 
                   <div className="grid sm:grid-cols-2 gap-4">
@@ -472,36 +431,52 @@ export default function Checkout() {
 
                   <div className="space-y-2">
                     <Label>Order Notes <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
-                    <textarea
-                      value={form.note}
-                      onChange={upd("note")}
+                    <textarea value={form.note} onChange={upd("note")}
                       placeholder="Any special instructions for your order…"
                       className="w-full border border-input bg-background px-3 py-3 text-sm rounded-md resize-none min-h-[80px] focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
 
-                  {/* Payment */}
-                  <div className="space-y-2">
+                  {/* Payment method */}
+                  <div className="space-y-3">
                     <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Payment Method</p>
 
                     {/* Cash on Delivery */}
                     <button type="button" onClick={() => setPayMethod("cod")}
-                      className={`w-full text-left border p-4 flex items-center gap-4 transition-colors ${payMethod === "cod" ? "border-green-500 bg-green-500/5" : "border-border bg-secondary/30 hover:bg-secondary/50"}`}>
-                      <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0 text-xl leading-none">
+                      className={`w-full text-left border p-4 flex items-center gap-4 transition-all rounded-sm ${
+                        payMethod === "cod" ? "border-green-500 bg-green-500/5" : "border-border bg-secondary/30 hover:bg-secondary/50"
+                      }`}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0 text-xl">
                         💵
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-sm">Cash on Delivery</p>
                         <p className="text-xs text-muted-foreground mt-0.5">Pay in cash when your order arrives</p>
                       </div>
-                      <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${payMethod === "cod" ? "border-green-500 bg-green-500" : "border-muted-foreground/30"}`}>
-                        {payMethod === "cod" && <Check className="h-3 w-3 text-white" />}
-                      </div>
+                      <motion.div
+                        animate={{
+                          borderColor: payMethod === "cod" ? "#22c55e" : "hsl(var(--muted-foreground)/0.3)",
+                          backgroundColor: payMethod === "cod" ? "#22c55e" : "transparent",
+                        }}
+                        className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
+                      >
+                        <AnimatePresence>
+                          {payMethod === "cod" && (
+                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+                              <Check className="h-3 w-3 text-white" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
                     </button>
 
                     {/* Online Payment */}
                     <button type="button" onClick={() => setPayMethod("online")}
-                      className={`w-full text-left border p-4 flex items-center gap-4 transition-colors ${payMethod === "online" ? "border-primary bg-primary/5" : "border-border bg-secondary/30 hover:bg-secondary/50"}`}>
+                      className={`w-full text-left border p-4 flex items-center gap-4 transition-all rounded-sm ${
+                        payMethod === "online" ? "border-primary bg-primary/5" : "border-border bg-secondary/30 hover:bg-secondary/50"
+                      }`}
+                    >
                       <div className="flex gap-1 flex-wrap w-10 flex-shrink-0 content-start">
                         {PAYMENT_LOGOS.slice(0, 4).map((logo) => (
                           <img key={logo.key} src={logo.src} alt={logo.key} className="w-4 h-4 rounded object-cover" />
@@ -516,37 +491,131 @@ export default function Checkout() {
                         </div>
                         <p className="text-xs text-muted-foreground mt-1.5">Card, wallet & more · secured via Wayl</p>
                       </div>
-                      <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${payMethod === "online" ? "border-primary bg-primary" : "border-muted-foreground/30"}`}>
-                        {payMethod === "online" && <Check className="h-3 w-3 text-primary-foreground" />}
-                      </div>
+                      <motion.div
+                        animate={{
+                          borderColor: payMethod === "online" ? "hsl(var(--primary))" : "hsl(var(--muted-foreground)/0.3)",
+                          backgroundColor: payMethod === "online" ? "hsl(var(--primary))" : "transparent",
+                        }}
+                        className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
+                      >
+                        <AnimatePresence>
+                          {payMethod === "online" && (
+                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+                              <Check className="h-3 w-3 text-primary-foreground" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
                     </button>
                   </div>
 
                   {placeError && (
-                    <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-4 py-3 rounded-md">
+                    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                      className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-4 py-3 rounded-md">
                       {placeError}
-                    </div>
+                    </motion.div>
                   )}
 
-                  <Button
-                    type="submit"
-                    disabled={placing}
+                  <Button type="submit" disabled={placing}
                     className={`w-full h-14 text-base uppercase font-bold tracking-wider gap-2 ${payMethod === "online" ? "bg-violet-600 hover:bg-violet-700" : ""}`}
                   >
                     {placing
-                      ? <><Loader2 className="h-4 w-4 animate-spin" /> {payMethod === "online" ? "Processing…" : "Placing Order…"}</>
+                      ? <><Loader2 className="h-4 w-4 animate-spin" />{payMethod === "online" ? " Processing…" : " Placing Order…"}</>
                       : payMethod === "online"
                       ? <><ChevronRight className="h-4 w-4" /> Pay Now · {fmtIQD(total)}</>
                       : <><Check className="h-4 w-4" /> Place Order · {fmtIQD(total)}</>
                     }
                   </Button>
-                </motion.form>
-              </AnimatePresence>
-            </div>
+                </form>
+              </div>
 
-            <OrderSidebar items={items} subtotal={total} />
-          </div>
-        )}
+              <OrderSidebar items={items} subtotal={total} />
+            </motion.div>
+          )}
+
+          {/* ── Success / Complete ───────────────────────────────────────── */}
+          {viewKey === "success" && snap && (
+            <motion.div key="success"
+              initial={TX.enter} animate={TX.show} exit={TX.exit}
+              transition={TX.transition}
+              className="max-w-2xl mx-auto"
+            >
+              {/* Hero */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.88 }} animate={{ opacity: 1, scale: 1 }}
+                transition={{ type: "spring", stiffness: 230, damping: 18, delay: 0.05 }}
+                className="text-center mb-10"
+              >
+                <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/30">
+                  <Check className="h-10 w-10 text-primary-foreground" />
+                </div>
+                <h1 className="text-3xl font-black tracking-tighter uppercase mb-3">Order Placed!</h1>
+                <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 px-5 py-2 rounded-full mb-4">
+                  <span className="text-sm font-bold text-primary tracking-wide">{snap.orderNumber}</span>
+                </div>
+                <p className="text-muted-foreground">
+                  Thank you{snap.form.name ? `, ${snap.form.name.split(" ")[0]}` : ""}! We'll prepare your order right away.
+                </p>
+              </motion.div>
+
+              {/* Items */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12 }}
+                className="border border-border bg-secondary/30 p-6 mb-4"
+              >
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-4">Order Items</p>
+                <div className="space-y-3 mb-4">
+                  {snap.items.map((item) => (
+                    <div key={item.variantId} className="flex justify-between items-center text-sm gap-3">
+                      <span className="font-medium line-clamp-1 flex-1">
+                        {item.title}{" "}
+                        <span className="text-muted-foreground font-normal">×{item.quantity}</span>
+                      </span>
+                      <span className="font-bold flex-shrink-0">{fmtIQD(item.price * item.quantity)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-border pt-3 space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Shipping</span>
+                    <span className="text-green-600 font-semibold">Free</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-base">
+                    <span>Total</span>
+                    <span>{fmtIQD(snap.subtotal)}</span>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Delivery details */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="grid sm:grid-cols-3 gap-3 mb-8"
+              >
+                {[
+                  { icon: MapPin,     label: "Delivery", value: [snap.form.district, snap.form.city].filter(Boolean).join(", ") || "—" },
+                  { icon: Phone,      label: "Phone",    value: snap.form.phone || "—" },
+                  { icon: DollarSign, label: "Payment",  value: "Cash on Delivery" },
+                ].map(({ icon: Icon, label, value }) => (
+                  <div key={label} className="border border-border bg-secondary/30 p-4 flex gap-3">
+                    <Icon className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">{label}</p>
+                      <p className="text-sm font-medium">{value}</p>
+                    </div>
+                  </div>
+                ))}
+              </motion.div>
+
+              <Button asChild className="w-full h-12 uppercase font-bold tracking-wider text-sm">
+                <Link href="/products">Continue Shopping</Link>
+              </Button>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
       </div>
     </Layout>
   );
