@@ -25,6 +25,7 @@ import { useAuth } from "@/context/AuthContext";
 import { fetchOrders } from "@/lib/api";
 import { AccountExpoUI } from "@/components/AccountExpoUI";
 import { useNativeReady } from "@/hooks/useNativeReady";
+import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 
 // ── glass detection (AccountExpoUI renders null if unavailable) ────────────────
 const IS_IOS = Platform.OS === "ios";
@@ -239,9 +240,16 @@ function GuestScreen({
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         <View style={{ width: 38 }} />
         <Text style={[styles.acctTitle, { color: colors.foreground }]}>MY ACCOUNT</Text>
-        <Pressable style={styles.iconBtn} onPress={onOpenSettings} testID="btn-settings">
-          <Feather name="settings" size={20} color={colors.mutedForeground} />
-        </Pressable>
+        {isIOS26Plus ? (
+          <Pressable style={styles.glassIconBtn} onPress={onOpenSettings} testID="btn-settings">
+            <LiquidGlassBg />
+            <Feather name="settings" size={18} color={colors.foreground} />
+          </Pressable>
+        ) : (
+          <Pressable style={styles.iconBtn} onPress={onOpenSettings} testID="btn-settings">
+            <Feather name="settings" size={20} color={colors.mutedForeground} />
+          </Pressable>
+        )}
       </View>
 
       <View style={[styles.guestBody, { paddingBottom: botPad + 80 }]}>
@@ -535,9 +543,16 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         <View style={{ width: 38 }} />
         <Text style={[styles.acctTitle, { color: colors.foreground }]}>MY ACCOUNT</Text>
-        <Pressable style={styles.iconBtn} onPress={onOpenSettings} testID="btn-settings">
-          <Feather name="settings" size={20} color={colors.mutedForeground} />
-        </Pressable>
+        {isIOS26Plus ? (
+          <Pressable style={styles.glassIconBtn} onPress={onOpenSettings} testID="btn-settings">
+            <LiquidGlassBg />
+            <Feather name="settings" size={18} color={colors.foreground} />
+          </Pressable>
+        ) : (
+          <Pressable style={styles.iconBtn} onPress={onOpenSettings} testID="btn-settings">
+            <Feather name="settings" size={20} color={colors.mutedForeground} />
+          </Pressable>
+        )}
       </View>
 
       <ScrollView
@@ -719,6 +734,7 @@ const styles = StyleSheet.create({
   },
   acctTitle: { fontFamily: "Inter_700Bold", fontSize: 15, letterSpacing: 1 },
   iconBtn: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
+  glassIconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", overflow: "hidden" },
 
   /* ── Settings ── */
   themeRow: {

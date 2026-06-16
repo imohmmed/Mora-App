@@ -1,8 +1,4 @@
 import React, { useState } from "react";
-const PRIMARY = "#0274C1";
-const GOLD = "#C9922A";
-const SILVER = "#7D8A9A";
-
 import {
   Platform,
   Pressable,
@@ -12,10 +8,27 @@ import {
   Text,
   View,
 } from "react-native";
+import { Image } from "expo-image";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
+import * as Haptics from "expo-haptics";
+import { useColors } from "@/hooks/useColors";
+import { MoraLogo } from "@/components/MoraLogo";
+import { FloatingTabBar } from "@/components/FloatingTabBar";
+import { fetchProduct, fetchProducts, fetchContentSections } from "@/lib/api";
+import { formatIQD } from "@/lib/format";
+import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
+import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
+import type { ContentSectionItem } from "@/lib/api";
+import type { Variant, Product } from "@/lib/types";
 
-// expo-glass-effect removed — caused EXC_BAD_ACCESS on iOS 26 beta during native view registration
+const PRIMARY = "#0274C1";
+const GOLD = "#C9922A";
+const SILVER = "#7D8A9A";
 const IS_IOS = Platform.OS === "ios";
-const GlassViewComp: any = null;
 
 let glassUIAvailable = false;
 let ExpoUIHost: any, ExpoButton: any;
@@ -30,21 +43,6 @@ try {
   frameM = mods.frame;
   glassUIAvailable = true;
 } catch {}
-import { Image } from "expo-image";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
-import * as Haptics from "expo-haptics";
-import { useColors } from "@/hooks/useColors";
-import { MoraLogo } from "@/components/MoraLogo";
-import { FloatingTabBar } from "@/components/FloatingTabBar";
-import { fetchProduct, fetchProducts, fetchContentSections } from "@/lib/api";
-import { formatIQD } from "@/lib/format";
-import { useCart } from "@/context/CartContext";
-import { useWishlist } from "@/context/WishlistContext";
-import type { ContentSectionItem } from "@/lib/api";
-import type { Variant, Product } from "@/lib/types";
 
 const CARD_COLORS = [
   "#E8EDF5", "#F0EBE3", "#E8F0E8", "#F5EDEB",
@@ -267,13 +265,24 @@ export default function ProductDetailScreen() {
           },
         ]}
       >
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.6 }]}
-          testID="back-btn"
-        >
-          <Feather name="arrow-left" size={22} color={colors.foreground} />
-        </Pressable>
+        {isIOS26Plus ? (
+          <Pressable
+            onPress={() => router.back()}
+            style={styles.glassIconBtn}
+            testID="back-btn"
+          >
+            <LiquidGlassBg />
+            <Feather name="arrow-left" size={20} color={colors.foreground} />
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.6 }]}
+            testID="back-btn"
+          >
+            <Feather name="arrow-left" size={22} color={colors.foreground} />
+          </Pressable>
+        )}
         <MoraLogo size="small" />
         <Pressable
           onPress={() => router.push("/(tabs)/cart")}
@@ -334,10 +343,11 @@ export default function ProductDetailScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
             >
-              {IS_IOS && GlassViewComp ? (
-                <GlassViewComp style={styles.wishlistBtnGlass} glassEffectStyle="clear">
-                  <Feather name="heart" size={22} color={liked ? "#E53935" : "#1A1A1A"} />
-                </GlassViewComp>
+              {isIOS26Plus ? (
+                <View style={styles.wishlistBtnGlass}>
+                  <LiquidGlassBg />
+                  <Feather name="heart" size={22} color={liked ? "#E53935" : "#FFF"} />
+                </View>
               ) : (
                 <View style={[styles.wishlistBtnFallback, { backgroundColor: "rgba(255,255,255,0.9)" }]}>
                   <Feather name="heart" size={22} color={liked ? "#E53935" : "#1A1A1A"} />
@@ -597,6 +607,14 @@ const styles = StyleSheet.create({
     top: 16,
     right: 16,
     zIndex: 10,
+  },
+  glassIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
   },
   wishlistBtnGlass: {
     width: 44,

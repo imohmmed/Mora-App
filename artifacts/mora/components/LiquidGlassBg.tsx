@@ -14,7 +14,7 @@ import React from "react";
 import { Platform, StyleSheet } from "react-native";
 
 export const isIOS26Plus =
-  Platform.OS === "ios" && Number(Platform.Version) >= 26;
+  Platform.OS === "ios" && parseInt(String(Platform.Version), 10) >= 26;
 
 let Host: any = null;
 let GlassContainer: any = null;

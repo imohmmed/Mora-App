@@ -182,31 +182,7 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
           const active = selected === val;
           const oos    = isOOS(val);
 
-          // ── iOS: glass chip button via @expo/ui ──────────────────────────
-          if (glassUIAvailable && IS_IOS && ExpoUIHost && ExpoButton) {
-            return (
-              <ExpoUIHost key={val} matchContents style={{ height: 44 }}>
-                <ExpoButton
-                  label={val}
-                  onPress={() => !oos && onSelect(val)}
-                  modifiers={[
-                    paddingM({ horizontal: 18, vertical: 9 }),
-                    glassEffectM({
-                      glass: {
-                        variant: "regular",
-                        interactive: !oos,
-                        tint: active ? PRIMARY : undefined,
-                      },
-                      shape: "roundedRectangle",
-                    }),
-                    tintM(active ? "#FFFFFF" : (oos ? "#999" : textPri)),
-                  ]}
-                />
-              </ExpoUIHost>
-            );
-          }
-
-          // ── Fallback chip ─────────────────────────────────────────────────
+          // ── Plain chip (no glass) ────────────────────────────────────────
           return (
             <Pressable
               key={val}
@@ -294,45 +270,24 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
           </View>
         )}
 
-        {/* ── Add button ───────────────────────────────────────────────────── */}
-        {glassUIAvailable && IS_IOS && ExpoUIHost && ExpoButton ? (
-          <ExpoUIHost style={{ height: 54 }}>
-            <ExpoButton
-              label={btnLabel}
-              onPress={handleAdd}
-              modifiers={[
-                frameM({ maxWidth: 10000, height: 52 }),
-                glassEffectM({
-                  glass: {
-                    variant: "regular",
-                    interactive: canAdd,
-                    tint: canAdd ? PRIMARY : undefined,
-                  },
-                  shape: "roundedRectangle",
-                }),
-                tintM(canAdd ? "#FFFFFF" : textMuted),
-              ]}
-            />
-          </ExpoUIHost>
-        ) : (
-          <Pressable
-            style={({ pressed }) => [
-              styles.addBtn,
-              {
-                backgroundColor: canAdd
-                  ? PRIMARY
-                  : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
-                opacity: pressed ? 0.85 : 1,
-              },
-            ]}
-            onPress={handleAdd}
-            disabled={!canAdd}
-          >
-            <Text style={[styles.addBtnText, { color: canAdd ? "#FFF" : textMuted }]}>
-              {btnLabel}
-            </Text>
-          </Pressable>
-        )}
+        {/* ── Add button (capsule, no glass) ───────────────────────────────── */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.addBtn,
+            {
+              backgroundColor: canAdd
+                ? PRIMARY
+                : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
+              opacity: pressed ? 0.85 : 1,
+            },
+          ]}
+          onPress={handleAdd}
+          disabled={!canAdd}
+        >
+          <Text style={[styles.addBtnText, { color: canAdd ? "#FFF" : textMuted }]}>
+            {btnLabel}
+          </Text>
+        </Pressable>
       </Animated.View>
     </Modal>
   );
@@ -448,7 +403,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(150,150,150,0.6)",
   },
   addBtn: {
-    borderRadius: 14,
+    borderRadius: 999,
     paddingVertical: 16,
     alignItems: "center",
   },
