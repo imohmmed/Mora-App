@@ -17,6 +17,7 @@
       "bundleIdentifier": "app.mora1.com",
       "buildNumber": "15",
       "appleTeamId": "PM27C7JC3M",
+      "usesAppleSignIn": true,
       "associatedDomains": [
         "applinks:mora1.com",
         "webcredentials:mora1.com"
@@ -66,7 +67,8 @@
           "defaultChannel": "default"
         }
       ],
-      "@bacons/apple-targets"
+      "@bacons/apple-targets",
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true

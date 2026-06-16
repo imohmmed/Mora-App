@@ -27,6 +27,12 @@ import {
   signInWithApple,
   warmUpFirebase,
 } from "@/lib/firebase";
+import {
+  nativeAppleSignIn,
+  nativeGoogleSignIn,
+  isAppleAvailable,
+  isGoogleConfigured,
+} from "@/lib/nativeAuth";
 
 const PRIMARY = "#0274C1";
 
@@ -73,11 +79,11 @@ export default function AuthScreen() {
   const [error, setError]       = useState("");
   const [showLangPicker, setShowLangPicker] = useState(false);
 
-  const configured = isFirebaseConfigured();
+  const IS_NATIVE_IOS = Platform.OS === "ios";
+  const configured    = isFirebaseConfigured();
 
-  // Pre-load Firebase modules on screen mount so they're cached before the user
-  // taps — prevents Safari iOS "auth/popup-blocked" on the very first tap.
-  useEffect(() => { warmUpFirebase(); }, []);
+  // Pre-load Firebase modules on screen mount (web only — prevents popup-blocked on first tap)
+  useEffect(() => { if (!IS_NATIVE_IOS) warmUpFirebase(); }, []);
 
   const bg    = isDark ? "#0D0D0D" : "#FFFFFF";
   const fg    = isDark ? "#FFFFFF" : "#000000";
@@ -92,12 +98,27 @@ export default function AuthScreen() {
     }
   };
 
-  // IMPORTANT: No state updates (setLoading / setError) before the popup call.
-  // Any setState before await signInWithPopup breaks Safari iOS gesture chain
-  // and causes auth/popup-blocked. Loading state is set only AFTER popup closes.
   const handleGoogle = async () => {
-    if (!configured) { setError(t.errNoFB); return; }
     setError("");
+    // ── Native iOS: use expo-auth-session + PKCE (no Firebase SDK needed) ──
+    if (IS_NATIVE_IOS) {
+      if (!isGoogleConfigured()) {
+        setError("Google sign-in setup required — EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID not set.");
+        return;
+      }
+      try {
+        setGLoading(true);
+        const user = await nativeGoogleSignIn();
+        await afterSignIn(user, t.errGoogle);
+      } catch (err: any) {
+        if (err.message !== "CANCELLED") setError(err.message ?? t.errGoogle);
+      } finally {
+        setGLoading(false);
+      }
+      return;
+    }
+    // ── Web: Firebase popup ────────────────────────────────────────────────
+    if (!configured) { setError(t.errNoFB); return; }
     try {
       const user = await signInWithGoogle();
       setGLoading(true);
@@ -110,8 +131,24 @@ export default function AuthScreen() {
   };
 
   const handleApple = async () => {
-    if (!configured) { setError(t.errNoFB); return; }
     setError("");
+    // ── Native iOS: expo-apple-authentication (native dialog, no Firebase) ──
+    if (IS_NATIVE_IOS) {
+      try {
+        setALoading(true);
+        const user = await nativeAppleSignIn();
+        await afterSignIn(user, t.errApple);
+      } catch (err: any) {
+        // AppleAuthenticationFullName only available first sign-in; not an error
+        const msg = err?.code === "ERR_REQUEST_CANCELED" ? "" : (err.message ?? t.errApple);
+        if (msg) setError(msg);
+      } finally {
+        setALoading(false);
+      }
+      return;
+    }
+    // ── Web: Firebase popup ────────────────────────────────────────────────
+    if (!configured) { setError(t.errNoFB); return; }
     try {
       const user = await signInWithApple();
       setALoading(true);
@@ -138,7 +175,7 @@ export default function AuthScreen() {
       <Stack.Screen options={{ title: "", headerShown: false }} />
 
       <Pressable
-        style={[styles.closeBtn, { top: topPad + 12 }]}
+        style={[styles.closeBtn, { top: topPad + 4 }]}
         onPress={() => {
           if (router.canGoBack()) router.back();
           else router.replace("/(tabs)" as any);
