@@ -1,5 +1,7 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image as RNImage, Pressable, StyleSheet, Text, View } from "react-native";
+
+const LOGO = require("@/assets/images/mora-wordmark.png");
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -55,7 +57,8 @@ function GlassHeader({ notificationCount = 0, favoritesCount = 0 }: HomeHeaderPr
       ]}
     >
       <View style={styles.row}>
-        <Text style={[styles.brandTitle, { color: colors.foreground }]}>MORA</Text>
+        <RNImage source={LOGO} style={styles.logo} resizeMode="contain" />
+        <View style={{ flex: 1 }} />
 
         <View style={styles.iconWrap}>
           <Host style={{ width: 46, height: 46 }}>
@@ -116,7 +119,8 @@ function FallbackHeader({ notificationCount = 0, favoritesCount = 0, cartCount =
       ]}
     >
       <View style={styles.row}>
-        <Text style={[styles.brandTitle, { color: colors.foreground, flex: 1 }]}>MORA</Text>
+        <RNImage source={LOGO} style={styles.logo} resizeMode="contain" />
+        <View style={{ flex: 1 }} />
 
         <Pressable
           style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
@@ -163,11 +167,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  brandTitle: {
-    flex: 1,
-    fontFamily: "Inter_700Bold",
-    fontSize: 22,
-    letterSpacing: 2,
+  logo: {
+    width: 92,
+    height: 30,
   },
   iconWrap: { width: 46, height: 46, position: "relative" },
   badge: {

@@ -1,11 +1,14 @@
 import React from "react";
 import {
+  Image as RNImage,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+
+const LOGO = require("@/assets/images/mora-wordmark.png");
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -41,7 +44,8 @@ export function HomeHeader({
       ]}
     >
       <View style={styles.row}>
-        <Text style={[styles.brandTitle, { color: colors.foreground }]}>MORA</Text>
+        <RNImage source={LOGO} style={styles.logo} resizeMode="contain" />
+        <View style={{ flex: 1 }} />
 
         <Pressable
           style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
@@ -103,11 +107,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
-  brandTitle: {
-    flex: 1,
-    fontFamily: "Inter_700Bold",
-    fontSize: 22,
-    letterSpacing: 2,
+  logo: {
+    width: 92,
+    height: 30,
   },
   iconBtn: {
     padding: 8,

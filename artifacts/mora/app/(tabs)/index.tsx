@@ -488,7 +488,7 @@ export default function HomeScreen() {
         renderItem={renderProduct}
         numColumns={2}
         columnWrapperStyle={styles.row}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: bottomPadding + 80 }}
+        contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: bottomPadding + 80 }}
         ListHeaderComponent={ListHeader}
         ListFooterComponent={ListFooter}
         showsVerticalScrollIndicator={false}

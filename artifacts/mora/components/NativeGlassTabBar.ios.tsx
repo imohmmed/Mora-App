@@ -1,13 +1,13 @@
 /**
  * NativeGlassTabBar — iOS-only custom tab bar.
- * iOS 26+ + nativeReady: Host > GlassEffectContainer + Button(buttonStyle:'glass') → true Liquid Glass.
- * Fallback: BlurView + Pressable (older iOS / bridge not ready).
  *
- * IMPORTANT: @expo/ui SwiftUI views (GlassEffectContainer, Button) MUST be
- * wrapped in a <Host> component. Placing them directly inside a React Native
- * <View> makes Fabric mount their children via UIKit -[UIView _addSubview:],
- * which crashes inside -[SwiftUIVirtualViewObjC forwardingTargetForSelector:]
- * (EXC_CRASH / SIGABRT) at launch. The <Host> bridges RN ↔ SwiftUI correctly.
+ * iOS 26+ + nativeReady: SwiftUI Liquid Glass via the SAME proven pattern as
+ * HomeHeader — Host > HStack > Image (SF Symbol) buttons, each with a
+ * `glassEffect` modifier. The glass look comes from the MODIFIER, not from a
+ * container. Every @expo/ui SwiftUI view lives inside <Host>, otherwise Fabric
+ * crashes at launch (-[SwiftUIVirtualViewObjC forwardingTargetForSelector:]).
+ *
+ * Fallback: BlurView + Pressable (older iOS / bridge not ready).
  */
 import React from "react";
 import {
@@ -26,6 +26,8 @@ import { useNativeReady } from "@/hooks/useNativeReady";
 import { isIOS26Plus } from "@/components/LiquidGlassBg";
 import { TabEvents, TAB_HOME_SCROLL_TOP, TAB_SEARCH_FOCUS } from "@/lib/tabEvents";
 
+const PRIMARY = "#0274C1";
+
 // ── Inline TabBar props type (avoids importing from private expo-router path) ──
 type TabBarProps = {
   state: {
@@ -39,21 +41,21 @@ type TabBarProps = {
   [k: string]: unknown;
 };
 
-// ── @expo/ui — loaded once at module init (stable SwiftUI view components) ───
+// ── @expo/ui — loaded once at module init (needs a custom dev build) ─────────
 let Host: any = null;
-let GlassEffectContainer: any = null;
-let ExpoButton: any = null;
-let buttonStyleMod: ((s: string) => unknown) | null = null;
-let frameMod: ((p: object) => unknown) | null = null;
+let ExpoHStack: any = null;
+let ExpoImage: any = null;
+let frameM: ((p: object) => unknown) | null = null;
+let glassEffectM: ((p: object) => unknown) | null = null;
 
 try {
   const ui   = require("@expo/ui/swift-ui");
   const mods = require("@expo/ui/swift-ui/modifiers");
-  Host                 = ui.Host;
-  GlassEffectContainer = ui.GlassEffectContainer;
-  ExpoButton           = ui.Button;
-  buttonStyleMod       = mods.buttonStyle;
-  frameMod             = mods.frame;
+  Host         = ui.Host;
+  ExpoHStack   = ui.HStack;
+  ExpoImage    = ui.Image;
+  frameM       = mods.frame;
+  glassEffectM = mods.glassEffect;
 } catch {}
 
 // ── Tab metadata ──────────────────────────────────────────────────────────────
@@ -66,6 +68,9 @@ const TABS: Record<string, { sf: string; sfActive: string }> = {
 };
 const TAB_ORDER = ["index", "search", "chat", "cart", "account"];
 
+const ITEM_SIZE = 52;   // glass circle diameter
+const ITEM_GAP  = 6;    // HStack spacing
+
 // ─────────────────────────────────────────────────────────────────────────────
 export function NativeGlassTabBar({ state, navigation }: TabBarProps) {
   const insets      = useSafeAreaInsets();
@@ -74,10 +79,8 @@ export function NativeGlassTabBar({ state, navigation }: TabBarProps) {
   const nativeReady = useNativeReady();
   const { totalItems } = useCart();
 
-  // Use SwiftUI liquid glass only on iOS 26+ once bridge is ready
-  const isGlassAvailable = nativeReady && isIOS26Plus;
-  const useGlass = isGlassAvailable && !!Host && !!GlassEffectContainer && !!ExpoButton
-    && !!buttonStyleMod && !!frameMod;
+  const useGlass = nativeReady && isIOS26Plus
+    && !!Host && !!ExpoHStack && !!ExpoImage && !!frameM && !!glassEffectM;
 
   const visibleRoutes = TAB_ORDER
     .map(n => state.routes.find(r => r.name === n))
@@ -98,48 +101,56 @@ export function NativeGlassTabBar({ state, navigation }: TabBarProps) {
     if (!isFocused && !ev.defaultPrevented) navigation.navigate(route.name);
   };
 
-  // ── 🌊 Liquid Glass (iOS 26+) ─────────────────────────────────────────────
+  // ── 🌊 Liquid Glass (iOS 26+) — Host > HStack > Image(glassEffect) ─────────
   if (useGlass) {
-    const ITEM_W  = 58 + 2; // button width + container spacing
-    const cartIdx = TAB_ORDER.indexOf("cart");
+    const inactiveColor = isDark ? "#FFFFFF" : "#1A1A1A";
+    const cartIdx       = TAB_ORDER.indexOf("cart");
+    const badgeLeft     = cartIdx * (ITEM_SIZE + ITEM_GAP) + ITEM_SIZE - 16;
 
     return (
       <View
-        style={[styles.glassWrapper, { bottom: Math.max(insets.bottom, 12) + 4 }]}
+        style={[styles.glassWrapper, { bottom: Math.max(insets.bottom, 12) + 2 }]}
         pointerEvents="box-none"
       >
-        {/* @expo/ui SwiftUI views MUST be wrapped in <Host> — see file header */}
-        <Host matchContents style={styles.glassHost}>
-          <GlassEffectContainer spacing={2}>
-            {visibleRoutes.map((route) => {
-              const def = TABS[route.name];
-              if (!def) return null;
-              const idx       = state.routes.findIndex(r => r.key === route.key);
-              const isFocused = state.index === idx;
-              return (
-                <ExpoButton
-                  key={route.key}
-                  systemImage={isFocused ? def.sfActive : def.sf}
-                  onPress={() => handlePress(route)}
-                  modifiers={[
-                    buttonStyleMod!("glass"),
-                    frameMod!({ width: 58, height: 52 }),
-                  ]}
-                />
-              );
-            })}
-          </GlassEffectContainer>
-        </Host>
+        {/* shrink-wrap container so the badge can be positioned over the bar */}
+        <View style={styles.glassInner}>
+          <Host matchContents style={{ height: ITEM_SIZE }}>
+            <ExpoHStack spacing={ITEM_GAP}>
+              {visibleRoutes.map((route) => {
+                const def = TABS[route.name];
+                if (!def) return null;
+                const idx       = state.routes.findIndex(r => r.key === route.key);
+                const isFocused = state.index === idx;
+                return (
+                  <ExpoImage
+                    key={route.key}
+                    systemName={(isFocused ? def.sfActive : def.sf) as any}
+                    size={22}
+                    color={isFocused ? "#FFFFFF" : inactiveColor}
+                    onPress={() => handlePress(route)}
+                    modifiers={[
+                      frameM!({ width: ITEM_SIZE, height: ITEM_SIZE }),
+                      glassEffectM!({
+                        glass: {
+                          variant: "regular",
+                          interactive: true,
+                          tint: isFocused ? PRIMARY : undefined,
+                        },
+                        shape: "circle",
+                      }),
+                    ]}
+                  />
+                );
+              })}
+            </ExpoHStack>
+          </Host>
 
-        {/* Cart badge floats on top in RN layer */}
-        {totalItems > 0 && (
-          <View
-            pointerEvents="none"
-            style={[styles.floatBadge, { left: cartIdx * ITEM_W + ITEM_W - 8 }]}
-          >
-            <Text style={styles.badgeTxt}>{totalItems > 9 ? "9+" : totalItems}</Text>
-          </View>
-        )}
+          {totalItems > 0 && (
+            <View pointerEvents="none" style={[styles.floatBadge, { left: badgeLeft }]}>
+              <Text style={styles.badgeTxt}>{totalItems > 9 ? "9+" : totalItems}</Text>
+            </View>
+          )}
+        </View>
       </View>
     );
   }
@@ -200,19 +211,21 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: "center",
   },
-  glassHost: {
-    height: 52,
+  glassInner: {
+    position: "relative",
   },
   floatBadge: {
     position: "absolute",
-    top: -4,
-    minWidth: 15,
-    height: 15,
+    top: -2,
+    minWidth: 16,
+    height: 16,
     borderRadius: 8,
-    backgroundColor: "#0274C1",
+    backgroundColor: PRIMARY,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
   },
   // BlurView fallback layout
   blurWrapper: {
@@ -241,7 +254,7 @@ const styles = StyleSheet.create({
     minWidth: 15,
     height: 15,
     borderRadius: 8,
-    backgroundColor: "#0274C1",
+    backgroundColor: PRIMARY,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 3,

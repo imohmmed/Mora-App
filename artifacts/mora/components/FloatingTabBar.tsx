@@ -29,19 +29,22 @@ import { TabEvents, TAB_HOME_SCROLL_TOP, TAB_SEARCH_FOCUS } from "@/lib/tabEvent
 // SwiftUI views MUST be wrapped in <Host> or Fabric crashes on mount via
 // -[SwiftUIVirtualViewObjC forwardingTargetForSelector:] (EXC_CRASH/SIGABRT).
 let Host: any = null;
-let GlassEffectContainer: any = null;
-let ExpoButton: any = null;
-let buttonStyleMod: any = null;
+let ExpoHStack: any = null;
+let ExpoImage: any = null;
 let frameMod: any = null;
+let glassEffectMod: any = null;
 try {
   const ui   = require("@expo/ui/swift-ui");
   const mods = require("@expo/ui/swift-ui/modifiers");
-  Host                 = ui.Host;
-  GlassEffectContainer = ui.GlassEffectContainer;
-  ExpoButton           = ui.Button;
-  buttonStyleMod       = mods.buttonStyle;
-  frameMod             = mods.frame;
+  Host           = ui.Host;
+  ExpoHStack     = ui.HStack;
+  ExpoImage      = ui.Image;
+  frameMod       = mods.frame;
+  glassEffectMod = mods.glassEffect;
 } catch {}
+
+const ITEM_SIZE = 52;
+const ITEM_GAP  = 6;
 
 // ── SF Symbols (graceful fallback to Feather) ─────────────────────────────────
 let SymbolView: any = null;
@@ -179,8 +182,8 @@ function StandaloneIOSTabBar() {
   const nativeReady = useNativeReady();
 
   const activeRoute = getActiveRoute(pathname);
-  const useGlass    = nativeReady && isIOS26Plus && !!Host && !!GlassEffectContainer && !!ExpoButton
-    && !!buttonStyleMod && !!frameMod;
+  const useGlass    = nativeReady && isIOS26Plus && !!Host && !!ExpoHStack && !!ExpoImage
+    && !!frameMod && !!glassEffectMod;
 
   const handlePress = (tab: typeof TABS[0]) => {
     if (!tab.path) return;
@@ -203,40 +206,52 @@ function StandaloneIOSTabBar() {
     router.push(tab.path as any);
   };
 
-  const cartIdx = TABS.findIndex((t) => t.name === "cart");
-  const ITEM_W  = 60;
+  const cartIdx   = TABS.findIndex((t) => t.name === "cart");
+  const badgeLeft = cartIdx * (ITEM_SIZE + ITEM_GAP) + ITEM_SIZE - 16;
 
-  // ── Liquid Glass (iOS 26+) ─────────────────────────────────────────────────
+  // ── Liquid Glass (iOS 26+) — Host > HStack > Image(glassEffect) ────────────
   if (useGlass) {
+    const inactiveColor = isDark ? "#FFFFFF" : "#1A1A1A";
     return (
       <View
-        style={[ios.glassWrapper, { bottom: Math.max(insets.bottom, 12) + 4 }]}
+        style={[ios.glassWrapper, { bottom: Math.max(insets.bottom, 12) + 2 }]}
         pointerEvents="box-none"
       >
         {/* @expo/ui SwiftUI views MUST be wrapped in <Host> — see file header */}
-        <Host matchContents style={ios.glassHost}>
-          <GlassEffectContainer spacing={2}>
-            {TABS.map((tab) => {
-              const focused = tab.name === activeRoute;
-              return (
-                <ExpoButton
-                  key={tab.name}
-                  systemImage={focused ? tab.sfActive : tab.sf}
-                  onPress={() => handlePress(tab)}
-                  modifiers={[
-                    buttonStyleMod("glass"),
-                    frameMod({ width: 58, height: 52 }),
-                  ]}
-                />
-              );
-            })}
-          </GlassEffectContainer>
-        </Host>
-        {totalItems > 0 && (
-          <View pointerEvents="none" style={[ios.floatBadge, { left: cartIdx * ITEM_W + ITEM_W - 8 }]}>
-            <Text style={ios.badgeTxt}>{totalItems > 9 ? "9+" : totalItems}</Text>
-          </View>
-        )}
+        <View style={ios.glassInner}>
+          <Host matchContents style={{ height: ITEM_SIZE }}>
+            <ExpoHStack spacing={ITEM_GAP}>
+              {TABS.map((tab) => {
+                const focused = tab.name === activeRoute;
+                return (
+                  <ExpoImage
+                    key={tab.name}
+                    systemName={(focused ? tab.sfActive : tab.sf) as any}
+                    size={22}
+                    color={focused ? "#FFFFFF" : inactiveColor}
+                    onPress={() => handlePress(tab)}
+                    modifiers={[
+                      frameMod({ width: ITEM_SIZE, height: ITEM_SIZE }),
+                      glassEffectMod({
+                        glass: {
+                          variant: "regular",
+                          interactive: true,
+                          tint: focused ? PRIMARY : undefined,
+                        },
+                        shape: "circle",
+                      }),
+                    ]}
+                  />
+                );
+              })}
+            </ExpoHStack>
+          </Host>
+          {totalItems > 0 && (
+            <View pointerEvents="none" style={[ios.floatBadge, { left: badgeLeft }]}>
+              <Text style={ios.badgeTxt}>{totalItems > 9 ? "9+" : totalItems}</Text>
+            </View>
+          )}
+        </View>
       </View>
     );
   }
@@ -289,10 +304,11 @@ function StandaloneIOSTabBar() {
 
 const ios = StyleSheet.create({
   glassWrapper: { position: "absolute", left: 0, right: 0, alignItems: "center" },
-  glassHost:    { height: 52 },
+  glassInner:   { position: "relative" },
   floatBadge: {
-    position: "absolute", top: -4, minWidth: 15, height: 15, borderRadius: 8,
+    position: "absolute", top: -2, minWidth: 16, height: 16, borderRadius: 8,
     backgroundColor: PRIMARY, alignItems: "center", justifyContent: "center", paddingHorizontal: 3,
+    borderWidth: 1.5, borderColor: "#FFFFFF",
   },
   blurWrapper: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(128,128,128,0.25)" },
   blurRow:  { flex: 1, flexDirection: "row", alignItems: "center" },
