@@ -311,7 +311,7 @@ export default function HomeScreen() {
 
   const mainScrollRef = useRef<ScrollView>(null);
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
     const handler = () => {
       mainScrollRef.current?.scrollTo?.({ y: 0, animated: true });
     };
