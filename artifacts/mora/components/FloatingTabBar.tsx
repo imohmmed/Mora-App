@@ -21,23 +21,7 @@ import { Feather } from "@expo/vector-icons";
 import { useRouter, usePathname } from "expo-router";
 import { useCart } from "@/context/CartContext";
 import { useTheme } from "@/context/ThemeContext";
-import { useNativeReady } from "@/hooks/useNativeReady";
-import { isIOS26Plus } from "@/components/LiquidGlassBg";
 import { TabEvents, TAB_HOME_SCROLL_TOP, TAB_SEARCH_FOCUS } from "@/lib/tabEvents";
-
-// ── @expo/ui — Liquid Glass for iOS 26+ ───────────────────────────────────────
-let GlassEffectContainer: any = null;
-let ExpoButton: any = null;
-let buttonStyleMod: any = null;
-let frameMod: any = null;
-try {
-  const ui   = require("@expo/ui/swift-ui");
-  const mods = require("@expo/ui/swift-ui/modifiers");
-  GlassEffectContainer = ui.GlassEffectContainer;
-  ExpoButton           = ui.Button;
-  buttonStyleMod       = mods.buttonStyle;
-  frameMod             = mods.frame;
-} catch {}
 
 // ── SF Symbols (graceful fallback to Feather) ─────────────────────────────────
 let SymbolView: any = null;

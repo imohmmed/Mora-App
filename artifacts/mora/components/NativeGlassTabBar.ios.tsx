@@ -1,7 +1,13 @@
 /**
  * NativeGlassTabBar — iOS-only custom tab bar.
- * iOS 26+ + nativeReady: GlassEffectContainer + Button(buttonStyle:'glass') → true Liquid Glass.
- * Fallback: BlurView + Pressable (looks identical on older iOS).
+ *
+ * Uses expo-blur BlurView as a floating rounded "liquid glass" capsule.
+ *
+ * NOTE: We intentionally do NOT use @expo/ui GlassEffectContainer here.
+ * On iOS 26.x it crashed at launch with EXC_CRASH (SIGABRT) inside
+ * -[SwiftUIVirtualViewObjC forwardingTargetForSelector:] when React Native's
+ * Fabric tried to mount the tab bar's SwiftUI views. BlurView is rock-solid
+ * and visually matches Liquid Glass. The rest of the app keeps SwiftUI/@expo/ui.
  */
 import React from "react";
 import {
@@ -16,8 +22,6 @@ import { SymbolView } from "expo-symbols";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useCart } from "@/context/CartContext";
-import { useNativeReady } from "@/hooks/useNativeReady";
-import { isIOS26Plus } from "@/components/LiquidGlassBg";
 import { TabEvents, TAB_HOME_SCROLL_TOP, TAB_SEARCH_FOCUS } from "@/lib/tabEvents";
 
 // ── Inline TabBar props type (avoids importing from private expo-router path) ──
@@ -32,21 +36,6 @@ type TabBarProps = {
   };
   [k: string]: unknown;
 };
-
-// ── @expo/ui — loaded once at module init (stable SwiftUI view components) ───
-let GlassEffectContainer: any = null;
-let ExpoButton: any = null;
-let buttonStyleMod: ((s: string) => unknown) | null = null;
-let frameMod: ((p: object) => unknown) | null = null;
-
-try {
-  const ui   = require("@expo/ui/swift-ui");
-  const mods = require("@expo/ui/swift-ui/modifiers");
-  GlassEffectContainer = ui.GlassEffectContainer;
-  ExpoButton           = ui.Button;
-  buttonStyleMod       = mods.buttonStyle;
-  frameMod             = mods.frame;
-} catch {}
 
 // ── Tab metadata ──────────────────────────────────────────────────────────────
 const TABS: Record<string, { sf: string; sfActive: string }> = {
@@ -63,13 +52,7 @@ export function NativeGlassTabBar({ state, navigation }: TabBarProps) {
   const insets      = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const isDark      = colorScheme === "dark";
-  const nativeReady = useNativeReady();
   const { totalItems } = useCart();
-
-  // Use SwiftUI liquid glass only on iOS 26+ once bridge is ready
-  const isGlassAvailable = nativeReady && isIOS26Plus;
-  const useGlass = isGlassAvailable && !!GlassEffectContainer && !!ExpoButton
-    && !!buttonStyleMod && !!frameMod;
 
   const visibleRoutes = TAB_ORDER
     .map(n => state.routes.find(r => r.name === n))
@@ -90,138 +73,96 @@ export function NativeGlassTabBar({ state, navigation }: TabBarProps) {
     if (!isFocused && !ev.defaultPrevented) navigation.navigate(route.name);
   };
 
-  // ── 🌊 Liquid Glass (iOS 26+) ─────────────────────────────────────────────
-  if (useGlass) {
-    const ITEM_W  = 58 + 2; // button width + container spacing
-    const cartIdx = TAB_ORDER.indexOf("cart");
+  const active   = isDark ? "#FFFFFF" : "#000000";
+  const inactive = isDark ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.30)";
 
-    return (
-      <View
-        style={[styles.glassWrapper, { bottom: Math.max(insets.bottom, 12) + 4 }]}
-        pointerEvents="box-none"
-      >
-        <GlassEffectContainer spacing={2} style={styles.glassRow}>
+  return (
+    <View
+      style={[styles.wrapper, { bottom: Math.max(insets.bottom, 12) + 4 }]}
+      pointerEvents="box-none"
+    >
+      <View style={styles.pill}>
+        <BlurView
+          intensity={80}
+          tint={isDark ? "systemThickMaterialDark" : "systemThickMaterialLight"}
+          style={StyleSheet.absoluteFill}
+        />
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            styles.pillBorder,
+            { borderColor: isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.08)" },
+          ]}
+        />
+        <View style={styles.row}>
           {visibleRoutes.map((route) => {
             const def = TABS[route.name];
             if (!def) return null;
             const idx       = state.routes.findIndex(r => r.key === route.key);
             const isFocused = state.index === idx;
+            const color     = isFocused ? active : inactive;
             return (
-              <ExpoButton
+              <Pressable
                 key={route.key}
-                systemImage={isFocused ? def.sfActive : def.sf}
+                style={({ pressed }) => [styles.item, pressed && { opacity: 0.6 }]}
                 onPress={() => handlePress(route)}
-                modifiers={[
-                  buttonStyleMod!("glass"),
-                  frameMod!({ width: 58, height: 52 }),
-                ]}
-              />
+                accessibilityRole="button"
+                accessibilityState={{ selected: isFocused }}
+              >
+                <View>
+                  <SymbolView
+                    name={(isFocused ? def.sfActive : def.sf) as any}
+                    tintColor={color}
+                    size={23}
+                  />
+                  {route.name === "cart" && totalItems > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeTxt}>
+                        {totalItems > 9 ? "9+" : totalItems}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </Pressable>
             );
           })}
-        </GlassEffectContainer>
-
-        {/* Cart badge floats on top in RN layer */}
-        {totalItems > 0 && (
-          <View
-            pointerEvents="none"
-            style={[styles.floatBadge, { left: cartIdx * ITEM_W + ITEM_W - 8 }]}
-          >
-            <Text style={styles.badgeTxt}>{totalItems > 9 ? "9+" : totalItems}</Text>
-          </View>
-        )}
-      </View>
-    );
-  }
-
-  // ── 🫧 BlurView fallback (iOS < 26 or bridge not yet ready) ──────────────
-  const active   = isDark ? "#FFFFFF" : "#000000";
-  const inactive = isDark ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.30)";
-
-  return (
-    <View style={[styles.blurWrapper, { height: 54 + insets.bottom }]}>
-      <BlurView
-        intensity={90}
-        tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterial"}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={[styles.blurRow, { paddingBottom: insets.bottom }]}>
-        {visibleRoutes.map((route) => {
-          const def = TABS[route.name];
-          if (!def) return null;
-          const idx       = state.routes.findIndex(r => r.key === route.key);
-          const isFocused = state.index === idx;
-          const color     = isFocused ? active : inactive;
-          return (
-            <Pressable
-              key={route.key}
-              style={styles.blurItem}
-              onPress={() => handlePress(route)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: isFocused }}
-            >
-              <View>
-                <SymbolView
-                  name={(isFocused ? def.sfActive : def.sf) as any}
-                  tintColor={color}
-                  size={23}
-                />
-                {route.name === "cart" && totalItems > 0 && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeTxt}>
-                      {totalItems > 9 ? "9+" : totalItems}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </Pressable>
-          );
-        })}
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Liquid Glass layout
-  glassWrapper: {
+  wrapper: {
     position: "absolute",
     left: 0,
     right: 0,
     alignItems: "center",
   },
-  glassRow: {
+  pill: {
     flexDirection: "row",
+    borderRadius: 32,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
   },
-  floatBadge: {
-    position: "absolute",
-    top: -4,
-    minWidth: 15,
-    height: 15,
-    borderRadius: 8,
-    backgroundColor: "#0274C1",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 3,
+  pillBorder: {
+    borderRadius: 32,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  // BlurView fallback layout
-  blurWrapper: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(128,128,128,0.25)",
-  },
-  blurRow: {
-    flex: 1,
+  row: {
     flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 6,
+    height: 56,
   },
-  blurItem: {
-    flex: 1,
+  item: {
+    width: 58,
+    height: 52,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 8,
   },
   badge: {
     position: "absolute",
