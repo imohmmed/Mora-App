@@ -22,11 +22,13 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 
   try {
     Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
+      handleNotification: async () =>
+        ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any),
     });
 
     const { status: existingStatus } = await Notifications.getPermissionsAsync();

@@ -189,6 +189,15 @@ export default function CheckoutScreen() {
       clearCart();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+      // Save delivery address back to profile (best-effort, non-blocking)
+      if (token) {
+        fetch(`${base}/store/auth/me`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ phone: form.phone, address: { city: form.city, district: form.district, street: form.street } }),
+        }).catch(() => {});
+      }
+
       if (isOnline && waylUrl) {
         if (Platform.OS === "web") {
           sessionStorage.setItem("mora_wayl_snap", JSON.stringify({

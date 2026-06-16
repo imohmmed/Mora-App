@@ -23,7 +23,9 @@ import { searchProducts } from "@/lib/api";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { formatIQD } from "@/lib/format";
-import type { Product } from "@/lib/types";
+import { QuickAddSheet } from "@/components/QuickAddSheet";
+import { ProductPreviewModal } from "@/components/ProductPreviewModal";
+import type { Product, Variant } from "@/lib/types";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
@@ -52,7 +54,6 @@ function cardColor(id: string): string {
   return CARD_COLORS[h % CARD_COLORS.length];
 }
 
-// expo-glass-effect removed — caused EXC_BAD_ACCESS on iOS 26 beta during native view registration
 const GlassViewComp: any = null;
 
 let glassUIAvailable = false;
@@ -83,7 +84,19 @@ function ResultSkeleton() {
   );
 }
 
-function SearchResultCard({ item }: { item: Product }) {
+// ─── SearchResultCard ─────────────────────────────────────────────────────────
+// Outer View (not Pressable) — image+text Pressable is separate from ADD TO BAG
+// so ADD TO BAG can NEVER bubble up and trigger navigation.
+
+function SearchResultCard({
+  item,
+  onAddToBag,
+  onLongPress,
+}: {
+  item: Product;
+  onAddToBag: (product: Product) => void;
+  onLongPress: (product: Product) => void;
+}) {
   const colors = useColors();
   const router = useRouter();
   const { isWishlisted, toggle } = useWishlist();
@@ -95,67 +108,110 @@ function SearchResultCard({ item }: { item: Product }) {
   const hasDiscount = item.comparePrice != null && item.comparePrice > item.price;
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.resultCard, { opacity: pressed ? 0.95 : 1 }]}
-      onPress={() => router.push(`/product/${item.id}`)}
-    >
-      <View style={[styles.resultImage, { backgroundColor: cardColor(item.id) }]}>
-        {imageUri ? (
-          <Image
-            source={{ uri: imageUri }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            transition={200}
-          />
-        ) : (
-          <Feather name="shopping-bag" size={32} color={colors.mutedForeground} />
-        )}
+    <View style={styles.resultCard}>
+      {/* ── Navigate / long-press area ── */}
+      <Pressable
+        style={({ pressed }) => [{ opacity: pressed ? 0.93 : 1 }]}
+        onPress={() => router.push(`/product/${item.id}`)}
+        onLongPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          onLongPress(item);
+        }}
+        delayLongPress={280}
+      >
+        <View style={[styles.resultImage, { backgroundColor: cardColor(item.id) }]}>
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              transition={200}
+            />
+          ) : (
+            <Feather name="shopping-bag" size={32} color={colors.mutedForeground} />
+          )}
 
-        {/* Wishlist button */}
+          {/* Wishlist button */}
+          <Pressable
+            style={styles.likeBtnWrap}
+            onPress={() => {
+              toggle(item.id);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+          >
+            {useGlass ? (
+              <GlassViewComp style={styles.likeBtnGlass} glassEffectStyle="clear">
+                <Feather name="heart" size={15} color={liked ? "#E53935" : "#1A1A1A"} />
+              </GlassViewComp>
+            ) : (
+              <View style={[styles.likeBtnFallback, { backgroundColor: "rgba(255,255,255,0.92)" }]}>
+                <Feather name="heart" size={15} color={liked ? "#E53935" : "#1A1A1A"} />
+              </View>
+            )}
+          </Pressable>
+        </View>
+
+        {/* Info text (no button) */}
+        <View style={styles.resultInfo}>
+          <Text style={[styles.resultBrand, { color: colors.mutedForeground }]}>
+            {item.vendor ?? "Mora"}
+          </Text>
+          <Text style={[styles.resultTitle, { color: colors.foreground }]} numberOfLines={2}>
+            {item.title}
+          </Text>
+          <View style={styles.resultPriceRow}>
+            <Text style={[styles.resultPrice, { color: colors.foreground }]}>
+              {formatIQD(item.price)}
+            </Text>
+            {hasDiscount && (
+              <Text style={styles.resultOriginal}>
+                {formatIQD(item.comparePrice!)}
+              </Text>
+            )}
+          </View>
+        </View>
+      </Pressable>
+
+      {/* ── ADD TO BAG — completely outside the navigate Pressable ── */}
+      {useGlassBtn ? (
+        <ExpoUIHost style={{ height: 38, marginTop: 6 }}>
+          <ExpoButton
+            label="ADD TO BAG"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onAddToBag(item);
+            }}
+            modifiers={[
+              frameM({ maxWidth: 10000, height: 36 }),
+              glassEffectM({
+                glass: { variant: "regular", interactive: true, tint: "#0274C1" },
+                shape: "roundedRectangle",
+              }),
+              tintM("#FFFFFF"),
+            ]}
+          />
+        </ExpoUIHost>
+      ) : (
         <Pressable
-          style={styles.likeBtnWrap}
+          style={styles.addToCartBtn}
           onPress={() => {
-            toggle(item.id);
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onAddToBag(item);
           }}
         >
-          {useGlass ? (
-            <GlassViewComp style={styles.likeBtnGlass} glassEffectStyle="clear">
-              <Feather name="heart" size={15} color={liked ? "#E53935" : "#1A1A1A"} />
-            </GlassViewComp>
-          ) : (
-            <View style={[styles.likeBtnFallback, { backgroundColor: "rgba(255,255,255,0.92)" }]}>
-              <Feather name="heart" size={15} color={liked ? "#E53935" : "#1A1A1A"} />
-            </View>
-          )}
+          <Text style={styles.addToCartText}>ADD TO BAG</Text>
         </Pressable>
-      </View>
-
-      <View style={styles.resultInfo}>
-        <Text style={[styles.resultBrand, { color: colors.mutedForeground }]}>
-          {item.vendor ?? "Mora"}
-        </Text>
-        <Text style={[styles.resultTitle, { color: colors.foreground }]} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <View style={styles.resultPriceRow}>
-          <Text style={[styles.resultPrice, { color: colors.foreground }]}>
-            {formatIQD(item.price)}
-          </Text>
-          {hasDiscount && (
-            <Text style={styles.resultOriginal}>
-              {formatIQD(item.comparePrice!)}
-            </Text>
-          )}
-        </View>
-      </View>
-    </Pressable>
+      )}
+    </View>
   );
 }
+
+// ─── SearchScreen ─────────────────────────────────────────────────────────────
 
 export default function SearchScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const isWeb = Platform.OS === "web";
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -166,7 +222,37 @@ export default function SearchScreen() {
   const useGlass = IS_IOS && !!GlassViewComp && nativeReady2;
   const useGlassBtn = IS_IOS && glassUIAvailable && nativeReady2;
 
-  const topPadding = isWeb ? 0 : insets.top;
+  // ── Quick add state ──────────────────────────────────────────────────────────
+  const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
+  const [previewProduct,  setPreviewProduct]  = useState<Product | null>(null);
+  const [previewVisible,  setPreviewVisible]  = useState(false);
+  const { addItem } = useCart();
+
+  const handleAddToBag = (product: Product) => setQuickAddProduct(product);
+
+  const handleQuickAddConfirm = (variant: Variant) => {
+    if (!quickAddProduct) return;
+    addItem({
+      productId: quickAddProduct.id,
+      variantId: variant.id,
+      title: quickAddProduct.title,
+      vendor: quickAddProduct.vendor ?? "Mora",
+      price: variant.price,
+      quantity: 1,
+      size: variant.option1,
+      color: variant.option2,
+      image: quickAddProduct.images?.[0],
+    });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleLongPress = (product: Product) => {
+    setPreviewProduct(product);
+    setPreviewVisible(true);
+  };
+
+  // ── Search query ─────────────────────────────────────────────────────────────
+  const topPadding    = isWeb ? 0 : insets.top;
   const bottomPadding = isWeb ? 0 : insets.bottom;
 
   const handleChangeText = (text: string) => {
@@ -318,7 +404,12 @@ export default function SearchScreen() {
             </View>
             <View style={styles.grid}>
               {results.map((product) => (
-                <SearchResultCard key={product.id} item={product} />
+                <SearchResultCard
+                  key={product.id}
+                  item={product}
+                  onAddToBag={handleAddToBag}
+                  onLongPress={handleLongPress}
+                />
               ))}
             </View>
           </>
@@ -334,6 +425,23 @@ export default function SearchScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* ── Quick Add Sheet ── */}
+      <QuickAddSheet
+        visible={quickAddProduct !== null}
+        product={quickAddProduct}
+        onClose={() => setQuickAddProduct(null)}
+        onConfirm={handleQuickAddConfirm}
+      />
+
+      {/* ── Long Press Preview Modal ── */}
+      <ProductPreviewModal
+        product={previewProduct}
+        visible={previewVisible}
+        onClose={() => setPreviewVisible(false)}
+        onAddToBag={(p) => { setPreviewVisible(false); setQuickAddProduct(p); }}
+        onViewProduct={(p) => { setPreviewVisible(false); router.push(`/product/${p.id}`); }}
+      />
     </View>
   );
 }
@@ -407,19 +515,12 @@ const styles = StyleSheet.create({
   },
   likeBtnWrap: { position: "absolute", top: 8, right: 8, zIndex: 1 },
   likeBtnGlass: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
+    width: 30, height: 30, borderRadius: 15,
+    alignItems: "center", justifyContent: "center", overflow: "hidden",
   },
   likeBtnFallback: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 30, height: 30, borderRadius: 15,
+    alignItems: "center", justifyContent: "center",
   },
   resultInfo: { paddingTop: 8, gap: 2 },
   resultBrand: { fontFamily: "Inter_500Medium", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase" },
@@ -432,6 +533,16 @@ const styles = StyleSheet.create({
     textDecorationLine: "line-through",
     color: "#E53935",
   },
+
+  /* Add to cart btn */
+  addToCartBtn: {
+    backgroundColor: PRIMARY,
+    paddingVertical: 9,
+    alignItems: "center",
+    borderRadius: 8,
+    marginTop: 6,
+  },
+  addToCartText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 0.5 },
 
   emptyResults: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 80, gap: 12 },
   emptyTitle: { fontFamily: "Inter_600SemiBold", fontSize: 18, textAlign: "center" },

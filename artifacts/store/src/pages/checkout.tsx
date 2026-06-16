@@ -99,20 +99,38 @@ function StepIndicator({ current }: { current: 1 | 2 | 3 }) {
   );
 }
 
-// ── Login gate ────────────────────────────────────────────────────────────────
-function LoginGate({ onLogin }: { onLogin: (email: string, pw: string) => Promise<unknown> }) {
-  const [email, setEmail]     = useState("");
-  const [pw, setPw]           = useState("");
-  const [showPw, setShowPw]   = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState("");
+// ── Login / Register gate ─────────────────────────────────────────────────────
+function LoginGate({
+  onLogin,
+  onRegister,
+}: {
+  onLogin: (email: string, pw: string) => Promise<unknown>;
+  onRegister: (firstName: string, lastName: string, email: string, pw: string) => Promise<unknown>;
+}) {
+  const [mode, setMode]           = useState<"login" | "register">("login");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName]   = useState("");
+  const [email, setEmail]         = useState("");
+  const [pw, setPw]               = useState("");
+  const [showPw, setShowPw]       = useState(false);
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState("");
 
   const handle = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); setError("");
-    try { await onLogin(email, pw); }
-    catch (err: unknown) { setError((err as Error).message || "Invalid credentials"); }
-    finally { setLoading(false); }
+    try {
+      if (mode === "login") {
+        await onLogin(email, pw);
+      } else {
+        if (!firstName.trim()) { setError("First name is required"); return; }
+        await onRegister(firstName.trim(), lastName.trim(), email, pw);
+      }
+    } catch (err: unknown) {
+      setError((err as Error).message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -120,39 +138,73 @@ function LoginGate({ onLogin }: { onLogin: (email: string, pw: string) => Promis
       <div className="flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-6 mx-auto">
         <ShoppingBag className="h-7 w-7 text-primary" />
       </div>
-      <h2 className="text-2xl font-bold tracking-tighter uppercase text-center mb-2">Sign In to Checkout</h2>
-      <p className="text-muted-foreground text-center text-sm mb-8">
-        Don&apos;t have an account?{" "}
-        <Link href="/account" className="text-primary underline">Create one</Link>
-      </p>
+
+      {/* Mode tabs */}
+      <div className="flex border border-border rounded-sm overflow-hidden mb-8">
+        {(["login", "register"] as const).map((m) => (
+          <button key={m} type="button"
+            onClick={() => { setMode(m); setError(""); }}
+            className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors
+              ${mode === m ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:text-foreground"}`}
+          >
+            {m === "login" ? "Sign In" : "Create Account"}
+          </button>
+        ))}
+      </div>
+
       {error && (
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
           className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-4 py-3 rounded-md mb-5">
           {error}
         </motion.div>
       )}
-      <form onSubmit={handle} className="space-y-4">
-        <div className="space-y-2">
-          <Label>Email</Label>
-          <Input type="email" required className="h-12" value={email}
-            onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" />
-        </div>
-        <div className="space-y-2">
-          <Label>Password</Label>
-          <div className="relative">
-            <Input type={showPw ? "text" : "password"} required className="h-12 pr-10"
-              value={pw} onChange={(e) => setPw(e.target.value)} placeholder="••••••••" />
-            <button type="button" onClick={() => setShowPw(!showPw)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
+
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.form key={mode} onSubmit={handle}
+          initial={{ opacity: 0, x: mode === "register" ? 24 : -24 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="space-y-4"
+        >
+          {mode === "register" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>First Name</Label>
+                <Input required className="h-12" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Ahmed" />
+              </div>
+              <div className="space-y-2">
+                <Label>Last Name</Label>
+                <Input className="h-12" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Al-Rashidi" />
+              </div>
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label>Email</Label>
+            <Input type="email" required className="h-12" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" />
           </div>
-        </div>
-        <Button type="submit" className="w-full h-12 uppercase font-bold tracking-wider text-sm" disabled={loading}>
-          {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-          {loading ? "Signing in…" : "Sign In & Continue"}
-        </Button>
-      </form>
+          <div className="space-y-2">
+            <Label>Password</Label>
+            <div className="relative">
+              <Input type={showPw ? "text" : "password"} required className="h-12 pr-10"
+                value={pw} onChange={(e) => setPw(e.target.value)}
+                placeholder={mode === "register" ? "Choose a password" : "••••••••"}
+                minLength={mode === "register" ? 6 : undefined}
+              />
+              <button type="button" onClick={() => setShowPw(!showPw)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+          <Button type="submit" className="w-full h-12 uppercase font-bold tracking-wider text-sm" disabled={loading}>
+            {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            {loading
+              ? (mode === "login" ? "Signing in…" : "Creating account…")
+              : (mode === "login" ? "Sign In & Continue" : "Create Account & Continue")}
+          </Button>
+        </motion.form>
+      </AnimatePresence>
     </div>
   );
 }
@@ -212,7 +264,7 @@ function OrderSidebar({ items, subtotal }: { items: ReturnType<typeof useCart>["
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Checkout() {
   const { items, total, clearCart } = useCart();
-  const { user, token, isLoading, login } = useStoreAuth();
+  const { user, token, isLoading, login, register, updateProfile } = useStoreAuth();
 
   // null = form/login, non-null = order placed
   const [snap, setSnap]         = useState<OrderSnap | null>(null);
@@ -268,6 +320,9 @@ export default function Checkout() {
       clearCart();
       setSnap(placed);
       window.scrollTo({ top: 0, behavior: "smooth" });
+
+      // Save address back to profile (best-effort, non-blocking)
+      updateProfile({ phone: form.phone, address: { city: form.city, district: form.district, street: form.street } }).catch(() => {});
     } catch (err: unknown) {
       setPlaceError((err as Error).message || "Something went wrong. Please try again.");
     } finally {
@@ -326,7 +381,7 @@ export default function Checkout() {
               initial={TX.enter} animate={TX.show} exit={TX.exit}
               transition={TX.transition}
             >
-              <LoginGate onLogin={login} />
+              <LoginGate onLogin={login} onRegister={register} />
             </motion.div>
           )}
 

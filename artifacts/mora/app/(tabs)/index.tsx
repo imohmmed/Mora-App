@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ProductPreviewModal } from "@/components/ProductPreviewModal";
 import {
   ActivityIndicator,
   Dimensions,
@@ -85,9 +86,11 @@ try {
 function ProductCard({
   item,
   onAddToBag,
+  onLongPress,
 }: {
   item: Product;
   onAddToBag: (product: Product) => void;
+  onLongPress: (product: Product) => void;
 }) {
   const colors = useColors();
   const router = useRouter();
@@ -105,113 +108,116 @@ function ProductCard({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  // ── Outer View (not Pressable) so ADD TO BAG never bubbles to navigate ──
   return (
-    <Pressable
-      style={({ pressed }) => [styles.productCard, { opacity: pressed ? 0.95 : 1 }]}
-      testID={`product-${item.id}`}
-      onPress={() => router.push(`/product/${item.id}`)}
-    >
-      {/* ── Image area ── */}
-      <View style={[styles.productImage, { backgroundColor: bg }]}>
-        {imageUri ? (
-          <Image
-            source={{ uri: imageUri }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            transition={200}
-          />
-        ) : (
-          <Feather name="shopping-bag" size={40} color={colors.mutedForeground} />
-        )}
-
-        {/* Tag badge — glass on iOS 26+, solid on others */}
-        {tag && (
-          useGlass ? (
-            <GlassViewComp
-              style={[styles.productTag, styles.productTagGlass]}
-              glassEffectStyle="clear"
-            >
-              <Text style={[
-                styles.productTagText,
-                { color: tag === "SALE" ? "#E53935" : "#0274C1" },
-              ]}>
-                {tag}
-              </Text>
-            </GlassViewComp>
+    <View style={styles.productCard} testID={`product-${item.id}`}>
+      {/* ── Tappable area: image + text info ── */}
+      <Pressable
+        style={({ pressed }) => [{ opacity: pressed ? 0.93 : 1 }]}
+        onPress={() => router.push(`/product/${item.id}`)}
+        onLongPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          onLongPress(item);
+        }}
+        delayLongPress={280}
+      >
+        {/* ── Image area ── */}
+        <View style={[styles.productImage, { backgroundColor: bg }]}>
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              transition={200}
+            />
           ) : (
-            <View style={[styles.productTag, {
-              backgroundColor: tag === "SALE" ? "#E53935" : "#0274C1",
-            }]}>
-              <Text style={styles.productTagText}>{tag}</Text>
-            </View>
-          )
-        )}
-
-        {/* Wishlist button — glass on iOS 26+ */}
-        <Pressable style={styles.likeBtnWrap} onPress={handleLike}>
-          {useGlass ? (
-            <GlassViewComp style={styles.likeBtnGlass} glassEffectStyle="clear">
-              <Feather name="heart" size={16} color={liked ? "#E53935" : "#1A1A1A"} />
-            </GlassViewComp>
-          ) : (
-            <View style={[styles.likeBtnFallback, { backgroundColor: "rgba(255,255,255,0.92)" }]}>
-              <Feather name="heart" size={16} color={liked ? "#E53935" : "#1A1A1A"} />
-            </View>
+            <Feather name="shopping-bag" size={40} color={colors.mutedForeground} />
           )}
-        </Pressable>
-      </View>
 
-      {/* ── Info ── */}
-      <View style={styles.productInfo}>
-        <Text style={[styles.productBrand, { color: colors.mutedForeground }]}>
-          {item.vendor ?? "Mora"}
-        </Text>
-        <Text style={[styles.productTitle, { color: colors.foreground }]} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <View style={styles.priceRow}>
-          <Text style={[styles.productPrice, { color: colors.foreground }]}>
-            {formatIQD(item.price)}
-          </Text>
-          {item.comparePrice != null && item.comparePrice > item.price && (
-            <Text style={styles.originalPrice}>
-              {formatIQD(item.comparePrice)}
-            </Text>
+          {/* Tag badge */}
+          {tag && (
+            useGlass ? (
+              <GlassViewComp
+                style={[styles.productTag, styles.productTagGlass]}
+                glassEffectStyle="clear"
+              >
+                <Text style={[styles.productTagText, { color: tag === "SALE" ? "#E53935" : "#0274C1" }]}>
+                  {tag}
+                </Text>
+              </GlassViewComp>
+            ) : (
+              <View style={[styles.productTag, { backgroundColor: tag === "SALE" ? "#E53935" : "#0274C1" }]}>
+                <Text style={styles.productTagText}>{tag}</Text>
+              </View>
+            )
           )}
+
+          {/* Wishlist button */}
+          <Pressable style={styles.likeBtnWrap} onPress={handleLike}>
+            {useGlass ? (
+              <GlassViewComp style={styles.likeBtnGlass} glassEffectStyle="clear">
+                <Feather name="heart" size={16} color={liked ? "#E53935" : "#1A1A1A"} />
+              </GlassViewComp>
+            ) : (
+              <View style={[styles.likeBtnFallback, { backgroundColor: "rgba(255,255,255,0.92)" }]}>
+                <Feather name="heart" size={16} color={liked ? "#E53935" : "#1A1A1A"} />
+              </View>
+            )}
+          </Pressable>
         </View>
 
-        {/* Add to Bag — glass button on iOS, solid on others */}
-        {useGlassBtn ? (
-          <ExpoUIHost style={{ height: 38, marginTop: 6 }}>
-            <ExpoButton
-              label="ADD TO BAG"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                onAddToBag(item);
-              }}
-              modifiers={[
-                frameM({ maxWidth: 10000, height: 36 }),
-                glassEffectM({
-                  glass: { variant: "regular", interactive: true, tint: "#0274C1" },
-                  shape: "roundedRectangle",
-                }),
-                tintM("#FFFFFF"),
-              ]}
-            />
-          </ExpoUIHost>
-        ) : (
-          <Pressable
-            style={styles.addToCartBtn}
+        {/* ── Text info (no button here) ── */}
+        <View style={styles.productInfo}>
+          <Text style={[styles.productBrand, { color: colors.mutedForeground }]}>
+            {item.vendor ?? "Mora"}
+          </Text>
+          <Text style={[styles.productTitle, { color: colors.foreground }]} numberOfLines={2}>
+            {item.title}
+          </Text>
+          <View style={styles.priceRow}>
+            <Text style={[styles.productPrice, { color: colors.foreground }]}>
+              {formatIQD(item.price)}
+            </Text>
+            {item.comparePrice != null && item.comparePrice > item.price && (
+              <Text style={styles.originalPrice}>
+                {formatIQD(item.comparePrice)}
+              </Text>
+            )}
+          </View>
+        </View>
+      </Pressable>
+
+      {/* ── ADD TO BAG — outside the navigate Pressable; never bubbles ── */}
+      {useGlassBtn ? (
+        <ExpoUIHost style={{ height: 38, marginTop: 6 }}>
+          <ExpoButton
+            label="ADD TO BAG"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               onAddToBag(item);
             }}
-          >
-            <Text style={styles.addToCartText}>ADD TO BAG</Text>
-          </Pressable>
-        )}
-      </View>
-    </Pressable>
+            modifiers={[
+              frameM({ maxWidth: 10000, height: 36 }),
+              glassEffectM({
+                glass: { variant: "regular", interactive: true, tint: "#0274C1" },
+                shape: "roundedRectangle",
+              }),
+              tintM("#FFFFFF"),
+            ]}
+          />
+        </ExpoUIHost>
+      ) : (
+        <Pressable
+          style={styles.addToCartBtn}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onAddToBag(item);
+          }}
+        >
+          <Text style={styles.addToCartText}>ADD TO BAG</Text>
+        </Pressable>
+      )}
+    </View>
   );
 }
 
@@ -285,11 +291,19 @@ export default function HomeScreen() {
   const [activeCategory, setActiveCategory] = useState(0);
   const [activeBanner, setActiveBanner] = useState(0);
   const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
+  const [previewProduct, setPreviewProduct]   = useState<Product | null>(null);
+  const [previewVisible, setPreviewVisible]   = useState(false);
   const { totalItems, addItem } = useCart();
   const { count: wishlistCount } = useWishlist();
+  const router = useRouter();
 
   const handleAddToBag = (product: Product) => {
     setQuickAddProduct(product);
+  };
+
+  const handleLongPress = (product: Product) => {
+    setPreviewProduct(product);
+    setPreviewVisible(true);
   };
 
   const handleQuickAddConfirm = (variant: Variant) => {
@@ -477,7 +491,7 @@ export default function HomeScreen() {
   ]);
 
   const renderProduct = useCallback(({ item }: { item: Product }) => (
-    <ProductCard item={item} onAddToBag={handleAddToBag} />
+    <ProductCard item={item} onAddToBag={handleAddToBag} onLongPress={handleLongPress} />
   ), []);
 
   const ListFooter = isFetchingNextPage ? (
@@ -525,6 +539,14 @@ export default function HomeScreen() {
         product={quickAddProduct}
         onClose={() => setQuickAddProduct(null)}
         onConfirm={handleQuickAddConfirm}
+      />
+
+      <ProductPreviewModal
+        product={previewProduct}
+        visible={previewVisible}
+        onClose={() => setPreviewVisible(false)}
+        onAddToBag={(p) => { setPreviewVisible(false); setQuickAddProduct(p); }}
+        onViewProduct={(p) => { setPreviewVisible(false); router.push(`/product/${p.id}`); }}
       />
     </View>
   );

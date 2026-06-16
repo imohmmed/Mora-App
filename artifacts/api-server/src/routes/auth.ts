@@ -69,6 +69,26 @@ router.get("/store/auth/me", (req, res) => {
   res.json({ data: user, meta: {}, error: null });
 });
 
+router.patch("/store/auth/me", (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith("Bearer ")) { res.status(401).json({ data: null, meta: {}, error: "Unauthorized" }); return; }
+  const sess = db.prepare(`SELECT customer_id FROM sessions WHERE token=?`).get(auth.slice(7)) as Row | undefined;
+  if (!sess) { res.status(401).json({ data: null, meta: {}, error: "Invalid token" }); return; }
+  const custId = sess["customer_id"] as string;
+  const b = req.body as Record<string, string | Record<string, string>>;
+  const updates: string[] = [];
+  const values: unknown[] = [];
+  if (b["firstName"]) { updates.push("first_name=?"); values.push(String(b["firstName"]).trim()); }
+  if (b["lastName"]  !== undefined) { updates.push("last_name=?");  values.push(String(b["lastName"] ?? "").trim()); }
+  if (b["phone"]     !== undefined) { updates.push("phone=?");      values.push(String(b["phone"] ?? "").trim()); }
+  if (b["address"]   !== undefined) { updates.push("address=?");    values.push(JSON.stringify(b["address"])); }
+  if (updates.length === 0) { res.status(400).json({ data: null, meta: {}, error: "Nothing to update" }); return; }
+  values.push(custId);
+  db.prepare(`UPDATE customers SET ${updates.join(", ")} WHERE id=?`).run(...values);
+  const user = getUser(auth.slice(7));
+  res.json({ data: user, meta: {}, error: null });
+});
+
 router.post("/store/auth/logout", (req, res) => {
   const auth = req.headers.authorization;
   if (auth?.startsWith("Bearer ")) db.prepare(`DELETE FROM sessions WHERE token=?`).run(auth.slice(7));

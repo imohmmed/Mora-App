@@ -45,11 +45,38 @@ export function useStoreAuth() {
     return u;
   }, []);
 
+  const register = useCallback(async (firstName: string, lastName: string, email: string, password: string) => {
+    const res = await fetch(`${BASE}/store/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ firstName, lastName, email, password }),
+    });
+    const json = await res.json() as { data: { token: string; user: StoreUser }; error?: string };
+    if (!res.ok) throw new Error(json.error || "Registration failed");
+    const { token: t, user: u } = json.data;
+    localStorage.setItem(TOKEN_KEY, t);
+    setToken(t);
+    setUser(u);
+    return u;
+  }, []);
+
+  const updateProfile = useCallback(async (patch: { phone?: string; address?: Record<string, string> }) => {
+    const t = localStorage.getItem(TOKEN_KEY);
+    if (!t) return;
+    const res = await fetch(`${BASE}/store/auth/me`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${t}` },
+      body: JSON.stringify(patch),
+    });
+    const json = await res.json() as { data: StoreUser | null; error?: string };
+    if (res.ok && json.data) setUser(json.data);
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUser(null);
   }, []);
 
-  return { user, token, isLoading, login, logout };
+  return { user, token, isLoading, login, register, updateProfile, logout };
 }
