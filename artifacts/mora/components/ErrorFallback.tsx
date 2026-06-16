@@ -1,8 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { reloadAppAsync } from "expo";
-import React, { useState } from "react";
+import React from "react";
 import {
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -12,7 +11,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useColors } from "@/hooks/useColors";
+const PRIMARY = "#0274C1";
+const RED     = "#FF3B30";
 
 export type ErrorFallbackProps = {
   error: Error;
@@ -20,270 +20,80 @@ export type ErrorFallbackProps = {
 };
 
 export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
-  const colors = useColors();
   const insets = useSafeAreaInsets();
 
-  const [isModalVisible, setIsModalVisible] = useState(false);
-
-  const handleRestart = async () => {
-    try {
-      await reloadAppAsync();
-    } catch (restartError) {
-      console.error("Failed to restart app:", restartError);
-      resetError();
-    }
-  };
-
-  const formatErrorDetails = (): string => {
-    let details = `Error: ${error.message}\n\n`;
-    if (error.stack) {
-      details += `Stack Trace:\n${error.stack}`;
-    }
-    return details;
-  };
+  // Show the full error message + first 800 chars of stack so we can
+  // identify the root cause without Xcode/Metro attached.
+  const msg    = error?.message || "(no message)";
+  const stack  = error?.stack   ? error.stack.slice(0, 800) : "(no stack)";
+  const details = `${msg}\n\n${stack}`;
 
   const monoFont = Platform.select({
-    ios: "Menlo",
-    android: "monospace",
-    default: "monospace",
+    ios: "Menlo", android: "monospace", default: "monospace",
   });
 
+  const handleRestart = async () => {
+    try { await reloadAppAsync(); } catch { resetError(); }
+  };
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {__DEV__ ? (
-        <Pressable
-          onPress={() => setIsModalVisible(true)}
-          accessibilityLabel="View error details"
-          accessibilityRole="button"
-          style={({ pressed }) => [
-            styles.topButton,
-            {
-              top: insets.top + 16,
-              backgroundColor: colors.card,
-              opacity: pressed ? 0.8 : 1,
-            },
-          ]}
-        >
-          <Feather name="alert-circle" size={20} color={colors.foreground} />
-        </Pressable>
-      ) : null}
-
-      <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.foreground }]}>
-          Something went wrong
-        </Text>
-
-        <Text style={[styles.message, { color: colors.mutedForeground }]}>
-          Please reload the app to continue.
-        </Text>
-
-        <Text style={[styles.errorHint, { color: colors.mutedForeground }]} selectable>
-          {error.message}
-        </Text>
-
-        <Pressable
-          onPress={handleRestart}
-          style={({ pressed }) => [
-            styles.button,
-            {
-              backgroundColor: colors.primary,
-              opacity: pressed ? 0.9 : 1,
-              transform: [{ scale: pressed ? 0.98 : 1 }],
-            },
-          ]}
-        >
-          <Text
-            style={[
-              styles.buttonText,
-              { color: colors.primaryForeground },
-            ]}
-          >
-            Try Again
-          </Text>
-        </Pressable>
+    <View style={[styles.root, {
+      paddingTop: insets.top + 20,
+      paddingBottom: insets.bottom + 20,
+    }]}>
+      {/* Icon + title */}
+      <View style={styles.header}>
+        <Feather name="alert-triangle" size={26} color={RED} />
+        <Text style={styles.title}>Something went wrong</Text>
       </View>
 
-      {__DEV__ ? (
-        <Modal
-          visible={isModalVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setIsModalVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View
-              style={[
-                styles.modalContainer,
-                { backgroundColor: colors.background },
-              ]}
-            >
-              <View
-                style={[
-                  styles.modalHeader,
-                  { borderBottomColor: colors.border },
-                ]}
-              >
-                <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-                  Error Details
-                </Text>
-                <Pressable
-                  onPress={() => setIsModalVisible(false)}
-                  accessibilityLabel="Close error details"
-                  accessibilityRole="button"
-                  style={({ pressed }) => [
-                    styles.closeButton,
-                    { opacity: pressed ? 0.6 : 1 },
-                  ]}
-                >
-                  <Feather name="x" size={24} color={colors.foreground} />
-                </Pressable>
-              </View>
+      <Text style={styles.hint}>
+        Long-press the red box below to copy the error, then send it to the developer.
+      </Text>
 
-              <ScrollView
-                style={styles.modalScrollView}
-                contentContainerStyle={[
-                  styles.modalScrollContent,
-                  { paddingBottom: insets.bottom + 16 },
-                ]}
-                showsVerticalScrollIndicator
-              >
-                <View
-                  style={[
-                    styles.errorContainer,
-                    { backgroundColor: colors.card },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.errorText,
-                      {
-                        color: colors.foreground,
-                        fontFamily: monoFont,
-                      },
-                    ]}
-                    selectable
-                  >
-                    {formatErrorDetails()}
-                  </Text>
-                </View>
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-      ) : null}
+      {/* Error details — always visible, even in production */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollInner}
+        showsVerticalScrollIndicator
+      >
+        <Text
+          style={[styles.mono, { fontFamily: monoFont }]}
+          selectable
+        >
+          {details}
+        </Text>
+      </ScrollView>
+
+      {/* Actions */}
+      <Pressable
+        style={({ pressed }) => [styles.tryBtn, pressed && { opacity: 0.85 }]}
+        onPress={handleRestart}
+      >
+        <Text style={styles.tryTxt}>Try Again</Text>
+      </Pressable>
+
+      <Pressable
+        style={({ pressed }) => [styles.resetBtn, pressed && { opacity: 0.7 }]}
+        onPress={resetError}
+      >
+        <Text style={styles.resetTxt}>Skip reload (reset only)</Text>
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  content: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 16,
-    width: "100%",
-    maxWidth: 600,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    textAlign: "center",
-    lineHeight: 40,
-  },
-  message: {
-    fontSize: 16,
-    textAlign: "center",
-    lineHeight: 24,
-  },
-  errorHint: {
-    fontSize: 12,
-    textAlign: "center",
-    lineHeight: 18,
-    opacity: 0.6,
-    paddingHorizontal: 8,
-  },
-  topButton: {
-    position: "absolute",
-    right: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 10,
-  },
-  button: {
-    paddingVertical: 16,
-    borderRadius: 8,
-    paddingHorizontal: 24,
-    minWidth: 200,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  buttonText: {
-    fontWeight: "600",
-    textAlign: "center",
-    fontSize: 16,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContainer: {
-    width: "100%",
-    height: "90%",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-  },
-  closeButton: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalScrollView: {
-    flex: 1,
-  },
-  modalScrollContent: {
-    padding: 16,
-  },
-  errorContainer: {
-    width: "100%",
-    borderRadius: 8,
-    overflow: "hidden",
-    padding: 16,
-  },
-  errorText: {
-    fontSize: 12,
-    lineHeight: 18,
-    width: "100%",
-  },
+  root:       { flex: 1, backgroundColor: "#0A0A0A", paddingHorizontal: 18 },
+  header:     { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
+  title:      { color: "#FFFFFF", fontSize: 20, fontWeight: "700" },
+  hint:       { color: "#888", fontSize: 12, lineHeight: 18, marginBottom: 14 },
+  scroll:     { flex: 1, backgroundColor: "#1C1C1E", borderRadius: 12, marginBottom: 16 },
+  scrollInner:{ padding: 14, paddingBottom: 20 },
+  mono:       { color: RED, fontSize: 11, lineHeight: 17 },
+  tryBtn:     { backgroundColor: PRIMARY, borderRadius: 14, paddingVertical: 15,
+                alignItems: "center", marginBottom: 10 },
+  tryTxt:     { color: "#fff", fontSize: 15, fontWeight: "700" },
+  resetBtn:   { alignItems: "center", paddingVertical: 8 },
+  resetTxt:   { color: "#555", fontSize: 12 },
 });

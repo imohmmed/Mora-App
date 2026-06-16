@@ -1,7 +1,7 @@
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
-import React, { Component } from "react";
+import React from "react";
 import { Platform, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -9,128 +9,96 @@ import { useColors } from "@/hooks/useColors";
 import { useCart } from "@/context/CartContext";
 import { WebLiquidTabBar } from "@/components/WebLiquidTabBar";
 
-// expo-glass-effect and expo-router/unstable-native-tabs require a custom
-// dev build. We load them dynamically so the app still runs in Expo Go.
-let isLiquidGlassAvailable: () => boolean = () => false;
-let NativeTabs: any, TabIcon: any, TabLabel: any;
-let SymbolView: any;
+// expo-symbols — graceful fallback to Feather if unavailable
+let SymbolView: any = null;
+try { SymbolView = require("expo-symbols").SymbolView; } catch {}
 
-try {
-  const glassModule = require("expo-glass-effect");
-  isLiquidGlassAvailable = glassModule.isLiquidGlassAvailable;
-} catch {}
+// NOTE: expo-router/unstable-native-tabs (NativeTabs) is intentionally
+// NOT imported. On iOS 26 it triggers a native SwiftUI crash on the first
+// render that cannot be caught by a JS error boundary. We use ClassicTabLayout
+// (BlurView background) on all platforms.
 
-try {
-  const nt = require("expo-router/unstable-native-tabs");
-  NativeTabs = nt.NativeTabs;
-  TabIcon = nt.Icon;
-  TabLabel = nt.Label;
-} catch {}
-
-try {
-  const sym = require("expo-symbols");
-  SymbolView = sym.SymbolView;
-} catch {}
-
-// ─── iOS 26+ Liquid Glass native tab bar (custom dev build only) ───────────
-function NativeTabLayout() {
-  return (
-    <NativeTabs minimizeBehavior="never">
-      <NativeTabs.Trigger name="index">
-        <TabIcon sf={{ default: "house", selected: "house.fill" }} />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="search" role="search">
-        <TabIcon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="chat">
-        <TabIcon sf={{ default: "message.circle", selected: "message.circle.fill" }} />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="cart">
-        <TabIcon sf={{ default: "bag", selected: "bag.fill" }} />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="account">
-        <TabIcon sf={{ default: "person", selected: "person.fill" }} />
-      </NativeTabs.Trigger>
-    </NativeTabs>
-  );
-}
-
-// ─── Classic layout (Expo Go / Android / Web) ─────────────────────────────
-function ClassicTabLayout() {
-  const colors = useColors();
+export default function TabLayout() {
+  const colors     = useColors();
   const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const isIOS = Platform.OS === "ios";
-  const isWeb = Platform.OS === "web";
-  const safeAreaInsets = useSafeAreaInsets();
+  const isDark     = colorScheme === "dark";
+  const isIOS      = Platform.OS === "ios";
+  const isWeb      = Platform.OS === "web";
+  const insets     = useSafeAreaInsets();
   const { totalItems } = useCart();
+
+  const active   = isDark ? "#FFFFFF" : "#000000";
+  const inactive = isDark ? "rgba(255,255,255,0.40)" : "rgba(0,0,0,0.35)";
+
+  function SFIcon({ sf, feather, color, size = 23 }: {
+    sf: string; feather: string; color: string; size?: number;
+  }) {
+    if (isIOS && SymbolView) {
+      return <SymbolView name={sf} tintColor={color} size={size} />;
+    }
+    return <Feather name={feather as any} size={size - 1} color={color} />;
+  }
 
   return (
     <Tabs
-      sceneContainerStyle={{ paddingTop: 0, paddingBottom: isWeb ? 84 : 0 }}
-      // ── Web: use the CSS Liquid Glass tab bar ──────────────────────────
+      sceneContainerStyle={{ paddingBottom: isWeb ? 84 : 0 }}
       tabBar={isWeb ? (props) => <WebLiquidTabBar {...props} /> : undefined}
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
-        tabBarActiveTintColor: isDark ? "#FFFFFF" : "#000000",
-        tabBarInactiveTintColor: isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.40)",
-        // Web uses WebLiquidTabBar above, so hide the default bar on web
+        tabBarActiveTintColor: active,
+        tabBarInactiveTintColor: inactive,
         tabBarStyle: isWeb
           ? { display: "none" }
           : {
               position: "absolute",
+              height: 54 + insets.bottom,
               backgroundColor: isIOS ? "transparent" : colors.background,
-              borderTopWidth: 0.5,
+              borderTopWidth: StyleSheet.hairlineWidth,
               borderTopColor: colors.border,
               elevation: 0,
-              paddingBottom: safeAreaInsets.bottom,
             },
-        tabBarLabelStyle: {
-          fontFamily: "Inter_500Medium",
-          fontSize: 10,
-          letterSpacing: 0.3,
-        },
         tabBarBackground: () =>
           isIOS ? (
             <BlurView
-              intensity={100}
-              tint={isDark ? "dark" : "light"}
+              intensity={90}
+              tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterial"}
               style={StyleSheet.absoluteFill}
             />
           ) : null,
+        tabBarItemStyle: {
+          paddingVertical: 6,
+        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS && SymbolView ? (
-              <SymbolView name={focused ? "house.fill" : "house"} tintColor={color} size={24} />
-            ) : (
-              <Feather name="home" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color, focused }) => (
+            <SFIcon sf={focused ? "house.fill" : "house"} feather="home" color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
           title: "Search",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS && SymbolView ? (
-              <SymbolView name="magnifyingglass" tintColor={color} size={24} />
-            ) : (
-              <Feather name="search" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color }) => (
+            <SFIcon sf="magnifyingglass" feather="search" color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="chat"
         options={{
           title: "Chat",
-          tabBarIcon: ({ color }) => (
-            <Feather name="message-circle" size={22} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <SFIcon
+              sf={focused ? "message.circle.fill" : "message.circle"}
+              feather="message-circle"
+              color={color}
+            />
           ),
         }}
       />
@@ -141,21 +109,13 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="cart"
         options={{
-          title: "Bag",
+          title: "Cart",
           tabBarIcon: ({ color, focused }) => (
             <View>
-              {isIOS && SymbolView ? (
-                <SymbolView
-                  name={focused ? "bag.fill" : "bag"}
-                  tintColor={color}
-                  size={24}
-                />
-              ) : (
-                <Feather name="shopping-bag" size={22} color={color} />
-              )}
+              <SFIcon sf={focused ? "bag.fill" : "bag"} feather="shopping-bag" color={color} />
               {totalItems > 0 && (
-                <View style={[styles.tabBadge, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.tabBadgeText}>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeTxt}>
                     {totalItems > 9 ? "9+" : totalItems}
                   </Text>
                 </View>
@@ -168,71 +128,35 @@ function ClassicTabLayout() {
         name="account"
         options={{
           title: "Account",
-          tabBarIcon: ({ color, focused }) =>
-            isIOS && SymbolView ? (
-              <SymbolView
-                name={focused ? "person.fill" : "person"}
-                tintColor={color}
-                size={24}
-              />
-            ) : (
-              <Feather name="user" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color, focused }) => (
+            <SFIcon
+              sf={focused ? "person.fill" : "person"}
+              feather="user"
+              color={color}
+            />
+          ),
         }}
       />
     </Tabs>
   );
 }
 
-// ─── Error boundary wrapping NativeTabLayout ──────────────────────────────
-// iOS 26 Liquid Glass native tabs can crash on first render if the
-// SwiftUI host isn't ready yet. We catch that and fall back to ClassicTabLayout.
-type TabBoundaryState = { crashed: boolean };
-
-class NativeTabBoundary extends Component<
-  { children: React.ReactNode; fallback: React.ReactNode },
-  TabBoundaryState
-> {
-  state: TabBoundaryState = { crashed: false };
-
-  static getDerivedStateFromError(): TabBoundaryState {
-    return { crashed: true };
-  }
-
-  render() {
-    if (this.state.crashed) return this.props.fallback;
-    return this.props.children;
-  }
-}
-
-export default function TabLayout() {
-  const classic = <ClassicTabLayout />;
-
-  if (isLiquidGlassAvailable() && NativeTabs) {
-    return (
-      <NativeTabBoundary fallback={classic}>
-        <NativeTabLayout />
-      </NativeTabBoundary>
-    );
-  }
-  return classic;
-}
-
 const styles = StyleSheet.create({
-  tabBadge: {
+  badge: {
     position: "absolute",
-    top: -4,
-    right: -8,
-    minWidth: 16,
-    height: 16,
+    top: -3,
+    right: -7,
+    minWidth: 15,
+    height: 15,
     borderRadius: 8,
+    backgroundColor: "#0274C1",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 3,
   },
-  tabBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 9,
-    fontFamily: "Inter_700Bold",
+  badgeTxt: {
+    color: "#fff",
+    fontSize: 8,
+    fontWeight: "700",
   },
 });
