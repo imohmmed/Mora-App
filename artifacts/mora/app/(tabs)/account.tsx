@@ -23,17 +23,7 @@ import { AppleActionSheet } from "@/components/AppleActionSheet";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
 import { fetchOrders } from "@/lib/api";
-import { AccountExpoUI } from "@/components/AccountExpoUI";
-import { useNativeReady } from "@/hooks/useNativeReady";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
-
-// ── glass detection (AccountExpoUI renders null if unavailable) ────────────────
-const IS_IOS = Platform.OS === "ios";
-let glassUIAvailable = false;
-try {
-  require("@expo/ui/swift-ui");
-  glassUIAvailable = true;
-} catch {}
 
 const PRIMARY = "#0274C1";
 
@@ -469,19 +459,10 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
     ? (user.firstName[0] ?? "") + (user.lastName[0] ?? "")
     : "M";
 
-  // ── iOS: native SwiftUI Form with Liquid Glass ────────────────────────────────
-  const nativeReady = useNativeReady();
-  if (!showOrders && IS_IOS && glassUIAvailable && nativeReady) {
-    return (
-      <AccountExpoUI
-        user={user}
-        wishlistCount={wishlistCount}
-        onLogout={logout}
-        onOrdersPress={() => setShowOrders(true)}
-        onWishlistPress={() => router.push("/(tabs)/wishlist")}
-      />
-    );
-  }
+  // NOTE: The native @expo/ui SwiftUI Form (AccountExpoUI.ios.tsx) was removed
+  // from the logged-in path — it crashed at mount on release builds
+  // (EXC_BAD_ACCESS in RCTComponentViewFactory) the moment a signed-in user
+  // reached this screen. All platforms now use the stable RN account UI below.
 
   if (showOrders) {
     return (
