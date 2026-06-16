@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.mora1.com",
-      "buildNumber": "13",
+      "buildNumber": "15",
       "appleTeamId": "PM27C7JC3M",
       "associatedDomains": [
         "applinks:mora1.com",
