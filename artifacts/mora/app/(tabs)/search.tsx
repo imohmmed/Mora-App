@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import { useNativeReady } from "@/hooks/useNativeReady";
 import {
   Dimensions,
@@ -190,11 +191,13 @@ export default function SearchScreen() {
         <View style={[
           styles.searchInputRow,
           {
-            backgroundColor: colors.secondary,
-            borderColor: focused ? PRIMARY : colors.border,
+            backgroundColor: isIOS26Plus ? "transparent" : colors.secondary,
+            borderColor: isIOS26Plus ? "transparent" : (focused ? PRIMARY : colors.border),
             borderRadius: 14,
+            overflow: "hidden",
           },
         ]}>
+          <LiquidGlassBg />
           <Feather name="search" size={16} color={colors.mutedForeground} />
           <TextInput
             ref={inputRef}

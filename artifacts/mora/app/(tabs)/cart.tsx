@@ -246,7 +246,7 @@ export default function CartScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 10, paddingBottom: 130 }}
+        contentContainerStyle={{ paddingTop: 10, paddingBottom: insets.bottom + 54 + 96 }}
       >
         {items.map((item) => (
           <CartItemRow
@@ -266,8 +266,8 @@ export default function CartScreen() {
           backgroundColor: isIOS26Plus ? "transparent" : barBg,
           borderTopColor: isIOS26Plus ? "transparent" : barBdr,
           borderTopWidth: isIOS26Plus ? 0 : 1,
-          paddingBottom: Platform.OS === "web" ? 14 : insets.bottom + 14,
-          bottom: Platform.OS === "web" ? 84 : 0,
+          paddingBottom: 14,
+          bottom: Platform.OS === "web" ? 84 : insets.bottom + 54,
         },
       ]}>
         {/* iOS 26 Liquid Glass background */}
