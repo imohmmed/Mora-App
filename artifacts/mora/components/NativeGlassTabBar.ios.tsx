@@ -47,6 +47,7 @@ let ExpoHStack: any = null;
 let ExpoImage: any = null;
 let frameM: ((p: object) => unknown) | null = null;
 let glassEffectM: ((p: object) => unknown) | null = null;
+let paddingM: ((p: object) => unknown) | null = null;
 
 try {
   const ui   = require("@expo/ui/swift-ui");
@@ -56,6 +57,7 @@ try {
   ExpoImage    = ui.Image;
   frameM       = mods.frame;
   glassEffectM = mods.glassEffect;
+  paddingM     = mods.padding;
 } catch {}
 
 // ── Tab metadata ──────────────────────────────────────────────────────────────
@@ -68,8 +70,11 @@ const TABS: Record<string, { sf: string; sfActive: string }> = {
 };
 const TAB_ORDER = ["index", "search", "chat", "cart", "account"];
 
-const ITEM_SIZE = 52;   // glass circle diameter
-const ITEM_GAP  = 6;    // HStack spacing
+const ITEM_W   = 54;   // tap target width per icon
+const ITEM_H   = 44;   // tap target height per icon
+const ITEM_GAP = 2;    // spacing between icons inside the capsule
+const PAD_H    = 6;    // capsule internal horizontal padding
+const PAD_V    = 5;    // capsule internal vertical padding
 
 // ─────────────────────────────────────────────────────────────────────────────
 export function NativeGlassTabBar({ state, navigation }: TabBarProps) {
@@ -80,7 +85,7 @@ export function NativeGlassTabBar({ state, navigation }: TabBarProps) {
   const { totalItems } = useCart();
 
   const useGlass = nativeReady && isIOS26Plus
-    && !!Host && !!ExpoHStack && !!ExpoImage && !!frameM && !!glassEffectM;
+    && !!Host && !!ExpoHStack && !!ExpoImage && !!frameM && !!glassEffectM && !!paddingM;
 
   const visibleRoutes = TAB_ORDER
     .map(n => state.routes.find(r => r.name === n))
@@ -101,11 +106,12 @@ export function NativeGlassTabBar({ state, navigation }: TabBarProps) {
     if (!isFocused && !ev.defaultPrevented) navigation.navigate(route.name);
   };
 
-  // ── 🌊 Liquid Glass (iOS 26+) — Host > HStack > Image(glassEffect) ─────────
+  // ── 🌊 Liquid Glass (iOS 26+) — ONE capsule: Host > HStack(glassEffect) > Image[] ──
   if (useGlass) {
-    const inactiveColor = isDark ? "#FFFFFF" : "#1A1A1A";
+    const activeColor   = isDark ? "#FFFFFF" : "#0A0A0A";
+    const inactiveColor = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)";
     const cartIdx       = TAB_ORDER.indexOf("cart");
-    const badgeLeft     = cartIdx * (ITEM_SIZE + ITEM_GAP) + ITEM_SIZE - 16;
+    const badgeLeft     = PAD_H + cartIdx * (ITEM_W + ITEM_GAP) + ITEM_W - 16;
 
     return (
       <View
@@ -114,8 +120,17 @@ export function NativeGlassTabBar({ state, navigation }: TabBarProps) {
       >
         {/* shrink-wrap container so the badge can be positioned over the bar */}
         <View style={styles.glassInner}>
-          <Host matchContents style={{ height: ITEM_SIZE }}>
-            <ExpoHStack spacing={ITEM_GAP}>
+          <Host matchContents style={{ height: ITEM_H + PAD_V * 2 }}>
+            <ExpoHStack
+              spacing={ITEM_GAP}
+              modifiers={[
+                paddingM!({ horizontal: PAD_H, vertical: PAD_V }),
+                glassEffectM!({
+                  glass: { variant: "regular", interactive: true },
+                  shape: "capsule",
+                }),
+              ]}
+            >
               {visibleRoutes.map((route) => {
                 const def = TABS[route.name];
                 if (!def) return null;
@@ -125,20 +140,10 @@ export function NativeGlassTabBar({ state, navigation }: TabBarProps) {
                   <ExpoImage
                     key={route.key}
                     systemName={(isFocused ? def.sfActive : def.sf) as any}
-                    size={22}
-                    color={isFocused ? "#FFFFFF" : inactiveColor}
+                    size={isFocused ? 25 : 23}
+                    color={isFocused ? activeColor : inactiveColor}
                     onPress={() => handlePress(route)}
-                    modifiers={[
-                      frameM!({ width: ITEM_SIZE, height: ITEM_SIZE }),
-                      glassEffectM!({
-                        glass: {
-                          variant: "regular",
-                          interactive: true,
-                          tint: isFocused ? PRIMARY : undefined,
-                        },
-                        shape: "circle",
-                      }),
-                    ]}
+                    modifiers={[frameM!({ width: ITEM_W, height: ITEM_H })]}
                   />
                 );
               })}

@@ -33,6 +33,7 @@ let ExpoHStack: any = null;
 let ExpoImage: any = null;
 let frameMod: any = null;
 let glassEffectMod: any = null;
+let paddingMod: any = null;
 try {
   const ui   = require("@expo/ui/swift-ui");
   const mods = require("@expo/ui/swift-ui/modifiers");
@@ -41,10 +42,14 @@ try {
   ExpoImage      = ui.Image;
   frameMod       = mods.frame;
   glassEffectMod = mods.glassEffect;
+  paddingMod     = mods.padding;
 } catch {}
 
-const ITEM_SIZE = 52;
-const ITEM_GAP  = 6;
+const ITEM_W   = 54;
+const ITEM_H   = 44;
+const ITEM_GAP = 2;
+const PAD_H    = 6;
+const PAD_V    = 5;
 
 // ── SF Symbols (graceful fallback to Feather) ─────────────────────────────────
 let SymbolView: any = null;
@@ -183,7 +188,7 @@ function StandaloneIOSTabBar() {
 
   const activeRoute = getActiveRoute(pathname);
   const useGlass    = nativeReady && isIOS26Plus && !!Host && !!ExpoHStack && !!ExpoImage
-    && !!frameMod && !!glassEffectMod;
+    && !!frameMod && !!glassEffectMod && !!paddingMod;
 
   const handlePress = (tab: typeof TABS[0]) => {
     if (!tab.path) return;
@@ -207,11 +212,12 @@ function StandaloneIOSTabBar() {
   };
 
   const cartIdx   = TABS.findIndex((t) => t.name === "cart");
-  const badgeLeft = cartIdx * (ITEM_SIZE + ITEM_GAP) + ITEM_SIZE - 16;
+  const badgeLeft = PAD_H + cartIdx * (ITEM_W + ITEM_GAP) + ITEM_W - 16;
 
-  // ── Liquid Glass (iOS 26+) — Host > HStack > Image(glassEffect) ────────────
+  // ── Liquid Glass (iOS 26+) — ONE capsule: Host > HStack(glassEffect) > Image[] ──
   if (useGlass) {
-    const inactiveColor = isDark ? "#FFFFFF" : "#1A1A1A";
+    const activeColor   = isDark ? "#FFFFFF" : "#0A0A0A";
+    const inactiveColor = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)";
     return (
       <View
         style={[ios.glassWrapper, { bottom: Math.max(insets.bottom, 12) + 2 }]}
@@ -219,28 +225,27 @@ function StandaloneIOSTabBar() {
       >
         {/* @expo/ui SwiftUI views MUST be wrapped in <Host> — see file header */}
         <View style={ios.glassInner}>
-          <Host matchContents style={{ height: ITEM_SIZE }}>
-            <ExpoHStack spacing={ITEM_GAP}>
+          <Host matchContents style={{ height: ITEM_H + PAD_V * 2 }}>
+            <ExpoHStack
+              spacing={ITEM_GAP}
+              modifiers={[
+                paddingMod({ horizontal: PAD_H, vertical: PAD_V }),
+                glassEffectMod({
+                  glass: { variant: "regular", interactive: true },
+                  shape: "capsule",
+                }),
+              ]}
+            >
               {TABS.map((tab) => {
                 const focused = tab.name === activeRoute;
                 return (
                   <ExpoImage
                     key={tab.name}
                     systemName={(focused ? tab.sfActive : tab.sf) as any}
-                    size={22}
-                    color={focused ? "#FFFFFF" : inactiveColor}
+                    size={focused ? 25 : 23}
+                    color={focused ? activeColor : inactiveColor}
                     onPress={() => handlePress(tab)}
-                    modifiers={[
-                      frameMod({ width: ITEM_SIZE, height: ITEM_SIZE }),
-                      glassEffectMod({
-                        glass: {
-                          variant: "regular",
-                          interactive: true,
-                          tint: focused ? PRIMARY : undefined,
-                        },
-                        shape: "circle",
-                      }),
-                    ]}
+                    modifiers={[frameMod({ width: ITEM_W, height: ITEM_H })]}
                   />
                 );
               })}
