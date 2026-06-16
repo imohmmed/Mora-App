@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNativeReady } from "@/hooks/useNativeReady";
+import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import {
   Animated,
   Modal,
@@ -148,8 +148,7 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   })();
 
   // ── Theme tokens ─────────────────────────────────────────────────────────────
-  const nativeReady = useNativeReady();
-  const useGlass = IS_IOS && !!GlassViewComp && nativeReady;
+  const useGlass = isIOS26Plus;
   const bg         = useGlass ? "transparent" : (isDark ? "#1C1C1E" : "#FFFFFF");
   const handleCol  = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.20)";
   const textPri    = isDark ? "#FFFFFF" : "#000000";
@@ -159,7 +158,7 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   const imageBg    = isDark ? "#2C2C2E" : "#F2F2F7";
   const divider    = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)";
   const sheetBg    = useGlass
-    ? (isDark ? "rgba(28,28,30,0.55)" : "rgba(255,255,255,0.55)")
+    ? (isDark ? "rgba(28,28,30,0.45)" : "rgba(255,255,255,0.45)")
     : (isDark ? "#1C1C1E" : "#FFFFFF");
 
   // ── Chip renderer ─────────────────────────────────────────────────────────────
@@ -184,7 +183,7 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
           const oos    = isOOS(val);
 
           // ── iOS: glass chip button via @expo/ui ──────────────────────────
-          if (glassUIAvailable && IS_IOS && ExpoUIHost && ExpoButton && nativeReady) {
+          if (glassUIAvailable && IS_IOS && ExpoUIHost && ExpoButton) {
             return (
               <ExpoUIHost key={val} matchContents style={{ height: 44 }}>
                 <ExpoButton
@@ -250,13 +249,8 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
           { backgroundColor: sheetBg, transform: [{ translateY: slideAnim }] },
         ]}
       >
-        {/* Glass background layer (iOS 26+) */}
-        {useGlass && (
-          <GlassViewComp
-            style={[StyleSheet.absoluteFill, styles.glassBackground]}
-            glassEffectStyle="clear"
-          />
-        )}
+        {/* iOS 26 Liquid Glass background */}
+        {isIOS26Plus && <LiquidGlassBg style={styles.glassBackground} />}
 
         {/* Handle */}
         <View style={[styles.handle, { backgroundColor: handleCol }]} />
@@ -301,7 +295,7 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
         )}
 
         {/* ── Add button ───────────────────────────────────────────────────── */}
-        {glassUIAvailable && IS_IOS && ExpoUIHost && ExpoButton && nativeReady ? (
+        {glassUIAvailable && IS_IOS && ExpoUIHost && ExpoButton ? (
           <ExpoUIHost style={{ height: 54 }}>
             <ExpoButton
               label={btnLabel}

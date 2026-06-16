@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import {
   ActivityIndicator,
   Alert,
@@ -373,7 +374,14 @@ export default function CheckoutScreen() {
           onCancel={() => setShowCityPicker(false)}
         />
 
-        <View style={[st.footer, { backgroundColor: bg, paddingBottom: insets.bottom + 12 }]}>
+        <View style={[
+          st.footer,
+          {
+            backgroundColor: isIOS26Plus ? "transparent" : bg,
+            paddingBottom: insets.bottom + 12,
+          },
+        ]}>
+          <LiquidGlassBg />
           <Pressable
             onPress={handlePlaceOrder}
             disabled={submitting}

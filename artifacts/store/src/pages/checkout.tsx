@@ -10,19 +10,10 @@ import { Label } from "@/components/ui/label";
 import {
   Check, ArrowLeft, MapPin, Phone,
   DollarSign, Loader2, Eye, EyeOff,
-  ShoppingBag, User, ChevronRight, Package,
+  ShoppingBag, User, Package,
 } from "lucide-react";
 
-const BASE     = "/api";
-const SNAP_KEY = "mora_store_wayl_snap";
-
-const PAYMENT_LOGOS = [
-  { key: "mastercard", src: "/payment/visa.webp"    },
-  { key: "zaincash",   src: "/payment/zaincash.png"  },
-  { key: "fastpay",    src: "/payment/fastpay.png"   },
-  { key: "fib",        src: "/payment/fib.jpeg"      },
-  { key: "qicard",     src: "/payment/qicard.png"    },
-];
+const BASE = "/api";
 
 function fmtIQD(n: number) {
   return n.toLocaleString("en-US") + " IQD";
@@ -225,7 +216,6 @@ export default function Checkout() {
 
   // null = form/login, non-null = order placed
   const [snap, setSnap]         = useState<OrderSnap | null>(null);
-  const [payMethod, setPayMethod] = useState<"cod" | "online">("cod");
   const [placing, setPlacing]   = useState(false);
   const [placeError, setPlaceError] = useState("");
 
@@ -233,23 +223,6 @@ export default function Checkout() {
     name: "", phone: "", city: "", district: "", street: "", note: "",
   });
 
-  // Detect return from Wayl payment
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("paid") === "1") {
-      try {
-        const stored = sessionStorage.getItem(SNAP_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored) as { items: OrderSnap["items"]; subtotal: number; orderNumber: string; form: FormState };
-          setSnap(parsed);
-          sessionStorage.removeItem(SNAP_KEY);
-          clearCart();
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }
-      } catch {}
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Auto-fill form from user profile
   useEffect(() => {
@@ -283,7 +256,7 @@ export default function Checkout() {
           subtotal: total, shipping: 0,
           shippingAddress: { fullName: form.name, phone: form.phone, city: form.city, district: form.district, street: form.street },
           lineItems: items.map((i) => ({ variantId: i.variantId, title: i.title, quantity: i.quantity, price: i.price, option1: i.option1, option2: i.option2, image: i.image })),
-          paymentMethod: payMethod, note: form.note,
+          paymentMethod: "cod", note: form.note,
         }),
       });
       const json = await res.json() as { data: { order_number?: string; orderNumber?: string } | null; error?: string };
@@ -291,29 +264,6 @@ export default function Checkout() {
 
       const orderNumber = json.data?.order_number || json.data?.orderNumber || "#—";
 
-      // Online payment → redirect to Wayl
-      if (payMethod === "online") {
-        const waylRes = await fetch(`${BASE}/store/wayl/create-link`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orderNumber, total,
-            lineItems: items.map((i) => ({ title: i.title, quantity: i.quantity, price: i.price })),
-            redirectionUrl: `${window.location.origin}/checkout?paid=1`,
-          }),
-        });
-        const waylJson = await waylRes.json() as { data: { url?: string } | null; error?: string };
-        const waylUrl = waylJson.data?.url;
-        if (waylUrl) {
-          sessionStorage.setItem(SNAP_KEY, JSON.stringify({
-            items: [...items], subtotal: total, orderNumber, form: { ...form },
-          }));
-          window.location.href = waylUrl;
-          return;
-        }
-      }
-
-      // COD or failed online → show success
       const placed: OrderSnap = { items: [...items], subtotal: total, orderNumber, form: { ...form } };
       clearCart();
       setSnap(placed);
@@ -437,76 +387,21 @@ export default function Checkout() {
                     />
                   </div>
 
-                  {/* Payment method */}
+                  {/* Payment method — Cash on Delivery only */}
                   <div className="space-y-3">
                     <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Payment Method</p>
-
-                    {/* Cash on Delivery */}
-                    <button type="button" onClick={() => setPayMethod("cod")}
-                      className={`w-full text-left border p-4 flex items-center gap-4 transition-all rounded-sm ${
-                        payMethod === "cod" ? "border-green-500 bg-green-500/5" : "border-border bg-secondary/30 hover:bg-secondary/50"
-                      }`}
-                    >
+                    <div className="w-full border border-green-500 bg-green-500/5 p-4 flex items-center gap-4 rounded-sm">
                       <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0 text-xl">
                         💵
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm">Cash on Delivery</p>
+                        <p className="font-bold text-sm text-green-600 dark:text-green-400">Cash on Delivery</p>
                         <p className="text-xs text-muted-foreground mt-0.5">Pay in cash when your order arrives</p>
                       </div>
-                      <motion.div
-                        animate={{
-                          borderColor: payMethod === "cod" ? "#22c55e" : "hsl(var(--muted-foreground)/0.3)",
-                          backgroundColor: payMethod === "cod" ? "#22c55e" : "transparent",
-                        }}
-                        className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
-                      >
-                        <AnimatePresence>
-                          {payMethod === "cod" && (
-                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
-                              <Check className="h-3 w-3 text-white" />
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </motion.div>
-                    </button>
-
-                    {/* Online Payment */}
-                    <button type="button" onClick={() => setPayMethod("online")}
-                      className={`w-full text-left border p-4 flex items-center gap-4 transition-all rounded-sm ${
-                        payMethod === "online" ? "border-primary bg-primary/5" : "border-border bg-secondary/30 hover:bg-secondary/50"
-                      }`}
-                    >
-                      <div className="flex gap-1 flex-wrap w-10 flex-shrink-0 content-start">
-                        {PAYMENT_LOGOS.slice(0, 4).map((logo) => (
-                          <img key={logo.key} src={logo.src} alt={logo.key} className="w-4 h-4 rounded object-cover" />
-                        ))}
+                      <div className="w-5 h-5 rounded-full border-2 border-green-500 bg-green-500 flex items-center justify-center flex-shrink-0">
+                        <Check className="h-3 w-3 text-white" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm">Online Payment</p>
-                        <div className="flex gap-1.5 mt-2 flex-wrap">
-                          {PAYMENT_LOGOS.map((logo) => (
-                            <img key={logo.key} src={logo.src} alt={logo.key} className="w-8 h-8 rounded-lg object-cover" />
-                          ))}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1.5">Card, wallet & more · secured via Wayl</p>
-                      </div>
-                      <motion.div
-                        animate={{
-                          borderColor: payMethod === "online" ? "hsl(var(--primary))" : "hsl(var(--muted-foreground)/0.3)",
-                          backgroundColor: payMethod === "online" ? "hsl(var(--primary))" : "transparent",
-                        }}
-                        className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
-                      >
-                        <AnimatePresence>
-                          {payMethod === "online" && (
-                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
-                              <Check className="h-3 w-3 text-primary-foreground" />
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </motion.div>
-                    </button>
+                    </div>
                   </div>
 
                   {placeError && (
@@ -517,12 +412,10 @@ export default function Checkout() {
                   )}
 
                   <Button type="submit" disabled={placing}
-                    className={`w-full h-14 text-base uppercase font-bold tracking-wider gap-2 ${payMethod === "online" ? "bg-violet-600 hover:bg-violet-700" : ""}`}
+                    className="w-full h-14 text-base uppercase font-bold tracking-wider gap-2"
                   >
                     {placing
-                      ? <><Loader2 className="h-4 w-4 animate-spin" />{payMethod === "online" ? " Processing…" : " Placing Order…"}</>
-                      : payMethod === "online"
-                      ? <><ChevronRight className="h-4 w-4" /> Pay Now · {fmtIQD(total)}</>
+                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order…</>
                       : <><Check className="h-4 w-4" /> Place Order · {fmtIQD(total)}</>
                     }
                   </Button>

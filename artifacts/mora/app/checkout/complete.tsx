@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import {
   ActivityIndicator,
   Animated,
@@ -287,7 +288,14 @@ export default function OrderCompleteScreen() {
 
       </ScrollView>
 
-      <View style={[s.footer, { backgroundColor: bg, paddingBottom: insets.bottom + 12 }]}>
+      <View style={[
+        s.footer,
+        {
+          backgroundColor: isIOS26Plus ? "transparent" : bg,
+          paddingBottom: insets.bottom + 12,
+        },
+      ]}>
+        <LiquidGlassBg />
         <Pressable onPress={() => router.replace("/(tabs)" as any)}
           style={({ pressed }) => [s.contBtn, pressed && { opacity: 0.82 }]}>
           <Text style={s.contTxt}>CONTINUE SHOPPING</Text>

@@ -1,14 +1,15 @@
 /**
- * Tab layout — BlurView tab bar (expo-blur, stable on all iOS versions).
+ * Tab layout — Liquid Glass tab bar on iOS 26+, BlurView on older iOS.
  *
  * Tab bar strategy:
- *  • iOS     : BlurView (systemChromeMaterial) as tabBarBackground
+ *  • iOS 26+ : @expo/ui Host + GlassEffectContainer (native SwiftUI Liquid Glass)
+ *  • iOS <26 : expo-blur BlurView (systemChromeMaterial)
  *  • Android : solid bg
  *  • Web     : WebLiquidTabBar custom tabBar renderer
  *
  * NOTE: expo-glass-effect was removed — it caused EXC_BAD_ACCESS (SIGSEGV)
  * during AppContext.registerNativeViews() on iOS 26 beta (null pointer in
- * ViewModuleWrapper.name()). Using expo-blur instead.
+ * ViewModuleWrapper.name()). We use @expo/ui Host+GlassEffectContainer instead.
  *
  * IMPORTANT: We export ErrorBoundary so expo-router uses our custom error UI.
  */
@@ -29,6 +30,7 @@ import { useColors } from "@/hooks/useColors";
 import { useCart } from "@/context/CartContext";
 import { WebLiquidTabBar } from "@/components/WebLiquidTabBar";
 import { ErrorFallback } from "@/components/ErrorFallback";
+import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 
 // ── expo-symbols (graceful fallback to Feather) ───────────────────────────────
 let SymbolView: any = null;
@@ -97,6 +99,9 @@ export default function TabLayout() {
         tabBarBackground: () => {
           if (isWeb) return null;
           if (isIOS) {
+            if (isIOS26Plus) {
+              return <LiquidGlassBg />;
+            }
             return (
               <BlurView
                 intensity={90}

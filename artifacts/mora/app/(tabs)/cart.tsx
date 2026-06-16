@@ -1,4 +1,5 @@
 import React, { useCallback, useRef } from "react";
+import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import {
   LayoutAnimation,
   Platform,
@@ -262,12 +263,16 @@ export default function CartScreen() {
       <View style={[
         s.bar,
         {
-          backgroundColor: barBg,
-          borderTopColor: barBdr,
+          backgroundColor: isIOS26Plus ? "transparent" : barBg,
+          borderTopColor: isIOS26Plus ? "transparent" : barBdr,
+          borderTopWidth: isIOS26Plus ? 0 : 1,
           paddingBottom: Platform.OS === "web" ? 14 : insets.bottom + 14,
           bottom: Platform.OS === "web" ? 84 : 0,
         },
       ]}>
+        {/* iOS 26 Liquid Glass background */}
+        <LiquidGlassBg />
+
         <View style={{ flex: 1 }}>
           <Text style={[s.barLabel, { color: sub }]}>Subtotal</Text>
           <Text style={[s.barTotal, { color: textCol }]}>{formatIQD(subtotal)}</Text>
