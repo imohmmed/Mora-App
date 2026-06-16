@@ -101,7 +101,10 @@ function GlassHeader({ notificationCount = 0, favoritesCount = 0 }: HomeHeaderPr
               systemName="bell"
               size={20}
               color={colors.foreground}
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/notifications" as any);
+              }}
               modifiers={[
                 frameM({ width: 46, height: 46 }),
                 glassEffectM({ glass: { variant: "regular", interactive: true }, shape: "circle" }),
@@ -117,7 +120,10 @@ function GlassHeader({ notificationCount = 0, favoritesCount = 0 }: HomeHeaderPr
               systemName="heart"
               size={20}
               color={colors.foreground}
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/(tabs)/wishlist" as any);
+              }}
               modifiers={[
                 frameM({ width: 46, height: 46 }),
                 glassEffectM({ glass: { variant: "regular", interactive: true }, shape: "circle" }),

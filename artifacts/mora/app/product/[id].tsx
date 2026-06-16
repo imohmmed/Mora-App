@@ -284,18 +284,34 @@ export default function ProductDetailScreen() {
           </Pressable>
         )}
         <MoraLogo size="small" />
-        <Pressable
-          onPress={() => router.push("/(tabs)/cart")}
-          style={styles.cartHeaderBtn}
-          testID="cart-header-btn"
-        >
-          <Feather name="shopping-bag" size={22} color={colors.foreground} />
-          {totalItems > 0 && (
-            <View style={[styles.cartBadge, { backgroundColor: colors.primary }]}>
-              <Text style={styles.cartBadgeText}>{totalItems > 9 ? "9+" : totalItems}</Text>
-            </View>
-          )}
-        </Pressable>
+        {isIOS26Plus ? (
+          <Pressable
+            onPress={() => router.push("/(tabs)/cart")}
+            style={styles.glassIconBtn}
+            testID="cart-header-btn"
+          >
+            <LiquidGlassBg />
+            <Feather name="shopping-bag" size={20} color={colors.foreground} />
+            {totalItems > 0 && (
+              <View style={[styles.cartBadge, { backgroundColor: colors.primary }]}>
+                <Text style={styles.cartBadgeText}>{totalItems > 9 ? "9+" : totalItems}</Text>
+              </View>
+            )}
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={() => router.push("/(tabs)/cart")}
+            style={styles.cartHeaderBtn}
+            testID="cart-header-btn"
+          >
+            <Feather name="shopping-bag" size={22} color={colors.foreground} />
+            {totalItems > 0 && (
+              <View style={[styles.cartBadge, { backgroundColor: colors.primary }]}>
+                <Text style={styles.cartBadgeText}>{totalItems > 9 ? "9+" : totalItems}</Text>
+              </View>
+            )}
+          </Pressable>
+        )}
       </View>
 
       {/* ── Content ── */}

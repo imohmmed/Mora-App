@@ -1,12 +1,13 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
+  FlatList,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -16,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { useNativeReady } from "@/hooks/useNativeReady";
 import { HomeHeader } from "@/components/HomeHeader";
@@ -309,11 +310,11 @@ export default function HomeScreen() {
 
   const bottomPadding = isWeb ? 0 : insets.bottom;
 
-  const mainScrollRef = useRef<ScrollView>(null);
+  const flatListRef = useRef<FlatList>(null);
   useEffect(() => {
     if (Platform.OS !== "web" || typeof window === "undefined") return;
     const handler = () => {
-      mainScrollRef.current?.scrollTo?.({ y: 0, animated: true });
+      flatListRef.current?.scrollToOffset?.({ offset: 0, animated: true });
     };
     window.addEventListener("mora-scroll-home-top", handler);
     return () => window.removeEventListener("mora-scroll-home-top", handler);
@@ -322,9 +323,25 @@ export default function HomeScreen() {
   const categoryKey = CATEGORIES[activeCategory];
   const categoryFilter = CATEGORY_FILTERS[categoryKey ?? "ALL"];
 
-  const { data, isLoading, isError, refetch, isRefetching } = useQuery({
+  const PAGE_SIZE = 20;
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+    isRefetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ["products", categoryKey],
-    queryFn: () => fetchProducts({ category: categoryFilter, limit: 20 }),
+    queryFn: ({ pageParam = 1 }: { pageParam?: number }) =>
+      fetchProducts({ category: categoryFilter, limit: PAGE_SIZE, page: pageParam }),
+    getNextPageParam: (lastPage) => {
+      const totalPages = Math.ceil(lastPage.total / lastPage.limit);
+      return lastPage.page < totalPages ? lastPage.page + 1 : undefined;
+    },
+    initialPageParam: 1,
   });
 
   const { data: banners, isLoading: isBannersLoading } = useQuery({
@@ -345,7 +362,11 @@ export default function HomeScreen() {
     staleTime: 300_000,
   });
 
-  const products = data?.products ?? [];
+  const products = useMemo(
+    () => data?.pages.flatMap((p) => p.products) ?? [],
+    [data]
+  );
+  const totalCount = data?.pages[0]?.total ?? 0;
   const displayBanners = banners ?? [];
 
   const handleBannerScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -353,13 +374,143 @@ export default function HomeScreen() {
     if (idx !== activeBanner) setActiveBanner(idx);
   };
 
+  const handleEndReached = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // ── FlatList ListHeaderComponent (all content above product grid) ────────────
+  const ListHeader = useMemo(() => (
+    <View>
+      <CategoryTabs
+        categories={CATEGORIES}
+        activeIndex={activeCategory}
+        onChange={setActiveCategory}
+      />
+
+      {/* ── Banner Carousel ── */}
+      {isBannersLoading ? (
+        <BannerSkeleton />
+      ) : displayBanners.length === 0 ? (
+        <View style={[styles.banner, { backgroundColor: "#0274C1", width: SCREEN_WIDTH }]}>
+          <View style={styles.bannerContent}>
+            <Text style={styles.bannerTitle}>{"New Season\nArrived"}</Text>
+            <Text style={styles.bannerSubtitle}>Explore the latest arrivals</Text>
+            <View style={styles.bannerCta}>
+              <Text style={styles.bannerCtaText}>SHOP NOW</Text>
+            </View>
+          </View>
+        </View>
+      ) : (
+        <FlatList
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScroll={handleBannerScroll}
+          onMomentumScrollEnd={handleBannerScroll}
+          data={displayBanners}
+          keyExtractor={(b) => b.id}
+          renderItem={({ item }) => <BannerSlide banner={item} />}
+        />
+      )}
+
+      {displayBanners.length > 1 && (
+        <View style={styles.dotsRow}>
+          {displayBanners.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.dot,
+                {
+                  backgroundColor: activeBanner === i ? colors.primary : colors.border,
+                  width: activeBanner === i ? 20 : 6,
+                },
+              ]}
+            />
+          ))}
+        </View>
+      )}
+
+      <StoriesSection rows={storyRows ?? []} />
+
+      <SpecialCollectionsGrid
+        collections={specialCollections ?? []}
+        loading={isCollectionsLoading}
+      />
+
+      {/* ── Trending header ── */}
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+          {categoryKey === "ALL" ? "TRENDING NOW" : categoryKey}
+        </Text>
+        {!isLoading && totalCount > 0 && (
+          <Text style={[styles.seeAll, { color: colors.mutedForeground }]}>
+            {totalCount} items
+          </Text>
+        )}
+      </View>
+
+      {isError && (
+        <View style={styles.errorBox}>
+          <Feather name="wifi-off" size={32} color={colors.mutedForeground} />
+          <Text style={[styles.errorText, { color: colors.mutedForeground }]}>
+            Could not load products
+          </Text>
+          <Pressable onPress={() => refetch()} style={[styles.retryBtn, { borderColor: colors.border }]}>
+            <Text style={[styles.retryText, { color: colors.foreground }]}>Retry</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Skeleton rows (2 per row) when loading */}
+      {isLoading && (
+        <View style={styles.grid}>
+          {Array.from({ length: 6 }).map((_, i) => <ProductSkeleton key={i} />)}
+        </View>
+      )}
+    </View>
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [
+    activeCategory, activeBanner, categoryKey, colors, displayBanners,
+    isCollectionsLoading, isError, isBannersLoading, isLoading, isRefetching,
+    specialCollections, storyRows, totalCount,
+  ]);
+
+  const renderProduct = useCallback(({ item }: { item: Product }) => (
+    <ProductCard item={item} onAddToBag={handleAddToBag} />
+  ), []);
+
+  const ListFooter = isFetchingNextPage ? (
+    <ActivityIndicator
+      size="small"
+      color={colors.primary}
+      style={{ paddingVertical: 20 }}
+    />
+  ) : !isLoading && products.length === 0 && !isError ? (
+    <View style={styles.emptyBox}>
+      <Feather name="inbox" size={40} color={colors.border} />
+      <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+        No products found
+      </Text>
+    </View>
+  ) : null;
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <HomeHeader notificationCount={0} favoritesCount={wishlistCount} cartCount={totalItems} />
-      <ScrollView
-        ref={mainScrollRef}
+      <FlatList
+        ref={flatListRef}
+        data={isLoading ? [] : products}
+        keyExtractor={(item) => item.id}
+        renderItem={renderProduct}
+        numColumns={2}
+        columnWrapperStyle={styles.row}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: bottomPadding + 80 }}
+        ListHeaderComponent={ListHeader}
+        ListFooterComponent={ListFooter}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: bottomPadding + 80 }}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.4}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -367,107 +518,7 @@ export default function HomeScreen() {
             tintColor={colors.primary}
           />
         }
-      >
-        <CategoryTabs
-          categories={CATEGORIES}
-          activeIndex={activeCategory}
-          onChange={setActiveCategory}
-        />
-
-        {/* ── Banner Carousel ── */}
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          scrollEventThrottle={16}
-          onScroll={handleBannerScroll}
-          onMomentumScrollEnd={handleBannerScroll}
-        >
-          {isBannersLoading
-            ? <BannerSkeleton />
-            : displayBanners.length === 0
-              ? (
-                <View style={[styles.banner, { backgroundColor: "#0274C1", width: SCREEN_WIDTH }]}>
-                  <View style={styles.bannerContent}>
-                    <Text style={styles.bannerTitle}>{"New Season\nArrived"}</Text>
-                    <Text style={styles.bannerSubtitle}>Explore the latest arrivals</Text>
-                    <View style={styles.bannerCta}>
-                      <Text style={styles.bannerCtaText}>SHOP NOW</Text>
-                    </View>
-                  </View>
-                </View>
-              )
-              : displayBanners.map((banner) => (
-                  <BannerSlide key={banner.id} banner={banner} />
-                ))
-          }
-        </ScrollView>
-
-        {displayBanners.length > 1 && (
-          <View style={styles.dotsRow}>
-            {displayBanners.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.dot,
-                  {
-                    backgroundColor: activeBanner === i ? colors.primary : colors.border,
-                    width: activeBanner === i ? 20 : 6,
-                  },
-                ]}
-              />
-            ))}
-          </View>
-        )}
-
-        <StoriesSection rows={storyRows ?? []} />
-
-        <SpecialCollectionsGrid
-          collections={specialCollections ?? []}
-          loading={isCollectionsLoading}
-        />
-
-        {/* ── Trending section ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            {categoryKey === "ALL" ? "TRENDING NOW" : categoryKey}
-          </Text>
-          {!isLoading && (
-            <Text style={[styles.seeAll, { color: colors.mutedForeground }]}>
-              {products.length} items
-            </Text>
-          )}
-        </View>
-
-        {isError && (
-          <View style={styles.errorBox}>
-            <Feather name="wifi-off" size={32} color={colors.mutedForeground} />
-            <Text style={[styles.errorText, { color: colors.mutedForeground }]}>
-              Could not load products
-            </Text>
-            <Pressable onPress={() => refetch()} style={[styles.retryBtn, { borderColor: colors.border }]}>
-              <Text style={[styles.retryText, { color: colors.foreground }]}>Retry</Text>
-            </Pressable>
-          </View>
-        )}
-
-        <View style={styles.grid}>
-          {isLoading
-            ? Array.from({ length: 6 }).map((_, i) => <ProductSkeleton key={i} />)
-            : products.map((product) => (
-                <ProductCard key={product.id} item={product} onAddToBag={handleAddToBag} />
-              ))}
-        </View>
-
-        {!isLoading && products.length === 0 && !isError && (
-          <View style={styles.emptyBox}>
-            <Feather name="inbox" size={40} color={colors.border} />
-            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              No products found
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+      />
 
       <QuickAddSheet
         visible={quickAddProduct !== null}
@@ -533,11 +584,14 @@ const styles = StyleSheet.create({
   sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1 },
   seeAll: { fontFamily: "Inter_500Medium", fontSize: 12, letterSpacing: 0.5 },
 
-  /* ── Grid ── */
-  grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 16 },
+  /* ── Grid (skeleton rows only) ── */
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
+
+  /* ── FlatList column wrapper ── */
+  row: { gap: 16, marginBottom: 16 },
 
   /* ── Product card ── */
-  productCard: { width: CARD_WIDTH },
+  productCard: { width: CARD_WIDTH, flex: 1 },
   productImage: {
     width: "100%",
     height: CARD_WIDTH * 1.3,
