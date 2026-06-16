@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -12,19 +12,16 @@ const PRIMARY = "#0274C1";
 // @expo/ui requires a custom dev build — not available in Expo Go.
 // We try to load it at runtime so Expo Go still works.
 let glassAvailable = false;
-let Host: any, HStack: any, ExpoImage: any, ExpoTextField: any;
-let frameM: any, glassEffectM: any, paddingM: any;
+let Host: any, ExpoImage: any;
+let frameM: any, glassEffectM: any;
 try {
   const ui = require("@expo/ui/swift-ui");
   const mods = require("@expo/ui/swift-ui/modifiers");
   Host = ui.Host;
-  HStack = ui.HStack;
   ExpoImage = ui.Image;
-  ExpoTextField = ui.TextField;
   frameM = mods.frame;
   glassEffectM = mods.glassEffect;
-  paddingM = mods.padding;
-  glassAvailable = true;
+  glassAvailable = !!(Host && ExpoImage);
 } catch {}
 
 interface HomeHeaderProps {
@@ -45,12 +42,6 @@ function GlassHeader({ notificationCount = 0, favoritesCount = 0 }: HomeHeaderPr
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [query, setQuery] = useState("");
-
-  const goSearch = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push("/(tabs)/search");
-  };
 
   return (
     <View
@@ -64,36 +55,7 @@ function GlassHeader({ notificationCount = 0, favoritesCount = 0 }: HomeHeaderPr
       ]}
     >
       <View style={styles.row}>
-        <View style={styles.searchWrap}>
-          <Host style={{ height: 48 }}>
-            <HStack
-              spacing={8}
-              modifiers={[
-                frameM({ height: 46, maxWidth: 10000 }),
-                paddingM({ horizontal: 14 }),
-                glassEffectM({
-                  glass: { variant: "regular", interactive: true },
-                  shape: "capsule",
-                }),
-              ]}
-            >
-              <ExpoImage systemName="magnifyingglass" size={18} color="#8E8E93" />
-              <ExpoTextField
-                placeholder="Search Mora"
-                defaultValue={query}
-                onChangeText={setQuery}
-                onSubmit={goSearch}
-                modifiers={[frameM({ maxWidth: 10000 })]}
-              />
-              <ExpoImage
-                systemName="camera.fill"
-                size={18}
-                color={PRIMARY}
-                onPress={goSearch}
-              />
-            </HStack>
-          </Host>
-        </View>
+        <Text style={[styles.brandTitle, { color: colors.foreground }]}>MORA</Text>
 
         <View style={styles.iconWrap}>
           <Host style={{ width: 46, height: 46 }}>
@@ -154,15 +116,18 @@ function FallbackHeader({ notificationCount = 0, favoritesCount = 0, cartCount =
       ]}
     >
       <View style={styles.row}>
+        <Text style={[styles.brandTitle, { color: colors.foreground, flex: 1 }]}>MORA</Text>
+
         <Pressable
-          style={[styles.searchBar, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-          onPress={() => router.push("/(tabs)/search")}
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+          onPress={() => router.push("/notifications" as any)}
         >
-          <Feather name="search" size={18} color={colors.mutedForeground} />
-          <Text style={[styles.searchPlaceholder, { color: colors.mutedForeground }]}>
-            Search Mora
-          </Text>
-          <Feather name="camera" size={18} color={colors.foreground} />
+          <Feather name="bell" size={23} color={colors.foreground} />
+          {notificationCount > 0 && (
+            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+              <Text style={styles.badgeText}>{notificationCount > 9 ? "9+" : notificationCount}</Text>
+            </View>
+          )}
         </Pressable>
 
         <Pressable
@@ -173,18 +138,6 @@ function FallbackHeader({ notificationCount = 0, favoritesCount = 0, cartCount =
           {favoritesCount > 0 && (
             <View style={[styles.badge, { backgroundColor: colors.primary }]}>
               <Text style={styles.badgeText}>{favoritesCount > 9 ? "9+" : favoritesCount}</Text>
-            </View>
-          )}
-        </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
-          onPress={() => router.push("/(tabs)/cart")}
-        >
-          <Feather name="shopping-bag" size={23} color={colors.foreground} />
-          {cartCount > 0 && (
-            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-              <Text style={styles.badgeText}>{cartCount > 9 ? "9+" : cartCount}</Text>
             </View>
           )}
         </Pressable>
@@ -210,7 +163,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  searchWrap: { flex: 1 },
+  brandTitle: {
+    flex: 1,
+    fontFamily: "Inter_700Bold",
+    fontSize: 22,
+    letterSpacing: 2,
+  },
   iconWrap: { width: 46, height: 46, position: "relative" },
   badge: {
     position: "absolute",
@@ -226,21 +184,6 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   badgeText: { color: "#FFFFFF", fontSize: 10, fontFamily: "Inter_700Bold" },
-  searchBar: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  searchPlaceholder: {
-    flex: 1,
-    fontFamily: "Inter_400Regular",
-    fontSize: 15,
-  },
   iconBtn: { padding: 8, position: "relative" },
   pressed: { opacity: 0.6 },
 });

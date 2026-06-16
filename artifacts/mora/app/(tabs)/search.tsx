@@ -57,18 +57,21 @@ function cardColor(id: string): string {
 const GlassViewComp: any = null;
 
 let glassUIAvailable = false;
-let ExpoUIHost: any, ExpoButton: any;
+let ExpoUIHost: any, ExpoButton: any, ExpoHStack: any, ExpoImage: any, ExpoTextField: any;
 let glassEffectM: any, paddingM: any, tintM: any, frameM: any;
 try {
   const ui = require("@expo/ui/swift-ui");
   const mods = require("@expo/ui/swift-ui/modifiers");
-  ExpoUIHost = ui.Host;
-  ExpoButton = ui.Button;
-  glassEffectM = mods.glassEffect;
-  paddingM = mods.padding;
-  tintM = mods.tint;
-  frameM = mods.frame;
-  glassUIAvailable = true;
+  ExpoUIHost    = ui.Host;
+  ExpoButton    = ui.Button;
+  ExpoHStack    = ui.HStack;
+  ExpoImage     = ui.Image;
+  ExpoTextField = ui.TextField;
+  glassEffectM  = mods.glassEffect;
+  paddingM      = mods.padding;
+  tintM         = mods.tint;
+  frameM        = mods.frame;
+  glassUIAvailable = !!(ExpoUIHost && ExpoHStack && ExpoTextField);
 } catch {}
 
 function ResultSkeleton() {
@@ -196,6 +199,7 @@ export default function SearchScreen() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [focused, setFocused] = useState(false);
+  const [glassKey, setGlassKey] = useState(0);
   const inputRef = useRef<TextInput>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -265,36 +269,79 @@ export default function SearchScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* ── Search header ── */}
-      <View style={[styles.header, { paddingTop: topPadding + 8, borderBottomColor: colors.border, backgroundColor: colors.background }]}>
-        <View style={[
-          styles.searchInputRow,
-          {
-            backgroundColor: isIOS26Plus ? "transparent" : colors.secondary,
-            borderColor: isIOS26Plus ? "transparent" : (focused ? PRIMARY : colors.border),
-            borderRadius: 14,
-            overflow: "hidden",
-          },
-        ]}>
-          <LiquidGlassBg />
-          <Feather name="search" size={16} color={colors.mutedForeground} />
-          <TextInput
-            ref={inputRef}
-            style={[styles.searchInput, { color: colors.foreground }]}
-            placeholder="Search Mora..."
-            placeholderTextColor={colors.mutedForeground}
-            value={query}
-            onChangeText={handleChangeText}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            returnKeyType="search"
-            testID="search-input"
-          />
-          {query.length > 0 && (
-            <Pressable onPress={() => { setQuery(""); setDebouncedQuery(""); }}>
-              <Feather name="x" size={16} color={colors.mutedForeground} />
-            </Pressable>
-          )}
-        </View>
+      <View style={[
+        styles.header,
+        {
+          paddingTop: topPadding + 8,
+          borderBottomColor: (IS_IOS && glassUIAvailable && nativeReady2) || isIOS26Plus ? "transparent" : colors.border,
+          backgroundColor: (IS_IOS && glassUIAvailable && nativeReady2) || isIOS26Plus ? "transparent" : colors.background,
+        },
+      ]}>
+        {IS_IOS && glassUIAvailable && nativeReady2 ? (
+          /* ── iOS SwiftUI Liquid Glass search bar ── */
+          <ExpoUIHost key={glassKey} style={{ height: 48 }}>
+            <ExpoHStack
+              spacing={8}
+              modifiers={[
+                frameM({ height: 46, maxWidth: 10000 }),
+                paddingM({ horizontal: 14 }),
+                glassEffectM({ glass: { variant: "regular", interactive: true }, shape: "capsule" }),
+              ]}
+            >
+              <ExpoImage systemName="magnifyingglass" size={18} color="#8E8E93" />
+              <ExpoTextField
+                placeholder="Search Mora..."
+                defaultValue=""
+                onChangeText={handleChangeText}
+                onSubmit={() => {}}
+                modifiers={[frameM({ maxWidth: 10000 })]}
+              />
+              {query.length > 0 && (
+                <ExpoImage
+                  systemName="xmark.circle.fill"
+                  size={18}
+                  color="#8E8E93"
+                  onPress={() => {
+                    setQuery("");
+                    setDebouncedQuery("");
+                    setGlassKey((k) => k + 1);
+                  }}
+                />
+              )}
+            </ExpoHStack>
+          </ExpoUIHost>
+        ) : (
+          /* ── Fallback: RN TextInput + LiquidGlassBg (iOS 26 non-native / Android / Web) ── */
+          <View style={[
+            styles.searchInputRow,
+            {
+              backgroundColor: isIOS26Plus ? "transparent" : colors.secondary,
+              borderColor: isIOS26Plus ? "transparent" : (focused ? PRIMARY : colors.border),
+              borderRadius: 14,
+              overflow: "hidden",
+            },
+          ]}>
+            <LiquidGlassBg />
+            <Feather name="search" size={16} color={colors.mutedForeground} />
+            <TextInput
+              ref={inputRef}
+              style={[styles.searchInput, { color: colors.foreground }]}
+              placeholder="Search Mora..."
+              placeholderTextColor={colors.mutedForeground}
+              value={query}
+              onChangeText={handleChangeText}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              returnKeyType="search"
+              testID="search-input"
+            />
+            {query.length > 0 && (
+              <Pressable onPress={() => { setQuery(""); setDebouncedQuery(""); }}>
+                <Feather name="x" size={16} color={colors.mutedForeground} />
+              </Pressable>
+            )}
+          </View>
+        )}
       </View>
 
       <ScrollView

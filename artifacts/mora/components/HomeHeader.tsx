@@ -41,25 +41,21 @@ export function HomeHeader({
       ]}
     >
       <View style={styles.row}>
+        <Text style={[styles.brandTitle, { color: colors.foreground }]}>MORA</Text>
+
         <Pressable
-          style={[
-            styles.searchBar,
-            { backgroundColor: colors.secondary, borderColor: colors.border },
-          ]}
-          onPress={() => router.push("/(tabs)/search")}
-          testID="search-bar"
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+          onPress={() => router.push("/notifications" as any)}
+          testID="notifications-btn"
         >
-          <Feather name="search" size={18} color={colors.mutedForeground} />
-          <Text style={[styles.searchPlaceholder, { color: colors.mutedForeground }]}>
-            Search
-          </Text>
-          <Pressable
-            hitSlop={8}
-            onPress={() => router.push("/(tabs)/search")}
-            testID="camera-btn"
-          >
-            <Feather name="camera" size={18} color={colors.foreground} />
-          </Pressable>
+          <Feather name="bell" size={23} color={colors.foreground} />
+          {notificationCount > 0 && (
+            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+              <Text style={styles.badgeText}>
+                {notificationCount > 9 ? "9+" : notificationCount}
+              </Text>
+            </View>
+          )}
         </Pressable>
 
         <Pressable
@@ -105,22 +101,13 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 4,
   },
-  searchBar: {
+  brandTitle: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  searchPlaceholder: {
-    flex: 1,
-    fontFamily: "Inter_400Regular",
-    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    fontSize: 22,
+    letterSpacing: 2,
   },
   iconBtn: {
     padding: 8,
