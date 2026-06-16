@@ -13,7 +13,6 @@
  *
  * IMPORTANT: We export ErrorBoundary so expo-router uses our custom error UI.
  */
-import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
@@ -29,8 +28,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useCart } from "@/context/CartContext";
 import { WebLiquidTabBar } from "@/components/WebLiquidTabBar";
+import { NativeGlassTabBar } from "@/components/NativeGlassTabBar";
 import { ErrorFallback } from "@/components/ErrorFallback";
-import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 
 // ── expo-symbols (graceful fallback to Feather) ───────────────────────────────
 let SymbolView: any = null;
@@ -79,13 +78,20 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      tabBar={isWeb ? (p: any) => <WebLiquidTabBar {...p} /> : undefined}
+      tabBar={
+        isWeb ? (p: any) => <WebLiquidTabBar {...p} />
+        : isIOS ? (p: any) => <NativeGlassTabBar {...p} />
+        : undefined
+      }
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
         tabBarActiveTintColor:   active,
         tabBarInactiveTintColor: inactive,
-        tabBarStyle: isWeb
+        // iOS: NativeGlassTabBar renders its own floating bar — hide default
+        // Android: solid bg, standard height
+        // Web: hidden (WebLiquidTabBar handles it)
+        tabBarStyle: (isIOS || isWeb)
           ? { display: "none" }
           : {
               position: "absolute",
@@ -97,19 +103,8 @@ export default function TabLayout() {
             },
         tabBarItemStyle: { paddingVertical: 6 },
         tabBarBackground: () => {
-          if (isWeb) return null;
-          if (isIOS) {
-            if (isIOS26Plus) {
-              return <LiquidGlassBg />;
-            }
-            return (
-              <BlurView
-                intensity={90}
-                tint={isDark ? "systemChromeMaterialDark" : "systemChromeMaterial"}
-                style={StyleSheet.absoluteFill}
-              />
-            );
-          }
+          // Android only — iOS uses NativeGlassTabBar, web uses WebLiquidTabBar
+          if (isIOS || isWeb) return null;
           return null;
         },
       }}

@@ -28,21 +28,6 @@ import type { Variant, Product } from "@/lib/types";
 const PRIMARY = "#0274C1";
 const GOLD = "#C9922A";
 const SILVER = "#7D8A9A";
-const IS_IOS = Platform.OS === "ios";
-
-let glassUIAvailable = false;
-let ExpoUIHost: any, ExpoButton: any;
-let glassEffectM: any, tintM: any, frameM: any;
-try {
-  const ui = require("@expo/ui/swift-ui");
-  const mods = require("@expo/ui/swift-ui/modifiers");
-  ExpoUIHost = ui.Host;
-  ExpoButton = ui.Button;
-  glassEffectM = mods.glassEffect;
-  tintM = mods.tint;
-  frameM = mods.frame;
-  glassUIAvailable = true;
-} catch {}
 
 const CARD_COLORS = [
   "#E8EDF5", "#F0EBE3", "#E8F0E8", "#F5EDEB",
@@ -418,104 +403,53 @@ export default function ProductDetailScreen() {
                 {product.variants[0]?.option1 ? "SIZE" : "OPTIONS"}
               </Text>
               <View style={styles.variantsRow}>
-                {IS_IOS && glassUIAvailable
-                  ? product.variants.map((v) => {
-                      const isActive = activeVariant?.id === v.id;
-                      const outOfStock = v.inventory <= 0;
-                      return (
-                        <ExpoUIHost key={v.id} matchContents style={{ height: 44, opacity: outOfStock ? 0.35 : 1 }}>
-                          <ExpoButton
-                            label={v.option1 ?? v.title}
-                            onPress={() => {
-                              if (!outOfStock) {
-                                setSelectedVariant(v);
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                              }
-                            }}
-                            modifiers={[
-                              glassEffectM({
-                                glass: {
-                                  variant: "regular",
-                                  interactive: !outOfStock,
-                                  tint: isActive ? "#1A1A1A" : undefined,
-                                },
-                                shape: "roundedRectangle",
-                              }),
-                              tintM(isActive ? "#FFFFFF" : colors.foreground),
-                            ]}
-                          />
-                        </ExpoUIHost>
-                      );
-                    })
-                  : product.variants.map((v) => {
-                      const isActive = activeVariant?.id === v.id;
-                      const outOfStock = v.inventory <= 0;
-                      return (
-                        <Pressable
-                          key={v.id}
-                          style={[
-                            styles.variantChip,
-                            {
-                              borderColor: isActive ? colors.foreground : colors.border,
-                              backgroundColor: isActive ? colors.foreground : colors.background,
-                              opacity: outOfStock ? 0.4 : 1,
-                            },
-                          ]}
-                          onPress={() => {
-                            if (!outOfStock) {
-                              setSelectedVariant(v);
-                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            }
-                          }}
-                          disabled={outOfStock}
-                        >
-                          <Text style={[styles.variantText, { color: isActive ? colors.background : colors.foreground }]}>
-                            {v.option1 ?? v.title}
-                          </Text>
-                        </Pressable>
-                      );
-                    })
-                }
+                {product.variants.map((v) => {
+                  const isActive = activeVariant?.id === v.id;
+                  const outOfStock = v.inventory <= 0;
+                  return (
+                    <Pressable
+                      key={v.id}
+                      style={[
+                        styles.variantChip,
+                        {
+                          borderColor: isActive ? colors.foreground : colors.border,
+                          backgroundColor: isActive ? colors.foreground : colors.background,
+                          opacity: outOfStock ? 0.4 : 1,
+                        },
+                      ]}
+                      onPress={() => {
+                        if (!outOfStock) {
+                          setSelectedVariant(v);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }
+                      }}
+                      disabled={outOfStock}
+                    >
+                      <Text style={[styles.variantText, { color: isActive ? colors.background : colors.foreground }]}>
+                        {v.option1 ?? v.title}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             </View>
           )}
 
           {/* ── Add to Bag ── */}
           <View style={[styles.addBagSection, { borderTopColor: colors.border }]}>
-            {IS_IOS && glassUIAvailable ? (
-              <ExpoUIHost style={{ height: 56 }}>
-                <ExpoButton
-                  label={added ? "ADDED TO BAG" : "ADD TO BAG"}
-                  onPress={handleAddToCart}
-                  modifiers={[
-                    frameM({ maxWidth: 10000, height: 54 }),
-                    glassEffectM({
-                      glass: {
-                        variant: "regular",
-                        interactive: true,
-                        tint: added ? "#43A047" : PRIMARY,
-                      },
-                      shape: "roundedRectangle",
-                    }),
-                    tintM("#FFFFFF"),
-                  ]}
-                />
-              </ExpoUIHost>
-            ) : (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.addBtn,
-                  { backgroundColor: added ? "#43A047" : PRIMARY, opacity: pressed ? 0.9 : 1 },
-                ]}
-                onPress={handleAddToCart}
-                testID="add-to-bag-btn"
-              >
-                <Feather name={added ? "check" : "shopping-bag"} size={18} color="#FFFFFF" />
-                <Text style={styles.addBtnText}>
-                  {added ? "ADDED TO BAG" : "ADD TO BAG"}
-                </Text>
-              </Pressable>
-            )}
+            <Pressable
+              style={({ pressed }) => [
+                styles.addBtn,
+                { backgroundColor: added ? "#43A047" : PRIMARY, opacity: pressed ? 0.88 : 1 },
+              ]}
+              onPress={handleAddToCart}
+              testID="add-to-bag-btn"
+            >
+              <Feather name={added ? "check" : "shopping-bag"} size={18} color="#FFFFFF" />
+              <Text style={styles.addBtnText}>
+                {added ? "ADDED TO BAG" : "ADD TO BAG"}
+              </Text>
+            </Pressable>
 
             {/* Delivery info */}
             <View style={[styles.deliveryRow, { borderColor: colors.border }]}>
@@ -668,14 +602,14 @@ const styles = StyleSheet.create({
   /* Variants */
   variantsSection: { paddingHorizontal: 20, paddingVertical: 16, gap: 12, borderTopWidth: 1 },
   variantsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  variantChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 4, borderWidth: 1.5 },
+  variantChip: { paddingHorizontal: 18, paddingVertical: 9, borderRadius: 100, borderWidth: 1.5 },
   variantText: { fontFamily: "Inter_500Medium", fontSize: 14 },
 
   /* Add to Bag */
   addBagSection: { paddingHorizontal: 16, paddingVertical: 16, gap: 12, borderTopWidth: 1 },
   addBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 10, paddingVertical: 16, borderRadius: 4,
+    gap: 10, paddingVertical: 16, borderRadius: 100,
   },
   addBtnText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1 },
   deliveryRow: {

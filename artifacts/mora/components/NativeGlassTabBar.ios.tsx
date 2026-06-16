@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useCart } from "@/context/CartContext";
 import { useNativeReady } from "@/hooks/useNativeReady";
+import { isIOS26Plus } from "@/components/LiquidGlassBg";
 
 // ── Inline TabBar props type (avoids importing from private expo-router path) ──
 type TabBarProps = {
@@ -36,17 +37,14 @@ let GlassEffectContainer: any = null;
 let ExpoButton: any = null;
 let buttonStyleMod: ((s: string) => unknown) | null = null;
 let frameMod: ((p: object) => unknown) | null = null;
-let checkGlass: (() => boolean) = () => false;
 
 try {
   const ui   = require("@expo/ui/swift-ui");
   const mods = require("@expo/ui/swift-ui/modifiers");
-  const ge   = require("expo-glass-effect");
   GlassEffectContainer = ui.GlassEffectContainer;
   ExpoButton           = ui.Button;
   buttonStyleMod       = mods.buttonStyle;
   frameMod             = mods.frame;
-  checkGlass           = ge.isLiquidGlassAvailable;
 } catch {}
 
 // ── Tab metadata ──────────────────────────────────────────────────────────────
@@ -67,9 +65,8 @@ export function NativeGlassTabBar({ state, navigation }: TabBarProps) {
   const nativeReady = useNativeReady();
   const { totalItems } = useCart();
 
-  // Re-check glass availability after bridge is ready (checkGlass may return
-  // false on first module load before native is initialized)
-  const isGlassAvailable = nativeReady && checkGlass();
+  // Use SwiftUI liquid glass only on iOS 26+ once bridge is ready
+  const isGlassAvailable = nativeReady && isIOS26Plus;
   const useGlass = isGlassAvailable && !!GlassEffectContainer && !!ExpoButton
     && !!buttonStyleMod && !!frameMod;
 

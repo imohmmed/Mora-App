@@ -66,20 +66,6 @@ function getTag(product: Product): string | null {
 // expo-glass-effect removed — caused EXC_BAD_ACCESS on iOS 26 beta during native view registration
 const GlassViewComp: any = null;
 
-let glassUIAvailable = false;
-let ExpoUIHost: any, ExpoButton: any;
-let glassEffectM: any, paddingM: any, tintM: any, frameM: any;
-try {
-  const ui = require("@expo/ui/swift-ui");
-  const mods = require("@expo/ui/swift-ui/modifiers");
-  ExpoUIHost = ui.Host;
-  ExpoButton = ui.Button;
-  glassEffectM = mods.glassEffect;
-  paddingM = mods.padding;
-  tintM = mods.tint;
-  frameM = mods.frame;
-  glassUIAvailable = true;
-} catch {}
 
 // ─── Product Card ──────────────────────────────────────────────────────────────
 
@@ -101,7 +87,6 @@ function ProductCard({
   const imageUri = item.images?.[0];
   const nativeReady = useNativeReady();
   const useGlass = IS_IOS && !!GlassViewComp && nativeReady;
-  const useGlassBtn = IS_IOS && glassUIAvailable && nativeReady;
 
   const handleLike = () => {
     toggle(item.id);
@@ -188,35 +173,15 @@ function ProductCard({
       </Pressable>
 
       {/* ── ADD TO BAG — outside the navigate Pressable; never bubbles ── */}
-      {useGlassBtn ? (
-        <ExpoUIHost style={{ height: 38, marginTop: 6 }}>
-          <ExpoButton
-            label="ADD TO BAG"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              onAddToBag(item);
-            }}
-            modifiers={[
-              frameM({ maxWidth: 10000, height: 36 }),
-              glassEffectM({
-                glass: { variant: "regular", interactive: true, tint: "#0274C1" },
-                shape: "roundedRectangle",
-              }),
-              tintM("#FFFFFF"),
-            ]}
-          />
-        </ExpoUIHost>
-      ) : (
-        <Pressable
-          style={styles.addToCartBtn}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            onAddToBag(item);
-          }}
-        >
-          <Text style={styles.addToCartText}>ADD TO BAG</Text>
-        </Pressable>
-      )}
+      <Pressable
+        style={styles.addToCartBtn}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          onAddToBag(item);
+        }}
+      >
+        <Text style={styles.addToCartText}>ADD TO BAG</Text>
+      </Pressable>
     </View>
   );
 }
@@ -678,16 +643,16 @@ const styles = StyleSheet.create({
   /* Add to cart */
   addToCartBtn: {
     backgroundColor: "#0274C1",
-    paddingVertical: 9,
+    paddingVertical: 10,
     alignItems: "center",
-    borderRadius: 8,
-    marginTop: 6,
+    borderRadius: 100,
+    marginTop: 8,
   },
   addToCartText: {
     color: "#FFFFFF",
     fontFamily: "Inter_700Bold",
     fontSize: 11,
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
 
   /* Error / empty */

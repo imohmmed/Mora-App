@@ -173,35 +173,15 @@ function SearchResultCard({
       </Pressable>
 
       {/* ── ADD TO BAG — completely outside the navigate Pressable ── */}
-      {useGlassBtn ? (
-        <ExpoUIHost style={{ height: 38, marginTop: 6 }}>
-          <ExpoButton
-            label="ADD TO BAG"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              onAddToBag(item);
-            }}
-            modifiers={[
-              frameM({ maxWidth: 10000, height: 36 }),
-              glassEffectM({
-                glass: { variant: "regular", interactive: true, tint: "#0274C1" },
-                shape: "roundedRectangle",
-              }),
-              tintM("#FFFFFF"),
-            ]}
-          />
-        </ExpoUIHost>
-      ) : (
-        <Pressable
-          style={styles.addToCartBtn}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            onAddToBag(item);
-          }}
-        >
-          <Text style={styles.addToCartText}>ADD TO BAG</Text>
-        </Pressable>
-      )}
+      <Pressable
+        style={styles.addToCartBtn}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          onAddToBag(item);
+        }}
+      >
+        <Text style={styles.addToCartText}>ADD TO BAG</Text>
+      </Pressable>
     </View>
   );
 }
@@ -537,12 +517,12 @@ const styles = StyleSheet.create({
   /* Add to cart btn */
   addToCartBtn: {
     backgroundColor: PRIMARY,
-    paddingVertical: 9,
+    paddingVertical: 10,
     alignItems: "center",
-    borderRadius: 8,
-    marginTop: 6,
+    borderRadius: 100,
+    marginTop: 8,
   },
-  addToCartText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 0.5 },
+  addToCartText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 0.8 },
 
   emptyResults: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 80, gap: 12 },
   emptyTitle: { fontFamily: "Inter_600SemiBold", fontSize: 18, textAlign: "center" },
