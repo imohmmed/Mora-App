@@ -12,7 +12,6 @@ import React, { useEffect } from "react";
 import { Alert, Platform } from "react-native";
 import { useAuth } from "@/context/AuthContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // ─── صيد الأخطاء الداخلية وعرضها كـ Alert على الشاشة مباشرة ────────────────
@@ -212,10 +211,8 @@ export default function RootLayout() {
                   <CartProvider>
                     <WishlistProvider>
                       <GestureHandlerRootView style={{ flex: 1 }}>
-                        <KeyboardProvider>
-                          <RootLayoutNav />
-                          <LiveActivityBanner />
-                        </KeyboardProvider>
+                        <RootLayoutNav />
+                        <LiveActivityBanner />
                       </GestureHandlerRootView>
                     </WishlistProvider>
                   </CartProvider>
