@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
   saleBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 2 },
   saleBadgeText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 0.5 },
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 2 },
-  tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4, borderWidth: 1 },
+  tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 50, borderWidth: 1 },
   tagText: { fontFamily: "Inter_400Regular", fontSize: 12 },
 
   /* Variants */

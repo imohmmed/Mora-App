@@ -215,7 +215,7 @@ export default function SearchScreen() {
     return offNative;
   }, []);
   const nativeReady2 = useNativeReady();
-  const useGlass = IS_IOS && !!GlassViewComp && nativeReady2;
+  const useGlass = IS_IOS && isIOS26Plus && nativeReady2;
   const useGlassBtn = IS_IOS && glassUIAvailable && nativeReady2;
 
   // ── Quick add state ──────────────────────────────────────────────────────────
@@ -368,7 +368,7 @@ export default function SearchScreen() {
                           onPress={() => handleChangeText(t)}
                           modifiers={[
                             paddingM({ horizontal: 16, vertical: 8 }),
-                            glassEffectM({ glass: { variant: "regular", interactive: true }, shape: "roundedRectangle" }),
+                            glassEffectM({ glass: { variant: "regular", interactive: true }, shape: "capsule" }),
                             tintM(colors.foreground),
                           ]}
                         />
@@ -397,8 +397,8 @@ export default function SearchScreen() {
                     style={({ pressed }) => [
                       styles.categoryCard,
                       {
-                        backgroundColor: useGlass ? "transparent" : cat.color,
-                        borderRadius: 16,
+                        backgroundColor: cat.color,
+                        borderRadius: 24,
                         overflow: "hidden",
                         opacity: pressed ? 0.85 : 1,
                       },
@@ -406,9 +406,7 @@ export default function SearchScreen() {
                     onPress={() => handleChangeText(cat.label)}
                     testID={`category-${cat.label}`}
                   >
-                    {useGlass && (
-                      <GlassViewComp style={StyleSheet.absoluteFill} glassEffectStyle="clear" />
-                    )}
+                    {useGlass && <LiquidGlassBg />}
                     <View style={[styles.categoryInner, { backgroundColor: useGlass ? "transparent" : cat.color }]}>
                       <View style={[styles.categoryIconBg, { backgroundColor: useGlass ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.5)" }]}>
                         <Feather name={cat.icon} size={22} color="#1A1A1A" />
@@ -505,7 +503,7 @@ const styles = StyleSheet.create({
   tag: {
     paddingHorizontal: 16,
     paddingVertical: 9,
-    borderRadius: 8,
+    borderRadius: 50,
     borderWidth: 1,
   },
   tagText: { fontFamily: "Inter_500Medium", fontSize: 14 },
