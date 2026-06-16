@@ -25,6 +25,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import { useTheme } from "@/context/ThemeContext";
 
 const PRIMARY = "#0274C1";
@@ -103,10 +104,17 @@ export function AppleActionSheet({
       statusBarTranslucent
       onRequestClose={onCancel}
     >
-      {/* ── Backdrop ──────────────────────────────────────────────────────── */}
+      {/* ── Blur backdrop ─────────────────────────────────────────────────── */}
       <Animated.View
-        style={[styles.backdrop, { opacity: fadeAnim }]}
+        style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}
+        pointerEvents={visible ? "auto" : "none"}
       >
+        <BlurView
+          style={StyleSheet.absoluteFill}
+          intensity={55}
+          tint={isDark ? "dark" : "light"}
+        />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.28)" }]} />
         <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} />
       </Animated.View>
 
@@ -208,10 +216,6 @@ export function AppleActionSheet({
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.40)",
-  },
   sheetWrapper: {
     position: "absolute",
     bottom: 0,

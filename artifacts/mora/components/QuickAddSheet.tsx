@@ -6,43 +6,22 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import {
   Animated,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { useTheme } from "@/context/ThemeContext";
 import { formatIQD } from "@/lib/format";
 import type { Product, Variant } from "@/lib/types";
 
 const PRIMARY = "#0274C1";
-const IS_IOS = Platform.OS === "ios";
-
-// expo-glass-effect removed — caused EXC_BAD_ACCESS on iOS 26 beta during native view registration
-const GlassViewComp: any = null;
-
-// ── @expo/ui SwiftUI glass chip buttons (iOS only) ────────────────────────────
-let glassUIAvailable = false;
-let ExpoUIHost: any, ExpoButton: any;
-let glassEffectM: any, paddingM: any, tintM: any, frameM: any;
-try {
-  const ui = require("@expo/ui/swift-ui");
-  const mods = require("@expo/ui/swift-ui/modifiers");
-  ExpoUIHost = ui.Host;
-  ExpoButton = ui.Button;
-  glassEffectM = mods.glassEffect;
-  paddingM = mods.padding;
-  tintM = mods.tint;
-  frameM = mods.frame;
-  glassUIAvailable = true;
-} catch {}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -148,8 +127,6 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   })();
 
   // ── Theme tokens ─────────────────────────────────────────────────────────────
-  const useGlass = isIOS26Plus;
-  const bg         = useGlass ? "transparent" : (isDark ? "#1C1C1E" : "#FFFFFF");
   const handleCol  = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.20)";
   const textPri    = isDark ? "#FFFFFF" : "#000000";
   const textMuted  = isDark ? "rgba(255,255,255,0.50)" : "rgba(0,0,0,0.44)";
@@ -157,9 +134,7 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   const chipBorder = isDark ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.14)";
   const imageBg    = isDark ? "#2C2C2E" : "#F2F2F7";
   const divider    = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)";
-  const sheetBg    = useGlass
-    ? (isDark ? "rgba(28,28,30,0.45)" : "rgba(255,255,255,0.45)")
-    : (isDark ? "#1C1C1E" : "#FFFFFF");
+  const sheetBg    = isDark ? "rgba(30,30,34,0.96)" : "rgba(255,255,255,0.97)";
 
   // ── Chip renderer ─────────────────────────────────────────────────────────────
   const renderChips = (
@@ -210,11 +185,17 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
 
   return (
     <Modal transparent animationType="none" visible={visible} onRequestClose={onClose}>
-      {/* ── Backdrop ──────────────────────────────────────────────────────── */}
+      {/* ── Blur backdrop ─────────────────────────────────────────────────── */}
       <Animated.View
-        style={[styles.backdrop, { opacity: fadeAnim }]}
+        style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}
         pointerEvents={visible ? "auto" : "none"}
       >
+        <BlurView
+          style={StyleSheet.absoluteFill}
+          intensity={55}
+          tint={isDark ? "dark" : "light"}
+        />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.28)" }]} />
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
 
@@ -225,8 +206,6 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
           { backgroundColor: sheetBg, transform: [{ translateY: slideAnim }] },
         ]}
       >
-        {/* iOS 26 Liquid Glass background */}
-        {isIOS26Plus && <LiquidGlassBg style={styles.glassBackground} />}
 
         {/* Handle */}
         <View style={[styles.handle, { backgroundColor: handleCol }]} />
@@ -294,10 +273,6 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.42)",
-  },
   sheet: {
     position: "absolute",
     bottom: 0,
@@ -314,10 +289,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 24,
     elevation: 24,
-  },
-  glassBackground: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
   },
   handle: {
     width: 36,

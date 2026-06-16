@@ -1,18 +1,17 @@
 /**
  * ProductPreviewModal — Telegram-style long-press product preview.
  *
- * Appears when user long-presses a product card. Shows a floating product
- * card with image, info, and two actions: Add to Bag / View Product.
- * Tapping the dark backdrop closes it.
+ * - Solid opaque card (no glass transparency)
+ * - X close button inside card (top-right)
+ * - Backdrop tap closes it
+ * - ADD TO BAG closes it automatically
  */
 import React, { useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
   Modal,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -20,14 +19,12 @@ import {
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
-import { useColors } from "@/hooks/useColors";
-import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import { formatIQD } from "@/lib/format";
 import type { Product } from "@/lib/types";
 
-const { width: SW, height: SH } = Dimensions.get("window");
+const { width: SW } = Dimensions.get("window");
 const CARD_W  = SW - 56;
-const IMG_H   = CARD_W * 1.15;
+const IMG_H   = CARD_W * 1.1;
 const PRIMARY = "#0274C1";
 
 interface Props {
@@ -46,7 +43,6 @@ export function ProductPreviewModal({
   onViewProduct,
 }: Props) {
   const { resolvedScheme } = useTheme();
-  const colors = useColors();
   const isDark = resolvedScheme === "dark";
 
   const backdropAnim = useRef(new Animated.Value(0)).current;
@@ -71,11 +67,12 @@ export function ProductPreviewModal({
 
   if (!product) return null;
 
-  const imageUri   = product.images?.[0];
-  const hasDisc    = product.comparePrice != null && product.comparePrice > product.price;
-  const cardBg     = isDark ? "#1C1C1E" : "#FFFFFF";
-  const textPri    = isDark ? "#FFFFFF" : "#000000";
-  const textMuted  = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.44)";
+  const imageUri  = product.images?.[0];
+  const hasDisc   = product.comparePrice != null && product.comparePrice > product.price;
+  const cardBg    = isDark ? "#1C1C1E" : "#FFFFFF";
+  const textPri   = isDark ? "#FFFFFF" : "#000000";
+  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.44)";
+  const divCol    = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
 
   return (
     <Modal
@@ -104,11 +101,17 @@ export function ProductPreviewModal({
         ]}
         pointerEvents={visible ? "box-none" : "none"}
       >
-        <View style={[styles.card, {
-          backgroundColor: isIOS26Plus ? (isDark ? "rgba(28,28,30,0.55)" : "rgba(255,255,255,0.55)") : cardBg,
-          shadowColor: "#000",
-        }]}>
-          {isIOS26Plus && <LiquidGlassBg style={{ borderRadius: 20 }} />}
+        <View style={[styles.card, { backgroundColor: cardBg, shadowColor: "#000" }]}>
+          {/* ── X Close button (top-right, inside card) ── */}
+          <Pressable
+            style={styles.closeInsideBtn}
+            onPress={onClose}
+            hitSlop={12}
+          >
+            <View style={[styles.closeCircle, { backgroundColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)" }]}>
+              <Feather name="x" size={16} color={textPri} />
+            </View>
+          </Pressable>
 
           {/* ── Image ── */}
           <View style={[styles.imageBox, { backgroundColor: isDark ? "#2C2C2E" : "#F2F2F7" }]}>
@@ -120,7 +123,7 @@ export function ProductPreviewModal({
                 transition={150}
               />
             ) : (
-              <Feather name="shopping-bag" size={60} color={colors.mutedForeground} />
+              <Feather name="shopping-bag" size={60} color="#999" />
             )}
             {hasDisc && (
               <View style={styles.saleBadge}>
@@ -150,11 +153,11 @@ export function ProductPreviewModal({
           </View>
 
           {/* ── Actions ── */}
-          <View style={[styles.actions, { borderTopColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)" }]}>
+          <View style={[styles.actions, { borderTopColor: divCol }]}>
             <Pressable
               style={({ pressed }) => [
                 styles.actionBtn,
-                { backgroundColor: pressed ? "rgba(0,0,0,0.05)" : "transparent" },
+                { backgroundColor: pressed ? (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)") : "transparent" },
               ]}
               onPress={() => { onAddToBag(product); onClose(); }}
             >
@@ -162,12 +165,12 @@ export function ProductPreviewModal({
               <Text style={[styles.actionText, { color: PRIMARY }]}>Add to Bag</Text>
             </Pressable>
 
-            <View style={[styles.divider, { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)" }]} />
+            <View style={[styles.divider, { backgroundColor: divCol }]} />
 
             <Pressable
               style={({ pressed }) => [
                 styles.actionBtn,
-                { backgroundColor: pressed ? "rgba(0,0,0,0.05)" : "transparent" },
+                { backgroundColor: pressed ? (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)") : "transparent" },
               ]}
               onPress={() => { onViewProduct(product); onClose(); }}
             >
@@ -176,13 +179,6 @@ export function ProductPreviewModal({
             </Pressable>
           </View>
         </View>
-
-        {/* ── Close hint ── */}
-        <Pressable onPress={onClose} style={styles.closeHint}>
-          <View style={styles.closeBtn}>
-            <Feather name="x" size={20} color="#FFFFFF" />
-          </View>
-        </Pressable>
       </Animated.View>
     </Modal>
   );
@@ -191,7 +187,7 @@ export function ProductPreviewModal({
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.62)",
+    backgroundColor: "rgba(0,0,0,0.65)",
   },
   cardWrap: {
     position: "absolute",
@@ -208,6 +204,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.28,
     shadowRadius: 32,
     elevation: 24,
+  },
+  closeInsideBtn: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    zIndex: 20,
+  },
+  closeCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   imageBox: {
     width: "100%",
@@ -271,13 +280,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   divider: { width: 1, marginVertical: 12 },
-  closeHint: { marginTop: 16 },
-  closeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
 });
