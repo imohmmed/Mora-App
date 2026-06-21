@@ -35,6 +35,12 @@ const COLLECTION_META: Record<string, {
     heroImage: "https://picsum.photos/seed/hotseller/800/500",
     accentColor: "#E65100",
   },
+  "gift-wrapping": {
+    title: "Gift Wrapping",
+    description: "Send your order as a gift — we wrap it for you",
+    heroImage: "https://picsum.photos/seed/giftwrap/800/500",
+    accentColor: "#C2185B",
+  },
 };
 
 function getSuperDealsProducts(limit: number, offset: number) {
@@ -117,10 +123,12 @@ router.get("/store/special-collections/:slug", (req, res) => {
 
 router.use("/admin/special-collections", requireAdmin);
 
+const CURATED_SLUGS = ["brand-deals", "hot-seller", "gift-wrapping"];
+
 router.get("/admin/special-collections/:slug/items", (req, res) => {
   const { slug } = req.params as { slug: string };
-  if (!["brand-deals", "hot-seller"].includes(slug)) {
-    res.status(400).json({ data: null, meta: {}, error: "Only brand-deals and hot-seller support manual curation" });
+  if (!CURATED_SLUGS.includes(slug)) {
+    res.status(400).json({ data: null, meta: {}, error: "Only brand-deals, hot-seller, and gift-wrapping support manual curation" });
     return;
   }
   const rows = db.prepare(`
@@ -134,8 +142,8 @@ router.get("/admin/special-collections/:slug/items", (req, res) => {
 
 router.post("/admin/special-collections/:slug/items", (req, res) => {
   const { slug } = req.params as { slug: string };
-  if (!["brand-deals", "hot-seller"].includes(slug)) {
-    res.status(400).json({ data: null, meta: {}, error: "Only brand-deals and hot-seller support manual curation" });
+  if (!CURATED_SLUGS.includes(slug)) {
+    res.status(400).json({ data: null, meta: {}, error: "Only brand-deals, hot-seller, and gift-wrapping support manual curation" });
     return;
   }
   const { productId } = req.body as { productId: string };

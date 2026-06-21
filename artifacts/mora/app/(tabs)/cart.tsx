@@ -1,6 +1,7 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import {
+  ActivityIndicator,
   LayoutAnimation,
   Platform,
   Pressable,
@@ -17,11 +18,16 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import ReanimatedSwipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, { interpolate, useAnimatedStyle, type SharedValue } from "react-native-reanimated";
+import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { fetchStories, fetchSpecialCollection } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
-import type { CartItem } from "@/lib/types";
+import { StoriesSection } from "@/components/StoriesSection";
+import { QuickAddSheet } from "@/components/QuickAddSheet";
+import type { CartItem, Product, Variant } from "@/lib/types";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -171,13 +177,135 @@ const cs = StyleSheet.create({
   swipeLbl:  { color: "#fff", fontSize: 10, fontWeight: "600", marginTop: 4 },
 });
 
+const GIFT_CARD_W = 130;
+
+function GiftWrapSection({ lang, isDark }: { lang: string; isDark: boolean }) {
+  const { addItem } = useCart();
+  const router      = useRouter();
+  const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
+
+  const { data } = useQuery({
+    queryKey: ["gift-wrapping"],
+    queryFn:  () => fetchSpecialCollection("gift-wrapping"),
+    retry: false,
+    staleTime: 300_000,
+  });
+
+  const products = data?.products ?? [];
+  if (products.length === 0) return null;
+
+  const sectionBg  = isDark ? "#1A1A1A" : "#F7F7F8";
+  const cardBg     = isDark ? "#2C2C2E" : "#FFFFFF";
+  const textCol    = isDark ? "#FFFFFF" : "#1A1A1A";
+  const sub        = isDark ? "rgba(255,255,255,0.42)" : "rgba(0,0,0,0.4)";
+  const title      = lang === "ar" ? "ارسال الطلب كهدية" : "Buy As a Gift";
+  const subtitle   = lang === "ar" ? "أضف تغليف للطلب وسنرسله كهدية" : "Add wrapping and we'll send it as a gift";
+
+  const handleConfirm = (variant: Variant) => {
+    if (!quickAddProduct) return;
+    addItem({
+      productId: quickAddProduct.id,
+      variantId: variant.id,
+      title:     quickAddProduct.title,
+      vendor:    quickAddProduct.vendor ?? "",
+      price:     variant.price ?? quickAddProduct.price,
+      quantity:  1,
+      size:      variant.option1 ?? undefined,
+      color:     variant.option2 ?? undefined,
+      image:     quickAddProduct.images?.[0],
+    });
+    setQuickAddProduct(null);
+  };
+
+  return (
+    <View style={[gw.wrap, { backgroundColor: sectionBg }]}>
+      <View style={gw.headerRow}>
+        <View style={gw.iconCircle}>
+          <Feather name="gift" size={16} color="#fff" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[gw.title, { color: textCol }]}>{title}</Text>
+          <Text style={[gw.subtitle, { color: sub }]}>{subtitle}</Text>
+        </View>
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={gw.scroll}
+        decelerationRate="fast"
+        snapToInterval={GIFT_CARD_W + 10}
+      >
+        {products.map((product) => (
+          <View key={product.id} style={[gw.card, { backgroundColor: cardBg }]}>
+            <Pressable
+              style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
+              onPress={() => router.push(`/product/${product.id}` as any)}
+            >
+              <Image
+                source={{ uri: product.images?.[0] ?? "" }}
+                style={gw.img}
+                contentFit="cover"
+              />
+              <Text style={[gw.cardName, { color: textCol }]} numberOfLines={2}>
+                {product.title}
+              </Text>
+              <Text style={gw.cardPrice}>{formatIQD(product.price)}</Text>
+            </Pressable>
+            <Pressable
+              style={gw.addBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                setQuickAddProduct(product);
+              }}
+            >
+              <Text style={gw.addBtnTxt}>{lang === "ar" ? "أضف" : "ADD"}</Text>
+            </Pressable>
+          </View>
+        ))}
+      </ScrollView>
+
+      <QuickAddSheet
+        visible={!!quickAddProduct}
+        product={quickAddProduct}
+        onClose={() => setQuickAddProduct(null)}
+        onConfirm={handleConfirm}
+      />
+    </View>
+  );
+}
+
+const gw = StyleSheet.create({
+  wrap:       { marginTop: 6, marginBottom: 6, paddingVertical: 16 },
+  headerRow:  { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, marginBottom: 14 },
+  iconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: PRIMARY, alignItems: "center", justifyContent: "center" },
+  title:      { fontSize: 15, fontWeight: "700", letterSpacing: -0.2 },
+  subtitle:   { fontSize: 11, marginTop: 2 },
+  scroll:     { paddingHorizontal: 16, gap: 10 },
+  card:       { width: GIFT_CARD_W, borderRadius: 14, overflow: "hidden", padding: 0 },
+  img:        { width: GIFT_CARD_W, height: GIFT_CARD_W * 1.2, borderRadius: 10 },
+  cardName:   { fontSize: 11, fontWeight: "600", lineHeight: 15, marginTop: 8, paddingHorizontal: 6 },
+  cardPrice:  { fontSize: 12, fontWeight: "700", color: PRIMARY, marginTop: 3, paddingHorizontal: 6 },
+  addBtn:     { backgroundColor: PRIMARY, marginHorizontal: 6, marginTop: 8, marginBottom: 6, paddingVertical: 8, borderRadius: 50, alignItems: "center" },
+  addBtnTxt:  { color: "#fff", fontSize: 10, fontWeight: "700", letterSpacing: 0.8 },
+});
+
 export default function CartScreen() {
   const { items, subtotal, removeItem, updateQty } = useCart();
   const { user }    = useAuth();
+  const { lang }    = useLanguage();
   const router      = useRouter();
   const insets      = useSafeAreaInsets();
   const { resolvedScheme } = useTheme();
   const isDark      = resolvedScheme === "dark";
+
+  const { data: storyData, isLoading: storiesLoading } = useQuery({
+    queryKey: ["cart-stories"],
+    queryFn:  fetchStories,
+    enabled:  items.length === 0,
+    staleTime: 120_000,
+  });
+  const storyRows = storyData ?? [];
 
   const bg      = isDark ? "#0A0A0A" : "#FFFFFF";
   const textCol = isDark ? "#FFFFFF" : "#1A1A1A";
@@ -220,15 +348,32 @@ export default function CartScreen() {
 
   if (items.length === 0) {
     return (
-      <View style={[s.root, s.center, { backgroundColor: bg, paddingTop: insets.top }]}>
-        <View style={[s.emptyCircle, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" }]}>
-          <Feather name="shopping-bag" size={36} color={sub} />
+      <View style={[s.root, { backgroundColor: bg, paddingTop: insets.top }]}>
+        <View style={[s.header, { paddingTop: 6 }]}>
+          <Text style={[s.pageTitle, { color: textCol }]}>
+            {lang === "ar" ? "سلتي" : "MY CART"}
+          </Text>
         </View>
-        <Text style={[s.emptyTitle, { color: textCol }]}>Your cart is empty</Text>
-        <Text style={[s.emptySub, { color: sub }]}>Add items to get started</Text>
-        <Pressable style={s.shopBtn} onPress={() => router.push("/(tabs)" as any)}>
-          <Text style={s.shopBtnTxt}>SHOP NOW</Text>
-        </Pressable>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        >
+          <View style={s.emptyBanner}>
+            <Feather name="shopping-bag" size={20} color={sub} />
+            <Text style={[s.emptyBannerTxt, { color: sub }]}>
+              {lang === "ar"
+                ? "سلتك فارغة — تصفح المجموعات أدناه"
+                : "Cart is empty — browse collections below"}
+            </Text>
+          </View>
+
+          {storiesLoading ? (
+            <ActivityIndicator color={PRIMARY} style={{ marginTop: 48 }} />
+          ) : (
+            <StoriesSection rows={storyRows} />
+          )}
+        </ScrollView>
       </View>
     );
   }
@@ -258,6 +403,8 @@ export default function CartScreen() {
             onDec={() => handleDec(item.productId, item.variantId, item.quantity)}
           />
         ))}
+
+        <GiftWrapSection lang={lang} isDark={isDark} />
       </ScrollView>
 
       <View style={[
@@ -301,9 +448,6 @@ const s = StyleSheet.create({
   barTotal:    { fontSize: 18, fontWeight: "800", letterSpacing: -0.4 },
   checkBtn:    { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: PRIMARY, paddingHorizontal: 22, paddingVertical: 14, borderRadius: 50 },
   checkTxt:    { color: "#fff", fontSize: 14, fontWeight: "700", letterSpacing: 0.6 },
-  emptyCircle: { width: 88, height: 88, borderRadius: 44, alignItems: "center", justifyContent: "center", marginBottom: 20 },
-  emptyTitle:  { fontSize: 20, fontWeight: "700", marginBottom: 8 },
-  emptySub:    { fontSize: 14, marginBottom: 36 },
-  shopBtn:     { backgroundColor: PRIMARY, paddingHorizontal: 36, paddingVertical: 14, borderRadius: 50 },
-  shopBtnTxt:  { color: "#fff", fontSize: 14, fontWeight: "700", letterSpacing: 1 },
+  emptyBanner:    { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 14, marginTop: 4 },
+  emptyBannerTxt: { fontSize: 13, fontWeight: "500", flex: 1 },
 });
