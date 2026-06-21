@@ -461,12 +461,12 @@ export default function HomeScreen() {
         </View>
       )}
 
-      <StoriesSection rows={storyRows ?? []} />
-
       <SpecialCollectionsGrid
         collections={specialCollections ?? []}
         loading={isCollectionsLoading}
       />
+
+      <StoriesSection rows={storyRows ?? []} activeFilter={activeFilter} />
 
       {/* ── Trending header ── */}
       <View style={styles.sectionHeader}>
@@ -503,7 +503,7 @@ export default function HomeScreen() {
   ), [
     activeCategory, safeActiveCategory, activeBanner, categoryKey, activeTab, isForYou, menuTabs, colors, displayBanners,
     isCollectionsLoading, isError, isBannersLoading, isLoading, isRefetching,
-    specialCollections, storyRows, totalCount,
+    specialCollections, storyRows, totalCount, activeFilter,
   ]);
 
   const renderProduct = useCallback(({ item }: { item: Product }) => (

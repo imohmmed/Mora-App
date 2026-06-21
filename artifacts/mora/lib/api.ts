@@ -112,6 +112,19 @@ export async function fetchStories(): Promise<StoryRow[]> {
   return apiFetch<StoryRow[]>("/store/stories");
 }
 
+export async function fetchCollectionProducts(params: {
+  ids: string[];
+  gender?: string;
+  limit?: number;
+}): Promise<Product[]> {
+  if (!params.ids.length) return [];
+  const qs = new URLSearchParams();
+  qs.set("ids", params.ids.join(","));
+  if (params.gender) qs.set("gender", params.gender);
+  if (params.limit) qs.set("limit", String(params.limit));
+  return apiFetch<Product[]>(`/store/collection-products?${qs.toString()}`);
+}
+
 export type ContentSectionItem = {
   id: string;
   name: string;

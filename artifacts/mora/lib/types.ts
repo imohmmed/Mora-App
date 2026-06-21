@@ -96,6 +96,8 @@ export type StoryItem = {
   imageUrl: string;
   linkUrl: string;
   sortOrder: number;
+  gender?: string;
+  collectionId?: string | null;
 };
 
 export type StoryRow = {

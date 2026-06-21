@@ -317,26 +317,48 @@ function BannersTab() {
 
 // ─── Stories Tab ───────────────────────────────────────────────────────────────
 
-type StoryItem = { id: string; rowId: string; title: string; imageUrl: string; linkUrl: string; sortOrder: number; status: string };
+type StoryItem = { id: string; rowId: string; title: string; imageUrl: string; linkUrl: string; sortOrder: number; status: string; gender: string; collectionId: string | null };
 type StoryRow  = { id: string; title: string; sortOrder: number; status: string; items: StoryItem[] };
 
-const EMPTY_STORY_ITEM = { title: "", imageUrl: "", linkUrl: "", status: "active" };
+const EMPTY_STORY_ITEM = { title: "", imageUrl: "", linkUrl: "", status: "active", gender: "all", collectionId: "" };
+
+type Collection = { id: string; title: string };
 
 function StoryItemForm({
   open, rowId, initial, rows, onClose, onSaved,
 }: { open: boolean; rowId: string; initial?: StoryItem | null; rows: StoryRow[]; onClose: () => void; onSaved: () => void }) {
   const isEdit = !!initial;
-  const [form, setForm] = useState({ ...EMPTY_STORY_ITEM, rowId, ...(initial ? { title: initial.title, imageUrl: initial.imageUrl, linkUrl: initial.linkUrl, status: initial.status, rowId: initial.rowId } : {}) });
+  const [form, setForm] = useState({
+    ...EMPTY_STORY_ITEM, rowId,
+    ...(initial ? {
+      title: initial.title, imageUrl: initial.imageUrl, linkUrl: initial.linkUrl,
+      status: initial.status, rowId: initial.rowId,
+      gender: initial.gender ?? "all",
+      collectionId: initial.collectionId ?? "",
+    } : {}),
+  });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+
+  const { data: collectionsRes } = useQuery<{ data: Collection[] }>({
+    queryKey: ["/api/admin/collections"],
+    queryFn: () => fetch("/api/admin/collections", { headers: AUTH_HEADER() }).then(r => r.json()),
+    staleTime: 60_000,
+  });
+  const collections = collectionsRes?.data ?? [];
 
   const handleSave = async () => {
     if (!form.title.trim()) { setErr("Title is required"); return; }
     setSaving(true); setErr("");
     try {
       const url  = isEdit ? `/api/admin/story-items/${initial!.id}` : "/api/admin/story-items";
-      const body = isEdit ? { title: form.title, imageUrl: form.imageUrl, linkUrl: form.linkUrl, status: form.status, rowId: form.rowId } : { ...form };
+      const body = {
+        title: form.title, imageUrl: form.imageUrl, linkUrl: form.linkUrl,
+        status: form.status, rowId: form.rowId,
+        gender: form.gender,
+        collectionId: form.collectionId || null,
+      };
       const res  = await fetch(url, { method: isEdit ? "PUT" : "POST", headers: AUTH_HEADER(), body: JSON.stringify(body) });
       if (!res.ok) throw new Error("Failed");
       onSaved(); onClose();
@@ -374,6 +396,27 @@ function StoryItemForm({
           <div className="grid gap-1.5">
             <Label>Link URL</Label>
             <Input value={form.linkUrl} onChange={e => set("linkUrl", e.target.value)} placeholder="/products?category=women" />
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Collection <span className="text-muted-foreground font-normal text-xs">(for showing products below row)</span></Label>
+            <Select value={form.collectionId || "__none__"} onValueChange={v => set("collectionId", v === "__none__" ? "" : v)}>
+              <SelectTrigger><SelectValue placeholder="No collection" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No collection</SelectItem>
+                {collections.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Gender <span className="text-muted-foreground font-normal text-xs">(filters products shown below row)</span></Label>
+            <Select value={form.gender} onValueChange={v => set("gender", v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="women">Women</SelectItem>
+                <SelectItem value="men">Men</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid gap-1.5">
             <Label>Status</Label>
@@ -589,6 +632,9 @@ function StoriesTab() {
                                 <p className="text-sm font-medium truncate">{item.title}</p>
                                 {item.linkUrl && <p className="text-xs text-muted-foreground font-mono truncate">{item.linkUrl}</p>}
                               </div>
+                              {item.gender && item.gender !== "all" && (
+                                <Badge variant="outline" className="text-xs flex-shrink-0 capitalize">{item.gender}</Badge>
+                              )}
                               <Badge variant={item.status === "active" ? "outline" : "secondary"} className="text-xs flex-shrink-0">{item.status}</Badge>
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditItem(item); setItemFormRowId(item.rowId); setItemFormOpen(true); }}><Pencil className="w-3 h-3" /></Button>
                               <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeleteItem(item.id)} disabled={deletingId === item.id}><Trash2 className="w-3 h-3" /></Button>
