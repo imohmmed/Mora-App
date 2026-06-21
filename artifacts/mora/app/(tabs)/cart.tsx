@@ -373,7 +373,7 @@ export default function CartScreen() {
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
       <View style={[s.header, { paddingTop: insets.top + 6 }]}>
-        <Text style={[s.pageTitle, { color: textCol }]}>MY CART</Text>
+        <Text style={[s.pageTitle, { color: textCol }]}>{lang === "ar" ? "سلتي" : "MY CART"}</Text>
         <View style={s.badge}>
           <Text style={s.badgeTxt}>{totalQty}</Text>
         </View>

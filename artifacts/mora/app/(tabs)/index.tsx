@@ -22,6 +22,7 @@ import { useRouter } from "expo-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { useNativeReady } from "@/hooks/useNativeReady";
+import { useLanguage } from "@/context/LanguageContext";
 import { HomeHeader } from "@/components/HomeHeader";
 import { CategoryTabs } from "@/components/CategoryTabs";
 import { SpecialCollectionsGrid } from "@/components/SpecialCollectionsGrid";
@@ -257,6 +258,7 @@ function BannerSlide({ banner }: { banner: Banner }) {
 
 export default function HomeScreen() {
   const colors = useColors();
+  const { lang } = useLanguage();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const [activeCategory, setActiveCategory] = useState(0);
@@ -405,7 +407,7 @@ export default function HomeScreen() {
   const ListHeader = useMemo(() => (
     <View>
       <CategoryTabs
-        categories={menuTabs.map((t) => (t as TabConfig).arabicLabel || t.label)}
+        categories={menuTabs.map((t) => lang === "ar" && (t as TabConfig).arabicLabel ? (t as TabConfig).arabicLabel! : t.label)}
         activeIndex={safeActiveCategory}
         onChange={setActiveCategory}
       />

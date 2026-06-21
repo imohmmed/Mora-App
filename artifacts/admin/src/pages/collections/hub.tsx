@@ -1292,12 +1292,14 @@ function QuickSectionsSection() {
 
 function CollectionsSection() {
   const [sectionOpen, setSectionOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "manual" | "smart">("all");
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  const { data: cols = [] } = useQuery<(Collection & { collectionType?: string })[]>({
+  const { data: cols = [], isLoading } = useQuery<(Collection & { collectionType?: string; titleAr?: string; productsCount?: number })[]>({
     queryKey: ["admin-collections-hub"],
-    queryFn: () => apiFetch<(Collection & { collectionType?: string })[]>("/admin/collections"),
+    queryFn: () => apiFetch<(Collection & { collectionType?: string; titleAr?: string; productsCount?: number })[]>("/admin/collections"),
     staleTime: 30_000,
   });
 
@@ -1307,8 +1309,19 @@ function CollectionsSection() {
     onError: (e) => toast({ title: "Error", description: (e as Error).message, variant: "destructive" }),
   });
 
+  const filtered = cols.filter((c) => {
+    const matchType = typeFilter === "all" || (c.collectionType ?? "manual") === typeFilter;
+    const q = search.toLowerCase();
+    const matchSearch = q === "" || c.title.toLowerCase().includes(q) || (c.titleAr ?? "").includes(q);
+    return matchType && matchSearch;
+  });
+
+  const smartCols  = filtered.filter((c) => c.collectionType === "smart");
+  const manualCols = filtered.filter((c) => c.collectionType !== "smart");
+
   return (
     <div className="border rounded-2xl overflow-hidden bg-card">
+      {/* Header */}
       <button
         type="button"
         className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-accent/20 transition-colors"
@@ -1319,69 +1332,153 @@ function CollectionsSection() {
         </div>
         <div className="flex-1">
           <p className="font-bold text-base">Collections</p>
-          <p className="text-xs text-muted-foreground">الكولكشنات العادية — group products together</p>
+          <p className="text-xs text-muted-foreground">الكولكشنات — group products for the store & app</p>
         </div>
-        <Badge variant="outline">{cols.length}</Badge>
+        <Badge variant="outline" className="text-xs">{cols.length}</Badge>
         {sectionOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
       </button>
 
       {sectionOpen && (
-        <div className="border-t p-5 space-y-4">
-          <CollectionsPreview collections={cols} />
-
-          <div className="space-y-2">
-            {cols.map((col) => (
-              <div key={col.id} className="flex items-center gap-3 p-3 border rounded-xl bg-background hover:bg-accent/10 transition-colors group">
-                <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
-                  {col.image
-                    ? <img src={col.image} alt={col.title} className="w-full h-full object-cover" />
-                    : <ImageIcon className="w-4 h-4 text-muted-foreground/50" />
-                  }
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-sm truncate">{col.title}</p>
-                    {col.collectionType === "smart" ? (
-                      <Badge variant="secondary" className="text-[10px] gap-0.5 flex-shrink-0">
-                        <Wand2 className="w-2.5 h-2.5" /> Smart
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-[10px] flex-shrink-0">Manual</Badge>
-                    )}
-                  </div>
-                  {col.description && (
-                    <p className="text-xs text-muted-foreground truncate">{col.description}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <Link href={`/collections/${col.id}/edit`}>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="ghost" size="icon"
-                    className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => deleteCol.mutate(col.id)}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-
-            {cols.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">No collections yet.</p>
-            )}
+        <div className="border-t">
+          {/* Toolbar */}
+          <div className="px-5 py-3 flex flex-wrap items-center gap-2 border-b bg-muted/20">
+            <div className="flex items-center gap-2 flex-1 min-w-[160px]">
+              <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <input
+                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                placeholder="Search collections..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-1">
+              {(["all", "manual", "smart"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTypeFilter(t)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                    typeFilter === t
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background border hover:bg-accent text-muted-foreground"
+                  }`}
+                >
+                  {t === "all" ? "All" : t === "smart" ? "⚡ Smart" : "Manual"}
+                </button>
+              ))}
+            </div>
+            <Link href="/collections/new">
+              <Button size="sm" className="h-7 text-xs gap-1 flex-shrink-0">
+                <Plus className="w-3.5 h-3.5" /> New
+              </Button>
+            </Link>
           </div>
 
-          <Link href="/collections/new">
-            <Button type="button" variant="outline" className="gap-2">
-              <Plus className="w-4 h-4" /> New Collection
-            </Button>
-          </Link>
+          <div className="p-5 space-y-5">
+            {isLoading && (
+              <p className="text-sm text-muted-foreground text-center py-4">Loading...</p>
+            )}
+
+            {/* Smart collections group */}
+            {smartCols.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Wand2 className="w-3.5 h-3.5 text-violet-500" />
+                  <p className="text-xs font-semibold text-violet-600 uppercase tracking-wide">Smart Collections</p>
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-xs text-muted-foreground">{smartCols.length}</span>
+                </div>
+                <div className="grid gap-2">
+                  {smartCols.map((col) => (
+                    <CollectionRow key={col.id} col={col} onDelete={() => deleteCol.mutate(col.id)} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Manual collections group */}
+            {manualCols.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <FolderOpen className="w-3.5 h-3.5 text-emerald-600" />
+                  <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Manual Collections</p>
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-xs text-muted-foreground">{manualCols.length}</span>
+                </div>
+                <div className="grid gap-2">
+                  {manualCols.map((col) => (
+                    <CollectionRow key={col.id} col={col} onDelete={() => deleteCol.mutate(col.id)} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {filtered.length === 0 && !isLoading && (
+              <div className="text-center py-8 text-muted-foreground">
+                <FolderOpen className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">{search ? "No collections match your search." : "No collections yet."}</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function CollectionRow({
+  col,
+  onDelete,
+}: {
+  col: Collection & { collectionType?: string; titleAr?: string; productsCount?: number };
+  onDelete: () => void;
+}) {
+  const isSmart = col.collectionType === "smart";
+  return (
+    <div className="flex items-center gap-3 p-3 border rounded-xl bg-background hover:bg-accent/5 transition-colors">
+      {/* Image / icon */}
+      <div className="w-11 h-11 rounded-lg overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
+        {col.image
+          ? <img src={col.image} alt={col.title} className="w-full h-full object-cover" />
+          : <ImageIcon className="w-4 h-4 text-muted-foreground/40" />
+        }
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <p className="font-semibold text-sm leading-tight truncate max-w-[200px]">{col.title}</p>
+          {col.titleAr && <span className="text-xs text-muted-foreground dir-rtl">{col.titleAr}</span>}
+          {isSmart
+            ? <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-violet-600 bg-violet-50 border border-violet-200 rounded px-1.5 py-0.5">⚡ Smart</span>
+            : <span className="inline-flex text-[10px] font-medium text-muted-foreground bg-muted border rounded px-1.5 py-0.5">Manual</span>
+          }
+        </div>
+        <div className="flex items-center gap-3 mt-0.5">
+          {col.productsCount != null && (
+            <span className="text-xs text-muted-foreground">{col.productsCount} products</span>
+          )}
+          {col.description && (
+            <span className="text-xs text-muted-foreground truncate max-w-[220px]">{col.description}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Actions — always visible */}
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <Link href={`/collections/${col.id}/edit`}>
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+            <Pencil className="w-3 h-3" /> Edit
+          </Button>
+        </Link>
+        <Button
+          variant="ghost" size="icon"
+          className="h-7 w-7 text-destructive hover:bg-destructive/10"
+          onClick={onDelete}
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </Button>
+      </div>
     </div>
   );
 }
