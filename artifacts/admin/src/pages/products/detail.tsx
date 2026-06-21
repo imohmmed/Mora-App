@@ -281,6 +281,7 @@ export default function ProductDetail() {
               <CollectionMultiSelect
                 selected={selectedCollections}
                 onChange={setSelectedCollections}
+                productId={id ?? ""}
               />
             </CardContent>
           </Card>
