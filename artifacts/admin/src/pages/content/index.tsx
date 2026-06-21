@@ -20,7 +20,7 @@ import {
 import { FileText, List as ListIcon, Plus, Boxes, File, ChevronRight, HardDrive, Image as ImageIcon, Pencil, Trash2, X, Layers, ChevronDown, ChevronUp, GripVertical, Settings2, Star } from "lucide-react";
 import { format } from "date-fns";
 import { useSearch, useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 const adminToken = () => { try { return localStorage.getItem("mora_admin_token") || ""; } catch { return ""; } };
 const AUTH_HEADER = () => ({ Authorization: `Bearer ${adminToken()}`, "Content-Type": "application/json" });
@@ -320,7 +320,7 @@ function BannersTab() {
 type StoryItem = { id: string; rowId: string; title: string; imageUrl: string; linkUrl: string; sortOrder: number; status: string; gender: string; collectionId: string | null };
 type StoryRow  = { id: string; title: string; sortOrder: number; status: string; items: StoryItem[] };
 
-const EMPTY_STORY_ITEM = { title: "", imageUrl: "", linkUrl: "", status: "active", gender: "all", collectionId: "" };
+const EMPTY_STORY_ITEM = { title: "", imageUrl: "", status: "active", gender: "all", collectionId: "" };
 
 type Collection = { id: string; title: string };
 
@@ -331,15 +331,32 @@ function StoryItemForm({
   const [form, setForm] = useState({
     ...EMPTY_STORY_ITEM, rowId,
     ...(initial ? {
-      title: initial.title, imageUrl: initial.imageUrl, linkUrl: initial.linkUrl,
+      title: initial.title, imageUrl: initial.imageUrl,
       status: initial.status, rowId: initial.rowId,
       gender: initial.gender ?? "all",
       collectionId: initial.collectionId ?? "",
     } : {}),
   });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+
+  const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true); setErr("");
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await fetch("/api/admin/uploads", { method: "POST", headers: { Authorization: AUTH_HEADER().Authorization }, body: fd });
+      const json = await res.json();
+      if (!res.ok || !json.data?.url) throw new Error(json.error ?? "Upload failed");
+      set("imageUrl", json.data.url);
+    } catch (e) { setErr((e as Error).message); }
+    finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
+  };
 
   const { data: collectionsRes } = useQuery<{ data: Collection[] }>({
     queryKey: ["/api/admin/collections"],
@@ -354,7 +371,7 @@ function StoryItemForm({
     try {
       const url  = isEdit ? `/api/admin/story-items/${initial!.id}` : "/api/admin/story-items";
       const body = {
-        title: form.title, imageUrl: form.imageUrl, linkUrl: form.linkUrl,
+        title: form.title, imageUrl: form.imageUrl,
         status: form.status, rowId: form.rowId,
         gender: form.gender,
         collectionId: form.collectionId || null,
@@ -385,17 +402,26 @@ function StoryItemForm({
             <Input value={form.title} onChange={e => set("title", e.target.value)} placeholder="Tops, T-shirts…" />
           </div>
           <div className="grid gap-1.5">
-            <Label>Image URL</Label>
-            <Input value={form.imageUrl} onChange={e => set("imageUrl", e.target.value)} placeholder="https://images.unsplash.com/…" />
-            {form.imageUrl && (
-              <div className="w-16 h-16 rounded-full overflow-hidden border">
-                <img src={form.imageUrl} alt="" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = "none")} />
-              </div>
-            )}
-          </div>
-          <div className="grid gap-1.5">
-            <Label>Link URL</Label>
-            <Input value={form.linkUrl} onChange={e => set("linkUrl", e.target.value)} placeholder="/products?category=women" />
+            <Label>صورة الستوري</Label>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageFile} />
+            <div className="flex items-center gap-3">
+              {form.imageUrl ? (
+                <div className="relative w-16 h-16 rounded-full overflow-hidden border shrink-0">
+                  <img src={form.imageUrl} alt="" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = "none")} />
+                  <button type="button" onClick={() => set("imageUrl", "")} className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity">
+                    <X className="w-4 h-4 text-white" />
+                  </button>
+                </div>
+              ) : (
+                <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center shrink-0 bg-muted/30">
+                  <ImageIcon className="w-6 h-6 text-muted-foreground/50" />
+                </div>
+              )}
+              <Button type="button" variant="outline" className="flex-1" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                {uploading ? "جاري الرفع…" : form.imageUrl ? "تغيير الصورة" : "رفع صورة"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">يمكنك اختيار صورة من الملفات أو الكاميرا</p>
           </div>
           <div className="grid gap-1.5">
             <Label>Collection <span className="text-muted-foreground font-normal text-xs">(for showing products below row)</span></Label>
@@ -640,7 +666,7 @@ function StoriesTab() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">{item.title}</p>
-                                {item.linkUrl && <p className="text-xs text-muted-foreground font-mono truncate">{item.linkUrl}</p>}
+                                {item.collectionId && <p className="text-xs text-muted-foreground truncate">🔗 كولكشن</p>}
                               </div>
                               {item.gender && item.gender !== "all" && (
                                 <Badge variant="outline" className="text-xs flex-shrink-0 capitalize">{item.gender}</Badge>
