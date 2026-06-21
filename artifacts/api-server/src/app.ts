@@ -1,8 +1,11 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import path from "path";
+import fs from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { uploadsDir } from "./routes/uploads.js";
 
 const app: Express = express();
 
@@ -55,6 +58,9 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve uploaded product images — cached aggressively (hashed filenames)
+app.use("/uploads", express.static(uploadsDir, { maxAge: "365d", immutable: true }));
 
 app.use("/api", router);
 

@@ -15,9 +15,11 @@ import notificationsRouter from "./notifications.js";
 import waylRouter from "./wayl.js";
 import adminAuthRouter from "./admin-auth.js";
 import webhooksRouter from "./webhooks.js";
+import uploadsRouter from "./uploads.js";
 
 const router: IRouter = Router();
 
+router.use(uploadsRouter);
 router.use(healthRouter);
 router.use(productsRouter);
 router.use(ordersRouter);
