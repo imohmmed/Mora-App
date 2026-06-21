@@ -21,6 +21,7 @@ type Condition = { id: string; field: string; operator: string; value: string };
 type CollectionData = {
   id?: string;
   title: string;
+  titleAr: string;
   description: string;
   image: string;
   backgroundImage: string;
@@ -295,6 +296,7 @@ export default function CollectionForm() {
 
   const [form, setForm] = useState<CollectionData>({
     title: "",
+    titleAr: "",
     description: "",
     image: "",
     backgroundImage: "",
@@ -313,6 +315,7 @@ export default function CollectionForm() {
     if (!existing) return;
     setForm({
       title: (existing["title"] as string) || "",
+      titleAr: (existing["titleAr"] as string) || "",
       description: (existing["description"] as string) || "",
       image: (existing["image"] as string) || "",
       backgroundImage: (existing["backgroundImage"] as string) || "",
@@ -391,14 +394,26 @@ export default function CollectionForm() {
       {/* Basic Info */}
       <div className="border rounded-2xl p-5 space-y-4 bg-card">
         <h2 className="font-semibold">Basic Info</h2>
-        <div className="space-y-1">
-          <Label className="text-xs">Title *</Label>
-          <Input
-            placeholder="e.g. Summer Collection, Under 25,000 IQD"
-            value={form.title}
-            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-            className="h-10"
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">اسم عربي</Label>
+            <Input
+              placeholder="e.g. صيف 2025"
+              value={form.titleAr}
+              onChange={(e) => setForm((f) => ({ ...f, titleAr: e.target.value }))}
+              className="h-10 text-right"
+              dir="rtl"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">English Title *</Label>
+            <Input
+              placeholder="e.g. Summer Collection"
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              className="h-10"
+            />
+          </div>
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Description</Label>

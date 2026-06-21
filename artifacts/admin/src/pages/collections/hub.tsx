@@ -12,11 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   GripVertical, Plus, Trash2, X, Search, ChevronDown, ChevronRight, ChevronUp,
   BookImage, Layers, Zap, Tag, TrendingUp, Star, Eye, EyeOff, Image as ImageIcon,
-  FolderOpen, Pencil, Wand2, LayoutList, Loader2, CheckCircle2,
+  FolderOpen, Pencil, Wand2, LayoutList, Loader2, CheckCircle2, Gift, Settings2,
 } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -28,8 +29,8 @@ const API = import.meta.env.BASE_URL.replace(/\/$/, "") + "/api";
 // ─── Types ─────────────────────────────────────────────────────────────────
 
 type StoryItem = {
-  id: string; rowId: string; title: string; imageUrl: string;
-  linkUrl: string; sortOrder: number; status: string;
+  id: string; rowId: string; title: string; titleAr: string; imageUrl: string;
+  linkUrl: string; sortOrder: number; status: string; collectionId?: string | null;
 };
 type StoryRow = {
   id: string; title: string; sortOrder: number; status: string;
@@ -357,10 +358,11 @@ function StoriesPreview({ rows }: { rows: StoryRow[] }) {
 // ─── Live Preview — Quick Sections ──────────────────────────────────────────
 
 const QUICK_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  "super-deals": { label: "Super Deals", color: "#E53935", icon: <Zap className="w-4 h-4" /> },
-  "brand-deals": { label: "Brand Deals", color: "#0274C1", icon: <Tag className="w-4 h-4" /> },
-  "trends":      { label: "Trends",      color: "#6A1B9A", icon: <TrendingUp className="w-4 h-4" /> },
-  "hot-seller":  { label: "Hot Seller",  color: "#E65100", icon: <Star className="w-4 h-4" /> },
+  "super-deals":  { label: "Super Deals",  color: "#E53935", icon: <Zap className="w-4 h-4" /> },
+  "brand-deals":  { label: "Brand Deals",  color: "#0274C1", icon: <Tag className="w-4 h-4" /> },
+  "trends":       { label: "Trends",       color: "#6A1B9A", icon: <TrendingUp className="w-4 h-4" /> },
+  "hot-seller":   { label: "Hot Seller",   color: "#E65100", icon: <Star className="w-4 h-4" /> },
+  "gift-wrapping":{ label: "Gift Wrapping",color: "#C2185B", icon: <Gift className="w-4 h-4" /> },
 };
 
 function QuickPreview({ counts }: { counts: Record<string, number> }) {
@@ -420,22 +422,186 @@ function CollectionsPreview({ collections }: { collections: Collection[] }) {
   );
 }
 
+// ─── Story Item Edit Dialog ──────────────────────────────────────────────────
+
+function StoryItemEditDialog({
+  item, open, onClose, onSaved, onDeleted,
+}: {
+  item: StoryItem | null; open: boolean;
+  onClose: () => void; onSaved: () => void; onDeleted: () => void;
+}) {
+  const { toast } = useToast();
+  const [title, setTitle]       = useState("");
+  const [titleAr, setTitleAr]   = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [bgImage, setBgImage]   = useState("");
+  const [uploading, setUploading] = useState<"story" | "bg" | null>(null);
+  const [saving, setSaving]     = useState(false);
+  const storyRef = useRef<HTMLInputElement>(null);
+  const bgRef    = useRef<HTMLInputElement>(null);
+
+  const { data: colData } = useQuery<Record<string, unknown>>({
+    queryKey: ["col-for-story-item", item?.collectionId],
+    queryFn: () => apiFetch(`/admin/collections/${item?.collectionId}`),
+    enabled: open && !!item?.collectionId,
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    if (item) { setTitle(item.title); setTitleAr(item.titleAr ?? ""); setImageUrl(item.imageUrl); }
+  }, [item?.id]);
+
+  useEffect(() => {
+    if (colData) setBgImage((colData["backgroundImage"] as string) ?? "");
+  }, [colData]);
+
+  const uploadFile = async (file: File, field: "story" | "bg") => {
+    setUploading(field);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await fetch(`${API}/admin/uploads`, {
+        method: "POST", headers: { Authorization: `Bearer ${adminAuthToken()}` }, body: fd,
+      });
+      const json = await res.json();
+      if (!res.ok || !json.data?.url) throw new Error(json.error ?? "Upload failed");
+      if (field === "story") setImageUrl(json.data.url);
+      else setBgImage(json.data.url);
+    } catch (err) {
+      toast({ title: "Upload failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setUploading(null);
+      if (storyRef.current) storyRef.current.value = "";
+      if (bgRef.current) bgRef.current.value = "";
+    }
+  };
+
+  const handleSave = async () => {
+    if (!item) return;
+    setSaving(true);
+    try {
+      await apiFetch(`/admin/story-items/${item.id}`, {
+        method: "PUT", body: JSON.stringify({ title, titleAr, imageUrl }),
+      });
+      if (item.collectionId) {
+        const prevBg = (colData?.["backgroundImage"] as string) ?? "";
+        if (bgImage !== prevBg) {
+          await apiFetch(`/admin/collections/${item.collectionId}`, {
+            method: "PUT", body: JSON.stringify({ backgroundImage: bgImage }),
+          });
+        }
+      }
+      toast({ title: "Saved ✓" });
+      onSaved();
+      onClose();
+    } catch (err) {
+      toast({ title: "Error", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!item || !confirm("Delete this story item?")) return;
+    try {
+      await apiFetch(`/admin/story-items/${item.id}`, { method: "DELETE" });
+      onDeleted(); onClose();
+    } catch (err) {
+      toast({ title: "Error", description: (err as Error).message, variant: "destructive" });
+    }
+  };
+
+  if (!item) return null;
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-[420px]">
+        <DialogHeader><DialogTitle>تعديل الستوري</DialogTitle></DialogHeader>
+        <div className="space-y-4 pt-1">
+          {/* Story circle image */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">صورة الستوري (الدائرة)</Label>
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-primary bg-muted flex-shrink-0 flex items-center justify-center">
+                {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" alt="" />
+                  : <ImageIcon className="w-4 h-4 text-muted-foreground/50" />}
+              </div>
+              <input ref={storyRef} type="file" accept="image/*" className="hidden"
+                onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0], "story")} />
+              <Button type="button" variant="outline" size="sm" className="flex-1 h-8"
+                onClick={() => storyRef.current?.click()} disabled={uploading !== null}>
+                {uploading === "story" ? "جاري الرفع..." : imageUrl ? "تغيير" : "رفع صورة"}
+              </Button>
+            </div>
+          </div>
+          {/* Bilingual names */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">اسم عربي</Label>
+              <Input value={titleAr} onChange={(e) => setTitleAr(e.target.value)}
+                className="h-8 text-sm text-right" dir="rtl" placeholder="أحذية مورا" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">English Name</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)}
+                className="h-8 text-sm" placeholder="Mora Shoes" />
+            </div>
+          </div>
+          {/* Collection background image */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">
+              صورة خلفية القسم
+              {!item.collectionId && <span className="text-muted-foreground font-normal mr-2">(لا يوجد قسم مرتبط)</span>}
+            </Label>
+            {item.collectionId && (
+              <div className="flex items-center gap-3">
+                <div className="w-24 h-14 rounded-lg overflow-hidden border bg-muted flex-shrink-0 flex items-center justify-center">
+                  {bgImage ? <img src={bgImage} className="w-full h-full object-cover" alt="" />
+                    : <ImageIcon className="w-4 h-4 text-muted-foreground/50" />}
+                </div>
+                <input ref={bgRef} type="file" accept="image/*" className="hidden"
+                  onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0], "bg")} />
+                <Button type="button" variant="outline" size="sm" className="flex-1 h-8"
+                  onClick={() => bgRef.current?.click()} disabled={uploading !== null}>
+                  {uploading === "bg" ? "جاري الرفع..." : bgImage ? "تغيير الخلفية" : "رفع خلفية"}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center justify-between pt-2 border-t">
+          <Button type="button" variant="destructive" size="sm" onClick={handleDelete} disabled={saving}>
+            <Trash2 className="w-3.5 h-3.5 mr-1" />حذف
+          </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={onClose}>إلغاء</Button>
+            <Button type="button" size="sm" onClick={handleSave} disabled={saving || uploading !== null}>
+              {saving ? "جاري الحفظ..." : "حفظ"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Sortable Row ────────────────────────────────────────────────────────────
 
 function SortableStoryRow({
-  row, onDelete, onUpdate, onAddItem, onDeleteItem,
+  row, onDelete, onUpdate, onAddItem, onDeleteItem, onUpdateItem,
 }: {
   row: StoryRow;
   onDelete: (id: string) => void;
   onUpdate: (id: string, data: Partial<StoryRow>) => void;
   onAddItem: (rowId: string, data: Partial<StoryItem>) => void;
   onDeleteItem: (id: string) => void;
+  onUpdateItem: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(false);
   const [title, setTitle] = useState(row.title);
   const [showItemForm, setShowItemForm] = useState(false);
-  const [newItem, setNewItem] = useState({ title: "", imageUrl: "" });
+  const [newItem, setNewItem] = useState({ title: "", titleAr: "", imageUrl: "" });
+  const [editItem, setEditItem] = useState<StoryItem | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -471,9 +637,9 @@ function SortableStoryRow({
   };
 
   const addItem = () => {
-    if (!newItem.title.trim() && !newItem.imageUrl.trim()) return;
+    if (!newItem.title.trim() && !newItem.titleAr.trim() && !newItem.imageUrl.trim()) return;
     onAddItem(row.id, newItem);
-    setNewItem({ title: "", imageUrl: "" });
+    setNewItem({ title: "", titleAr: "", imageUrl: "" });
     setShowItemForm(false);
   };
 
@@ -542,9 +708,10 @@ function SortableStoryRow({
           )}
           <div className="flex flex-wrap gap-3">
             {row.items.map((item) => (
-              <div key={item.id} className="flex flex-col items-center gap-1 relative group">
+              <div key={item.id} className="flex flex-col items-center gap-1 relative group cursor-pointer"
+                onClick={() => setEditItem(item)}>
                 <div className={cn(
-                  "w-12 h-12 rounded-full overflow-hidden border-2 bg-muted flex items-center justify-center",
+                  "w-12 h-12 rounded-full overflow-hidden border-2 bg-muted flex items-center justify-center relative",
                   item.status === "active" ? "border-primary" : "border-border opacity-50"
                 )}>
                   {item.imageUrl ? (
@@ -552,15 +719,13 @@ function SortableStoryRow({
                   ) : (
                     <ImageIcon className="w-3.5 h-3.5 text-muted-foreground/50" />
                   )}
+                  <div className="absolute inset-0 bg-black/45 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Pencil className="w-3 h-3 text-white" />
+                  </div>
                 </div>
-                <span className="text-[9px] max-w-[48px] truncate text-center">{item.title}</span>
-                <button
-                  type="button"
-                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                  onClick={() => onDeleteItem(item.id)}
-                >
-                  <X className="w-2.5 h-2.5" />
-                </button>
+                <span className="text-[9px] max-w-[48px] truncate text-center">
+                  {item.titleAr || item.title}
+                </span>
               </div>
             ))}
           </div>
@@ -569,10 +734,19 @@ function SortableStoryRow({
             <div className="border rounded-lg p-3 space-y-2 bg-background">
               <p className="text-xs font-semibold">New Story Item</p>
               <div className="grid grid-cols-1 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Title</Label>
-                  <Input className="h-8 text-sm" placeholder="e.g. Summer" value={newItem.title}
-                    onChange={(e) => setNewItem((n) => ({ ...n, title: e.target.value }))} />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">اسم عربي</Label>
+                    <Input className="h-8 text-sm text-right" dir="rtl" placeholder="أحذية مورا"
+                      value={newItem.titleAr}
+                      onChange={(e) => setNewItem((n) => ({ ...n, titleAr: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">English</Label>
+                    <Input className="h-8 text-sm" placeholder="e.g. Summer"
+                      value={newItem.title}
+                      onChange={(e) => setNewItem((n) => ({ ...n, title: e.target.value }))} />
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">صورة الستوري</Label>
@@ -612,6 +786,14 @@ function SortableStoryRow({
           )}
         </div>
       )}
+
+      <StoryItemEditDialog
+        item={editItem}
+        open={!!editItem}
+        onClose={() => setEditItem(null)}
+        onSaved={() => { onUpdateItem(); setEditItem(null); }}
+        onDeleted={() => { onUpdateItem(); setEditItem(null); }}
+      />
     </div>
   );
 }
@@ -660,6 +842,8 @@ function StoriesSection() {
     mutationFn: (id: string) => apiFetch(`/admin/story-items/${id}`, { method: "DELETE" }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-story-rows"] }); setLocalRows([]); },
   });
+
+  const refreshItems = () => { qc.invalidateQueries({ queryKey: ["admin-story-rows"] }); setLocalRows([]); };
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -714,6 +898,7 @@ function StoriesSection() {
                       onUpdate={(id, data) => updateRow.mutate({ id, data })}
                       onAddItem={(rowId, data) => addItem.mutate({ rowId, ...data })}
                       onDeleteItem={(id) => deleteItem.mutate(id)}
+                      onUpdateItem={refreshItems}
                     />
                   ))}
                 </div>
@@ -769,10 +954,18 @@ function StoriesSection() {
 
 // ─── Quick Section Panel ─────────────────────────────────────────────────────
 
+type QuickMeta = { titleEn: string; titleAr: string; image: string; backgroundImage: string };
+
 function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
   const [open, setOpen] = useState(false);
+  const [showMeta, setShowMeta] = useState(false);
   const [search, setSearch] = useState("");
   const [showPicker, setShowPicker] = useState(false);
+  const [metaForm, setMetaForm] = useState<QuickMeta>({ titleEn: "", titleAr: "", image: "", backgroundImage: "" });
+  const [savingMeta, setSavingMeta] = useState(false);
+  const [uploadingField, setUploadingField] = useState<"image" | "bg" | null>(null);
+  const imgRef = useRef<HTMLInputElement>(null);
+  const bgRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
   const { toast } = useToast();
   const meta = QUICK_META[slug]!;
@@ -781,6 +974,47 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
     queryKey: ["admin-special-col", slug],
     queryFn: () => apiFetch<Product[]>(`/admin/special-collections/${slug}/items`),
   });
+
+  const { data: metaData } = useQuery<QuickMeta>({
+    queryKey: ["admin-quick-meta", slug],
+    queryFn: () => apiFetch<QuickMeta>(`/admin/special-collections/${slug}/meta`),
+    enabled: open,
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    if (metaData) setMetaForm(metaData);
+  }, [metaData]);
+
+  const uploadFile = async (file: File, field: "image" | "bg") => {
+    setUploadingField(field);
+    try {
+      const fd = new FormData(); fd.append("image", file);
+      const res = await fetch(`${API}/admin/uploads`, {
+        method: "POST", headers: { Authorization: `Bearer ${adminAuthToken()}` }, body: fd,
+      });
+      const json = await res.json();
+      if (!res.ok || !json.data?.url) throw new Error(json.error ?? "Upload failed");
+      setMetaForm((f) => field === "image" ? { ...f, image: json.data.url } : { ...f, backgroundImage: json.data.url });
+    } catch (err) {
+      toast({ title: "Upload failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setUploadingField(null);
+      if (imgRef.current) imgRef.current.value = "";
+      if (bgRef.current) bgRef.current.value = "";
+    }
+  };
+
+  const saveMeta = async () => {
+    setSavingMeta(true);
+    try {
+      await apiFetch(`/admin/special-collections/${slug}/meta`, { method: "PUT", body: JSON.stringify(metaForm) });
+      qc.invalidateQueries({ queryKey: ["admin-quick-meta", slug] });
+      toast({ title: "Saved ✓" }); setShowMeta(false);
+    } catch (err) {
+      toast({ title: "Error", description: (err as Error).message, variant: "destructive" });
+    } finally { setSavingMeta(false); }
+  };
 
   const { data: allProducts = [] } = useQuery<Product[]>({
     queryKey: ["admin-all-products"],
@@ -839,6 +1073,76 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
 
       {open && (
         <div className="border-t p-4 space-y-3">
+          {/* ── Meta edit: AR/EN names + images ── */}
+          <div className="border rounded-lg overflow-hidden bg-muted/10">
+            <button type="button"
+              className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-semibold hover:bg-accent/20 transition-colors"
+              onClick={() => setShowMeta((s) => !s)}
+            >
+              <Settings2 className="w-3.5 h-3.5 text-muted-foreground" />
+              <span>الأسماء والصور</span>
+              {showMeta ? <ChevronDown className="w-3 h-3 ml-auto text-muted-foreground" /> : <ChevronRight className="w-3 h-3 ml-auto text-muted-foreground" />}
+            </button>
+            {showMeta && (
+              <div className="border-t p-3 space-y-3 bg-background">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">اسم عربي</Label>
+                    <Input className="h-8 text-sm text-right" dir="rtl" placeholder="أحذية مورا"
+                      value={metaForm.titleAr}
+                      onChange={(e) => setMetaForm((f) => ({ ...f, titleAr: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">English Name</Label>
+                    <Input className="h-8 text-sm" placeholder="Brand Deals"
+                      value={metaForm.titleEn}
+                      onChange={(e) => setMetaForm((f) => ({ ...f, titleEn: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">صورة القسم</Label>
+                    <div className="flex items-center gap-2">
+                      {metaForm.image && (
+                        <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
+                          <img src={metaForm.image} className="w-full h-full object-cover" alt="" />
+                        </div>
+                      )}
+                      <input ref={imgRef} type="file" accept="image/*" className="hidden"
+                        onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0], "image")} />
+                      <Button type="button" variant="outline" size="sm" className="h-7 text-xs flex-1"
+                        onClick={() => imgRef.current?.click()} disabled={uploadingField !== null}>
+                        {uploadingField === "image" ? "..." : "رفع"}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">صورة الخلفية</Label>
+                    <div className="flex items-center gap-2">
+                      {metaForm.backgroundImage && (
+                        <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
+                          <img src={metaForm.backgroundImage} className="w-full h-full object-cover" alt="" />
+                        </div>
+                      )}
+                      <input ref={bgRef} type="file" accept="image/*" className="hidden"
+                        onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0], "bg")} />
+                      <Button type="button" variant="outline" size="sm" className="h-7 text-xs flex-1"
+                        onClick={() => bgRef.current?.click()} disabled={uploadingField !== null}>
+                        {uploadingField === "bg" ? "..." : "رفع"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowMeta(false)}>إلغاء</Button>
+                  <Button type="button" size="sm" className="h-7 text-xs" onClick={saveMeta} disabled={savingMeta || uploadingField !== null}>
+                    {savingMeta ? "حفظ..." : "حفظ"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {!editable && (
             <p className="text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
               {slug === "super-deals"
@@ -915,10 +1219,11 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
 // ─── Quick Sections Section ───────────────────────────────────────────────────
 
 const QUICK_SLOTS = [
-  { slug: "super-deals", editable: false },
-  { slug: "brand-deals", editable: true },
-  { slug: "trends",      editable: false },
-  { slug: "hot-seller",  editable: true },
+  { slug: "super-deals",  editable: false },
+  { slug: "brand-deals",  editable: true },
+  { slug: "trends",       editable: false },
+  { slug: "hot-seller",   editable: true },
+  { slug: "gift-wrapping",editable: true },
 ];
 
 function QuickSectionsSection() {

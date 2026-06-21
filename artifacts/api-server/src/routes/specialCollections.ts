@@ -163,4 +163,53 @@ router.delete("/admin/special-collections/:slug/items/:productId", (req, res) =>
   res.json({ data: null, meta: {}, error: null });
 });
 
+// ─── Admin: get/set quick collection metadata (AR/EN names + images) ──────────
+const ALL_SLUGS = Object.keys(COLLECTION_META);
+
+router.get("/admin/special-collections/:slug/meta", (req, res) => {
+  const { slug } = req.params as { slug: string };
+  if (!ALL_SLUGS.includes(slug)) {
+    res.status(400).json({ data: null, meta: {}, error: "Unknown slug" }); return;
+  }
+  const key = `quick_col_meta_${slug}`;
+  const row = db.prepare(`SELECT items FROM content_sections WHERE key=? LIMIT 1`).get(key) as { items: string } | undefined;
+  const saved = row ? (JSON.parse(row.items) as Record<string, string>) : {};
+  const base = COLLECTION_META[slug]!;
+  res.json({
+    data: {
+      slug,
+      titleEn: saved["titleEn"] ?? base.title,
+      titleAr: saved["titleAr"] ?? "",
+      image:   saved["image"]   ?? base.heroImage,
+      backgroundImage: saved["backgroundImage"] ?? "",
+    },
+    meta: {}, error: null,
+  });
+});
+
+router.put("/admin/special-collections/:slug/meta", (req, res) => {
+  const { slug } = req.params as { slug: string };
+  if (!ALL_SLUGS.includes(slug)) {
+    res.status(400).json({ data: null, meta: {}, error: "Unknown slug" }); return;
+  }
+  const { titleEn, titleAr, image, backgroundImage } = req.body as Record<string, string>;
+  const key = `quick_col_meta_${slug}`;
+  const existing = db.prepare(`SELECT items FROM content_sections WHERE key=?`).get(key) as { items: string } | undefined;
+  const prev = existing ? (JSON.parse(existing.items) as Record<string, string>) : {};
+  const updated = {
+    ...prev,
+    ...(titleEn !== undefined && { titleEn }),
+    ...(titleAr !== undefined && { titleAr }),
+    ...(image !== undefined && { image }),
+    ...(backgroundImage !== undefined && { backgroundImage }),
+  };
+  if (existing) {
+    db.prepare(`UPDATE content_sections SET items=? WHERE key=?`).run(JSON.stringify(updated), key);
+  } else {
+    db.prepare(`INSERT INTO content_sections (id,key,title,items,status,created_at) VALUES (?,?,?,?,?,?)`)
+      .run(`cs_${slug}`, key, `Quick: ${slug}`, JSON.stringify(updated), "active", new Date().toISOString());
+  }
+  res.json({ data: updated, meta: {}, error: null });
+});
+
 export default router;

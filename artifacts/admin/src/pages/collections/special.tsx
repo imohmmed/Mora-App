@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Zap, Tag, TrendingUp, Star, Trash2, Plus, X, Search } from "lucide-react";
+import { Zap, Tag, TrendingUp, Star, Trash2, Plus, X, Search, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -31,17 +31,19 @@ type SpecialCollection = {
 };
 
 const ICONS: Record<string, React.ReactNode> = {
-  "super-deals": <Zap className="w-4 h-4" />,
-  "brand-deals": <Tag className="w-4 h-4" />,
-  "trends": <TrendingUp className="w-4 h-4" />,
-  "hot-seller": <Star className="w-4 h-4" />,
+  "super-deals":  <Zap className="w-4 h-4" />,
+  "brand-deals":  <Tag className="w-4 h-4" />,
+  "trends":       <TrendingUp className="w-4 h-4" />,
+  "hot-seller":   <Star className="w-4 h-4" />,
+  "gift-wrapping":<Gift className="w-4 h-4" />,
 };
 
 const COLORS: Record<string, string> = {
-  "super-deals": "#E53935",
-  "brand-deals": "#0274C1",
-  "trends": "#6A1B9A",
-  "hot-seller": "#E65100",
+  "super-deals":  "#E53935",
+  "brand-deals":  "#0274C1",
+  "trends":       "#6A1B9A",
+  "hot-seller":   "#E65100",
+  "gift-wrapping":"#C2185B",
 };
 
 async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -261,10 +263,11 @@ function ReadOnlyPanel({ slug }: { slug: string }) {
 }
 
 const COLLECTIONS = [
-  { slug: "super-deals", title: "Super Deals", description: "≥25% discount — auto-computed", editable: false },
-  { slug: "brand-deals", title: "Brand Deals", description: "Manually curated brand picks", editable: true },
-  { slug: "trends",      title: "Trends",      description: "Best-selling this week — auto-computed", editable: false },
-  { slug: "hot-seller",  title: "Hot Seller",  description: "Manually curated bestsellers", editable: true },
+  { slug: "super-deals",  title: "Super Deals",   description: "≥25% discount — auto-computed",              editable: false },
+  { slug: "brand-deals",  title: "Brand Deals",   description: "Manually curated brand picks",               editable: true  },
+  { slug: "trends",       title: "Trends",        description: "Best-selling this week — auto-computed",     editable: false },
+  { slug: "hot-seller",   title: "Hot Seller",    description: "Manually curated bestsellers",               editable: true  },
+  { slug: "gift-wrapping",title: "Gift Wrapping", description: "ارسال الطلب كهدية — products added to cart gift section", editable: true  },
 ];
 
 export default function SpecialCollections() {

@@ -322,8 +322,8 @@ router.post("/admin/collections", (req, res) => {
   const type = (b["collectionType"] as string) || "manual";
   const conds = b["conditions"] ? JSON.stringify(b["conditions"]) : "[]";
   const match = (b["conditionsMatch"] as string) || "all";
-  db.prepare(`INSERT INTO collections (id,title,description,image,background_image,collection_type,conditions,conditions_match,products_count,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)`)
-    .run(id, b["title"] ?? "", b["description"] ?? "", b["image"] ?? "", b["backgroundImage"] ?? "", type, conds, match, 0, new Date().toISOString());
+  db.prepare(`INSERT INTO collections (id,title,title_ar,description,image,background_image,collection_type,conditions,conditions_match,products_count,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, b["title"] ?? "", b["titleAr"] ?? "", b["description"] ?? "", b["image"] ?? "", b["backgroundImage"] ?? "", type, conds, match, 0, new Date().toISOString());
   const col = parseOne(db.prepare(`SELECT * FROM collections WHERE id=?`).get(id) as Row | undefined);
   res.status(201).json({ data: col, meta: {}, error: null });
 });
@@ -333,8 +333,8 @@ router.put("/admin/collections/:id", (req, res) => {
   if (!db.prepare(`SELECT id FROM collections WHERE id=?`).get(id)) { res.status(404).json({ data: null, meta: {}, error: "Collection not found" }); return; }
   const b = req.body as Record<string, unknown>;
   const conds = b["conditions"] !== undefined ? JSON.stringify(b["conditions"]) : null;
-  db.prepare(`UPDATE collections SET title=COALESCE(?,title), description=COALESCE(?,description), image=COALESCE(?,image), background_image=COALESCE(?,background_image), collection_type=COALESCE(?,collection_type), conditions=COALESCE(?,conditions), conditions_match=COALESCE(?,conditions_match) WHERE id=?`)
-    .run(b["title"] ?? null, b["description"] ?? null, b["image"] ?? null, b["backgroundImage"] ?? null, b["collectionType"] ?? null, conds, b["conditionsMatch"] ?? null, id);
+  db.prepare(`UPDATE collections SET title=COALESCE(?,title), title_ar=COALESCE(?,title_ar), description=COALESCE(?,description), image=COALESCE(?,image), background_image=COALESCE(?,background_image), collection_type=COALESCE(?,collection_type), conditions=COALESCE(?,conditions), conditions_match=COALESCE(?,conditions_match) WHERE id=?`)
+    .run(b["title"] ?? null, b["titleAr"] ?? null, b["description"] ?? null, b["image"] ?? null, b["backgroundImage"] ?? null, b["collectionType"] ?? null, conds, b["conditionsMatch"] ?? null, id);
   const col = parseOne(db.prepare(`SELECT * FROM collections WHERE id=?`).get(id) as Row | undefined);
   res.json({ data: col, meta: {}, error: null });
 });

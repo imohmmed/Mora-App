@@ -16,7 +16,7 @@ router.get("/store/stories", (_req, res) => {
   ).all() as { id: string; title: string; sort_order: number }[];
 
   const getItems = db.prepare(
-    `SELECT id, title, image_url, link_url, sort_order, gender, collection_id FROM story_items
+    `SELECT id, title, title_ar, image_url, link_url, sort_order, gender, collection_id FROM story_items
      WHERE row_id=? AND status='active' ORDER BY sort_order ASC`
   );
 
@@ -24,9 +24,10 @@ router.get("/store/stories", (_req, res) => {
     id: row.id,
     title: row.title,
     sortOrder: row.sort_order,
-    items: (getItems.all(row.id) as { id: string; title: string; image_url: string; link_url: string; sort_order: number; gender: string; collection_id: string | null }[]).map((item) => ({
+    items: (getItems.all(row.id) as { id: string; title: string; title_ar: string; image_url: string; link_url: string; sort_order: number; gender: string; collection_id: string | null }[]).map((item) => ({
       id: item.id,
       title: item.title,
+      titleAr: item.title_ar ?? "",
       imageUrl: item.image_url,
       linkUrl: item.link_url,
       sortOrder: item.sort_order,
@@ -90,10 +91,11 @@ router.get("/admin/story-rows", (_req, res) => {
     sortOrder: row.sort_order,
     status: row.status,
     createdAt: row.created_at,
-    items: (getItems.all(row.id) as { id: string; row_id: string; title: string; image_url: string; link_url: string; sort_order: number; status: string; created_at: string; gender: string; collection_id: string | null }[]).map((item) => ({
+    items: (getItems.all(row.id) as { id: string; row_id: string; title: string; title_ar: string; image_url: string; link_url: string; sort_order: number; status: string; created_at: string; gender: string; collection_id: string | null }[]).map((item) => ({
       id: item.id,
       rowId: item.row_id,
       title: item.title,
+      titleAr: item.title_ar ?? "",
       imageUrl: item.image_url,
       linkUrl: item.link_url,
       sortOrder: item.sort_order,
@@ -139,38 +141,28 @@ router.delete("/admin/story-rows/:id", (req, res) => {
 
 // ─── Admin: create item ────────────────────────────────────────────────────
 router.post("/admin/story-items", (req, res) => {
-  const { rowId, title = "", imageUrl = "", linkUrl = "", status = "active", gender = "all", collectionId = null } = req.body as { rowId?: string; title?: string; imageUrl?: string; linkUrl?: string; status?: string; gender?: string; collectionId?: string | null };
+  const { rowId, title = "", titleAr = "", imageUrl = "", linkUrl = "", status = "active", gender = "all", collectionId = null } = req.body as { rowId?: string; title?: string; titleAr?: string; imageUrl?: string; linkUrl?: string; status?: string; gender?: string; collectionId?: string | null };
   if (!rowId) return res.status(400).json({ data: null, meta: {}, error: "rowId required" });
-
-  // Auto-create a collection with the same name if none was specified
-  let finalCollectionId: string | null = collectionId;
-  if (!finalCollectionId && title.trim()) {
-    const colId = `col_${Date.now()}`;
-    db.prepare(
-      `INSERT INTO collections (id, title, description, image, background_image, collection_type, conditions, conditions_match, products_count, created_at)
-       VALUES (?, ?, '', '', '', 'manual', '[]', 'all', 0, ?)`
-    ).run(colId, title.trim(), now());
-    finalCollectionId = colId;
-  }
 
   const maxOrder = (db.prepare(`SELECT COALESCE(MAX(sort_order),0) as m FROM story_items WHERE row_id=?`).get(rowId) as { m: number }).m;
   const id = `si_${uid()}`;
   db.prepare(
-    `INSERT INTO story_items (id, row_id, title, image_url, link_url, sort_order, status, created_at, gender, collection_id) VALUES (?,?,?,?,?,?,?,?,?,?)`
-  ).run(id, rowId, title, imageUrl, linkUrl, maxOrder + 1, status, now(), gender, finalCollectionId);
-  const item = db.prepare(`SELECT * FROM story_items WHERE id=?`).get(id) as { id: string; row_id: string; title: string; image_url: string; link_url: string; sort_order: number; status: string; created_at: string; gender: string; collection_id: string | null };
+    `INSERT INTO story_items (id, row_id, title, title_ar, image_url, link_url, sort_order, status, created_at, gender, collection_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+  ).run(id, rowId, title, titleAr, imageUrl, linkUrl, maxOrder + 1, status, now(), gender, collectionId ?? null);
+  const item = db.prepare(`SELECT * FROM story_items WHERE id=?`).get(id) as { id: string; row_id: string; title: string; title_ar: string; image_url: string; link_url: string; sort_order: number; status: string; created_at: string; gender: string; collection_id: string | null };
   return res.status(201).json({
-    data: { id: item.id, rowId: item.row_id, title: item.title, imageUrl: item.image_url, linkUrl: item.link_url, sortOrder: item.sort_order, status: item.status, createdAt: item.created_at, gender: item.gender ?? "all", collectionId: item.collection_id ?? null },
+    data: { id: item.id, rowId: item.row_id, title: item.title, titleAr: item.title_ar ?? "", imageUrl: item.image_url, linkUrl: item.link_url, sortOrder: item.sort_order, status: item.status, createdAt: item.created_at, gender: item.gender ?? "all", collectionId: item.collection_id ?? null },
     meta: {}, error: null,
   });
 });
 
 // ─── Admin: update item ────────────────────────────────────────────────────
 router.put("/admin/story-items/:id", (req, res) => {
-  const { title, imageUrl, linkUrl, status, rowId, sortOrder, gender, collectionId } = req.body as { title?: string; imageUrl?: string; linkUrl?: string; status?: string; rowId?: string; sortOrder?: number; gender?: string; collectionId?: string | null };
+  const { title, titleAr, imageUrl, linkUrl, status, rowId, sortOrder, gender, collectionId } = req.body as { title?: string; titleAr?: string; imageUrl?: string; linkUrl?: string; status?: string; rowId?: string; sortOrder?: number; gender?: string; collectionId?: string | null };
   const item = db.prepare(`SELECT id FROM story_items WHERE id=?`).get(req.params.id);
   if (!item) return res.status(404).json({ data: null, meta: {}, error: "Not found" });
   if (title !== undefined) db.prepare(`UPDATE story_items SET title=? WHERE id=?`).run(title, req.params.id);
+  if (titleAr !== undefined) db.prepare(`UPDATE story_items SET title_ar=? WHERE id=?`).run(titleAr, req.params.id);
   if (imageUrl !== undefined) db.prepare(`UPDATE story_items SET image_url=? WHERE id=?`).run(imageUrl, req.params.id);
   if (linkUrl !== undefined) db.prepare(`UPDATE story_items SET link_url=? WHERE id=?`).run(linkUrl, req.params.id);
   if (status !== undefined) db.prepare(`UPDATE story_items SET status=? WHERE id=?`).run(status, req.params.id);
@@ -178,9 +170,9 @@ router.put("/admin/story-items/:id", (req, res) => {
   if (sortOrder !== undefined) db.prepare(`UPDATE story_items SET sort_order=? WHERE id=?`).run(sortOrder, req.params.id);
   if (gender !== undefined) db.prepare(`UPDATE story_items SET gender=? WHERE id=?`).run(gender, req.params.id);
   if (collectionId !== undefined) db.prepare(`UPDATE story_items SET collection_id=? WHERE id=?`).run(collectionId, req.params.id);
-  const updated = db.prepare(`SELECT * FROM story_items WHERE id=?`).get(req.params.id) as { id: string; row_id: string; title: string; image_url: string; link_url: string; sort_order: number; status: string; created_at: string; gender: string; collection_id: string | null };
+  const updated = db.prepare(`SELECT * FROM story_items WHERE id=?`).get(req.params.id) as { id: string; row_id: string; title: string; title_ar: string; image_url: string; link_url: string; sort_order: number; status: string; created_at: string; gender: string; collection_id: string | null };
   return res.json({
-    data: { id: updated.id, rowId: updated.row_id, title: updated.title, imageUrl: updated.image_url, linkUrl: updated.link_url, sortOrder: updated.sort_order, status: updated.status, createdAt: updated.created_at, gender: updated.gender ?? "all", collectionId: updated.collection_id ?? null },
+    data: { id: updated.id, rowId: updated.row_id, title: updated.title, titleAr: updated.title_ar ?? "", imageUrl: updated.image_url, linkUrl: updated.link_url, sortOrder: updated.sort_order, status: updated.status, createdAt: updated.created_at, gender: updated.gender ?? "all", collectionId: updated.collection_id ?? null },
     meta: {}, error: null,
   });
 });
