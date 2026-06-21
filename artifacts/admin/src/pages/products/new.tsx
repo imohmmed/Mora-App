@@ -35,6 +35,7 @@ export default function NewProduct() {
   const [cost, setCost] = useState("");
   const [status, setStatus] = useState("draft");
   const [category, setCategory] = useState("women");
+  const [gender, setGender] = useState("all");
   const [vendor, setVendor] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
@@ -73,6 +74,7 @@ export default function NewProduct() {
               title,
               vendor,
               category,
+              gender,
               description,
               price: parseFloat(price) || 0,
               compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null,
@@ -367,6 +369,19 @@ export default function NewProduct() {
                     <SelectItem value="beauty">Beauty</SelectItem>
                     <SelectItem value="new_in">New In</SelectItem>
                     <SelectItem value="sale">Sale</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Audience</Label>
+                <Select value={gender} onValueChange={setGender}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All (Men &amp; Women)</SelectItem>
+                    <SelectItem value="women">Women</SelectItem>
+                    <SelectItem value="men">Men</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

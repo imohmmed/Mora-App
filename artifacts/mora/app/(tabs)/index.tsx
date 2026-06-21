@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ProductPreviewModal } from "@/components/ProductPreviewModal";
 import {
   ActivityIndicator,
@@ -36,13 +37,15 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
 const IS_IOS = Platform.OS === "ios";
 
-const CATEGORIES = ["ALL", "WOMEN", "MEN", "BEAUTY", "SALE"];
-const CATEGORY_FILTERS: Record<string, string | undefined> = {
-  ALL: undefined,
-  WOMEN: "women",
-  MEN: "men",
-  BEAUTY: "beauty",
-  SALE: "sale",
+const CATEGORIES = ["ALL", "WOMEN", "MEN", "BEAUTY", "SALE", "FOR YOU"];
+type TabFilter = { category?: string; gender?: string; tag?: string };
+const CATEGORY_FILTERS: Record<string, TabFilter> = {
+  ALL: {},
+  WOMEN: { gender: "women" },
+  MEN: { gender: "men" },
+  BEAUTY: { category: "beauty" },
+  SALE: { category: "sale" },
+  "FOR YOU": {},
 };
 
 const CARD_COLORS = [
@@ -304,7 +307,27 @@ export default function HomeScreen() {
   }, []);
 
   const categoryKey = CATEGORIES[activeCategory];
-  const categoryFilter = CATEGORY_FILTERS[categoryKey ?? "ALL"];
+  const tabFilter = CATEGORY_FILTERS[categoryKey ?? "ALL"];
+  const [forYouFilter, setForYouFilter] = useState<TabFilter>({});
+
+  useEffect(() => {
+    if (categoryKey !== "FOR YOU") return;
+    AsyncStorage.getItem("mora_views").then((raw) => {
+      const views = JSON.parse(raw || "[]") as { id: string; tags: string[]; gender: string }[];
+      if (views.length === 0) { setForYouFilter({}); return; }
+      const tagCount: Record<string, number> = {};
+      const genderCount: Record<string, number> = {};
+      views.slice(0, 15).forEach((v) => {
+        v.tags?.forEach((t) => { tagCount[t] = (tagCount[t] || 0) + 1; });
+        if (v.gender && v.gender !== "all") genderCount[v.gender] = (genderCount[v.gender] || 0) + 1;
+      });
+      const topTag = Object.keys(tagCount).sort((a, b) => tagCount[b] - tagCount[a])[0];
+      const topGender = Object.keys(genderCount).sort((a, b) => genderCount[b] - genderCount[a])[0];
+      setForYouFilter({ tag: topTag, gender: topGender });
+    }).catch(() => {});
+  }, [categoryKey]);
+
+  const activeFilter = categoryKey === "FOR YOU" ? forYouFilter : tabFilter;
 
   const PAGE_SIZE = 20;
   const {
@@ -317,9 +340,9 @@ export default function HomeScreen() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["products", categoryKey],
+    queryKey: ["products", categoryKey, JSON.stringify(activeFilter)],
     queryFn: ({ pageParam = 1 }: { pageParam?: number }) =>
-      fetchProducts({ category: categoryFilter, limit: PAGE_SIZE, page: pageParam }),
+      fetchProducts({ ...activeFilter, limit: PAGE_SIZE, page: pageParam }),
     getNextPageParam: (lastPage) => {
       const totalPages = Math.ceil(lastPage.total / lastPage.limit);
       return lastPage.page < totalPages ? lastPage.page + 1 : undefined;
@@ -424,7 +447,7 @@ export default function HomeScreen() {
       {/* ── Trending header ── */}
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-          {categoryKey === "ALL" ? "TRENDING NOW" : categoryKey}
+          {categoryKey === "ALL" ? "TRENDING NOW" : categoryKey === "FOR YOU" ? "FOR YOU ✦" : categoryKey}
         </Text>
         {!isLoading && totalCount > 0 && (
           <Text style={[styles.seeAll, { color: colors.mutedForeground }]}>

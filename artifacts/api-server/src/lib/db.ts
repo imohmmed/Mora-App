@@ -1021,5 +1021,6 @@ const runMigration = (sql: string) => {
 };
 runMigration(`ALTER TABLE orders ADD COLUMN live_activity_push_token TEXT`);
 runMigration(`ALTER TABLE orders ADD COLUMN delivery_stage TEXT NOT NULL DEFAULT 'confirmed'`);
+runMigration(`ALTER TABLE products ADD COLUMN gender TEXT NOT NULL DEFAULT 'all'`);
 
 export default db;

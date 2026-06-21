@@ -1,4 +1,5 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   FlatList,
   Platform,
@@ -207,6 +208,17 @@ export default function ProductDetailScreen() {
     staleTime: 120_000,
   });
 
+  useEffect(() => {
+    if (!product) return;
+    AsyncStorage.getItem("mora_views").then((raw) => {
+      const views = JSON.parse(raw || "[]") as { id: string; tags: string[]; gender: string }[];
+      const filtered = views.filter((v) => v.id !== product.id);
+      filtered.unshift({ id: product.id, tags: (product.tags as string[] | null) ?? [], gender: (product as unknown as Record<string, string>)["gender"] ?? "all" });
+      if (filtered.length > 20) filtered.splice(20);
+      AsyncStorage.setItem("mora_views", JSON.stringify(filtered)).catch(() => {});
+    }).catch(() => {});
+  }, [product?.id]);
+
   const liked = product ? isWishlisted(product.id) : false;
   const activeVariant = selectedVariant ?? (product?.variants?.[0] ?? null);
   const price = activeVariant?.price ?? product?.price ?? 0;
@@ -256,7 +268,12 @@ export default function ProductDetailScreen() {
           },
         ]}
       >
-        <GlassBackButton onPress={() => router.back()} />
+        <GlassBackButton
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace("/");
+          }}
+        />
         <MoraLogo size="small" />
         {isIOS26Plus ? (
           <Pressable
@@ -309,7 +326,7 @@ export default function ProductDetailScreen() {
       ) : product ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: (isWeb ? 100 : bottomPadding + 32) }}
+          contentContainerStyle={{ paddingBottom: (isWeb ? 200 : bottomPadding + 32) }}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={PRIMARY} />
           }

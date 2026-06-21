@@ -33,12 +33,16 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 export async function fetchProducts(params?: {
   category?: string;
+  gender?: string;
+  tag?: string;
   q?: string;
   limit?: number;
   page?: number;
 }): Promise<{ products: Product[]; total: number; page: number; limit: number }> {
   const qs = new URLSearchParams();
   if (params?.category) qs.set("category", params.category);
+  if (params?.gender) qs.set("gender", params.gender);
+  if (params?.tag) qs.set("tag", params.tag);
   if (params?.q) qs.set("q", params.q);
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.page) qs.set("page", String(params.page));
