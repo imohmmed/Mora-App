@@ -28,7 +28,7 @@ import { SpecialCollectionsGrid } from "@/components/SpecialCollectionsGrid";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
-import { fetchProducts, fetchSpecialCollections, fetchBanners, fetchStories } from "@/lib/api";
+import { fetchProducts, fetchSpecialCollections, fetchBanners, fetchStories, fetchContentSections } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { StoriesSection } from "@/components/StoriesSection";
 import type { Product, Banner, Variant } from "@/lib/types";
@@ -37,16 +37,26 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
 const IS_IOS = Platform.OS === "ios";
 
-const CATEGORIES = ["ALL", "WOMEN", "MEN", "BEAUTY", "SALE", "FOR YOU"];
 type TabFilter = { category?: string; gender?: string; tag?: string };
-const CATEGORY_FILTERS: Record<string, TabFilter> = {
-  ALL: {},
-  WOMEN: { gender: "women" },
-  MEN: { gender: "men" },
-  BEAUTY: { category: "beauty" },
-  SALE: { category: "sale" },
-  "FOR YOU": {},
-};
+type TabConfig = { id: string; label: string; filterType: string; filterValue?: string };
+
+const DEFAULT_TABS: TabConfig[] = [
+  { id: "tab_all",    label: "ALL",     filterType: "all" },
+  { id: "tab_women",  label: "WOMEN",   filterType: "gender",   filterValue: "women" },
+  { id: "tab_men",    label: "MEN",     filterType: "gender",   filterValue: "men" },
+  { id: "tab_beauty", label: "BEAUTY",  filterType: "category", filterValue: "beauty" },
+  { id: "tab_sale",   label: "SALE",    filterType: "sale" },
+  { id: "tab_foryou", label: "FOR YOU", filterType: "foryou" },
+];
+
+function getTabFilter(tab: TabConfig): TabFilter {
+  switch (tab.filterType) {
+    case "gender":   return { gender: tab.filterValue };
+    case "category": return { category: tab.filterValue };
+    case "sale":     return { category: "sale" };
+    default:         return {};
+  }
+}
 
 const CARD_COLORS = [
   "#E8EDF5", "#F0EBE3", "#E8F0E8", "#F5EDEB",
@@ -306,12 +316,26 @@ export default function HomeScreen() {
     return offNative;
   }, []);
 
-  const categoryKey = CATEGORIES[activeCategory];
-  const tabFilter = CATEGORY_FILTERS[categoryKey ?? "ALL"];
+  const { data: contentSections } = useQuery({
+    queryKey: ["content-sections"],
+    queryFn: fetchContentSections,
+    staleTime: 300_000,
+  });
+
+  const menuTabs = useMemo<TabConfig[]>(() => {
+    const section = contentSections?.["menu_tabs"];
+    if (section?.items?.length) return section.items as unknown as TabConfig[];
+    return DEFAULT_TABS;
+  }, [contentSections]);
+
+  const safeActiveCategory = Math.min(activeCategory, menuTabs.length - 1);
+  const activeTab = menuTabs[safeActiveCategory] ?? menuTabs[0];
+  const categoryKey = activeTab?.label ?? "ALL";
+  const isForYou = activeTab?.filterType === "foryou";
   const [forYouFilter, setForYouFilter] = useState<TabFilter>({});
 
   useEffect(() => {
-    if (categoryKey !== "FOR YOU") return;
+    if (!isForYou) return;
     AsyncStorage.getItem("mora_views").then((raw) => {
       const views = JSON.parse(raw || "[]") as { id: string; tags: string[]; gender: string }[];
       if (views.length === 0) { setForYouFilter({}); return; }
@@ -325,9 +349,9 @@ export default function HomeScreen() {
       const topGender = Object.keys(genderCount).sort((a, b) => genderCount[b] - genderCount[a])[0];
       setForYouFilter({ tag: topTag, gender: topGender });
     }).catch(() => {});
-  }, [categoryKey]);
+  }, [isForYou]);
 
-  const activeFilter = categoryKey === "FOR YOU" ? forYouFilter : tabFilter;
+  const activeFilter = isForYou ? forYouFilter : getTabFilter(activeTab ?? DEFAULT_TABS[0]);
 
   const PAGE_SIZE = 20;
   const {
@@ -388,8 +412,8 @@ export default function HomeScreen() {
   const ListHeader = useMemo(() => (
     <View>
       <CategoryTabs
-        categories={CATEGORIES}
-        activeIndex={activeCategory}
+        categories={menuTabs.map((t) => t.label)}
+        activeIndex={safeActiveCategory}
         onChange={setActiveCategory}
       />
 
@@ -447,7 +471,7 @@ export default function HomeScreen() {
       {/* ── Trending header ── */}
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-          {categoryKey === "ALL" ? "TRENDING NOW" : categoryKey === "FOR YOU" ? "FOR YOU ✦" : categoryKey}
+          {activeTab?.filterType === "all" ? "TRENDING NOW" : isForYou ? "FOR YOU ✦" : categoryKey}
         </Text>
         {!isLoading && totalCount > 0 && (
           <Text style={[styles.seeAll, { color: colors.mutedForeground }]}>
@@ -477,7 +501,7 @@ export default function HomeScreen() {
     </View>
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [
-    activeCategory, activeBanner, categoryKey, colors, displayBanners,
+    activeCategory, safeActiveCategory, activeBanner, categoryKey, activeTab, isForYou, menuTabs, colors, displayBanners,
     isCollectionsLoading, isError, isBannersLoading, isLoading, isRefetching,
     specialCollections, storyRows, totalCount,
   ]);

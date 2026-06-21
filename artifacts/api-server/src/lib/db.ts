@@ -1023,4 +1023,21 @@ runMigration(`ALTER TABLE orders ADD COLUMN live_activity_push_token TEXT`);
 runMigration(`ALTER TABLE orders ADD COLUMN delivery_stage TEXT NOT NULL DEFAULT 'confirmed'`);
 runMigration(`ALTER TABLE products ADD COLUMN gender TEXT NOT NULL DEFAULT 'all'`);
 
+// Seed default menu_tabs content section if not yet created
+{
+  const existing = db.prepare(`SELECT id FROM content_sections WHERE key='menu_tabs'`).get();
+  if (!existing) {
+    const defaultTabs = JSON.stringify([
+      { id: "tab_all",    label: "ALL",     filterType: "all" },
+      { id: "tab_women",  label: "WOMEN",   filterType: "gender",   filterValue: "women" },
+      { id: "tab_men",    label: "MEN",     filterType: "gender",   filterValue: "men" },
+      { id: "tab_beauty", label: "BEAUTY",  filterType: "category", filterValue: "beauty" },
+      { id: "tab_sale",   label: "SALE",    filterType: "sale" },
+      { id: "tab_foryou", label: "FOR YOU", filterType: "foryou" },
+    ]);
+    db.prepare(`INSERT INTO content_sections (id,key,title,items,sort_order,status,updated_at) VALUES (?,?,?,?,?,?,?)`)
+      .run("cs_menu_tabs", "menu_tabs", "Menu Tab Bar", defaultTabs, 0, "active", new Date().toISOString());
+  }
+}
+
 export default db;
