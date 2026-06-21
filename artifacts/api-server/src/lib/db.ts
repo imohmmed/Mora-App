@@ -1028,6 +1028,22 @@ runMigration(`ALTER TABLE products ADD COLUMN gender TEXT NOT NULL DEFAULT 'all'
 runMigration(`ALTER TABLE story_items ADD COLUMN gender TEXT NOT NULL DEFAULT 'all'`);
 runMigration(`ALTER TABLE story_items ADD COLUMN collection_id TEXT`);
 
+// ─── In-app notifications per customer ────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS customer_notifications (
+    id          TEXT PRIMARY KEY,
+    customer_id TEXT NOT NULL,
+    title       TEXT NOT NULL DEFAULT '',
+    body        TEXT NOT NULL DEFAULT '',
+    image_url   TEXT NOT NULL DEFAULT '',
+    url         TEXT NOT NULL DEFAULT '',
+    read        INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_cn_customer ON customer_notifications(customer_id);
+  CREATE INDEX IF NOT EXISTS idx_cn_created ON customer_notifications(created_at DESC);
+`);
+
 // Seed default menu_tabs content section if not yet created
 {
   const existing = db.prepare(`SELECT id FROM content_sections WHERE key='menu_tabs'`).get();

@@ -9,13 +9,54 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Plus, Users as UsersIcon, Trash2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Search, Plus, Users as UsersIcon, Trash2, Bell, Radio } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useToast } from "@/hooks/use-toast";
+
+const ADMIN_TOKEN = "mora-admin-2025";
+
+async function sendNotification(payload: {
+  title: string;
+  body: string;
+  url?: string;
+  targetAll?: boolean;
+  customerIds?: string[];
+}) {
+  const res = await fetch("/api/admin/notifications/send", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-token": ADMIN_TOKEN,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json() as { data: unknown; error?: string | null };
+  if (!res.ok) throw new Error(json.error ?? `Error ${res.status}`);
+  return json.data;
+}
+
+type NotifTarget =
+  | { type: "customer"; id: string; name: string }
+  | { type: "all" };
+
+type Customer = {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  address?: { city?: string; district?: string };
+  ordersCount?: number;
+  totalSpent?: number;
+};
 
 export default function Customers() {
   const [search, setSearch] = useState("");
@@ -28,7 +69,46 @@ export default function Customers() {
     q: debouncedSearch || undefined,
   });
 
-  const customers = response?.data ?? [];
+  const customers = (response?.data ?? []) as Customer[];
+
+  // ── Notification dialog state ──────────────────────────────────────────────
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifTarget, setNotifTarget] = useState<NotifTarget | null>(null);
+  const [notifTitle, setNotifTitle] = useState("");
+  const [notifBody, setNotifBody] = useState("");
+  const [notifUrl, setNotifUrl] = useState("");
+  const [notifSending, setNotifSending] = useState(false);
+
+  function openNotifDialog(target: NotifTarget) {
+    setNotifTarget(target);
+    setNotifTitle("");
+    setNotifBody("");
+    setNotifUrl("");
+    setNotifOpen(true);
+  }
+
+  async function handleSendNotif() {
+    if (!notifTitle.trim() || !notifBody.trim()) {
+      toast({ title: "اكتب العنوان والمحتوى", variant: "destructive" });
+      return;
+    }
+    setNotifSending(true);
+    try {
+      await sendNotification({
+        title: notifTitle.trim(),
+        body: notifBody.trim(),
+        url: notifUrl.trim() || undefined,
+        targetAll: notifTarget?.type === "all",
+        customerIds: notifTarget?.type === "customer" ? [notifTarget.id] : undefined,
+      });
+      toast({ title: "تم إرسال الإشعار ✓" });
+      setNotifOpen(false);
+    } catch (e: any) {
+      toast({ title: e?.message ?? "خطأ في الإرسال", variant: "destructive" });
+    } finally {
+      setNotifSending(false);
+    }
+  }
 
   const handleDelete = (id: string) => {
     deleteCustomer.mutate(
@@ -50,10 +130,20 @@ export default function Customers() {
           <h1 className="text-3xl font-bold tracking-tight">Customers</h1>
           <p className="text-muted-foreground mt-1">Manage your customer base.</p>
         </div>
-        <Button data-testid="btn-add-customer">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Customer
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => openNotifDialog({ type: "all" })}
+            className="gap-2"
+          >
+            <Radio className="w-4 h-4" />
+            إشعار للجميع
+          </Button>
+          <Button data-testid="btn-add-customer">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Customer
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center bg-card p-4 rounded-lg border">
@@ -78,7 +168,7 @@ export default function Customers() {
               <TableHead>Location</TableHead>
               <TableHead className="text-right">Orders</TableHead>
               <TableHead className="text-right">Amount Spent</TableHead>
-              <TableHead className="w-12"></TableHead>
+              <TableHead className="w-24"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -111,31 +201,52 @@ export default function Customers() {
                     {(customer.totalSpent ?? 0).toLocaleString("en-US")} IQD
                   </TableCell>
                   <TableCell className="text-right">
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="relative z-10 h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={(e) => e.stopPropagation()}
-                          data-testid={`btn-delete-customer-${customer.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete {customer.firstName} {customer.lastName}?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This action cannot be undone. The customer will be permanently removed.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(customer.id)}>Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <div className="flex items-center justify-end gap-1">
+                      {/* Send notification button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="relative z-10 h-8 w-8 text-muted-foreground hover:text-primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openNotifDialog({
+                            type: "customer",
+                            id: customer.id,
+                            name: `${customer.firstName ?? ""} ${customer.lastName ?? ""}`.trim(),
+                          });
+                        }}
+                        title="Send notification"
+                      >
+                        <Bell className="h-4 w-4" />
+                      </Button>
+
+                      {/* Delete button */}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="relative z-10 h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={(e) => e.stopPropagation()}
+                            data-testid={`btn-delete-customer-${customer.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete {customer.firstName} {customer.lastName}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. The customer will be permanently removed.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(customer.id)}>Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -155,30 +266,143 @@ export default function Customers() {
           </div>
         ) : (
           customers.map((customer) => (
-            <Link key={customer.id} href={`/customers/${customer.id}`}>
-              <Card className="cursor-pointer hover:shadow-sm transition-shadow active:opacity-80">
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="text-sm bg-primary/10 text-primary">
-                        {customer.firstName?.[0]}{customer.lastName?.[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium">{customer.firstName} {customer.lastName}</p>
-                      <p className="text-sm text-muted-foreground truncate">{customer.email}</p>
+            <div key={customer.id} className="relative">
+              <Link href={`/customers/${customer.id}`}>
+                <Card className="cursor-pointer hover:shadow-sm transition-shadow active:opacity-80">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="text-sm bg-primary/10 text-primary">
+                          {customer.firstName?.[0]}{customer.lastName?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium">{customer.firstName} {customer.lastName}</p>
+                        <p className="text-sm text-muted-foreground truncate">{customer.email}</p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-semibold">{(customer.totalSpent ?? 0).toLocaleString("en-US")} IQD</p>
+                        <p className="text-xs text-muted-foreground">{customer.ordersCount ?? 0} orders</p>
+                      </div>
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="font-semibold">{(customer.totalSpent ?? 0).toLocaleString("en-US")} IQD</p>
-                      <p className="text-xs text-muted-foreground">{customer.ordersCount ?? 0} orders</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+                  </CardContent>
+                </Card>
+              </Link>
+              {/* Notification button for mobile */}
+              <button
+                className="absolute top-3 right-3 z-10 p-1.5 rounded-full bg-primary/10 text-primary"
+                onClick={(e) => {
+                  e.preventDefault();
+                  openNotifDialog({
+                    type: "customer",
+                    id: customer.id,
+                    name: `${customer.firstName ?? ""} ${customer.lastName ?? ""}`.trim(),
+                  });
+                }}
+              >
+                <Bell className="w-4 h-4" />
+              </button>
+            </div>
           ))
         )}
       </div>
+
+      {/* ── Send Notification Dialog ────────────────────────────────────────── */}
+      <Dialog open={notifOpen} onOpenChange={setNotifOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5 text-primary" />
+              {notifTarget?.type === "all"
+                ? "إرسال إشعار للجميع"
+                : `إرسال إشعار لـ ${notifTarget?.type === "customer" ? notifTarget.name : ""}`}
+            </DialogTitle>
+            <DialogDescription>
+              {notifTarget?.type === "all"
+                ? "سيُرسل هذا الإشعار لجميع العملاء المسجلين."
+                : "سيُرسل هذا الإشعار للعميل المحدد فقط."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="notif-title">العنوان *</Label>
+              <Input
+                id="notif-title"
+                placeholder="مثال: عرض خاص لك!"
+                value={notifTitle}
+                onChange={(e) => setNotifTitle(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="notif-body">المحتوى *</Label>
+              <Textarea
+                id="notif-body"
+                placeholder="مثال: اكتشف تشكيلتنا الجديدة مع خصم ٢٠٪"
+                value={notifBody}
+                onChange={(e) => setNotifBody(e.target.value)}
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="notif-url">الرابط (اختياري)</Label>
+              <Input
+                id="notif-url"
+                placeholder="/product/xyz أو /collection/sale"
+                value={notifUrl}
+                onChange={(e) => setNotifUrl(e.target.value)}
+                dir="ltr"
+              />
+              <p className="text-xs text-muted-foreground">
+                من يضغط على الإشعار يُحوَّل مباشرة لهذا الرابط داخل التطبيق
+              </p>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {["/collection/sale", "/collection/new-arrivals", "/collection/trending"].map((u) => (
+                  <button
+                    key={u}
+                    type="button"
+                    className="text-xs px-2 py-0.5 rounded-full border border-border hover:bg-accent"
+                    onClick={() => setNotifUrl(u)}
+                  >
+                    {u}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Preview */}
+            {(notifTitle || notifBody) && (
+              <div className="rounded-xl border bg-zinc-950 p-3 mt-1">
+                <div className="flex items-start gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
+                    <span className="text-white font-bold text-xs">M</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] text-zinc-400 font-medium mb-0.5">MORA</p>
+                    <p className="text-white text-[13px] font-semibold leading-tight mb-0.5 truncate">
+                      {notifTitle || "العنوان"}
+                    </p>
+                    <p className="text-zinc-300 text-[11px] leading-tight line-clamp-2">
+                      {notifBody || "المحتوى"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNotifOpen(false)} disabled={notifSending}>
+              إلغاء
+            </Button>
+            <Button onClick={handleSendNotif} disabled={notifSending || !notifTitle || !notifBody}>
+              {notifSending ? "جاري الإرسال..." : "إرسال الإشعار"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

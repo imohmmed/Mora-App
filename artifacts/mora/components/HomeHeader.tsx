@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import {
   Image as RNImage,
   Platform,
@@ -13,21 +13,46 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/useColors";
+import { useQuery } from "@tanstack/react-query";
+import { AuthContext } from "@/context/AuthContext";
+
+function getBaseUrl() {
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  return domain ? `https://${domain}/api` : "/api";
+}
 
 interface HomeHeaderProps {
-  notificationCount?: number;
   favoritesCount?: number;
   cartCount?: number;
 }
 
 export function HomeHeader({
-  notificationCount = 0,
   favoritesCount = 0,
 }: HomeHeaderProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const isWeb = Platform.OS === "web";
+  const auth = useContext(AuthContext);
+  const token = auth?.token ?? null;
+
+  const { data: unreadData } = useQuery({
+    queryKey: ["notifications-unread", token],
+    queryFn: async () => {
+      if (!token) return { count: 0 };
+      const res = await fetch(`${getBaseUrl()}/store/notifications/unread-count`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      });
+      if (!res.ok) return { count: 0 };
+      const json = await res.json() as { data: { count: number } };
+      return json.data;
+    },
+    enabled: !!token,
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+
+  const notificationCount = unreadData?.count ?? 0;
 
   const topPadding = isWeb ? 0 : insets.top;
 

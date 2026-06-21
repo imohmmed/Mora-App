@@ -520,7 +520,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <HomeHeader notificationCount={0} favoritesCount={wishlistCount} cartCount={totalItems} />
+      <HomeHeader favoritesCount={wishlistCount} cartCount={totalItems} />
       <FlatList
         ref={flatListRef}
         data={isLoading ? [] : products}

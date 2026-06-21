@@ -4,7 +4,6 @@ import { requireAdmin } from "../middlewares/auth.js";
 
 const router = Router();
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
 function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
@@ -12,7 +11,6 @@ function now() {
   return new Date().toISOString();
 }
 
-// Resolve auth token from request header
 function getCustomerId(req: any): string | null {
   const auth = req.headers["authorization"] as string | undefined;
   if (!auth?.startsWith("Bearer ")) return null;
@@ -23,8 +21,25 @@ function getCustomerId(req: any): string | null {
   return row?.customer_id ?? null;
 }
 
+// ── Helper: save in-app notification(s) for specific customers ────────────────
+function saveInAppNotifications(opts: {
+  customerIds: string[];
+  title: string;
+  body: string;
+  url?: string;
+  imageUrl?: string;
+}) {
+  const stmt = db.prepare(`
+    INSERT INTO customer_notifications (id, customer_id, title, body, image_url, url, read, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+  `);
+  for (const cid of opts.customerIds) {
+    stmt.run(uid(), cid, opts.title, opts.body, opts.imageUrl ?? "", opts.url ?? "", now());
+  }
+}
+
 // ── STORE: register push token ─────────────────────────────────────────────────
-router.post("/api/store/notifications/token", (req, res) => {
+router.post("/store/notifications/token", (req, res) => {
   const customerId = getCustomerId(req);
   if (!customerId) return res.status(401).json({ data: null, error: "Unauthorized" });
 
@@ -41,14 +56,58 @@ router.post("/api/store/notifications/token", (req, res) => {
 });
 
 // ── STORE: remove push token (logout) ─────────────────────────────────────────
-router.delete("/api/store/notifications/token", (req, res) => {
+router.delete("/store/notifications/token", (req, res) => {
   const { token } = req.body as { token?: string };
   if (token) db.prepare("DELETE FROM push_tokens WHERE token = ?").run(token);
   return res.json({ data: { ok: true }, error: null });
 });
 
+// ── STORE: list in-app notifications ──────────────────────────────────────────
+router.get("/store/notifications", (req, res) => {
+  const customerId = getCustomerId(req);
+  if (!customerId) return res.status(401).json({ data: null, error: "Unauthorized" });
+
+  const rows = db
+    .prepare(`SELECT * FROM customer_notifications WHERE customer_id = ? ORDER BY created_at DESC LIMIT 60`)
+    .all(customerId) as any[];
+
+  return res.json({
+    data: rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      body: r.body,
+      imageUrl: r.image_url,
+      url: r.url,
+      read: r.read === 1,
+      createdAt: r.created_at,
+    })),
+    error: null,
+  });
+});
+
+// ── STORE: unread count ────────────────────────────────────────────────────────
+router.get("/store/notifications/unread-count", (req, res) => {
+  const customerId = getCustomerId(req);
+  if (!customerId) return res.json({ data: { count: 0 }, error: null });
+
+  const row = db
+    .prepare(`SELECT COUNT(*) as n FROM customer_notifications WHERE customer_id = ? AND read = 0`)
+    .get(customerId) as { n: number };
+
+  return res.json({ data: { count: row.n }, error: null });
+});
+
+// ── STORE: mark all notifications as read ──────────────────────────────────────
+router.post("/store/notifications/read-all", (req, res) => {
+  const customerId = getCustomerId(req);
+  if (!customerId) return res.status(401).json({ data: null, error: "Unauthorized" });
+
+  db.prepare(`UPDATE customer_notifications SET read = 1 WHERE customer_id = ?`).run(customerId);
+  return res.json({ data: { ok: true }, error: null });
+});
+
 // ── ADMIN: list tokens & stats ─────────────────────────────────────────────────
-router.get("/api/admin/notifications/stats", requireAdmin, (_req, res) => {
+router.get("/admin/notifications/stats", requireAdmin, (_req, res) => {
   const tokens = (db.prepare("SELECT COUNT(*) as n FROM push_tokens").get() as any).n as number;
   const customers = (db.prepare("SELECT COUNT(DISTINCT customer_id) as n FROM push_tokens").get() as any).n as number;
   const totalSent = (db.prepare("SELECT COALESCE(SUM(tokens_sent),0) as n FROM notification_log").get() as any).n as number;
@@ -59,7 +118,7 @@ router.get("/api/admin/notifications/stats", requireAdmin, (_req, res) => {
 });
 
 // ── ADMIN: notification history ────────────────────────────────────────────────
-router.get("/api/admin/notifications", requireAdmin, (req, res) => {
+router.get("/admin/notifications", requireAdmin, (req, res) => {
   const limit = Math.min(Number((req.query as any).limit) || 50, 200);
   const rows = db.prepare(
     "SELECT * FROM notification_log ORDER BY created_at DESC LIMIT ?"
@@ -67,34 +126,25 @@ router.get("/api/admin/notifications", requireAdmin, (req, res) => {
   return res.json({ data: rows, error: null });
 });
 
-// ── ADMIN: send bulk push via Expo Push API ────────────────────────────────────
-router.post("/api/admin/notifications/push", requireAdmin, async (req, res) => {
-  const {
-    title,
-    body,
-    data = {},
-    sound = "default",
-    badge,
-    targetAll = true,
-    customerIds,
-  } = req.body as {
-    title: string;
-    body: string;
-    data?: Record<string, unknown>;
-    sound?: string;
-    badge?: number;
-    targetAll?: boolean;
-    customerIds?: string[];
-  };
+// ── ADMIN: shared send logic ───────────────────────────────────────────────────
+async function doSendNotification(opts: {
+  title: string;
+  body: string;
+  url?: string;
+  imageUrl?: string;
+  sound?: string;
+  badge?: number;
+  targetAll?: boolean;
+  customerIds?: string[];
+}): Promise<{ sent: number; success: number; failed: number; logId: string }> {
+  const { title, body, url = "", imageUrl = "", sound = "default", badge, targetAll = true, customerIds } = opts;
 
-  if (!title || !body) {
-    return res.status(400).json({ data: null, error: "title and body are required" });
-  }
-
-  // Fetch tokens
+  let targetCustomerIds: string[] = [];
   let tokens: string[] = [];
+
   if (targetAll) {
     tokens = (db.prepare("SELECT token FROM push_tokens").all() as { token: string }[]).map((r) => r.token);
+    targetCustomerIds = (db.prepare("SELECT id FROM customers").all() as { id: string }[]).map((r) => r.id);
   } else if (customerIds?.length) {
     const placeholders = customerIds.map(() => "?").join(",");
     tokens = (
@@ -102,18 +152,22 @@ router.post("/api/admin/notifications/push", requireAdmin, async (req, res) => {
         .prepare(`SELECT token FROM push_tokens WHERE customer_id IN (${placeholders})`)
         .all(...customerIds) as { token: string }[]
     ).map((r) => r.token);
+    targetCustomerIds = customerIds;
+  }
+
+  // Save in-app notification for each target customer
+  if (targetCustomerIds.length > 0) {
+    saveInAppNotifications({ customerIds: targetCustomerIds, title, body, url, imageUrl });
   }
 
   if (tokens.length === 0) {
-    // No real tokens — log anyway (dev mode: no devices registered)
     const logId = uid();
     db.prepare(
       "INSERT INTO notification_log (id, type, title, body, payload, tokens_sent, success, failed, created_at) VALUES (?,?,?,?,?,0,0,0,?)"
-    ).run(logId, "push", title, body, JSON.stringify(data), now());
-    return res.json({ data: { sent: 0, success: 0, failed: 0, logId }, error: null });
+    ).run(logId, "push", title, body, JSON.stringify({ url }), now());
+    return { sent: 0, success: 0, failed: 0, logId };
   }
 
-  // Batch into chunks of 100 (Expo limit)
   const CHUNK = 100;
   let success = 0;
   let failed = 0;
@@ -123,7 +177,7 @@ router.post("/api/admin/notifications/push", requireAdmin, async (req, res) => {
       to,
       title,
       body,
-      data,
+      data: { url },
       sound,
       ...(badge !== undefined ? { badge } : {}),
     }));
@@ -153,27 +207,53 @@ router.post("/api/admin/notifications/push", requireAdmin, async (req, res) => {
     }
   }
 
-  // Log it
   const logId = uid();
   db.prepare(
     "INSERT INTO notification_log (id, type, title, body, payload, tokens_sent, success, failed, created_at) VALUES (?,?,?,?,?,?,?,?,?)"
-  ).run(logId, "push", title, body, JSON.stringify(data), tokens.length, success, failed, now());
+  ).run(logId, "push", title, body, JSON.stringify({ url }), tokens.length, success, failed, now());
 
-  return res.json({ data: { sent: tokens.length, success, failed, logId }, error: null });
+  return { sent: tokens.length, success, failed, logId };
+}
+
+// ── ADMIN: bulk push (legacy + updated with in-app saving) ────────────────────
+router.post("/admin/notifications/push", requireAdmin, async (req, res) => {
+  const {
+    title, body, url, imageUrl, sound, badge, targetAll = true, customerIds,
+  } = req.body as {
+    title: string; body: string; url?: string; imageUrl?: string;
+    sound?: string; badge?: number; targetAll?: boolean; customerIds?: string[];
+  };
+
+  if (!title || !body) {
+    return res.status(400).json({ data: null, error: "title and body are required" });
+  }
+
+  const result = await doSendNotification({ title, body, url, imageUrl, sound, badge, targetAll, customerIds });
+  return res.json({ data: result, error: null });
 });
 
-// ── ADMIN: send Live Activity update (stores payload, actual delivery via push) ──
-router.post("/api/admin/notifications/live-activity", requireAdmin, async (req, res) => {
-  const {
-    orderId,
-    stage, // 'confirmed' | 'preparing' | 'shipping' | 'delivered' | 'issue'
-    message,
-    customerIds,
-  } = req.body as {
-    orderId?: string;
-    stage: string;
-    message?: string;
-    customerIds?: string[];
+// ── ADMIN: send (new endpoint with deep link) ─────────────────────────────────
+router.post("/admin/notifications/send", requireAdmin, async (req, res) => {
+  const { title, body, url, imageUrl, targetAll = false, customerIds } = req.body as {
+    title: string; body: string; url?: string; imageUrl?: string;
+    targetAll?: boolean; customerIds?: string[];
+  };
+
+  if (!title || !body) {
+    return res.status(400).json({ data: null, error: "title and body are required" });
+  }
+  if (!targetAll && (!customerIds || customerIds.length === 0)) {
+    return res.status(400).json({ data: null, error: "specify customerIds or set targetAll=true" });
+  }
+
+  const result = await doSendNotification({ title, body, url, imageUrl, targetAll, customerIds });
+  return res.json({ data: result, error: null });
+});
+
+// ── ADMIN: Live Activity update ────────────────────────────────────────────────
+router.post("/admin/notifications/live-activity", requireAdmin, async (req, res) => {
+  const { orderId, stage, message, customerIds } = req.body as {
+    orderId?: string; stage: string; message?: string; customerIds?: string[];
   };
 
   const stageLabels: Record<string, string> = {
@@ -204,11 +284,7 @@ router.post("/api/admin/notifications/live-activity", requireAdmin, async (req, 
   if (tokens.length > 0) {
     try {
       const messages = tokens.map((to) => ({
-        to,
-        title,
-        body,
-        data: payload,
-        sound: "default",
+        to, title, body, data: payload, sound: "default",
       }));
       const resp = await fetch("https://exp.host/--/api/v2/push/send", {
         method: "POST",
