@@ -427,7 +427,18 @@ export default function ProductDetail() {
                 <div className="space-y-1">
                   <div className="flex justify-between">
                     <span>Brand</span>
-                    <span>{product.vendor || "Mora Studio"}</span>
+                    <div className="flex items-center gap-2">
+                      {(product as any).rating > 0 && (
+                        <span className="flex items-center gap-1 text-amber-500 text-xs font-semibold">
+                          {"★".repeat(Math.round((product as any).rating))}{"☆".repeat(5 - Math.round((product as any).rating))}
+                          <span className="text-foreground">{((product as any).rating as number).toFixed(1)}</span>
+                          {(product as any).ratingCount > 0 && (
+                            <span className="text-muted-foreground font-normal">({((product as any).ratingCount as number).toLocaleString()})</span>
+                          )}
+                        </span>
+                      )}
+                      <span>{product.vendor || "Mora Studio"}</span>
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <span>Category</span>

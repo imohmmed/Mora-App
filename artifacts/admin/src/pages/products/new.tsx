@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, X, Search } from "lucide-react";
+import { ArrowLeft, Plus, X, Search, Star } from "lucide-react";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { SortableImageGrid } from "@/components/ui/SortableImageGrid";
 import { VariantBuilder, type OptionGroup, type VariantRow } from "@/components/ui/VariantBuilder";
@@ -37,6 +37,9 @@ export default function NewProduct() {
   const [category, setCategory] = useState("women");
   const [gender, setGender] = useState("all");
   const [vendor, setVendor] = useState("");
+  const [rating, setRating] = useState(0);
+  const [ratingCount, setRatingCount] = useState(0);
+  const [ratingHover, setRatingHover] = useState(0);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [seoTitle, setSeoTitle] = useState("");
@@ -86,6 +89,8 @@ export default function NewProduct() {
               seoTitle: seoTitle || title,
               seoDescription,
               urlSlug: urlSlug || autoSlug(title),
+              rating,
+              ratingCount,
             } as unknown as Parameters<typeof createProduct.mutate>[0]["data"],
           },
           { onSuccess: resolve, onError: reject }
@@ -393,6 +398,71 @@ export default function NewProduct() {
                   value={vendor}
                   onChange={(e) => setVendor(e.target.value)}
                 />
+              </div>
+
+              {/* ── Rating ── */}
+              <div className="grid gap-2">
+                <Label>Product Rating</Label>
+                <div className="flex items-center gap-4 flex-wrap">
+                  {/* Star picker */}
+                  <div className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onMouseEnter={() => setRatingHover(star)}
+                        onMouseLeave={() => setRatingHover(0)}
+                        onClick={() => setRating(star)}
+                        className="p-0.5 transition-transform hover:scale-110"
+                      >
+                        <Star
+                          className={`w-7 h-7 transition-colors ${
+                            star <= (ratingHover || rating)
+                              ? "fill-amber-400 text-amber-400"
+                              : "text-muted-foreground/30"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  {/* Decimal override */}
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min="0" max="5" step="0.1"
+                      className="w-20 h-8 text-sm text-center"
+                      value={rating === 0 ? "" : rating}
+                      placeholder="4.8"
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        setRating(isNaN(v) ? 0 : Math.min(5, Math.max(0, v)));
+                      }}
+                    />
+                    <span className="text-sm text-muted-foreground">/ 5</span>
+                  </div>
+                  {/* Review count */}
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      className="w-28 h-8 text-sm"
+                      value={ratingCount === 0 ? "" : ratingCount}
+                      placeholder="# reviews"
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value);
+                        setRatingCount(isNaN(v) ? 0 : Math.max(0, v));
+                      }}
+                    />
+                    <span className="text-sm text-muted-foreground">reviews</span>
+                  </div>
+                </div>
+                {rating > 0 && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <span className="text-amber-500">{"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}</span>
+                    {rating.toFixed(1)} out of 5
+                    {ratingCount > 0 && <> · <strong>{ratingCount.toLocaleString()}</strong> reviews</>}
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>

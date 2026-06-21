@@ -400,9 +400,27 @@ export default function ProductDetailScreen() {
 
           {/* ── Info ── */}
           <View style={styles.infoSection}>
-            <Text style={[styles.vendor, { color: colors.mutedForeground }]}>
-              {product.vendor ?? "Mora"}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              {(product as any).rating > 0 && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Text style={{ color: "#F59E0B", fontSize: 13, letterSpacing: 1 }}>
+                    {"★".repeat(Math.round((product as any).rating))}{"☆".repeat(5 - Math.round((product as any).rating))}
+                  </Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: "#F59E0B" }}>
+                    {((product as any).rating as number).toFixed(1)}
+                  </Text>
+                  {(product as any).ratingCount > 0 && (
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                      ({((product as any).ratingCount as number).toLocaleString()})
+                    </Text>
+                  )}
+                  <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>·</Text>
+                </View>
+              )}
+              <Text style={[styles.vendor, { color: colors.mutedForeground }]}>
+                {product.vendor ?? "Mora"}
+              </Text>
+            </View>
             <Text style={[styles.title, { color: colors.foreground }]}>
               {product.title}
             </Text>
