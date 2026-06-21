@@ -38,15 +38,15 @@ const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
 const IS_IOS = Platform.OS === "ios";
 
 type TabFilter = { category?: string; gender?: string; tag?: string };
-type TabConfig = { id: string; label: string; filterType: string; filterValue?: string };
+type TabConfig = { id: string; label: string; arabicLabel?: string; filterType: string; filterValue?: string };
 
 const DEFAULT_TABS: TabConfig[] = [
-  { id: "tab_all",    label: "ALL",     filterType: "all" },
-  { id: "tab_women",  label: "WOMEN",   filterType: "gender",   filterValue: "women" },
-  { id: "tab_men",    label: "MEN",     filterType: "gender",   filterValue: "men" },
-  { id: "tab_beauty", label: "BEAUTY",  filterType: "category", filterValue: "beauty" },
-  { id: "tab_sale",   label: "SALE",    filterType: "sale" },
-  { id: "tab_foryou", label: "FOR YOU", filterType: "foryou" },
+  { id: "tab_all",    label: "ALL",     arabicLabel: "الكل",    filterType: "all" },
+  { id: "tab_women",  label: "WOMEN",   arabicLabel: "نساء",    filterType: "gender",   filterValue: "women" },
+  { id: "tab_men",    label: "MEN",     arabicLabel: "رجال",    filterType: "gender",   filterValue: "men" },
+  { id: "tab_beauty", label: "BEAUTY",  arabicLabel: "جمال",    filterType: "category", filterValue: "beauty" },
+  { id: "tab_sale",   label: "SALE",    arabicLabel: "تخفيضات", filterType: "sale" },
+  { id: "tab_foryou", label: "FOR YOU", arabicLabel: "لك ✦",    filterType: "foryou" },
 ];
 
 function getTabFilter(tab: TabConfig): TabFilter {
@@ -412,7 +412,7 @@ export default function HomeScreen() {
   const ListHeader = useMemo(() => (
     <View>
       <CategoryTabs
-        categories={menuTabs.map((t) => t.label)}
+        categories={menuTabs.map((t) => (t as TabConfig).arabicLabel || t.label)}
         activeIndex={safeActiveCategory}
         onChange={setActiveCategory}
       />
