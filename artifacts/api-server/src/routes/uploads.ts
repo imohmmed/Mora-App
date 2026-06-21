@@ -38,6 +38,7 @@ router.post(
       const dest = path.join(uploadsDir, filename);
 
       await sharp(req.file.buffer)
+        .resize(1200, 1200, { fit: "cover", position: "centre" })
         .webp({ quality: 82 })
         .toFile(dest);
 

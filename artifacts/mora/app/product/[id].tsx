@@ -1,11 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
+  FlatList,
   Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { Image } from "expo-image";
@@ -211,6 +213,9 @@ export default function ProductDetailScreen() {
   const comparePrice = product?.comparePrice;
   const hasDiscount = comparePrice != null && comparePrice > price;
   const bg = product ? cardColor(product.id) : "#F0F0F0";
+  const { width: screenWidth } = useWindowDimensions();
+  const imgSize = Math.min(screenWidth, 600);
+  const [activeImgIdx, setActiveImgIdx] = useState(0);
   const imageUri = product?.images?.[0];
 
   const warranty = contentSections?.warranty;
@@ -309,18 +314,53 @@ export default function ProductDetailScreen() {
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={PRIMARY} />
           }
         >
-          {/* ── Product Image ── */}
-          <View style={[styles.imageBox, { backgroundColor: bg }]}>
-            {imageUri ? (
-              <Image
-                source={{ uri: imageUri }}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                transition={300}
+          {/* ── Product Image Gallery ── */}
+          <View style={{ width: imgSize, height: imgSize, alignSelf: "center", backgroundColor: bg }}>
+            {(product.images?.length ?? 0) > 0 ? (
+              <FlatList
+                data={product.images}
+                keyExtractor={(_, i) => String(i)}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                bounces={false}
+                onMomentumScrollEnd={(e) => {
+                  const idx = Math.round(e.nativeEvent.contentOffset.x / imgSize);
+                  setActiveImgIdx(idx);
+                }}
+                renderItem={({ item }) => (
+                  <View style={{ width: imgSize, height: imgSize, backgroundColor: bg }}>
+                    <Image
+                      source={{ uri: item }}
+                      style={{ width: imgSize, height: imgSize }}
+                      contentFit="cover"
+                      transition={300}
+                    />
+                  </View>
+                )}
               />
             ) : (
-              <Feather name="shopping-bag" size={80} color={colors.mutedForeground} />
+              <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                <Feather name="shopping-bag" size={80} color={colors.mutedForeground} />
+              </View>
             )}
+            {/* Dot indicators */}
+            {(product.images?.length ?? 0) > 1 && (
+              <View style={styles.dotRow}>
+                {product.images!.map((_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.dot,
+                      i === activeImgIdx
+                        ? { backgroundColor: "#fff", width: 18 }
+                        : { backgroundColor: "rgba(255,255,255,0.5)", width: 6 },
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+            {/* Wishlist button */}
             <Pressable
               style={styles.wishlistBtnWrap}
               onPress={() => {
@@ -535,6 +575,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     position: "relative",
     overflow: "hidden",
+  },
+  dotRow: {
+    position: "absolute",
+    bottom: 12,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 5,
+  },
+  dot: {
+    height: 6,
+    borderRadius: 3,
   },
   wishlistBtnWrap: {
     position: "absolute",
