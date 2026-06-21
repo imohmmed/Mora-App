@@ -29,7 +29,7 @@ import type { Product, Variant } from "@/lib/types";
 
 const { width } = Dimensions.get("window");
 const HERO_H = 260;
-const CARD_W = (width - 32) / 2.5;
+const CARD_W = (width - 16 * 3) / 2;
 const PRIMARY = "#0274C1";
 const SCROLL_THRESHOLD = HERO_H - 70;
 
@@ -353,13 +353,9 @@ export default function CollectionScreen() {
 
         {/* Products / search results grid */}
         {isLoading && !refreshing ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.productGrid}
-          >
+          <View style={styles.productGrid}>
             {Array.from({ length: 4 }).map((_, i) => <ProductSkeleton key={i} />)}
-          </ScrollView>
+          </View>
         ) : error ? (
           <View style={styles.center}>
             <Feather name="alert-circle" size={40} color={colors.mutedForeground} />
@@ -380,17 +376,11 @@ export default function CollectionScreen() {
             </Text>
           </View>
         ) : (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.productGrid}
-            decelerationRate="fast"
-            snapToInterval={CARD_W + 10}
-          >
+          <View style={styles.productGrid}>
             {displayProducts.map((p) => (
               <ProductCard key={p.id} product={p} onQuickAdd={setQuickAddProduct} />
             ))}
-          </ScrollView>
+          </View>
         )}
       </Animated.ScrollView>
 
@@ -550,11 +540,12 @@ const styles = StyleSheet.create({
   },
   chipText: { fontFamily: "Inter_500Medium", fontSize: 13 },
 
-  /* ── Products horizontal scroll ── */
+  /* ── Products 2-column grid ── */
   productGrid: {
-    paddingHorizontal: 12,
-    paddingVertical: 16,
-    gap: 10,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    padding: 16,
+    gap: 12,
   },
   productCard: {
     width: CARD_W,
