@@ -221,6 +221,7 @@ function GuestScreen({
   onSignIn, onJoin, onOpenSettings, insets,
 }: { onSignIn: () => void; onJoin: () => void; onOpenSettings: () => void; insets: any }) {
   const colors = useColors();
+  const router = useRouter();
   const topPad = Platform.OS === "web" ? 0 : insets.top;
   // On web the floating tab bar is ~90px tall, so push content above it
   const botPad = Platform.OS === "web" ? 90 : insets.bottom;
@@ -280,7 +281,7 @@ function GuestScreen({
           </Pressable>
         </View>
 
-        <Pressable style={[styles.helpRow, { bottom: botPad + 24 }]}>
+        <Pressable style={[styles.helpRow, { bottom: botPad + 24 }]} onPress={() => router.push("/(tabs)/chat" as any)}>
           <Text style={[styles.helpText, { color: colors.mutedForeground }]}>Need help?</Text>
           <Feather name="help-circle" size={18} color={colors.mutedForeground} />
         </Pressable>
