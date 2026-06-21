@@ -40,6 +40,7 @@ export default function NewProduct() {
   const [rating, setRating] = useState(0);
   const [ratingCount, setRatingCount] = useState(0);
   const [ratingHover, setRatingHover] = useState(0);
+  const [reelUrl, setReelUrl] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [seoTitle, setSeoTitle] = useState("");
@@ -91,6 +92,7 @@ export default function NewProduct() {
               urlSlug: urlSlug || autoSlug(title),
               rating,
               ratingCount,
+              videoUrl: reelUrl || undefined,
             } as unknown as Parameters<typeof createProduct.mutate>[0]["data"],
           },
           { onSuccess: resolve, onError: reject }
@@ -461,6 +463,42 @@ export default function NewProduct() {
                     <span className="text-amber-500">{"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}</span>
                     {rating.toFixed(1)} out of 5
                     {ratingCount > 0 && <> · <strong>{ratingCount.toLocaleString()}</strong> reviews</>}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Instagram Reel ── */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span className="text-[#E1306C] text-base leading-none">◉</span>
+                Instagram Reel
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                أضف رابط Reel ليظهر كفيديو مضمّن في صفحة المنتج
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-2">
+                <div className="flex items-center gap-2 border border-input rounded-md px-3 h-10 focus-within:ring-2 focus-within:ring-ring focus-within:border-ring">
+                  <span className="text-[#E1306C] text-xs font-black shrink-0 tracking-tight">IG</span>
+                  <input
+                    className="flex-1 bg-transparent text-sm font-mono outline-none placeholder:text-muted-foreground/60 text-foreground"
+                    placeholder="https://www.instagram.com/reel/DC6TLCwucXR"
+                    value={reelUrl}
+                    onChange={(e) => setReelUrl(e.target.value)}
+                  />
+                  {reelUrl && (
+                    <button type="button" onClick={() => setReelUrl("")} className="text-muted-foreground hover:text-foreground transition-colors">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                {reelUrl && (
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                    ✓ سيظهر الفيديو في صفحة المنتج بعد الحفظ — مكتوم تلقائياً مع زر صوت وزر تكبير
                   </p>
                 )}
               </div>

@@ -27,6 +27,7 @@ import { formatIQD } from "@/lib/format";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
+import { ReelPlayer } from "@/components/ReelPlayer";
 import type { ContentSectionItem } from "@/lib/api";
 import type { Variant, Product } from "@/lib/types";
 
@@ -548,6 +549,11 @@ export default function ProductDetailScreen() {
               </Text>
             </View>
           </View>
+
+          {/* ── Instagram Reel ── */}
+          {!!product.videoUrl && (
+            <ReelPlayer url={product.videoUrl} colors={colors} />
+          )}
 
           {/* ── Description (accordion) ── */}
           {!!product.description && (

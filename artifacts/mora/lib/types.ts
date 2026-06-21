@@ -10,6 +10,7 @@ export type Product = {
   images: string[];
   tags: string[];
   variants: Variant[];
+  videoUrl?: string;
 };
 
 export type Variant = {
