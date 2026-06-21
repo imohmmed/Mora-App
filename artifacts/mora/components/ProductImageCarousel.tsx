@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
   ScrollView,
@@ -9,7 +10,6 @@ import {
   ViewStyle,
   LayoutChangeEvent,
 } from "react-native";
-import { Image } from "expo-image";
 
 interface Props {
   images: string[];
@@ -106,7 +106,7 @@ export function ProductImageCarousel({ images, style, children, placeholder }: P
                   key={i}
                   source={{ uri }}
                   style={{ width, height }}
-                  contentFit="cover"
+                  resizeMode="cover"
                 />
               ))
             : (
