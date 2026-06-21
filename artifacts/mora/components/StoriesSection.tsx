@@ -115,10 +115,12 @@ function StoryRowSection({
   row,
   activeGender,
   isLast,
+  circlesOnly,
 }: {
   row: StoryRow;
   activeGender?: string;
   isLast: boolean;
+  circlesOnly?: boolean;
 }) {
   const colors   = useColors();
   const { addItem } = useCart();
@@ -176,7 +178,7 @@ function StoryRowSection({
       </ScrollView>
 
       {/* Products horizontal scroll — 2.5 visible */}
-      {hasProducts && (
+      {!circlesOnly && hasProducts && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -208,9 +210,11 @@ function StoryRowSection({
 export function StoriesSection({
   rows,
   activeFilter,
+  circlesOnly,
 }: {
   rows: StoryRow[];
   activeFilter?: { gender?: string; category?: string; tag?: string };
+  circlesOnly?: boolean;
 }) {
   const colors = useColors();
   if (!rows || rows.length === 0) return null;
@@ -228,6 +232,7 @@ export function StoriesSection({
           row={row}
           activeGender={activeGender}
           isLast={idx === visibleRows.length - 1}
+          circlesOnly={circlesOnly}
         />
       ))}
     </View>

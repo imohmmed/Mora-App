@@ -360,19 +360,10 @@ export default function CartScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         >
-          <View style={s.emptyBanner}>
-            <Feather name="shopping-bag" size={20} color={sub} />
-            <Text style={[s.emptyBannerTxt, { color: sub }]}>
-              {lang === "ar"
-                ? "سلتك فارغة — تصفح المجموعات أدناه"
-                : "Cart is empty — browse collections below"}
-            </Text>
-          </View>
-
           {storiesLoading ? (
             <ActivityIndicator color={PRIMARY} style={{ marginTop: 48 }} />
           ) : (
-            <StoriesSection rows={storyRows} />
+            <StoriesSection rows={storyRows} circlesOnly />
           )}
         </ScrollView>
       </View>
@@ -449,6 +440,4 @@ const s = StyleSheet.create({
   barTotal:    { fontSize: 18, fontWeight: "800", letterSpacing: -0.4 },
   checkBtn:    { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: PRIMARY, paddingHorizontal: 22, paddingVertical: 14, borderRadius: 50 },
   checkTxt:    { color: "#fff", fontSize: 14, fontWeight: "700", letterSpacing: 0.6 },
-  emptyBanner:    { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 14, marginTop: 4 },
-  emptyBannerTxt: { fontSize: 13, fontWeight: "500", flex: 1 },
 });
