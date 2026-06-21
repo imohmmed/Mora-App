@@ -12,8 +12,8 @@ router.use(["/admin/story-rows", "/admin/story-items"], requireAdmin);
 // ─── Store: get all active rows with active items ──────────────────────────
 router.get("/store/stories", (_req, res) => {
   const rows = db.prepare(
-    `SELECT id, title, sort_order FROM story_rows WHERE status='active' ORDER BY sort_order ASC`
-  ).all() as { id: string; title: string; sort_order: number }[];
+    `SELECT id, title, title_ar, sort_order FROM story_rows WHERE status='active' ORDER BY sort_order ASC`
+  ).all() as { id: string; title: string; title_ar: string; sort_order: number }[];
 
   const getItems = db.prepare(
     `SELECT id, title, title_ar, image_url, link_url, sort_order, gender, collection_id FROM story_items
@@ -23,6 +23,7 @@ router.get("/store/stories", (_req, res) => {
   const result = rows.map((row) => ({
     id: row.id,
     title: row.title,
+    titleAr: row.title_ar ?? "",
     sortOrder: row.sort_order,
     items: (getItems.all(row.id) as { id: string; title: string; title_ar: string; image_url: string; link_url: string; sort_order: number; gender: string; collection_id: string | null }[]).map((item) => ({
       id: item.id,
@@ -87,10 +88,11 @@ router.get("/admin/story-rows", (_req, res) => {
 
   const result = rows.map((row) => ({
     id: row.id,
-    title: row.title,
-    sortOrder: row.sort_order,
-    status: row.status,
-    createdAt: row.created_at,
+    title: (row as any).title,
+    titleAr: (row as any).title_ar ?? "",
+    sortOrder: (row as any).sort_order,
+    status: (row as any).status,
+    createdAt: (row as any).created_at,
     items: (getItems.all(row.id) as { id: string; row_id: string; title: string; title_ar: string; image_url: string; link_url: string; sort_order: number; status: string; created_at: string; gender: string; collection_id: string | null }[]).map((item) => ({
       id: item.id,
       rowId: item.row_id,
@@ -123,10 +125,11 @@ router.post("/admin/story-rows", (req, res) => {
 
 // ─── Admin: update row ─────────────────────────────────────────────────────
 router.put("/admin/story-rows/:id", (req, res) => {
-  const { title, status, sortOrder } = req.body as { title?: string; status?: string; sortOrder?: number };
+  const { title, titleAr, status, sortOrder } = req.body as { title?: string; titleAr?: string; status?: string; sortOrder?: number };
   const row = db.prepare(`SELECT id FROM story_rows WHERE id=?`).get(req.params.id);
   if (!row) return res.status(404).json({ data: null, meta: {}, error: "Not found" });
   if (title !== undefined) db.prepare(`UPDATE story_rows SET title=? WHERE id=?`).run(title, req.params.id);
+  if (titleAr !== undefined) db.prepare(`UPDATE story_rows SET title_ar=? WHERE id=?`).run(titleAr, req.params.id);
   if (status !== undefined) db.prepare(`UPDATE story_rows SET status=? WHERE id=?`).run(status, req.params.id);
   if (sortOrder !== undefined) db.prepare(`UPDATE story_rows SET sort_order=? WHERE id=?`).run(sortOrder, req.params.id);
   const updated = db.prepare(`SELECT * FROM story_rows WHERE id=?`).get(req.params.id);

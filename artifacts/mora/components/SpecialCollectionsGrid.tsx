@@ -11,11 +11,13 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
+import { useLanguage } from "@/context/LanguageContext";
 import type { Product } from "@/lib/types";
 
 export interface SpecialCollection {
   slug: string;
   title: string;
+  titleAr?: string;
   description: string;
   heroImage: string;
   accentColor: string;
@@ -70,7 +72,9 @@ function Thumb({ product, accentColor }: { product: Product; accentColor: string
 function CollectionCard({ col }: { col: SpecialCollection }) {
   const colors  = useColors();
   const router  = useRouter();
+  const { lang } = useLanguage();
   const icon    = ICONS[col.slug] ?? "grid";
+  const displayTitle = lang === "ar" && col.titleAr ? col.titleAr : col.title;
   const prods   = col.products;
   const count   = prods.length;
 
@@ -106,7 +110,7 @@ function CollectionCard({ col }: { col: SpecialCollection }) {
         <View style={styles.titleRow}>
           <Feather name={icon as any} size={13} color={col.accentColor} />
           <Text style={[styles.cardTitle, { color: colors.foreground }]} numberOfLines={1}>
-            {col.title}
+            {displayTitle}
           </Text>
         </View>
         <View style={styles.arrowRow}>

@@ -240,6 +240,7 @@ ensureColumn("collections", "conditions", "TEXT NOT NULL DEFAULT '[]'");
 ensureColumn("collections", "conditions_match", "TEXT NOT NULL DEFAULT 'all'");
 ensureColumn("collections", "title_ar", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("story_items", "title_ar", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("story_rows",  "title_ar", "TEXT NOT NULL DEFAULT ''");
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS product_collections (

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useLanguage } from "@/context/LanguageContext";
 import {
   Dimensions,
   Pressable,
@@ -30,6 +31,7 @@ const CARD_H  = CARD_W * 1.25;
 function StoryCircle({ item }: { item: StoryItem }) {
   const router = useRouter();
   const colors = useColors();
+  const { lang } = useLanguage();
 
   return (
     <Pressable
@@ -57,7 +59,7 @@ function StoryCircle({ item }: { item: StoryItem }) {
         </View>
       </View>
       <Text style={[styles.circleLabel, { color: colors.foreground }]} numberOfLines={2}>
-        {item.title}
+        {lang === "ar" && item.titleAr ? item.titleAr : item.title}
       </Text>
     </Pressable>
   );
@@ -123,6 +125,7 @@ function StoryRowSection({
   circlesOnly?: boolean;
 }) {
   const colors   = useColors();
+  const { lang } = useLanguage();
   const { addItem } = useCart();
   const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
 
@@ -158,9 +161,9 @@ function StoryRowSection({
 
   return (
     <View style={[styles.rowWrap, !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
-      {row.title ? (
+      {(row.title || row.titleAr) ? (
         <Text style={[styles.rowTitle, { color: colors.mutedForeground }]}>
-          {row.title}
+          {lang === "ar" && row.titleAr ? row.titleAr : row.title}
         </Text>
       ) : null}
 

@@ -33,7 +33,7 @@ type StoryItem = {
   linkUrl: string; sortOrder: number; status: string; collectionId?: string | null;
 };
 type StoryRow = {
-  id: string; title: string; sortOrder: number; status: string;
+  id: string; title: string; titleAr?: string; sortOrder: number; status: string;
   createdAt: string; items: StoryItem[];
 };
 type Collection = {
@@ -599,6 +599,7 @@ function SortableStoryRow({
   const [open, setOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(false);
   const [title, setTitle] = useState(row.title);
+  const [titleAr, setTitleArRow] = useState(row.titleAr ?? "");
   const [showItemForm, setShowItemForm] = useState(false);
   const [newItem, setNewItem] = useState({ title: "", titleAr: "", imageUrl: "" });
   const [editItem, setEditItem] = useState<StoryItem | null>(null);
@@ -609,7 +610,10 @@ function SortableStoryRow({
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
 
   const saveTitle = () => {
-    if (title.trim() !== row.title) onUpdate(row.id, { title });
+    const updates: Partial<StoryRow> = {};
+    if (title.trim() !== row.title) updates.title = title;
+    if (titleAr.trim() !== (row.titleAr ?? "")) updates.titleAr = titleAr;
+    if (Object.keys(updates).length > 0) onUpdate(row.id, updates);
     setEditTitle(false);
   };
 
@@ -661,21 +665,32 @@ function SortableStoryRow({
         >
           {open ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
           {editTitle ? (
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={saveTitle}
-              onKeyDown={(e) => { if (e.key === "Enter") saveTitle(); }}
-              className="h-7 text-sm"
-              autoFocus
-              onClick={(e) => e.stopPropagation()}
-            />
+            <div className="flex gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
+              <Input
+                value={titleAr}
+                onChange={(e) => setTitleArRow(e.target.value)}
+                onBlur={saveTitle}
+                onKeyDown={(e) => { if (e.key === "Enter") saveTitle(); }}
+                className="h-7 text-sm text-right flex-1"
+                dir="rtl"
+                placeholder="اسم عربي"
+              />
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onBlur={saveTitle}
+                onKeyDown={(e) => { if (e.key === "Enter") saveTitle(); }}
+                className="h-7 text-sm flex-1"
+                autoFocus
+                placeholder="English name"
+              />
+            </div>
           ) : (
             <span
               className="font-medium text-sm flex-1 hover:underline cursor-text"
               onDoubleClick={(e) => { e.stopPropagation(); setEditTitle(true); }}
             >
-              {row.title || <span className="text-muted-foreground italic">Untitled row</span>}
+              {row.titleAr ? `${row.titleAr} / ${row.title}` : row.title || <span className="text-muted-foreground italic">Untitled row</span>}
             </span>
           )}
           <Badge variant="secondary" className="text-xs ml-auto flex-shrink-0">

@@ -103,6 +103,7 @@ export type StoryItem = {
 export type StoryRow = {
   id: string;
   title: string;
+  titleAr?: string;
   sortOrder: number;
   items: StoryItem[];
 };

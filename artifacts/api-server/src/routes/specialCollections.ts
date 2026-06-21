@@ -74,10 +74,21 @@ function getCuratedProducts(slug: string, limit: number, offset: number) {
   return { products: rows.slice(offset, offset + limit), total: rows.length };
 }
 
+function getQuickMeta(slug: string): { titleEn: string; titleAr: string } {
+  const key = `quick_col_meta_${slug}`;
+  const row = db.prepare(`SELECT items FROM content_sections WHERE key=? LIMIT 1`).get(key) as { items: string } | undefined;
+  const saved = row ? (JSON.parse(row.items) as Record<string, string>) : {};
+  return {
+    titleEn: saved["titleEn"] ?? COLLECTION_META[slug]?.title ?? slug,
+    titleAr: saved["titleAr"] ?? "",
+  };
+}
+
 router.get("/store/special-collections", (_req, res) => {
   const slugs = ["super-deals", "brand-deals", "trends", "hot-seller"];
   const result = slugs.map((slug) => {
     const meta = COLLECTION_META[slug]!;
+    const { titleEn, titleAr } = getQuickMeta(slug);
     let products: Row[];
     let total: number;
     if (slug === "super-deals") {
@@ -87,7 +98,7 @@ router.get("/store/special-collections", (_req, res) => {
     } else {
       ({ products, total } = getCuratedProducts(slug, 2, 0));
     }
-    return { slug, ...meta, total, products: parseRows(products) };
+    return { slug, ...meta, title: titleEn, titleAr, total, products: parseRows(products) };
   });
   res.json({ data: result, meta: {}, error: null });
 });
@@ -114,8 +125,9 @@ router.get("/store/special-collections/:slug", (req, res) => {
     ({ products, total } = getCuratedProducts(slug, limitNum, offset));
   }
 
+  const { titleEn, titleAr } = getQuickMeta(slug);
   res.json({
-    data: { slug, ...meta, products: parseRows(products) },
+    data: { slug, ...meta, title: titleEn, titleAr, products: parseRows(products) },
     meta: { total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum) },
     error: null,
   });
@@ -206,8 +218,8 @@ router.put("/admin/special-collections/:slug/meta", (req, res) => {
   if (existing) {
     db.prepare(`UPDATE content_sections SET items=? WHERE key=?`).run(JSON.stringify(updated), key);
   } else {
-    db.prepare(`INSERT INTO content_sections (id,key,title,items,status,created_at) VALUES (?,?,?,?,?,?)`)
-      .run(`cs_${slug}`, key, `Quick: ${slug}`, JSON.stringify(updated), "active", new Date().toISOString());
+    db.prepare(`INSERT INTO content_sections (id,key,title,items,sort_order,status,updated_at) VALUES (?,?,?,?,?,?,?)`)
+      .run(`cs_${slug}`, key, `Quick: ${slug}`, JSON.stringify(updated), 0, "active", new Date().toISOString());
   }
   res.json({ data: updated, meta: {}, error: null });
 });
