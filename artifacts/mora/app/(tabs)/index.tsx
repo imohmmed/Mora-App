@@ -26,6 +26,7 @@ import { HomeHeader } from "@/components/HomeHeader";
 import { CategoryTabs } from "@/components/CategoryTabs";
 import { SpecialCollectionsGrid } from "@/components/SpecialCollectionsGrid";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
+import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { fetchProducts, fetchSpecialCollections, fetchBanners, fetchStories, fetchContentSections } from "@/lib/api";
@@ -97,7 +98,6 @@ function ProductCard({
   const liked = isWishlisted(item.id);
   const tag = getTag(item);
   const bg = cardColor(item.id);
-  const imageUri = item.images?.[0];
   const nativeReady = useNativeReady();
   const useGlass = IS_IOS && !!GlassViewComp && nativeReady;
 
@@ -120,18 +120,11 @@ function ProductCard({
         delayLongPress={280}
       >
         {/* ── Image area ── */}
-        <View style={[styles.productImage, { backgroundColor: bg }]}>
-          {imageUri ? (
-            <Image
-              source={{ uri: imageUri }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              transition={200}
-            />
-          ) : (
-            <Feather name="shopping-bag" size={40} color={colors.mutedForeground} />
-          )}
-
+        <ProductImageCarousel
+          images={item.images ?? []}
+          style={[styles.productImage, { backgroundColor: bg }]}
+          placeholder={<Feather name="shopping-bag" size={40} color={colors.mutedForeground} />}
+        >
           {/* Tag badge */}
           {tag && (
             useGlass ? (
@@ -162,7 +155,7 @@ function ProductCard({
               </View>
             )}
           </Pressable>
-        </View>
+        </ProductImageCarousel>
 
         {/* ── Text info (no button here) ── */}
         <View style={styles.productInfo}>

@@ -25,6 +25,7 @@ import { formatIQD } from "@/lib/format";
 import { FloatingTabBar } from "@/components/FloatingTabBar";
 import { GlassBackButton } from "@/components/GlassBackButton";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
+import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import type { Product, Variant } from "@/lib/types";
 
 const { width } = Dimensions.get("window");
@@ -48,18 +49,16 @@ function ProductCard({ product, onQuickAdd }: { product: Product; onQuickAdd: (p
         onPress={() => router.push(`/product/${product.id}`)}
         testID={`product-${product.id}`}
       >
-        <View style={[styles.productImageWrap, { backgroundColor: colors.secondary }]}>
-          <Image
-            source={{ uri: product.images?.[0] }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-          />
+        <ProductImageCarousel
+          images={product.images ?? []}
+          style={[styles.productImageWrap, { backgroundColor: colors.secondary }]}
+        >
           {discountPct > 0 && (
             <View style={styles.discBadge}>
               <Text style={styles.discText}>-{discountPct}%</Text>
             </View>
           )}
-        </View>
+        </ProductImageCarousel>
         <View style={styles.productInfo}>
           <Text style={[styles.vendor, { color: colors.mutedForeground }]} numberOfLines={1}>
             {product.vendor?.toUpperCase()}

@@ -24,6 +24,7 @@ import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { formatIQD } from "@/lib/format";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
+import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import { ProductPreviewModal } from "@/components/ProductPreviewModal";
 import type { Product, Variant } from "@/lib/types";
 
@@ -104,7 +105,6 @@ function SearchResultCard({
   const router = useRouter();
   const { isWishlisted, toggle } = useWishlist();
   const liked = isWishlisted(item.id);
-  const imageUri = item.images?.[0];
   const nativeReady = useNativeReady();
   const useGlass = IS_IOS && !!GlassViewComp && nativeReady;
   const useGlassBtn = IS_IOS && glassUIAvailable && nativeReady;
@@ -122,18 +122,11 @@ function SearchResultCard({
         }}
         delayLongPress={280}
       >
-        <View style={[styles.resultImage, { backgroundColor: cardColor(item.id) }]}>
-          {imageUri ? (
-            <Image
-              source={{ uri: imageUri }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              transition={200}
-            />
-          ) : (
-            <Feather name="shopping-bag" size={32} color={colors.mutedForeground} />
-          )}
-
+        <ProductImageCarousel
+          images={item.images ?? []}
+          style={[styles.resultImage, { backgroundColor: cardColor(item.id) }]}
+          placeholder={<Feather name="shopping-bag" size={32} color={colors.mutedForeground} />}
+        >
           {/* Wishlist button */}
           <Pressable
             style={styles.likeBtnWrap}
@@ -152,7 +145,7 @@ function SearchResultCard({
               </View>
             )}
           </Pressable>
-        </View>
+        </ProductImageCarousel>
 
         {/* Info text (no button) */}
         <View style={styles.resultInfo}>

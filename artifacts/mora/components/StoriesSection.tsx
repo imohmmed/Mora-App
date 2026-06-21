@@ -16,6 +16,7 @@ import { useCart } from "@/context/CartContext";
 import { fetchCollectionProducts } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
+import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import type { Product, StoryRow, StoryItem, Variant } from "@/lib/types";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -72,7 +73,6 @@ function ProductMiniCard({
 }) {
   const router = useRouter();
   const colors = useColors();
-  const image  = product.images?.[0];
 
   return (
     <View style={styles.productCard}>
@@ -80,16 +80,10 @@ function ProductMiniCard({
         style={({ pressed }) => [{ opacity: pressed ? 0.88 : 1 }]}
         onPress={() => router.push(`/product/${product.id}` as any)}
       >
-        <View style={[styles.productImage, { backgroundColor: "#EEF0F4" }]}>
-          {image ? (
-            <Image
-              source={{ uri: image }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              transition={150}
-            />
-          ) : null}
-        </View>
+        <ProductImageCarousel
+          images={product.images ?? []}
+          style={[styles.productImage, { backgroundColor: "#EEF0F4" }]}
+        />
         <View style={styles.productInfo}>
           <Text style={[styles.productBrand, { color: colors.mutedForeground }]} numberOfLines={1}>
             {product.vendor?.toUpperCase() ?? "MORA"}

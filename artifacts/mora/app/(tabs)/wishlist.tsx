@@ -23,6 +23,7 @@ import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { fetchProduct } from "@/lib/api";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
+import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import type { Product, Variant } from "@/lib/types";
 
 const PRIMARY = "#0274C1";
@@ -63,24 +64,17 @@ function WishlistCard({
   const colors = useColors();
   const router = useRouter();
   const { toggle } = useWishlist();
-  const imageUri = product.images?.[0];
 
   return (
     <Pressable
       style={({ pressed }) => [styles.card, { opacity: pressed ? 0.95 : 1 }]}
       onPress={() => router.push(`/product/${product.id}`)}
     >
-      <View style={[styles.cardImage, { backgroundColor: cardColor(product.id) }]}>
-        {imageUri ? (
-          <Image
-            source={{ uri: imageUri }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            transition={200}
-          />
-        ) : (
-          <Feather name="shopping-bag" size={32} color={colors.mutedForeground} />
-        )}
+      <ProductImageCarousel
+        images={product.images ?? []}
+        style={[styles.cardImage, { backgroundColor: cardColor(product.id) }]}
+        placeholder={<Feather name="shopping-bag" size={32} color={colors.mutedForeground} />}
+      >
         <Pressable
           style={styles.removeBtn}
           onPress={() => {
@@ -90,7 +84,7 @@ function WishlistCard({
         >
           <Feather name="heart" size={16} color="#E53935" />
         </Pressable>
-      </View>
+      </ProductImageCarousel>
       <View style={styles.cardInfo}>
         <Text style={[styles.cardVendor, { color: colors.mutedForeground }]}>
           {product.vendor ?? "Mora"}
