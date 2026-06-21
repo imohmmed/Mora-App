@@ -21,16 +21,16 @@ interface Props {
 export function ProductImageCarousel({ images, style, children, placeholder }: Props) {
   const scrollRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
-  const [width, setWidth] = useState(0);
+  const [size, setSize] = useState({ width: 0, height: 0 });
   const indexRef = useRef(0);
-  const widthRef = useRef(0);
+  const sizeRef = useRef({ width: 0, height: 0 });
   const isDragging = useRef(false);
   const count = images.length;
 
   const scrollTo = useCallback((idx: number, animated = true) => {
-    const w = widthRef.current;
-    if (!w || !scrollRef.current) return;
-    scrollRef.current.scrollTo({ x: w * idx, animated });
+    const { width } = sizeRef.current;
+    if (!width || !scrollRef.current) return;
+    scrollRef.current.scrollTo({ x: width * idx, animated });
     indexRef.current = idx;
     setIndex(idx);
   }, []);
@@ -55,9 +55,9 @@ export function ProductImageCarousel({ images, style, children, placeholder }: P
   }, [images.join(",")]);
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {
-    const w = e.nativeEvent.layout.width;
-    widthRef.current = w;
-    setWidth(w);
+    const { width, height } = e.nativeEvent.layout;
+    sizeRef.current = { width, height };
+    setSize({ width, height });
   }, []);
 
   const onScrollBeginDrag = useCallback(() => {
@@ -68,20 +68,24 @@ export function ProductImageCarousel({ images, style, children, placeholder }: P
     isDragging.current = false;
   }, []);
 
-  const onMomentumScrollEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    isDragging.current = false;
-    const x = e.nativeEvent.contentOffset.x;
-    const w = widthRef.current;
-    if (!w) return;
-    const newIdx = Math.round(x / w);
-    const clamped = Math.max(0, Math.min(newIdx, count - 1));
-    indexRef.current = clamped;
-    setIndex(clamped);
-  }, [count]);
+  const onMomentumScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      isDragging.current = false;
+      const x = e.nativeEvent.contentOffset.x;
+      const w = sizeRef.current.width;
+      if (!w) return;
+      const newIdx = Math.max(0, Math.min(Math.round(x / w), count - 1));
+      indexRef.current = newIdx;
+      setIndex(newIdx);
+    },
+    [count]
+  );
+
+  const { width, height } = size;
 
   return (
     <View style={[styles.wrap, style]} onLayout={onLayout}>
-      {width > 0 && (
+      {width > 0 && height > 0 && (
         <ScrollView
           ref={scrollRef}
           horizontal
@@ -92,22 +96,21 @@ export function ProductImageCarousel({ images, style, children, placeholder }: P
           onScrollEndDrag={onScrollEndDrag}
           onMomentumScrollEnd={onMomentumScrollEnd}
           style={StyleSheet.absoluteFill}
-          contentContainerStyle={{ width: width * Math.max(count, 1), flexGrow: 0 }}
+          contentContainerStyle={{ width: width * Math.max(count, 1) }}
           bounces={false}
           decelerationRate="fast"
-          disableIntervalMomentum
         >
           {count > 0
             ? images.map((uri, i) => (
                 <Image
                   key={i}
                   source={{ uri }}
-                  style={{ width, height: "100%" as any }}
+                  style={{ width, height }}
                   contentFit="cover"
                 />
               ))
             : (
-                <View style={{ width, height: "100%" as any }}>
+                <View style={{ width, height }}>
                   {placeholder ?? null}
                 </View>
               )}
@@ -126,7 +129,8 @@ export function ProductImageCarousel({ images, style, children, placeholder }: P
               style={[
                 styles.dot,
                 {
-                  backgroundColor: i === index ? "#fff" : "rgba(255,255,255,0.45)",
+                  backgroundColor:
+                    i === index ? "#fff" : "rgba(255,255,255,0.45)",
                   width: i === index ? 14 : 5,
                 },
               ]}
