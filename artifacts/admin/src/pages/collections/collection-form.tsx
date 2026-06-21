@@ -61,7 +61,7 @@ const NUM_OPS = [
 
 // ─── API Helper ────────────────────────────────────────────────────────────────
 
-const ADMIN_TOKEN = "dev-token-mora";
+const adminAuthToken = () => { try { return localStorage.getItem("mora_admin_token") || ""; } catch { return ""; } };
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
@@ -69,7 +69,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
-      Authorization: `Bearer ${ADMIN_TOKEN}`,
+      Authorization: `Bearer ${adminAuthToken()}`,
       ...(init?.headers ?? {}),
     },
   });

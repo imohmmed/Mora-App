@@ -22,7 +22,8 @@ import { format } from "date-fns";
 import { useSearch, useLocation } from "wouter";
 import { useState } from "react";
 
-const AUTH_HEADER = { Authorization: "Bearer dev-token-mora", "Content-Type": "application/json" };
+const adminToken = () => { try { return localStorage.getItem("mora_admin_token") || ""; } catch { return ""; } };
+const AUTH_HEADER = () => ({ Authorization: `Bearer ${adminToken()}`, "Content-Type": "application/json" });
 
 type MetaobjectEntry = { id: string; type: string; fields: Record<string, string> };
 type FileEntry = { id: string; filename: string; size: number; mimeType: string; url: string; createdAt: string };
@@ -88,7 +89,7 @@ function BannerForm({
     try {
       const url = isEdit ? `/api/admin/banners/${initial!.id}` : "/api/admin/banners";
       const method = isEdit ? "PUT" : "POST";
-      const res = await fetch(url, { method, headers: AUTH_HEADER, body: JSON.stringify(form) });
+      const res = await fetch(url, { method, headers: AUTH_HEADER(), body: JSON.stringify(form) });
       if (!res.ok) throw new Error("Failed to save");
       onSaved();
       onClose();
@@ -204,7 +205,7 @@ function BannersTab() {
 
   const { data: bannersRes, isLoading } = useQuery<{ data: Banner[] }>({
     queryKey: ["/api/admin/banners"],
-    queryFn: () => fetch("/api/admin/banners", { headers: AUTH_HEADER }).then(r => r.json()),
+    queryFn: () => fetch("/api/admin/banners", { headers: AUTH_HEADER() }).then(r => r.json()),
   });
 
   const banners = bannersRes?.data ?? [];
@@ -214,7 +215,7 @@ function BannersTab() {
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     try {
-      await fetch(`/api/admin/banners/${id}`, { method: "DELETE", headers: AUTH_HEADER });
+      await fetch(`/api/admin/banners/${id}`, { method: "DELETE", headers: AUTH_HEADER() });
       await refresh();
     } finally {
       setDeletingId(null);
@@ -336,7 +337,7 @@ function StoryItemForm({
     try {
       const url  = isEdit ? `/api/admin/story-items/${initial!.id}` : "/api/admin/story-items";
       const body = isEdit ? { title: form.title, imageUrl: form.imageUrl, linkUrl: form.linkUrl, status: form.status, rowId: form.rowId } : { ...form };
-      const res  = await fetch(url, { method: isEdit ? "PUT" : "POST", headers: AUTH_HEADER, body: JSON.stringify(body) });
+      const res  = await fetch(url, { method: isEdit ? "PUT" : "POST", headers: AUTH_HEADER(), body: JSON.stringify(body) });
       if (!res.ok) throw new Error("Failed");
       onSaved(); onClose();
     } catch (e) { setErr((e as Error).message); }
@@ -410,7 +411,7 @@ function StoriesTab() {
 
   const { data: rowsRes, isLoading } = useQuery<{ data: StoryRow[] }>({
     queryKey: ["/api/admin/story-rows"],
-    queryFn: () => fetch("/api/admin/story-rows", { headers: AUTH_HEADER }).then(r => r.json()),
+    queryFn: () => fetch("/api/admin/story-rows", { headers: AUTH_HEADER() }).then(r => r.json()),
   });
 
   const rows = rowsRes?.data ?? [];
@@ -420,30 +421,30 @@ function StoriesTab() {
     if (!newRowTitle.trim()) return;
     setSavingRow(true);
     try {
-      await fetch("/api/admin/story-rows", { method: "POST", headers: AUTH_HEADER, body: JSON.stringify({ title: newRowTitle }) });
+      await fetch("/api/admin/story-rows", { method: "POST", headers: AUTH_HEADER(), body: JSON.stringify({ title: newRowTitle }) });
       setNewRowTitle(""); setAddRowOpen(false); await refresh();
     } finally { setSavingRow(false); }
   };
 
   const handleSaveRowTitle = async (rowId: string) => {
-    await fetch(`/api/admin/story-rows/${rowId}`, { method: "PUT", headers: AUTH_HEADER, body: JSON.stringify({ title: editRowTitle }) });
+    await fetch(`/api/admin/story-rows/${rowId}`, { method: "PUT", headers: AUTH_HEADER(), body: JSON.stringify({ title: editRowTitle }) });
     setEditRowId(null); await refresh();
   };
 
   const handleToggleRowStatus = async (row: StoryRow) => {
-    await fetch(`/api/admin/story-rows/${row.id}`, { method: "PUT", headers: AUTH_HEADER, body: JSON.stringify({ status: row.status === "active" ? "inactive" : "active" }) });
+    await fetch(`/api/admin/story-rows/${row.id}`, { method: "PUT", headers: AUTH_HEADER(), body: JSON.stringify({ status: row.status === "active" ? "inactive" : "active" }) });
     await refresh();
   };
 
   const handleDeleteRow = async (id: string) => {
     setDeletingId(id);
-    try { await fetch(`/api/admin/story-rows/${id}`, { method: "DELETE", headers: AUTH_HEADER }); await refresh(); }
+    try { await fetch(`/api/admin/story-rows/${id}`, { method: "DELETE", headers: AUTH_HEADER() }); await refresh(); }
     finally { setDeletingId(null); }
   };
 
   const handleDeleteItem = async (id: string) => {
     setDeletingId(id);
-    try { await fetch(`/api/admin/story-items/${id}`, { method: "DELETE", headers: AUTH_HEADER }); await refresh(); }
+    try { await fetch(`/api/admin/story-items/${id}`, { method: "DELETE", headers: AUTH_HEADER() }); await refresh(); }
     finally { setDeletingId(null); }
   };
 
@@ -618,12 +619,12 @@ export default function ContentHub() {
 
   const { data: metaobjectsRes, isLoading: loadingMeta } = useQuery<{ data: MetaobjectEntry[] }>({
     queryKey: ["/api/admin/content/metaobjects"],
-    queryFn: () => fetch("/api/admin/content/metaobjects", { headers: AUTH_HEADER }).then(r => r.json()),
+    queryFn: () => fetch("/api/admin/content/metaobjects", { headers: AUTH_HEADER() }).then(r => r.json()),
   });
 
   const { data: filesRes, isLoading: loadingFiles } = useQuery<{ data: FileEntry[] }>({
     queryKey: ["/api/admin/content/files"],
-    queryFn: () => fetch("/api/admin/content/files", { headers: AUTH_HEADER }).then(r => r.json()),
+    queryFn: () => fetch("/api/admin/content/files", { headers: AUTH_HEADER() }).then(r => r.json()),
   });
 
   const metaobjects = metaobjectsRes?.data ?? [];
@@ -939,7 +940,7 @@ function ContentSectionsTab() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin-content-sections"],
     queryFn: async () => {
-      const r = await fetch("/api/admin/content-sections", { headers: AUTH_HEADER });
+      const r = await fetch("/api/admin/content-sections", { headers: AUTH_HEADER() });
       const j = await r.json() as { data: CSRow[] };
       return j.data;
     },
@@ -960,7 +961,7 @@ function ContentSectionsTab() {
     setSaving(true);
     await fetch(`/api/admin/content-sections/${editing.id}`, {
       method: "PUT",
-      headers: AUTH_HEADER,
+      headers: AUTH_HEADER(),
       body: JSON.stringify({ title: editing.title, items: editing.items, status: editing.status }),
     });
     await qc.invalidateQueries({ queryKey: ["admin-content-sections"] });
@@ -975,7 +976,7 @@ function ContentSectionsTab() {
     try {
       const res = await fetch("/api/admin/content-sections", {
         method: "POST",
-        headers: AUTH_HEADER,
+        headers: AUTH_HEADER(),
         body: JSON.stringify({ key: newKey.trim(), title: newTitle, items: [], status: newStatus }),
       });
       if (!res.ok) {
@@ -996,7 +997,7 @@ function ContentSectionsTab() {
     if (!window.confirm("Delete this section? This cannot be undone.")) return;
     setDeletingId(id);
     try {
-      await fetch(`/api/admin/content-sections/${id}`, { method: "DELETE", headers: AUTH_HEADER });
+      await fetch(`/api/admin/content-sections/${id}`, { method: "DELETE", headers: AUTH_HEADER() });
       await qc.invalidateQueries({ queryKey: ["admin-content-sections"] });
     } finally {
       setDeletingId(null);

@@ -43,7 +43,7 @@ type Product = {
 
 // ─── API helpers ────────────────────────────────────────────────────────────
 
-const ADMIN_TOKEN = "dev-token-mora";
+const adminAuthToken = () => { try { return localStorage.getItem("mora_admin_token") || ""; } catch { return ""; } };
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
@@ -51,7 +51,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
-      Authorization: `Bearer ${ADMIN_TOKEN}`,
+      Authorization: `Bearer ${adminAuthToken()}`,
       ...(init?.headers ?? {}),
     },
   });
@@ -504,7 +504,7 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
   const { data: allProducts = [] } = useQuery<Product[]>({
     queryKey: ["admin-all-products"],
     queryFn: () => fetch(`${API}/admin/products?limit=200`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: { Authorization: `Bearer ${adminAuthToken()}` },
     }).then((r) => r.json()).then((j: { data: Product[] }) => j.data),
     staleTime: 60_000,
     enabled: showPicker,

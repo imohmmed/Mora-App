@@ -1,5 +1,6 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
+import { getAdminToken, clearAdminToken } from "@/lib/api";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -34,7 +35,20 @@ import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
 import Notifications from "@/pages/notifications";
 
-const queryClient = new QueryClient();
+function handleApiError(error: unknown) {
+  const status = (error as { status?: number } | null)?.status;
+  // A 401 while a token is present means the stored session is stale/expired —
+  // clear it and reload so the auth gate falls back to the login screen.
+  if (status === 401 && getAdminToken()) {
+    clearAdminToken();
+    window.location.reload();
+  }
+}
+
+const queryClient = new QueryClient({
+  queryCache: new QueryCache({ onError: handleApiError }),
+  mutationCache: new MutationCache({ onError: handleApiError }),
+});
 
 function LoadingScreen() {
   return (

@@ -4,6 +4,7 @@
 - [IQD Pricing & Content Sections](iqd-content-sections.md) — All prices in IQD (×1300 from USD), formatIQD() in lib/format.ts, warranty+testimonials via content_sections API
 - [bacons apple-targets pnpm fix](bacons-apple-targets-pnpm.md) — @bacons/apple-targets needs @expo/image-utils symlinked into its node_modules; metro blockList fix for _tmp_ dirs
 - [Live Activities Architecture](live-activities.md) — Full Live Activity + Dynamic Island stack for iOS order tracking
+- [Admin JWT secret rotation](admin-jwt-secret-rotation.md) — rotating/dropping ADMIN_JWT_SECRET strands admins (gate checks exp not signature); 401→auto-relogin in admin App.tsx
 - [@expo/ui Form release crash](expo-ui-account-form-crash.md) — heavy SwiftUI Form (Picker/Slider/Stepper) segfaults at Fabric mount on TestFlight; keep native glass to small pieces
 - [@expo/ui Host wrapper](expo-ui-host-wrapper.md) — SwiftUI views (GlassEffectContainer etc.) MUST be inside <Host> or Fabric crashes at launch (SwiftUIVirtualViewObjC SIGABRT)
 - [iOS Native Crash — expo-glass-effect](ios-glass-crash.md) — EXC_BAD_ACCESS in registerNativeViews on iOS 26 beta; use @expo/ui instead
