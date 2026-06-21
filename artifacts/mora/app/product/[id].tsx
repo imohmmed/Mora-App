@@ -471,19 +471,6 @@ export default function ProductDetailScreen() {
               )}
             </View>
 
-            {/* Tags */}
-            {product.tags && product.tags.length > 0 && (
-              <View style={styles.tagsRow}>
-                {product.tags.slice(0, 4).map((tag) => (
-                  <View
-                    key={tag}
-                    style={[styles.tag, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-                  >
-                    <Text style={[styles.tagText, { color: colors.mutedForeground }]}>{tag}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
           </View>
 
           {/* ── Variants / SIZE ── */}
