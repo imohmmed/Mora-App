@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -146,35 +146,64 @@ function ImageField({
 }: {
   label: string; value: string; onChange: (v: string) => void; hint?: string;
 }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const token = () => { try { return localStorage.getItem("mora_admin_token") || ""; } catch { return ""; } };
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await fetch(`${API}/admin/uploads`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token()}` },
+        body: fd,
+      });
+      const json = await res.json();
+      if (!res.ok || !json.data?.url) throw new Error(json.error ?? "Upload failed");
+      onChange(json.data.url);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
   return (
     <div className="space-y-2">
       <Label className="text-sm font-medium">{label}</Label>
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-      <div className="flex gap-3">
-        <div className="w-16 h-16 rounded-xl border-2 border-dashed bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+      <div className="flex gap-3 items-center">
+        <div className="w-20 h-20 rounded-xl border-2 border-dashed bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden relative">
           {value ? (
-            <img src={value} alt={label} className="w-full h-full object-cover rounded-xl" />
+            <>
+              <img src={value} alt={label} className="w-full h-full object-cover rounded-xl" />
+              <button
+                type="button"
+                onClick={() => onChange("")}
+                className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-xl"
+              >
+                <span className="text-white text-xs font-medium">حذف</span>
+              </button>
+            </>
           ) : (
             <ImageIcon className="w-5 h-5 text-muted-foreground/50" />
           )}
         </div>
-        <div className="flex-1">
-          <Input
-            placeholder="https://example.com/image.jpg"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="h-9 text-sm"
-          />
-          {value && (
-            <button
-              type="button"
-              className="text-xs text-muted-foreground hover:text-destructive mt-1"
-              onClick={() => onChange("")}
-            >
-              Remove
-            </button>
-          )}
-        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1 h-9"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+        >
+          {uploading ? "جاري الرفع…" : value ? "تغيير الصورة" : "رفع صورة"}
+        </Button>
       </div>
     </div>
   );

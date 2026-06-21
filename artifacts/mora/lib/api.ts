@@ -156,8 +156,17 @@ export async function fetchCollection(id: string): Promise<SpecialCollection> {
   const res = await fetch(`${base}/store/collections/${id}`, { headers: { Accept: "application/json" } });
   if (res.status === 401) { notifyUnauthorized(); throw new Error("Unauthorized"); }
   if (!res.ok) throw new Error(`Failed to fetch collection ${id}`);
-  const json = (await res.json()) as { data: SpecialCollection; meta: Record<string, unknown>; error: string | null };
-  return json.data;
+  const json = (await res.json()) as { data: Record<string, unknown>; meta: Record<string, unknown>; error: string | null };
+  const d = json.data;
+  return {
+    slug: (d["id"] as string) ?? id,
+    title: (d["title"] as string) ?? "",
+    description: (d["description"] as string) ?? "",
+    heroImage: (d["backgroundImage"] as string) || (d["image"] as string) || "",
+    accentColor: "#0274C1",
+    total: (json.meta["total"] as number) ?? 0,
+    products: (d["products"] as Product[]) ?? [],
+  };
 }
 
 export async function fetchSpecialCollection(

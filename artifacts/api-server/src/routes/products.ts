@@ -95,12 +95,6 @@ router.get("/store/collections", (_req, res) => {
   res.json({ data: parseRows(rows), meta: { total: rows.length }, error: null });
 });
 
-router.get("/store/collections/:id", (req, res) => {
-  const col = parseOne(db.prepare(`SELECT * FROM collections WHERE id=?`).get(req.params["id"]) as Row | undefined);
-  if (!col) { res.status(404).json({ data: null, meta: {}, error: "Collection not found" }); return; }
-  res.json({ data: col, meta: {}, error: null });
-});
-
 router.get("/store/settings", (_req, res) => {
   const row = db.prepare(`SELECT value FROM settings WHERE key='store'`).get() as Row | undefined;
   const s = (row ? JSON.parse(row["value"] as string) : {}) as Record<string, unknown>;

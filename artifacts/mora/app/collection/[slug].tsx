@@ -23,7 +23,8 @@ import { fetchSpecialCollection, fetchCollection, searchProducts } from "@/lib/a
 import { formatIQD } from "@/lib/format";
 import { FloatingTabBar } from "@/components/FloatingTabBar";
 import { GlassBackButton } from "@/components/GlassBackButton";
-import type { Product } from "@/lib/types";
+import { QuickAddSheet } from "@/components/QuickAddSheet";
+import type { Product, Variant } from "@/lib/types";
 
 const { width } = Dimensions.get("window");
 const HERO_H = 260;
@@ -31,7 +32,7 @@ const CARD_W = (width - 16 * 3) / 2;
 const PRIMARY = "#0274C1";
 const SCROLL_THRESHOLD = HERO_H - 70;
 
-function ProductCard({ product }: { product: Product }) {
+function ProductCard({ product, onQuickAdd }: { product: Product; onQuickAdd: (p: Product) => void }) {
   const colors = useColors();
   const router = useRouter();
   const hasDiscount = product.comparePrice && product.comparePrice > product.price;
@@ -59,6 +60,14 @@ function ProductCard({ product }: { product: Product }) {
             <Text style={styles.discText}>-{discountPct}%</Text>
           </View>
         )}
+        {/* Quick Add button */}
+        <Pressable
+          style={styles.quickAddBtn}
+          onPress={(e) => { e.stopPropagation?.(); onQuickAdd(product); }}
+          hitSlop={4}
+        >
+          <Feather name="plus" size={16} color="#fff" />
+        </Pressable>
       </View>
       <View style={styles.productInfo}>
         <Text style={[styles.vendor, { color: colors.mutedForeground }]} numberOfLines={1}>
@@ -110,6 +119,8 @@ export default function CollectionScreen() {
   const [scrolled, setScrolled] = useState(false);
   const [query, setQuery] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
+  const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
+  const { addItem } = useCart();
 
   const scrollRef = useRef<any>(null);
   const searchRef = useRef<TextInput>(null);
@@ -369,13 +380,33 @@ export default function CollectionScreen() {
         ) : (
           <View style={styles.productGrid}>
             {displayProducts.map((p) => (
-              <ProductCard key={p.id} product={p} />
+              <ProductCard key={p.id} product={p} onQuickAdd={setQuickAddProduct} />
             ))}
           </View>
         )}
       </Animated.ScrollView>
 
       <FloatingTabBar />
+
+      <QuickAddSheet
+        visible={!!quickAddProduct}
+        product={quickAddProduct}
+        onClose={() => setQuickAddProduct(null)}
+        onConfirm={(variant: Variant) => {
+          if (!quickAddProduct) return;
+          addItem({
+            productId: quickAddProduct.id,
+            variantId: variant.id,
+            title: quickAddProduct.title,
+            vendor: quickAddProduct.vendor ?? "",
+            price: variant.price ?? quickAddProduct.price,
+            quantity: 1,
+            size: variant.option1 ?? undefined,
+            color: variant.option2 ?? undefined,
+            image: quickAddProduct.images?.[0],
+          });
+        }}
+      />
     </View>
   );
 }
@@ -447,6 +478,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     padding: 0,
+  },
+
+  /* ── Quick Add button ── */
+  quickAddBtn: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   /* ── Hero ── */
