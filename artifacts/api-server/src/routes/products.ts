@@ -270,6 +270,23 @@ function buildSmartWhere(conditions: SmartCondition[], match: string): { where: 
   return { where: `(${clauses.join(joiner)})`, params };
 }
 
+// ─── Store: get a regular collection + its products by ID ─────────────────────
+router.get("/store/collections/:id", (req, res) => {
+  const col = parseOne(db.prepare(`SELECT * FROM collections WHERE id=?`).get(req.params["id"]) as Row | undefined);
+  if (!col) return res.status(404).json({ data: null, meta: {}, error: "Collection not found" });
+  const rows = db.prepare(
+    `SELECT p.* FROM products p
+     JOIN product_collections pc ON pc.product_id = p.id
+     WHERE pc.collection_id = ? AND p.status = 'active'
+     ORDER BY p.created_at DESC`
+  ).all(req.params["id"]) as Row[];
+  const products = parseRows(rows).map((p) => ({
+    ...p,
+    variants: parseRows(db.prepare(`SELECT * FROM variants WHERE product_id=?`).all(p["id"] as string) as Row[]),
+  }));
+  return res.json({ data: { ...col, products }, meta: { total: products.length }, error: null });
+});
+
 router.use("/admin/collections", requireAdmin);
 
 router.get("/admin/collections", (_req, res) => {

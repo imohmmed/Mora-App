@@ -141,11 +141,23 @@ router.delete("/admin/story-rows/:id", (req, res) => {
 router.post("/admin/story-items", (req, res) => {
   const { rowId, title = "", imageUrl = "", linkUrl = "", status = "active", gender = "all", collectionId = null } = req.body as { rowId?: string; title?: string; imageUrl?: string; linkUrl?: string; status?: string; gender?: string; collectionId?: string | null };
   if (!rowId) return res.status(400).json({ data: null, meta: {}, error: "rowId required" });
+
+  // Auto-create a collection with the same name if none was specified
+  let finalCollectionId: string | null = collectionId;
+  if (!finalCollectionId && title.trim()) {
+    const colId = `col_${Date.now()}`;
+    db.prepare(
+      `INSERT INTO collections (id, title, description, image, background_image, collection_type, conditions, conditions_match, products_count, created_at)
+       VALUES (?, ?, '', '', '', 'manual', '[]', 'all', 0, ?)`
+    ).run(colId, title.trim(), now());
+    finalCollectionId = colId;
+  }
+
   const maxOrder = (db.prepare(`SELECT COALESCE(MAX(sort_order),0) as m FROM story_items WHERE row_id=?`).get(rowId) as { m: number }).m;
   const id = `si_${uid()}`;
   db.prepare(
     `INSERT INTO story_items (id, row_id, title, image_url, link_url, sort_order, status, created_at, gender, collection_id) VALUES (?,?,?,?,?,?,?,?,?,?)`
-  ).run(id, rowId, title, imageUrl, linkUrl, maxOrder + 1, status, now(), gender, collectionId);
+  ).run(id, rowId, title, imageUrl, linkUrl, maxOrder + 1, status, now(), gender, finalCollectionId);
   const item = db.prepare(`SELECT * FROM story_items WHERE id=?`).get(id) as { id: string; row_id: string; title: string; image_url: string; link_url: string; sort_order: number; status: string; created_at: string; gender: string; collection_id: string | null };
   return res.status(201).json({
     data: { id: item.id, rowId: item.row_id, title: item.title, imageUrl: item.image_url, linkUrl: item.link_url, sortOrder: item.sort_order, status: item.status, createdAt: item.created_at, gender: item.gender ?? "all", collectionId: item.collection_id ?? null },

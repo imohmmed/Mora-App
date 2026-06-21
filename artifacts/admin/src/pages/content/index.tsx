@@ -400,12 +400,22 @@ function StoryItemForm({
           <div className="grid gap-1.5">
             <Label>Collection <span className="text-muted-foreground font-normal text-xs">(for showing products below row)</span></Label>
             <Select value={form.collectionId || "__none__"} onValueChange={v => set("collectionId", v === "__none__" ? "" : v)}>
-              <SelectTrigger><SelectValue placeholder="No collection" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Auto-create from title" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">No collection</SelectItem>
+                <SelectItem value="__none__">Auto-create from title</SelectItem>
                 {collections.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
               </SelectContent>
             </Select>
+            {!form.collectionId && !isEdit && form.title.trim() && (
+              <p className="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-md">
+                ✦ سيتم إنشاء كولكشن باسم "<strong>{form.title}</strong>" تلقائياً
+              </p>
+            )}
+            {form.collectionId && (
+              <p className="text-xs text-green-700 bg-green-50 px-3 py-1.5 rounded-md">
+                ✓ مرتبط بكولكشن موجود
+              </p>
+            )}
           </div>
           <div className="grid gap-1.5">
             <Label>Gender <span className="text-muted-foreground font-normal text-xs">(filters products shown below row)</span></Label>

@@ -19,7 +19,7 @@ import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { useCart } from "@/context/CartContext";
-import { fetchSpecialCollection, searchProducts } from "@/lib/api";
+import { fetchSpecialCollection, fetchCollection, searchProducts } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { FloatingTabBar } from "@/components/FloatingTabBar";
 import { GlassBackButton } from "@/components/GlassBackButton";
@@ -118,9 +118,14 @@ export default function CollectionScreen() {
   const searchBarAnim = useRef(new Animated.Value(0)).current;
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Detect whether this is a regular collection (ID) or a special collection (slug)
+  const isRegularCollection = !!slug && slug.startsWith("col_");
+
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["special-collection", slug],
-    queryFn: () => fetchSpecialCollection(slug ?? ""),
+    queryKey: ["collection", slug, isRegularCollection],
+    queryFn: () => isRegularCollection
+      ? fetchCollection(slug ?? "")
+      : fetchSpecialCollection(slug ?? ""),
     enabled: !!slug,
     staleTime: 60_000,
   });

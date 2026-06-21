@@ -30,7 +30,13 @@ function StoryCircle({ item }: { item: StoryItem }) {
   return (
     <Pressable
       style={({ pressed }) => [styles.circleWrap, { opacity: pressed ? 0.75 : 1 }]}
-      onPress={() => { if (item.linkUrl) router.push(item.linkUrl as any); }}
+      onPress={() => {
+        if (item.collectionId) {
+          router.push(`/collection/${item.collectionId}` as any);
+        } else if (item.linkUrl) {
+          router.push(item.linkUrl as any);
+        }
+      }}
     >
       <View style={[styles.circleOuter, { borderColor: colors.primary }]}>
         <View style={[styles.circleInner, { backgroundColor: colors.muted }]}>

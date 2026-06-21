@@ -151,6 +151,15 @@ export async function fetchContentSections(): Promise<Record<string, ContentSect
   return apiFetch<Record<string, ContentSection>>("/store/content-sections");
 }
 
+export async function fetchCollection(id: string): Promise<SpecialCollection> {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/store/collections/${id}`, { headers: { Accept: "application/json" } });
+  if (res.status === 401) { notifyUnauthorized(); throw new Error("Unauthorized"); }
+  if (!res.ok) throw new Error(`Failed to fetch collection ${id}`);
+  const json = (await res.json()) as { data: SpecialCollection; meta: Record<string, unknown>; error: string | null };
+  return json.data;
+}
+
 export async function fetchSpecialCollection(
   slug: string,
   page = 1
