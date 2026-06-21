@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from "react";
+import React, { useEffect } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -15,7 +15,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { GlassBackButton } from "@/components/GlassBackButton";
 import { FloatingTabBar } from "@/components/FloatingTabBar";
-import { AuthContext } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 
 function getBaseUrl() {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -49,7 +49,7 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 0 : insets.top;
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
   const queryClient = useQueryClient();
   const token = auth?.token ?? null;
 

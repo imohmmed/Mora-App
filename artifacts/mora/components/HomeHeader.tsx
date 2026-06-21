@@ -14,7 +14,7 @@ import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useQuery } from "@tanstack/react-query";
-import { AuthContext } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 
 function getBaseUrl() {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -33,7 +33,7 @@ export function HomeHeader({
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const isWeb = Platform.OS === "web";
-  const auth = useContext(AuthContext);
+  const auth = useAuth();
   const token = auth?.token ?? null;
 
   const { data: unreadData } = useQuery({

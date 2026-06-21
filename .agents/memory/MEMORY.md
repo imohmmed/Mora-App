@@ -11,3 +11,4 @@
 - [iOS Native Crash — expo-glass-effect](ios-glass-crash.md) — EXC_BAD_ACCESS in registerNativeViews on iOS 26 beta; use @expo/ui instead
 - [react-native-keyboard-controller crash](keyboard-controller-crash.md) — KeyboardProvider useEffect calls undefined native fn on iOS production; remove from _layout.tsx
 - [LiquidGlassBg pattern](liquid-glass-pattern.md) — @expo/ui Host+GlassEffectContainer+VStack(glassEffect) as reusable background layer for iOS 26+
+- [Metro Context Import Safety](metro-context-imports.md) — Never import Context objects directly; always use exported hooks to avoid Metro circular-dep crash (n._currentValue undefined)
