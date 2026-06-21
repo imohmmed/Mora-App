@@ -16,6 +16,36 @@ import { useColors } from "@/hooks/useColors";
 import { GlassBackButton } from "@/components/GlassBackButton";
 import { FloatingTabBar } from "@/components/FloatingTabBar";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+
+const T = {
+  en: {
+    title:        "Notifications",
+    loginTitle:   "Sign In",
+    loginSub:     "Sign in to see your notifications",
+    loginBtn:     "Sign In",
+    emptyTitle:   "No Notifications",
+    emptySub:     "Your orders and offers will appear here",
+    view:         "View",
+    now:          "Just now",
+    minAgo:       (n: number) => `${n}m ago`,
+    hrAgo:        (n: number) => `${n}h ago`,
+    dayAgo:       (n: number) => `${n}d ago`,
+  },
+  ar: {
+    title:        "الإشعارات",
+    loginTitle:   "سجّل دخولك",
+    loginSub:     "لمشاهدة إشعاراتك سجّل دخولك أولاً",
+    loginBtn:     "تسجيل الدخول",
+    emptyTitle:   "لا توجد إشعارات",
+    emptySub:     "ستظهر هنا طلباتك وعروضك",
+    view:         "عرض",
+    now:          "الآن",
+    minAgo:       (n: number) => `منذ ${n} دقيقة`,
+    hrAgo:        (n: number) => `منذ ${n} ساعة`,
+    dayAgo:       (n: number) => `منذ ${n} يوم`,
+  },
+};
 
 function getBaseUrl() {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -32,17 +62,6 @@ type InAppNotification = {
   createdAt: string;
 };
 
-function timeAgo(isoDate: string): string {
-  const diff = Date.now() - new Date(isoDate).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "الآن";
-  if (mins < 60) return `منذ ${mins} دقيقة`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `منذ ${hrs} ساعة`;
-  const days = Math.floor(hrs / 24);
-  return `منذ ${days} يوم`;
-}
-
 export default function NotificationsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -52,6 +71,19 @@ export default function NotificationsScreen() {
   const auth = useAuth();
   const queryClient = useQueryClient();
   const token = auth?.token ?? null;
+  const { lang } = useLanguage();
+  const t = T[lang] ?? T.en;
+
+  function timeAgo(isoDate: string): string {
+    const diff = Date.now() - new Date(isoDate).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return t.now;
+    if (mins < 60) return t.minAgo(mins);
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return t.hrAgo(hrs);
+    const days = Math.floor(hrs / 24);
+    return t.dayAgo(days);
+  }
 
   const { data: notifications = [], isLoading } = useQuery<InAppNotification[]>({
     queryKey: ["notifications", token],
@@ -68,7 +100,6 @@ export default function NotificationsScreen() {
     staleTime: 30000,
   });
 
-  // Mark all as read when screen opens
   useEffect(() => {
     if (!token || notifications.length === 0) return;
     const hasUnread = notifications.some((n) => !n.read);
@@ -83,16 +114,14 @@ export default function NotificationsScreen() {
 
   function handleNotifPress(notif: InAppNotification) {
     if (!notif.url) return;
-    try {
-      router.push(notif.url as any);
-    } catch {}
+    try { router.push(notif.url as any); } catch {}
   }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         <GlassBackButton onPress={() => router.back()} />
-        <Text style={[styles.title, { color: colors.foreground }]}>الإشعارات</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>{t.title}</Text>
         <View style={styles.spacer} />
       </View>
 
@@ -103,15 +132,13 @@ export default function NotificationsScreen() {
           <View style={[styles.emptyIconBg, { backgroundColor: colors.secondary }]}>
             <Feather name="bell-off" size={48} color={colors.mutedForeground} />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>سجّل دخولك</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
-            لمشاهدة إشعاراتك سجّل دخولك أولاً
-          </Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t.loginTitle}</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>{t.loginSub}</Text>
           <Pressable
             style={[styles.loginBtn, { backgroundColor: colors.primary }]}
             onPress={() => router.push("/auth" as any)}
           >
-            <Text style={styles.loginBtnText}>تسجيل الدخول</Text>
+            <Text style={styles.loginBtnText}>{t.loginBtn}</Text>
           </Pressable>
         </View>
       ) : isLoading ? (
@@ -123,10 +150,8 @@ export default function NotificationsScreen() {
           <View style={[styles.emptyIconBg, { backgroundColor: colors.secondary }]}>
             <Feather name="bell" size={48} color={colors.mutedForeground} />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>لا توجد إشعارات</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
-            ستظهر هنا طلباتك وعروضك
-          </Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t.emptyTitle}</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>{t.emptySub}</Text>
         </View>
       ) : (
         <ScrollView
@@ -145,17 +170,12 @@ export default function NotificationsScreen() {
               onPress={() => handleNotifPress(notif)}
               disabled={!notif.url}
             >
-              {/* Unread dot */}
               {!notif.read && (
                 <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />
               )}
-
-              {/* Icon */}
               <View style={[styles.iconWrap, { backgroundColor: colors.primary + "1A" }]}>
                 <Feather name="bell" size={20} color={colors.primary} />
               </View>
-
-              {/* Content */}
               <View style={styles.notifContent}>
                 <Text style={[styles.notifTitle, { color: colors.foreground }]} numberOfLines={1}>
                   {notif.title}
@@ -170,7 +190,7 @@ export default function NotificationsScreen() {
                   {notif.url ? (
                     <View style={styles.linkChip}>
                       <Feather name="arrow-right" size={11} color={colors.primary} />
-                      <Text style={[styles.linkChipText, { color: colors.primary }]}>عرض</Text>
+                      <Text style={[styles.linkChipText, { color: colors.primary }]}>{t.view}</Text>
                     </View>
                   ) : null}
                 </View>
