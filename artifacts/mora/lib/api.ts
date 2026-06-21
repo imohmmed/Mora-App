@@ -68,8 +68,14 @@ export async function fetchProduct(id: string): Promise<Product> {
   return apiFetch<Product>(`/store/products/${id}`);
 }
 
-export async function fetchRelatedProducts(id: string): Promise<Product[]> {
-  return apiFetch<Product[]>(`/store/products/related/${id}`);
+export async function fetchRelatedProducts(id: string, page = 1, limit = 8): Promise<{ products: Product[]; total: number; page: number; pages: number }> {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/store/products/related/${id}?page=${page}&limit=${limit}`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error("Failed to fetch related products");
+  const json = (await res.json()) as { data: Product[]; meta: { total: number; page: number; pages: number }; error: string | null };
+  return { products: json.data, total: json.meta.total, page: json.meta.page, pages: json.meta.pages };
 }
 
 export async function searchProducts(q: string): Promise<Product[]> {

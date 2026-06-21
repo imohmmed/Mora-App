@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
+  ActivityIndicator,
   FlatList,
   Platform,
   Pressable,
@@ -203,12 +204,39 @@ export default function ProductDetailScreen() {
     staleTime: 300_000,
   });
 
-  const { data: relatedProducts = [] } = useQuery({
-    queryKey: ["related-products", id],
-    queryFn: () => fetchRelatedProducts(id as string),
-    enabled: !!id,
-    staleTime: 120_000,
-  });
+  const [relatedItems, setRelatedItems] = useState<Product[]>([]);
+  const [relatedPage, setRelatedPage]   = useState(0);
+  const [relatedTotal, setRelatedTotal] = useState(0);
+  const [loadingMore, setLoadingMore]   = useState(false);
+  const relatedReady = useRef(false);
+
+  const loadRelatedPage = useCallback(async (pageNum: number) => {
+    if (!id || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetchRelatedProducts(id as string, pageNum, 8);
+      setRelatedItems((prev) => pageNum === 1 ? res.products : [...prev, ...res.products]);
+      setRelatedTotal(res.total);
+      setRelatedPage(pageNum);
+    } catch {}
+    setLoadingMore(false);
+  }, [id, loadingMore]);
+
+  useEffect(() => {
+    if (!id || relatedReady.current) return;
+    relatedReady.current = true;
+    loadRelatedPage(1);
+  }, [id]);
+
+  const hasMoreRelated = relatedItems.length < relatedTotal;
+
+  const handleScroll = useCallback((e: { nativeEvent: { layoutMeasurement: { height: number }; contentOffset: { y: number }; contentSize: { height: number } } }) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    const nearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 500;
+    if (nearBottom && hasMoreRelated && !loadingMore) {
+      loadRelatedPage(relatedPage + 1);
+    }
+  }, [hasMoreRelated, loadingMore, relatedPage, loadRelatedPage]);
 
   useEffect(() => {
     if (!product) return;
@@ -326,6 +354,8 @@ export default function ProductDetailScreen() {
       ) : product ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
+          scrollEventThrottle={200}
+          onScroll={handleScroll}
           contentContainerStyle={{ paddingBottom: (isWeb ? 200 : bottomPadding + 32) }}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={PRIMARY} />
@@ -551,16 +581,21 @@ export default function ProductDetailScreen() {
           )}
 
           {/* ── Related Products ── */}
-          {relatedProducts.length > 0 && (
+          {(relatedItems.length > 0 || loadingMore) && (
             <View style={[styles.sectionWrap, { borderTopColor: colors.border }]}>
               <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
                 RELATED PRODUCTS
               </Text>
               <View style={styles.relatedGrid}>
-                {relatedProducts.map((p) => (
+                {relatedItems.map((p) => (
                   <RelatedCard key={p.id} product={p} colors={colors} cardWidth={cardWidth} />
                 ))}
               </View>
+              {loadingMore && (
+                <View style={{ paddingVertical: 20, alignItems: "center" }}>
+                  <ActivityIndicator color={PRIMARY} size="small" />
+                </View>
+              )}
             </View>
           )}
         </ScrollView>

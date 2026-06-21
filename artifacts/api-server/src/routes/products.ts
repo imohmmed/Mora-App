@@ -75,8 +75,13 @@ router.get("/store/products/related/:id", (req, res) => {
   });
 
   scored.sort((a, b) => b.score - a.score);
-  const top = scored.slice(0, 12).map((s) => s.product);
-  res.json({ data: top, meta: { total: top.length }, error: null });
+  const all = scored.map((s) => s.product);
+  const total = all.length;
+  const { page = "1", limit = "8" } = req.query as Record<string, string>;
+  const pageNum  = Math.max(1, parseInt(page));
+  const limitNum = Math.min(20, Math.max(1, parseInt(limit)));
+  const sliced = all.slice((pageNum - 1) * limitNum, pageNum * limitNum);
+  res.json({ data: sliced, meta: { total, page: pageNum, pages: Math.ceil(total / limitNum), limit: limitNum }, error: null });
 });
 
 router.get("/store/search", (req, res) => {
