@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useRef } from "react";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import {
   ActivityIndicator,
@@ -26,8 +26,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { fetchStories, fetchSpecialCollection } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { StoriesSection } from "@/components/StoriesSection";
-import { QuickAddSheet } from "@/components/QuickAddSheet";
-import type { CartItem, Product, Variant } from "@/lib/types";
+import type { CartItem, Product } from "@/lib/types";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -177,12 +176,11 @@ const cs = StyleSheet.create({
   swipeLbl:  { color: "#fff", fontSize: 10, fontWeight: "600", marginTop: 4 },
 });
 
-const GIFT_CARD_W = 130;
+const GIFT_CARD_W = 152;
 
 function GiftWrapSection({ lang, isDark }: { lang: string; isDark: boolean }) {
-  const { addItem } = useCart();
-  const router      = useRouter();
-  const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
+  const { addItem, items } = useCart();
+  const router             = useRouter();
 
   const { data } = useQuery({
     queryKey: ["gift-wrapping"],
@@ -194,27 +192,28 @@ function GiftWrapSection({ lang, isDark }: { lang: string; isDark: boolean }) {
   const products = data?.products ?? [];
   if (products.length === 0) return null;
 
-  const sectionBg  = isDark ? "#1A1A1A" : "#F7F7F8";
-  const cardBg     = isDark ? "#2C2C2E" : "#FFFFFF";
-  const textCol    = isDark ? "#FFFFFF" : "#1A1A1A";
-  const sub        = isDark ? "rgba(255,255,255,0.42)" : "rgba(0,0,0,0.4)";
-  const title      = lang === "ar" ? "ارسال الطلب كهدية" : "Buy As a Gift";
-  const subtitle   = lang === "ar" ? "أضف تغليف للطلب وسنرسله كهدية" : "Add wrapping and we'll send it as a gift";
+  const sectionBg = isDark ? "#1A1A1A" : "#F7F7F8";
+  const cardBg    = isDark ? "#2C2C2E" : "#FFFFFF";
+  const textCol   = isDark ? "#FFFFFF" : "#1A1A1A";
+  const sub       = isDark ? "rgba(255,255,255,0.42)" : "rgba(0,0,0,0.4)";
+  const titleTxt  = lang === "ar" ? "ارسال الطلب كهدية" : "Buy As a Gift";
+  const subtitleTxt = lang === "ar" ? "أضف تغليف للطلب وسنرسله كهدية" : "Add wrapping and we'll send it as a gift";
 
-  const handleConfirm = (variant: Variant) => {
-    if (!quickAddProduct) return;
+  const handleAdd = (product: Product) => {
+    const inCart = items.some((i) => i.productId === product.id);
+    if (inCart) return;
+    const variant = product.variants?.[0];
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     addItem({
-      productId: quickAddProduct.id,
-      variantId: variant.id,
-      title:     quickAddProduct.title,
-      vendor:    quickAddProduct.vendor ?? "",
-      price:     variant.price ?? quickAddProduct.price,
+      productId: product.id,
+      variantId: variant?.id ?? product.id,
+      title:     product.title,
+      vendor:    product.vendor ?? "",
+      price:     variant?.price ?? product.price,
       quantity:  1,
-      size:      variant.option1 ?? undefined,
-      color:     variant.option2 ?? undefined,
-      image:     quickAddProduct.images?.[0],
+      image:     product.images?.[0],
     });
-    setQuickAddProduct(null);
   };
 
   return (
@@ -224,8 +223,8 @@ function GiftWrapSection({ lang, isDark }: { lang: string; isDark: boolean }) {
           <Feather name="gift" size={16} color="#fff" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[gw.title, { color: textCol }]}>{title}</Text>
-          <Text style={[gw.subtitle, { color: sub }]}>{subtitle}</Text>
+          <Text style={[gw.title, { color: textCol }]}>{titleTxt}</Text>
+          <Text style={[gw.subtitle, { color: sub }]}>{subtitleTxt}</Text>
         </View>
       </View>
 
@@ -234,43 +233,43 @@ function GiftWrapSection({ lang, isDark }: { lang: string; isDark: boolean }) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={gw.scroll}
         decelerationRate="fast"
-        snapToInterval={GIFT_CARD_W + 10}
+        snapToInterval={GIFT_CARD_W + 12}
       >
-        {products.map((product) => (
-          <View key={product.id} style={[gw.card, { backgroundColor: cardBg }]}>
-            <Pressable
-              style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
-              onPress={() => router.push(`/product/${product.id}` as any)}
-            >
-              <Image
-                source={{ uri: product.images?.[0] ?? "" }}
-                style={gw.img}
-                contentFit="cover"
-              />
-              <Text style={[gw.cardName, { color: textCol }]} numberOfLines={2}>
-                {product.title}
-              </Text>
-              <Text style={gw.cardPrice}>{formatIQD(product.price)}</Text>
-            </Pressable>
-            <Pressable
-              style={gw.addBtn}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                setQuickAddProduct(product);
-              }}
-            >
-              <Text style={gw.addBtnTxt}>{lang === "ar" ? "أضف" : "ADD"}</Text>
-            </Pressable>
-          </View>
-        ))}
+        {products.map((product) => {
+          const inCart = items.some((i) => i.productId === product.id);
+          return (
+            <View key={product.id} style={[gw.card, { backgroundColor: cardBg }]}>
+              <Pressable
+                style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
+                onPress={() => router.push(`/product/${product.id}` as any)}
+              >
+                <Image
+                  source={{ uri: product.images?.[0] ?? "" }}
+                  style={gw.img}
+                  contentFit="cover"
+                />
+              </Pressable>
+              <View style={gw.cardBody}>
+                <Text style={[gw.cardName, { color: textCol }]} numberOfLines={2}>
+                  {product.title}
+                </Text>
+                <Text style={gw.cardPrice}>{formatIQD(product.price)}</Text>
+                <Pressable
+                  style={[gw.addBtn, inCart && gw.addBtnDone]}
+                  onPress={() => handleAdd(product)}
+                  disabled={inCart}
+                >
+                  {inCart ? (
+                    <><Feather name="check" size={11} color="#fff" /><Text style={gw.addBtnTxt}>{lang === "ar" ? "تمت الإضافة" : "DONE"}</Text></>
+                  ) : (
+                    <Text style={gw.addBtnTxt}>{lang === "ar" ? "أضف" : "ADD"}</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          );
+        })}
       </ScrollView>
-
-      <QuickAddSheet
-        visible={!!quickAddProduct}
-        product={quickAddProduct}
-        onClose={() => setQuickAddProduct(null)}
-        onConfirm={handleConfirm}
-      />
     </View>
   );
 }
@@ -281,13 +280,15 @@ const gw = StyleSheet.create({
   iconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: PRIMARY, alignItems: "center", justifyContent: "center" },
   title:      { fontSize: 15, fontWeight: "700", letterSpacing: -0.2 },
   subtitle:   { fontSize: 11, marginTop: 2 },
-  scroll:     { paddingHorizontal: 16, gap: 10 },
-  card:       { width: GIFT_CARD_W, borderRadius: 14, overflow: "hidden", padding: 0 },
-  img:        { width: GIFT_CARD_W, height: GIFT_CARD_W * 1.2, borderRadius: 10 },
-  cardName:   { fontSize: 11, fontWeight: "600", lineHeight: 15, marginTop: 8, paddingHorizontal: 6 },
-  cardPrice:  { fontSize: 12, fontWeight: "700", color: PRIMARY, marginTop: 3, paddingHorizontal: 6 },
-  addBtn:     { backgroundColor: PRIMARY, marginHorizontal: 6, marginTop: 8, marginBottom: 6, paddingVertical: 8, borderRadius: 50, alignItems: "center" },
-  addBtnTxt:  { color: "#fff", fontSize: 10, fontWeight: "700", letterSpacing: 0.8 },
+  scroll:     { paddingHorizontal: 16, gap: 12 },
+  card:       { width: GIFT_CARD_W, borderRadius: 16, overflow: "hidden" },
+  img:        { width: GIFT_CARD_W, height: GIFT_CARD_W * 1.15 },
+  cardBody:   { paddingHorizontal: 8, paddingBottom: 10, paddingTop: 8, gap: 4 },
+  cardName:   { fontSize: 12, fontWeight: "600", lineHeight: 16 },
+  cardPrice:  { fontSize: 13, fontWeight: "700", color: PRIMARY },
+  addBtn:     { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, backgroundColor: PRIMARY, marginTop: 6, paddingVertical: 9, borderRadius: 50 },
+  addBtnDone: { backgroundColor: "#22C55E" },
+  addBtnTxt:  { color: "#fff", fontSize: 11, fontWeight: "700", letterSpacing: 0.8 },
 });
 
 export default function CartScreen() {
