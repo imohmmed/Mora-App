@@ -43,6 +43,42 @@ router.get("/store/products/:id", (req, res) => {
   res.json({ data: { ...product, variants }, meta: {}, error: null });
 });
 
+router.get("/store/products/related/:id", (req, res) => {
+  const target = parseOne(db.prepare(`SELECT * FROM products WHERE id=?`).get(req.params["id"]) as Row | undefined);
+  if (!target) { res.status(404).json({ data: [], meta: {}, error: "Product not found" }); return; }
+
+  const rows = db.prepare(`SELECT * FROM products WHERE status='active' AND id != ?`).all(req.params["id"]) as Row[];
+  const candidates = parseRows(rows);
+
+  let targetTags: string[] = [];
+  try { targetTags = JSON.parse((target["tags"] as string) || "[]"); } catch {}
+  const targetPrice = (target["price"] as number) || 0;
+  const targetCat   = (target["category"] as string) || "";
+  const targetGender = (target["gender"] as string) || "";
+  const targetVendor = (target["vendor"] as string) || "";
+
+  const scored = candidates.map((p) => {
+    let score = 0;
+    let pTags: string[] = [];
+    try { pTags = JSON.parse((p["tags"] as string) || "[]"); } catch {}
+
+    if (p["category"] === targetCat && targetCat) score += 4;
+    const sharedTags = pTags.filter((t) => targetTags.includes(t));
+    score += sharedTags.length * 2;
+    if (p["gender"] === targetGender && targetGender && targetGender !== "all") score += 2;
+    if (p["vendor"] === targetVendor && targetVendor) score += 1;
+    if (targetPrice > 0) {
+      const ratio = Math.abs((p["price"] as number) - targetPrice) / targetPrice;
+      if (ratio <= 0.3) score += 1;
+    }
+    return { product: p, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const top = scored.slice(0, 12).map((s) => s.product);
+  res.json({ data: top, meta: { total: top.length }, error: null });
+});
+
 router.get("/store/search", (req, res) => {
   const { q = "" } = req.query as Record<string, string>;
   const rows = db.prepare(`SELECT * FROM products WHERE status='active' AND (title LIKE ? OR vendor LIKE ? OR tags LIKE ?)`).all(`%${q}%`, `%${q}%`, `%${q}%`) as Row[];

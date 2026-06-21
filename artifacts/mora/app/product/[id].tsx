@@ -21,7 +21,7 @@ import { useColors } from "@/hooks/useColors";
 import { MoraLogo } from "@/components/MoraLogo";
 import { FloatingTabBar } from "@/components/FloatingTabBar";
 import { GlassBackButton } from "@/components/GlassBackButton";
-import { fetchProduct, fetchProducts, fetchContentSections } from "@/lib/api";
+import { fetchProduct, fetchRelatedProducts, fetchContentSections } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
@@ -100,13 +100,15 @@ function TextParagraph({
   );
 }
 
-// ─── Related Product Card ──────────────────────────────────────────────────────
+// ─── Related Product Card (grid 2-col) ────────────────────────────────────────
 function RelatedCard({
   product,
   colors,
+  cardWidth,
 }: {
   product: Product;
   colors: ReturnType<typeof useColors>;
+  cardWidth: number;
 }) {
   const router = useRouter();
   const bg = cardColor(product.id);
@@ -120,10 +122,10 @@ function RelatedCard({
 
   return (
     <Pressable
-      style={[styles.relatedCard, { backgroundColor: colors.background, borderColor: colors.border }]}
+      style={[styles.relatedCard, { width: cardWidth, backgroundColor: colors.background, borderColor: colors.border }]}
       onPress={() => router.push(`/product/${product.id}`)}
     >
-      <View style={[styles.relatedImg, { backgroundColor: bg }]}>
+      <View style={[styles.relatedImg, { width: cardWidth, height: cardWidth * 1.25, backgroundColor: bg }]}>
         <Image
           source={{ uri: product.images?.[0] }}
           style={StyleSheet.absoluteFill}
@@ -139,7 +141,7 @@ function RelatedCard({
         <Text style={[styles.relatedTitle, { color: colors.foreground }]} numberOfLines={2}>
           {product.title}
         </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <Text style={[styles.relatedPrice, { color: PRIMARY }]}>
             {formatIQD(product.price)}
           </Text>
@@ -201,10 +203,10 @@ export default function ProductDetailScreen() {
     staleTime: 300_000,
   });
 
-  const { data: relatedData } = useQuery({
-    queryKey: ["related-products", product?.category],
-    queryFn: () => fetchProducts({ category: product?.category, limit: 10 }),
-    enabled: !!product?.category,
+  const { data: relatedProducts = [] } = useQuery({
+    queryKey: ["related-products", id],
+    queryFn: () => fetchRelatedProducts(id as string),
+    enabled: !!id,
     staleTime: 120_000,
   });
 
@@ -232,9 +234,7 @@ export default function ProductDetailScreen() {
 
   const warranty = contentSections?.warranty;
   const testimonials = contentSections?.testimonials;
-  const relatedProducts = (relatedData?.products ?? [])
-    .filter((p) => p.id !== id)
-    .slice(0, 8);
+  const cardWidth = Math.floor((Math.min(screenWidth, 600) - 32 - 8) / 2);
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -556,15 +556,11 @@ export default function ProductDetailScreen() {
               <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
                 RELATED PRODUCTS
               </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingLeft: 16, paddingRight: 8, gap: 12 }}
-              >
+              <View style={styles.relatedGrid}>
                 {relatedProducts.map((p) => (
-                  <RelatedCard key={p.id} product={p} colors={colors} />
+                  <RelatedCard key={p.id} product={p} colors={colors} cardWidth={cardWidth} />
                 ))}
-              </ScrollView>
+              </View>
             </View>
           )}
         </ScrollView>
@@ -709,17 +705,20 @@ const styles = StyleSheet.create({
   sectionWrap: { paddingVertical: 16, borderTopWidth: 1, gap: 12 },
   sectionLabel: { fontFamily: "Inter_700Bold", fontSize: 13, letterSpacing: 0.8, paddingHorizontal: 20 },
 
-  /* Related Products */
-  relatedCard: {
-    width: 140, borderRadius: 8, borderWidth: 1, overflow: "hidden",
+  /* Related Products grid */
+  relatedGrid: {
+    flexDirection: "row", flexWrap: "wrap", gap: 8, paddingHorizontal: 16,
   },
-  relatedImg: { width: 140, height: 170, alignItems: "center", justifyContent: "center", position: "relative" },
+  relatedCard: {
+    borderRadius: 10, borderWidth: 1, overflow: "hidden",
+  },
+  relatedImg: { alignItems: "center", justifyContent: "center", position: "relative" },
   relatedDisc: {
     position: "absolute", top: 8, left: 8,
     backgroundColor: "#E53935", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3,
   },
   relatedDiscText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 10 },
   relatedInfo: { padding: 10, gap: 4 },
-  relatedTitle: { fontFamily: "Inter_500Medium", fontSize: 12, lineHeight: 16 },
-  relatedPrice: { fontFamily: "Inter_700Bold", fontSize: 12 },
+  relatedTitle: { fontFamily: "Inter_500Medium", fontSize: 12, lineHeight: 17 },
+  relatedPrice: { fontFamily: "Inter_700Bold", fontSize: 13 },
 });

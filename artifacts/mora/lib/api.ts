@@ -68,6 +68,10 @@ export async function fetchProduct(id: string): Promise<Product> {
   return apiFetch<Product>(`/store/products/${id}`);
 }
 
+export async function fetchRelatedProducts(id: string): Promise<Product[]> {
+  return apiFetch<Product[]>(`/store/products/related/${id}`);
+}
+
 export async function searchProducts(q: string): Promise<Product[]> {
   return apiFetch<Product[]>(`/store/search?q=${encodeURIComponent(q)}`);
 }
