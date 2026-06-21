@@ -23,7 +23,6 @@ interface HomeHeaderProps {
 export function HomeHeader({
   notificationCount = 0,
   favoritesCount = 0,
-  cartCount = 0,
 }: HomeHeaderProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -77,20 +76,6 @@ export function HomeHeader({
           )}
         </Pressable>
 
-        <Pressable
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
-          onPress={() => router.push("/(tabs)/cart")}
-          testID="cart-btn"
-        >
-          <Feather name="shopping-bag" size={23} color={colors.foreground} />
-          {cartCount > 0 && (
-            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-              <Text style={styles.badgeText}>
-                {cartCount > 9 ? "9+" : cartCount}
-              </Text>
-            </View>
-          )}
-        </Pressable>
       </View>
     </View>
   );
