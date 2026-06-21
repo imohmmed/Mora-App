@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -435,7 +435,9 @@ function SortableStoryRow({
   const [editTitle, setEditTitle] = useState(false);
   const [title, setTitle] = useState(row.title);
   const [showItemForm, setShowItemForm] = useState(false);
-  const [newItem, setNewItem] = useState({ title: "", imageUrl: "", linkUrl: "" });
+  const [newItem, setNewItem] = useState({ title: "", imageUrl: "" });
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
@@ -445,10 +447,33 @@ function SortableStoryRow({
     setEditTitle(false);
   };
 
+  const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await fetch(`${API}/admin/uploads`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${adminAuthToken()}` },
+        body: fd,
+      });
+      const json = await res.json();
+      if (!res.ok || !json.data?.url) throw new Error(json.error ?? "Upload failed");
+      setNewItem((n) => ({ ...n, imageUrl: json.data.url }));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
   const addItem = () => {
     if (!newItem.title.trim() && !newItem.imageUrl.trim()) return;
     onAddItem(row.id, newItem);
-    setNewItem({ title: "", imageUrl: "", linkUrl: "" });
+    setNewItem({ title: "", imageUrl: "" });
     setShowItemForm(false);
   };
 
@@ -550,18 +575,31 @@ function SortableStoryRow({
                     onChange={(e) => setNewItem((n) => ({ ...n, title: e.target.value }))} />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Image URL</Label>
-                  <Input className="h-8 text-sm" placeholder="https://..." value={newItem.imageUrl}
-                    onChange={(e) => setNewItem((n) => ({ ...n, imageUrl: e.target.value }))} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Link URL (optional)</Label>
-                  <Input className="h-8 text-sm" placeholder="https://..." value={newItem.linkUrl}
-                    onChange={(e) => setNewItem((n) => ({ ...n, linkUrl: e.target.value }))} />
+                  <Label className="text-xs">صورة الستوري</Label>
+                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageFile} />
+                  <div className="flex items-center gap-2">
+                    {newItem.imageUrl ? (
+                      <div className="relative w-9 h-9 rounded-full overflow-hidden border shrink-0">
+                        <img src={newItem.imageUrl} alt="" className="w-full h-full object-cover" />
+                        <button type="button" onClick={() => setNewItem((n) => ({ ...n, imageUrl: "" }))}
+                          className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity">
+                          <X className="w-2.5 h-2.5 text-white" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-9 h-9 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center shrink-0 bg-muted/30">
+                        <ImageIcon className="w-4 h-4 text-muted-foreground/40" />
+                      </div>
+                    )}
+                    <Button type="button" variant="outline" size="sm" className="h-7 text-xs flex-1"
+                      onClick={() => fileRef.current?.click()} disabled={uploading}>
+                      {uploading ? "جاري الرفع…" : newItem.imageUrl ? "تغيير" : "رفع صورة"}
+                    </Button>
+                  </div>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button type="button" size="sm" className="h-7 text-xs" onClick={addItem}>Add Item</Button>
+                <Button type="button" size="sm" className="h-7 text-xs" onClick={addItem} disabled={uploading}>Add Item</Button>
                 <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setShowItemForm(false)}>Cancel</Button>
               </div>
             </div>
