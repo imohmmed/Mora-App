@@ -480,13 +480,15 @@ function StoryItemEditDialog({
     if (!item) return;
     setSaving(true);
     try {
-      await apiFetch(`/admin/story-items/${item.id}`, {
+      // PUT auto-creates a collection if one doesn't exist yet, and returns collectionId
+      const saved = await apiFetch<{ collectionId?: string | null }>(`/admin/story-items/${item.id}`, {
         method: "PUT", body: JSON.stringify({ title, titleAr, imageUrl }),
       });
-      if (item.collectionId) {
+      const colId = (saved as any)?.data?.collectionId ?? item.collectionId;
+      if (colId) {
         const prevBg = (colData?.["backgroundImage"] as string) ?? "";
         if (bgImage !== prevBg) {
-          await apiFetch(`/admin/collections/${item.collectionId}`, {
+          await apiFetch(`/admin/collections/${colId}`, {
             method: "PUT", body: JSON.stringify({ backgroundImage: bgImage }),
           });
         }
@@ -548,24 +550,19 @@ function StoryItemEditDialog({
           </div>
           {/* Collection background image */}
           <div className="space-y-2">
-            <Label className="text-xs font-semibold">
-              صورة خلفية القسم
-              {!item.collectionId && <span className="text-muted-foreground font-normal mr-2">(لا يوجد قسم مرتبط)</span>}
-            </Label>
-            {item.collectionId && (
-              <div className="flex items-center gap-3">
-                <div className="w-24 h-14 rounded-lg overflow-hidden border bg-muted flex-shrink-0 flex items-center justify-center">
-                  {bgImage ? <img src={bgImage} className="w-full h-full object-cover" alt="" />
-                    : <ImageIcon className="w-4 h-4 text-muted-foreground/50" />}
-                </div>
-                <input ref={bgRef} type="file" accept="image/*" className="hidden"
-                  onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0], "bg")} />
-                <Button type="button" variant="outline" size="sm" className="flex-1 h-8"
-                  onClick={() => bgRef.current?.click()} disabled={uploading !== null}>
-                  {uploading === "bg" ? "جاري الرفع..." : bgImage ? "تغيير الخلفية" : "رفع خلفية"}
-                </Button>
+            <Label className="text-xs font-semibold">صورة خلفية القسم</Label>
+            <div className="flex items-center gap-3">
+              <div className="w-24 h-14 rounded-lg overflow-hidden border bg-muted flex-shrink-0 flex items-center justify-center">
+                {bgImage ? <img src={bgImage} className="w-full h-full object-cover" alt="" />
+                  : <ImageIcon className="w-4 h-4 text-muted-foreground/50" />}
               </div>
-            )}
+              <input ref={bgRef} type="file" accept="image/*" className="hidden"
+                onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0], "bg")} />
+              <Button type="button" variant="outline" size="sm" className="flex-1 h-8"
+                onClick={() => bgRef.current?.click()} disabled={uploading !== null}>
+                {uploading === "bg" ? "جاري الرفع..." : bgImage ? "تغيير الخلفية" : "رفع خلفية"}
+              </Button>
+            </div>
           </div>
         </div>
         <div className="flex items-center justify-between pt-2 border-t">

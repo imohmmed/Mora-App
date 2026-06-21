@@ -10,9 +10,18 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { Alert, Platform } from "react-native";
-import { useAuth } from "@/context/AuthContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { LiveActivityBanner } from "@/components/LiveActivityBanner";
+import { useAuth, AuthProvider } from "@/context/AuthContext";
+import { CartProvider } from "@/context/CartContext";
+import { LanguageProvider } from "@/context/LanguageContext";
+import { NotificationProvider } from "@/context/NotificationContext";
+import { ThemeProvider } from "@/context/ThemeContext";
+import { WishlistProvider } from "@/context/WishlistContext";
+
+try { SplashScreen.preventAutoHideAsync(); } catch {}
 
 // ─── صيد الأخطاء الداخلية وعرضها كـ Alert على الشاشة مباشرة ────────────────
 if (Platform.OS !== "web") {
@@ -26,17 +35,6 @@ if (Platform.OS !== "web") {
   // @ts-ignore — ErrorUtils موجود في RN runtime
   if (global.ErrorUtils) global.ErrorUtils.setGlobalHandler(handler);
 }
-
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { CartProvider } from "@/context/CartContext";
-import { WishlistProvider } from "@/context/WishlistContext";
-import { AuthProvider } from "@/context/AuthContext";
-import { ThemeProvider } from "@/context/ThemeContext";
-import { LanguageProvider } from "@/context/LanguageContext";
-import { NotificationProvider } from "@/context/NotificationContext";
-import { LiveActivityBanner } from "@/components/LiveActivityBanner";
-
-try { SplashScreen.preventAutoHideAsync(); } catch {}
 
 // ─── Prevent iOS Safari zoom on input focus (font-size < 16px triggers zoom) ──
 function useNoInputZoom() {
@@ -62,7 +60,6 @@ function useChatwoot() {
     const BASE_URL = "https://chat.moramoda.tech";
     if ((window as any).chatwootSDK) return;
 
-    // Read current resolved scheme from localStorage + system preference
     const getScheme = (): "dark" | "light" => {
       try {
         const stored = localStorage.getItem("mora_theme_mode_v1");
@@ -72,20 +69,16 @@ function useChatwoot() {
       return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
     };
 
-    // Update Chatwoot color scheme at any time
     const updateChatwoot = (scheme: "dark" | "light") => {
-      // Try the public $chatwoot API first
       if ((window as any).$chatwoot?.setColorScheme) {
         (window as any).$chatwoot.setColorScheme(scheme);
         return;
       }
-      // Fallback: postMessage to any Chatwoot iframe in the page
       const msg = JSON.stringify({ event: "set-color-scheme", darkMode: scheme });
       document.querySelectorAll<HTMLIFrameElement>('iframe[src*="chat.moramoda.tech"]')
         .forEach((f) => { try { f.contentWindow?.postMessage(msg, "*"); } catch {} });
     };
 
-    // CSS to permanently hide the floating launcher bubble
     if (!document.getElementById("mora-chatwoot-hide-bubble")) {
       const style = document.createElement("style");
       style.id = "mora-chatwoot-hide-bubble";
@@ -117,7 +110,6 @@ function useChatwoot() {
     };
     document.head.appendChild(script);
 
-    // React to theme changes: localStorage (manual toggle) + system media query
     const onStorage = (e: StorageEvent) => {
       if (e.key === "mora_theme_mode_v1") updateChatwoot(getScheme());
     };
@@ -134,8 +126,6 @@ function useChatwoot() {
 }
 
 // ─── Chatwoot identity (web only, needs AuthContext) ─────────────────────────
-// Sets the logged-in user's email on the Chatwoot contact so the backend can
-// match the contact to a push token and send notifications.
 function ChatwootIdentity() {
   const { user } = useAuth();
   useEffect(() => {

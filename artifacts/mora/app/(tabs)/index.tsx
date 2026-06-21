@@ -312,6 +312,15 @@ export default function HomeScreen() {
     return offNative;
   }, []);
 
+  // ── Banners query must come BEFORE the auto-scroll effect that uses displayBanners
+  // (web enforces TDZ for const; native Hermes does not — so this only crashed on web)
+  const { data: banners, isLoading: isBannersLoading } = useQuery({
+    queryKey: ["banners"],
+    queryFn: fetchBanners,
+    staleTime: 300_000,
+  });
+  const displayBanners = banners ?? [];
+
   // ── Banner auto-scroll every 3 s ──────────────────────────────────────────
   useEffect(() => {
     if (!displayBanners || displayBanners.length <= 1) return;
@@ -385,12 +394,6 @@ export default function HomeScreen() {
     initialPageParam: 1,
   });
 
-  const { data: banners, isLoading: isBannersLoading } = useQuery({
-    queryKey: ["banners"],
-    queryFn: fetchBanners,
-    staleTime: 300_000,
-  });
-
   const { data: specialCollections, isLoading: isCollectionsLoading } = useQuery({
     queryKey: ["special-collections"],
     queryFn: fetchSpecialCollections,
@@ -408,7 +411,6 @@ export default function HomeScreen() {
     [data]
   );
   const totalCount = data?.pages[0]?.total ?? 0;
-  const displayBanners = banners ?? [];
 
   const handleBannerScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);

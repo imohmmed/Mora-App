@@ -12,3 +12,4 @@
 - [react-native-keyboard-controller crash](keyboard-controller-crash.md) — KeyboardProvider useEffect calls undefined native fn on iOS production; remove from _layout.tsx
 - [LiquidGlassBg pattern](liquid-glass-pattern.md) — @expo/ui Host+GlassEffectContainer+VStack(glassEffect) as reusable background layer for iOS 26+
 - [Metro Context Import Safety](metro-context-imports.md) — Never import Context objects directly; always use exported hooks to avoid Metro circular-dep crash (n._currentValue undefined)
+- [Expo Web Import Order TDZ](expo-web-import-order.md) — All imports must precede executable code in _layout.tsx; mixing causes "Cannot access 'X' before initialization" on web
