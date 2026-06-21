@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Dimensions,
   Pressable,
@@ -9,18 +9,21 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 import { useQuery } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
+import { useCart } from "@/context/CartContext";
 import { fetchCollectionProducts } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
-import type { Product, StoryRow, StoryItem } from "@/lib/types";
+import { QuickAddSheet } from "@/components/QuickAddSheet";
+import type { Product, StoryRow, StoryItem, Variant } from "@/lib/types";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
-const CIRCLE = 68;
+const CIRCLE  = 68;
 const ITEM_W  = CIRCLE + 12;
-const CARD_W  = 110;
-const CARD_H  = 145;
+const CARD_W  = (SCREEN_W - 32) / 2.5;
+const CARD_H  = CARD_W * 1.25;
 
 // ─── Story Circle ─────────────────────────────────────────────────────────────
 function StoryCircle({ item }: { item: StoryItem }) {
@@ -60,35 +63,56 @@ function StoryCircle({ item }: { item: StoryItem }) {
 }
 
 // ─── Product Mini Card ────────────────────────────────────────────────────────
-function ProductMiniCard({ product }: { product: Product }) {
+function ProductMiniCard({
+  product,
+  onAddToBag,
+}: {
+  product: Product;
+  onAddToBag: (p: Product) => void;
+}) {
   const router = useRouter();
   const colors = useColors();
   const image  = product.images?.[0];
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.productCard, { opacity: pressed ? 0.88 : 1 }]}
-      onPress={() => router.push(`/product/${product.id}` as any)}
-    >
-      <View style={[styles.productImage, { backgroundColor: "#EEF0F4" }]}>
-        {image ? (
-          <Image
-            source={{ uri: image }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            transition={150}
-          />
-        ) : null}
-      </View>
-      <View style={styles.productInfo}>
-        <Text style={[styles.productTitle, { color: colors.foreground }]} numberOfLines={1}>
-          {product.title}
-        </Text>
-        <Text style={[styles.productPrice, { color: colors.foreground }]}>
-          {formatIQD(product.price)}
-        </Text>
-      </View>
-    </Pressable>
+    <View style={styles.productCard}>
+      <Pressable
+        style={({ pressed }) => [{ opacity: pressed ? 0.88 : 1 }]}
+        onPress={() => router.push(`/product/${product.id}` as any)}
+      >
+        <View style={[styles.productImage, { backgroundColor: "#EEF0F4" }]}>
+          {image ? (
+            <Image
+              source={{ uri: image }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              transition={150}
+            />
+          ) : null}
+        </View>
+        <View style={styles.productInfo}>
+          <Text style={[styles.productBrand, { color: colors.mutedForeground }]} numberOfLines={1}>
+            {product.vendor?.toUpperCase() ?? "MORA"}
+          </Text>
+          <Text style={[styles.productTitle, { color: colors.foreground }]} numberOfLines={2}>
+            {product.title}
+          </Text>
+          <Text style={[styles.productPrice, { color: colors.foreground }]}>
+            {formatIQD(product.price)}
+          </Text>
+        </View>
+      </Pressable>
+
+      <Pressable
+        style={styles.addToCartBtn}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          onAddToBag(product);
+        }}
+      >
+        <Text style={styles.addToCartText}>ADD TO BAG</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -102,7 +126,9 @@ function StoryRowSection({
   activeGender?: string;
   isLast: boolean;
 }) {
-  const colors = useColors();
+  const colors   = useColors();
+  const { addItem } = useCart();
+  const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
 
   const collectionIds = useMemo(
     () => row.items.filter((i) => i.collectionId).map((i) => i.collectionId as string),
@@ -117,6 +143,22 @@ function StoryRowSection({
   });
 
   const hasProducts = (products?.length ?? 0) > 0;
+
+  const handleQuickAddConfirm = (variant: Variant) => {
+    if (!quickAddProduct) return;
+    addItem({
+      productId: quickAddProduct.id,
+      variantId: variant.id,
+      title: quickAddProduct.title,
+      vendor: quickAddProduct.vendor ?? "",
+      price: variant.price ?? quickAddProduct.price,
+      quantity: 1,
+      size: variant.option1 ?? undefined,
+      color: variant.option2 ?? undefined,
+      image: quickAddProduct.images?.[0],
+    });
+    setQuickAddProduct(null);
+  };
 
   return (
     <View style={[styles.rowWrap, !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
@@ -139,19 +181,31 @@ function StoryRowSection({
         ))}
       </ScrollView>
 
-      {/* Products below the circles */}
+      {/* Products horizontal scroll — 2.5 visible */}
       {hasProducts && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.productsScroll}
           decelerationRate="fast"
+          snapToInterval={CARD_W + 10}
         >
           {(products ?? []).map((product) => (
-            <ProductMiniCard key={product.id} product={product} />
+            <ProductMiniCard
+              key={product.id}
+              product={product}
+              onAddToBag={setQuickAddProduct}
+            />
           ))}
         </ScrollView>
       )}
+
+      <QuickAddSheet
+        visible={!!quickAddProduct}
+        product={quickAddProduct}
+        onClose={() => setQuickAddProduct(null)}
+        onConfirm={handleQuickAddConfirm}
+      />
     </View>
   );
 }
@@ -245,8 +299,8 @@ const styles = StyleSheet.create({
   /* Products row */
   productsScroll: {
     paddingHorizontal: 12,
-    paddingTop: 12,
-    gap: 8,
+    paddingTop: 14,
+    gap: 10,
   },
   productCard: {
     width: CARD_W,
@@ -255,21 +309,42 @@ const styles = StyleSheet.create({
     width: CARD_W,
     height: CARD_H,
     overflow: "hidden",
-    borderRadius: 6,
+    borderRadius: 10,
     position: "relative",
   },
   productInfo: {
-    paddingTop: 6,
+    paddingTop: 8,
     gap: 2,
   },
-  productTitle: {
+  productBrand: {
     fontFamily: "Inter_500Medium",
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 10,
+    letterSpacing: 0.5,
+  },
+  productTitle: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 1,
   },
   productPrice: {
     fontFamily: "Inter_700Bold",
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    marginTop: 3,
+  },
+
+  /* ADD TO BAG button — matches home page style */
+  addToCartBtn: {
+    backgroundColor: "#0274C1",
+    paddingVertical: 9,
+    alignItems: "center",
+    borderRadius: 100,
+    marginTop: 8,
+  },
+  addToCartText: {
+    color: "#FFFFFF",
+    fontFamily: "Inter_700Bold",
+    fontSize: 10,
+    letterSpacing: 0.8,
   },
 });

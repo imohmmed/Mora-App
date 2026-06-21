@@ -7,6 +7,7 @@ import {
   Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -28,7 +29,7 @@ import type { Product, Variant } from "@/lib/types";
 
 const { width } = Dimensions.get("window");
 const HERO_H = 260;
-const CARD_W = (width - 16 * 3) / 2;
+const CARD_W = (width - 32) / 2.5;
 const PRIMARY = "#0274C1";
 const SCROLL_THRESHOLD = HERO_H - 70;
 
@@ -41,53 +42,50 @@ function ProductCard({ product, onQuickAdd }: { product: Product; onQuickAdd: (p
     : 0;
 
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.productCard,
-        { backgroundColor: colors.background, borderColor: colors.border, opacity: pressed ? 0.9 : 1 },
-      ]}
-      onPress={() => router.push(`/product/${product.id}`)}
-      testID={`product-${product.id}`}
-    >
-      <View style={[styles.productImageWrap, { backgroundColor: colors.secondary }]}>
-        <Image
-          source={{ uri: product.images?.[0] }}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-        />
-        {discountPct > 0 && (
-          <View style={styles.discBadge}>
-            <Text style={styles.discText}>-{discountPct}%</Text>
-          </View>
-        )}
-        {/* Quick Add button */}
-        <Pressable
-          style={styles.quickAddBtn}
-          onPress={(e) => { e.stopPropagation?.(); onQuickAdd(product); }}
-          hitSlop={4}
-        >
-          <Feather name="plus" size={16} color="#fff" />
-        </Pressable>
-      </View>
-      <View style={styles.productInfo}>
-        <Text style={[styles.vendor, { color: colors.mutedForeground }]} numberOfLines={1}>
-          {product.vendor?.toUpperCase()}
-        </Text>
-        <Text style={[styles.productTitle, { color: colors.foreground }]} numberOfLines={2}>
-          {product.title}
-        </Text>
-        <View style={styles.priceRow}>
-          <Text style={[styles.price, { color: colors.foreground }]}>
-            {formatIQD(product.price)}
-          </Text>
-          {hasDiscount && (
-            <Text style={[styles.comparePrice, { color: colors.mutedForeground }]}>
-              {formatIQD(product.comparePrice!)}
-            </Text>
+    <View style={[styles.productCard, { backgroundColor: colors.background }]}>
+      <Pressable
+        style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}
+        onPress={() => router.push(`/product/${product.id}`)}
+        testID={`product-${product.id}`}
+      >
+        <View style={[styles.productImageWrap, { backgroundColor: colors.secondary }]}>
+          <Image
+            source={{ uri: product.images?.[0] }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+          />
+          {discountPct > 0 && (
+            <View style={styles.discBadge}>
+              <Text style={styles.discText}>-{discountPct}%</Text>
+            </View>
           )}
         </View>
-      </View>
-    </Pressable>
+        <View style={styles.productInfo}>
+          <Text style={[styles.vendor, { color: colors.mutedForeground }]} numberOfLines={1}>
+            {product.vendor?.toUpperCase()}
+          </Text>
+          <Text style={[styles.productTitle, { color: colors.foreground }]} numberOfLines={2}>
+            {product.title}
+          </Text>
+          <View style={styles.priceRow}>
+            <Text style={[styles.price, { color: colors.foreground }]}>
+              {formatIQD(product.price)}
+            </Text>
+            {hasDiscount && (
+              <Text style={[styles.comparePrice, { color: colors.mutedForeground }]}>
+                {formatIQD(product.comparePrice!)}
+              </Text>
+            )}
+          </View>
+        </View>
+      </Pressable>
+      <Pressable
+        style={styles.addToCartBtn}
+        onPress={() => onQuickAdd(product)}
+      >
+        <Text style={styles.addToCartText}>ADD TO BAG</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -355,9 +353,13 @@ export default function CollectionScreen() {
 
         {/* Products / search results grid */}
         {isLoading && !refreshing ? (
-          <View style={styles.productGrid}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.productGrid}
+          >
             {Array.from({ length: 4 }).map((_, i) => <ProductSkeleton key={i} />)}
-          </View>
+          </ScrollView>
         ) : error ? (
           <View style={styles.center}>
             <Feather name="alert-circle" size={40} color={colors.mutedForeground} />
@@ -378,11 +380,17 @@ export default function CollectionScreen() {
             </Text>
           </View>
         ) : (
-          <View style={styles.productGrid}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.productGrid}
+            decelerationRate="fast"
+            snapToInterval={CARD_W + 10}
+          >
             {displayProducts.map((p) => (
               <ProductCard key={p.id} product={p} onQuickAdd={setQuickAddProduct} />
             ))}
-          </View>
+          </ScrollView>
         )}
       </Animated.ScrollView>
 
@@ -480,19 +488,6 @@ const styles = StyleSheet.create({
     padding: 0,
   },
 
-  /* ── Quick Add button ── */
-  quickAddBtn: {
-    position: "absolute",
-    bottom: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
   /* ── Hero ── */
   hero: {
     height: HERO_H,
@@ -555,22 +550,20 @@ const styles = StyleSheet.create({
   },
   chipText: { fontFamily: "Inter_500Medium", fontSize: 13 },
 
-  /* ── Products grid ── */
+  /* ── Products horizontal scroll ── */
   productGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+    gap: 10,
   },
   productCard: {
     width: CARD_W,
-    borderWidth: 1,
-    borderRadius: 10,
-    overflow: "hidden",
   },
   productImageWrap: {
     width: "100%",
     height: CARD_W * 1.2,
+    borderRadius: 10,
+    overflow: "hidden",
     position: "relative",
   },
   discBadge: {
@@ -583,7 +576,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   discText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 10 },
-  productInfo: { padding: 10, gap: 2 },
+  productInfo: { paddingTop: 8, gap: 2 },
   vendor: { fontFamily: "Inter_500Medium", fontSize: 9, letterSpacing: 0.8 },
   productTitle: { fontFamily: "Inter_500Medium", fontSize: 13, lineHeight: 18 },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
@@ -592,6 +585,19 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 12,
     textDecorationLine: "line-through",
+  },
+  addToCartBtn: {
+    backgroundColor: "#0274C1",
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 100,
+    marginTop: 8,
+  },
+  addToCartText: {
+    color: "#FFFFFF",
+    fontFamily: "Inter_700Bold",
+    fontSize: 11,
+    letterSpacing: 0.8,
   },
 
   /* ── States ── */
