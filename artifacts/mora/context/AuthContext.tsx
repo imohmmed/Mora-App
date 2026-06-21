@@ -3,6 +3,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const TOKEN_KEY = "mora_auth_token_v1";
 
+/** Module-level callback — called whenever any API returns 401 */
+let _unauthorizedHandler: (() => void) | null = null;
+export function notifyUnauthorized() {
+  _unauthorizedHandler?.();
+}
+
 export type AuthUser = {
   id: string;
   firstName: string;
@@ -50,6 +56,10 @@ async function authFetch<T>(path: string, init?: RequestInit, token?: string | n
       ...(init?.headers ?? {}),
     },
   });
+  if (res.status === 401) {
+    notifyUnauthorized();
+    throw new Error("Unauthorized");
+  }
   const json = await res.json() as { data: T; error?: string | null };
   if (!res.ok) throw new Error(json.error ?? `Error ${res.status}`);
   return json.data;
@@ -59,6 +69,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const _clearSession = useCallback(async () => {
+    await AsyncStorage.removeItem(TOKEN_KEY);
+    setToken(null);
+    setUser(null);
+  }, []);
+
+  useEffect(() => {
+    _unauthorizedHandler = _clearSession;
+    return () => { _unauthorizedHandler = null; };
+  }, [_clearSession]);
 
   useEffect(() => {
     AsyncStorage.getItem(TOKEN_KEY).then(async (t) => {
@@ -119,10 +140,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       if (token) await authFetch("/store/auth/logout", { method: "POST" }, token);
     } catch {}
-    await AsyncStorage.removeItem(TOKEN_KEY);
-    setToken(null);
-    setUser(null);
-  }, [token]);
+    await _clearSession();
+  }, [token, _clearSession]);
 
   return (
     <AuthContext.Provider value={{ user, token, isLoading, login, register, loginWithPhone, loginWithSocial, logout }}>

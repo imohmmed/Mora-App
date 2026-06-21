@@ -1,4 +1,5 @@
 import type { Product, Order, OrderItem, Collection, SpecialCollection, Banner, StoryRow } from "./types";
+import { notifyUnauthorized } from "../context/AuthContext";
 
 type ApiResponse<T> = { data: T; meta: Record<string, unknown>; error: string | null };
 
@@ -19,6 +20,10 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
       ...(init?.headers ?? {}),
     },
   });
+  if (res.status === 401) {
+    notifyUnauthorized();
+    throw new Error("Unauthorized");
+  }
   if (!res.ok) {
     let msg = `API error ${res.status}`;
     try {
