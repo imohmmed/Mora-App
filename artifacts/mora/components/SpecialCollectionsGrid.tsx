@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -82,12 +83,14 @@ function CollectionCard({ col }: { col: SpecialCollection }) {
   const [startIdx, setStartIdx] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
 
+  const nativeDriver = Platform.OS !== "web";
+
   useEffect(() => {
     if (count <= 2) return;           // nothing to rotate
     const timer = setInterval(() => {
-      Animated.timing(fade, { toValue: 0, duration: 260, useNativeDriver: true }).start(() => {
+      Animated.timing(fade, { toValue: 0, duration: 260, useNativeDriver: nativeDriver }).start(() => {
         setStartIdx((i) => (i + 1) % count);
-        Animated.timing(fade, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+        Animated.timing(fade, { toValue: 1, duration: 300, useNativeDriver: nativeDriver }).start();
       });
     }, INTERVAL_MS);
     return () => clearInterval(timer);

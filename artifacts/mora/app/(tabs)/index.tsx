@@ -297,7 +297,8 @@ export default function HomeScreen() {
 
   const bottomPadding = isWeb ? 0 : insets.bottom;
 
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef  = useRef<FlatList>(null);
+  const bannerRef    = useRef<FlatList>(null);
   useEffect(() => {
     const scrollTop = () => flatListRef.current?.scrollToOffset?.({ offset: 0, animated: true });
     // Native: TabEvents bus
@@ -310,6 +311,21 @@ export default function HomeScreen() {
     }
     return offNative;
   }, []);
+
+  // ── Banner auto-scroll every 3 s ──────────────────────────────────────────
+  useEffect(() => {
+    if (!displayBanners || displayBanners.length <= 1) return;
+    const id = setInterval(() => {
+      setActiveBanner((prev) => {
+        const next = (prev + 1) % displayBanners.length;
+        try {
+          bannerRef.current?.scrollToIndex({ index: next, animated: true });
+        } catch {}
+        return next;
+      });
+    }, 3000);
+    return () => clearInterval(id);
+  }, [displayBanners]);
 
   const { data: contentSections } = useQuery({
     queryKey: ["content-sections"],
@@ -427,6 +443,7 @@ export default function HomeScreen() {
         </View>
       ) : (
         <FlatList
+          ref={bannerRef}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -436,6 +453,7 @@ export default function HomeScreen() {
           data={displayBanners}
           keyExtractor={(b) => b.id}
           renderItem={({ item }) => <BannerSlide banner={item} />}
+          getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })}
         />
       )}
 
