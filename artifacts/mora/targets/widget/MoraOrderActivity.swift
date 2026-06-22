@@ -12,38 +12,68 @@ public struct MoraOrderActivityAttributes: ActivityAttributes {
     var customerName: String
 }
 
+// ── Brand palette ───────────────────────────────────────────────────────────────
+let kAccent = Color(red: 0.01, green: 0.45, blue: 0.76)   // #0373C2
+
 // ── Stage Helpers ──────────────────────────────────────────────────────────────
 extension String {
+    var isExceptionStage: Bool { self == "issue" || self == "cancelled" }
+
     var stageIcon: String {
         switch self {
         case "confirmed":  return "checkmark.circle.fill"
         case "preparing":  return "shippingbox.fill"
         case "shipping":   return "truck.box.fill"
         case "delivered":  return "house.circle.fill"
+        case "issue":      return "exclamationmark.triangle.fill"
+        case "cancelled":  return "xmark.circle.fill"
         default:           return "clock.fill"
         }
     }
     var stageColor: Color {
         switch self {
-        case "confirmed":  return Color(red: 0.01, green: 0.45, blue: 0.76)
+        case "confirmed":  return kAccent
         case "preparing":  return .orange
-        case "shipping":   return Color(red: 0.01, green: 0.45, blue: 0.76)
+        case "shipping":   return kAccent
         case "delivered":  return .green
+        case "issue":      return .orange
+        case "cancelled":  return .red
         default:           return .gray
         }
     }
     var stageLabel: String {
         switch self {
-        case "confirmed":  return "Order Confirmed"
-        case "preparing":  return "Preparing Order"
-        case "shipping":   return "Out for Delivery"
-        case "delivered":  return "Delivered!"
-        default:           return "Processing"
+        case "confirmed":  return "تم تثبيت الطلب"
+        case "preparing":  return "يتم تجهيز الطلب"
+        case "shipping":   return "في الطريق إليك"
+        case "delivered":  return "تم التوصيل"
+        case "issue":      return "هناك مشكلة في الطلب"
+        case "cancelled":  return "تم إلغاء الطلب"
+        default:           return "قيد المعالجة"
         }
     }
     var stageIndex: Int {
         let stages = ["confirmed", "preparing", "shipping", "delivered"]
         return stages.firstIndex(of: self) ?? 0
+    }
+}
+
+// ── Contact Us button (issue / cancelled) ────────────────────────────────────────
+struct ContactButton: View {
+    var body: some View {
+        Link(destination: URL(string: "mora://chat")!) {
+            HStack(spacing: 6) {
+                Image(systemName: "bubble.left.and.bubble.right.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                Text("تواصل معنا")
+                    .font(.system(size: 13, weight: .bold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(kAccent)
+            .cornerRadius(10)
+        }
     }
 }
 
@@ -59,7 +89,7 @@ struct OrderProgressBar: View {
         HStack(spacing: 3) {
             ForEach(Array(stages.enumerated()), id: \.offset) { idx, _ in
                 Capsule()
-                    .fill(idx <= current ? accentColor : Color.gray.opacity(0.25))
+                    .fill(idx <= current ? accentColor : Color.white.opacity(0.18))
                     .frame(height: 3)
             }
         }
@@ -69,14 +99,15 @@ struct OrderProgressBar: View {
 // ── Lock Screen / Banner View ──────────────────────────────────────────────────
 struct OrderBannerView: View {
     let context: ActivityViewContext<MoraOrderActivityAttributes>
-    let accentColor = Color(red: 0.01, green: 0.45, blue: 0.76)
+    let accentColor = kAccent
 
     var body: some View {
+        let isException = context.state.stage.isExceptionStage
         VStack(spacing: 10) {
             HStack(spacing: 14) {
                 ZStack {
                     Circle()
-                        .fill(context.state.stage.stageColor.opacity(0.12))
+                        .fill(context.state.stage.stageColor.opacity(0.18))
                         .frame(width: 50, height: 50)
                     Image(systemName: context.state.stage.stageIcon)
                         .font(.system(size: 22, weight: .semibold))
@@ -86,9 +117,10 @@ struct OrderBannerView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Order \(context.attributes.orderNumber)")
                         .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.white)
                     Text(context.state.message.isEmpty ? context.state.stage.stageLabel : context.state.message)
                         .font(.system(size: 13))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.6))
                         .lineLimit(1)
                 }
 
@@ -104,11 +136,15 @@ struct OrderBannerView: View {
                 }
             }
 
-            OrderProgressBar(stage: context.state.stage, accentColor: accentColor)
+            if isException {
+                ContactButton()
+            } else {
+                OrderProgressBar(stage: context.state.stage, accentColor: accentColor)
+            }
         }
         .padding(16)
-        .activityBackgroundTint(Color(.systemBackground))
-        .activitySystemActionForegroundColor(.primary)
+        .activityBackgroundTint(.black)
+        .activitySystemActionForegroundColor(.white)
     }
 }
 
@@ -153,13 +189,19 @@ struct MoraOrderActivityWidget: Widget {
                         if !context.state.message.isEmpty {
                             Text(context.state.message)
                                 .font(.system(size: 12))
-                                .foregroundColor(.secondary)
+                                .foregroundColor(.white.opacity(0.6))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 6)
                         }
-                        OrderProgressBar(stage: context.state.stage, accentColor: accent)
-                            .padding(.horizontal, 6)
-                            .padding(.bottom, 6)
+                        if context.state.stage.isExceptionStage {
+                            ContactButton()
+                                .padding(.horizontal, 6)
+                                .padding(.bottom, 6)
+                        } else {
+                            OrderProgressBar(stage: context.state.stage, accentColor: accent)
+                                .padding(.horizontal, 6)
+                                .padding(.bottom, 6)
+                        }
                     }
                 }
             } compactLeading: {

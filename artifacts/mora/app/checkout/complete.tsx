@@ -172,6 +172,24 @@ export default function OrderCompleteScreen() {
     setVerifying(false);
   };
 
+  // Auto-confirm online (Wayl) payment without manual tapping. The webhook marks
+  // the order paid server-side; we poll a few times so the screen reflects it fast.
+  useEffect(() => {
+    if (!isWayl || payStatus !== "pending" || !orderNumber) return;
+    let active = true;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = async () => {
+      if (!active) return;
+      attempts += 1;
+      await verifyPayment();
+      if (active && attempts < 8) timer = setTimeout(tick, 3000);
+    };
+    timer = setTimeout(tick, 1500);
+    return () => { active = false; clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderNumber, payStatus, isWayl]);
+
   const heroColor  = payStatus === "paid" ? PRIMARY : payStatus === "failed" ? "#EF4444" : WAYL_BLUE;
   const heroIcon   = payStatus === "paid" ? "check" : payStatus === "failed" ? "x" : "clock";
   const heroTitle  = payStatus === "paid" ? (isCOD ? "Order Placed!" : "Payment Confirmed!") : payStatus === "failed" ? "Payment Failed" : "Awaiting Payment";

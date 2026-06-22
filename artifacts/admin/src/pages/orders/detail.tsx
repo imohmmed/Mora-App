@@ -1,108 +1,105 @@
+import { useState } from "react";
 import { useAdminGetOrder, useAdminUpdateOrder, getAdminGetOrderQueryKey } from "@workspace/api-client-react";
 import { useParams, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { 
-  Card, CardContent, CardHeader, CardTitle, CardFooter
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, User, CreditCard, Truck, Calendar, CheckCircle2, Clock, Package, ShoppingCart } from "lucide-react";
-import { format } from "date-fns";
+import {
+  ArrowLeft, User, CreditCard, Truck, Calendar, CheckCircle2, Package,
+  Home, AlertTriangle, XCircle, Banknote, Phone, MapPin, Loader2,
+} from "lucide-react";
 import { fmt } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { formatIQD } from "@/lib/format";
+import { adminFetch } from "@/lib/api";
+
+const ACCENT = "#0373C2";
+
+type StageKey = "confirmed" | "preparing" | "shipping" | "delivered";
+
+const STAGES: { key: StageKey; label: string; sub: string; icon: typeof Package }[] = [
+  { key: "confirmed", label: "تم التثبيت", sub: "Confirmed", icon: CheckCircle2 },
+  { key: "preparing", label: "يتم التجهيز", sub: "Preparing", icon: Package },
+  { key: "shipping",  label: "يتم الشحن",  sub: "Shipping",  icon: Truck },
+  { key: "delivered", label: "تم التوصيل", sub: "Delivered", icon: Home },
+];
 
 export default function OrderDetail() {
   const { id } = useParams();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  
+
   const { data: response, isLoading } = useAdminGetOrder(id!);
   const updateOrder = useAdminUpdateOrder();
-  
-  const order = response?.data;
+  const [stageLoading, setStageLoading] = useState<string | null>(null);
 
-  const applyUpdate = (
-    data: { status?: string; financialStatus?: string; fulfillmentStatus?: string; note?: string },
-    successMessage: string
-  ) => {
+  const order = response?.data as any;
+
+  const refresh = () => {
+    if (!id) return;
+    queryClient.invalidateQueries({ queryKey: getAdminGetOrderQueryKey(id) });
+    queryClient.invalidateQueries({ queryKey: ["/api/admin/orders"] });
+  };
+
+  const markPaid = () => {
     if (!id) return;
     updateOrder.mutate(
-      { id, data },
+      { id, data: { financialStatus: "paid" } },
       {
-        onSuccess: () => {
-          toast({ title: successMessage });
-          queryClient.invalidateQueries({ queryKey: getAdminGetOrderQueryKey(id) });
-          queryClient.invalidateQueries({ queryKey: ["/api/admin/orders"] });
-        },
-        onError: () => {
-          toast({ title: "Error updating order", variant: "destructive" });
-        }
+        onSuccess: () => { toast({ title: "تم تعليم الطلب كمدفوع" }); refresh(); },
+        onError: () => toast({ title: "تعذّر تحديث حالة الدفع", variant: "destructive" }),
       }
     );
   };
 
-  const handleStatusChange = (status: string) => applyUpdate({ status }, "Order status updated");
-  const handleFulfillmentChange = (fulfillmentStatus: string) => applyUpdate({ fulfillmentStatus }, "Fulfillment status updated");
-  const handlePaymentChange = (financialStatus: string) => applyUpdate({ financialStatus }, "Payment status updated");
-
-  if (isLoading) {
-    return <div className="p-6 md:p-8">Loading order...</div>;
-  }
-
-  if (!order) {
-    return <div className="p-6 md:p-8">Order not found.</div>;
-  }
-
-  // Build fulfillment timeline from order data
-  const isPaid = order.financialStatus === "paid";
-  const isFulfilled = order.fulfillmentStatus === "fulfilled";
-  const isCancelled = order.status === "cancelled";
-
-  type TimelineStep = {
-    icon: React.ReactNode;
-    label: string;
-    description: string;
-    done: boolean;
-    cancelled?: boolean;
-    time?: string;
+  const changeStage = async (stage: string) => {
+    if (!id || stageLoading) return;
+    setStageLoading(stage);
+    try {
+      const res = await adminFetch(`/admin/orders/${id}/delivery-stage`, {
+        method: "POST",
+        body: JSON.stringify({ stage }),
+      });
+      if (res.error) {
+        toast({ title: "تعذّر تحديث حالة الطلب", variant: "destructive" });
+      } else {
+        toast({ title: "تم تحديث حالة الطلب وإشعار العميل" });
+        refresh();
+      }
+    } catch {
+      toast({ title: "تعذّر تحديث حالة الطلب", variant: "destructive" });
+    } finally {
+      setStageLoading(null);
+    }
   };
 
-  const timelineSteps: TimelineStep[] = [
-    {
-      icon: <ShoppingCart className="w-4 h-4" />,
-      label: "Order placed",
-      description: "Customer submitted the order",
-      done: true,
-      time: order.createdAt ? fmt(order.createdAt, "MMM d, yyyy 'at' h:mm a") : undefined,
-    },
-    {
-      icon: <CreditCard className="w-4 h-4" />,
-      label: "Payment",
-      description: isPaid ? "Payment collected" : "Awaiting payment",
-      done: isPaid,
-      cancelled: isCancelled,
-    },
-    {
-      icon: <Package className="w-4 h-4" />,
-      label: "Fulfillment",
-      description: isFulfilled ? "Order fulfilled and shipped" : "Preparing order for shipment",
-      done: isFulfilled,
-      cancelled: isCancelled,
-    },
-    {
-      icon: <Truck className="w-4 h-4" />,
-      label: "Delivered",
-      description: isFulfilled ? "Order delivered to customer" : "Not yet delivered",
-      done: isFulfilled,
-      cancelled: isCancelled,
-    },
-  ];
+  if (isLoading) return <div className="p-6 md:p-8 text-muted-foreground">Loading order...</div>;
+  if (!order) return <div className="p-6 md:p-8">Order not found.</div>;
+
+  const stage: string = order.deliveryStage || "confirmed";
+  const currentIndex = STAGES.findIndex((s) => s.key === stage);
+  const isIssue = stage === "issue";
+  const isCancelled = stage === "cancelled";
+  const isException = isIssue || isCancelled;
+
+  const payMethod: string = order.paymentMethod || "cod";
+  const isOnline = payMethod === "online";
+  const isPaid = order.financialStatus === "paid";
+
+  const addr = order.shippingAddress as any | null;
+
+  const stageBadge = isCancelled
+    ? { label: "تم الإلغاء", cls: "bg-red-100 text-red-700 hover:bg-red-100" }
+    : isIssue
+    ? { label: "مشكلة", cls: "bg-amber-100 text-amber-700 hover:bg-amber-100" }
+    : { label: STAGES[Math.max(0, currentIndex)]?.label ?? "تم التثبيت", cls: "" };
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6">
+      {/* ── Header ─────────────────────────────────────────── */}
       <div className="flex items-center gap-4">
         <Link href="/orders" className="text-muted-foreground hover:text-foreground">
           <ArrowLeft className="w-5 h-5" />
@@ -110,8 +107,8 @@ export default function OrderDetail() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
             {order.orderNumber}
-            <Badge variant={order.status === "open" ? "default" : "secondary"}>
-              {order.status}
+            <Badge className={stageBadge.cls} variant={stageBadge.cls ? undefined : "default"}>
+              {stageBadge.label}
             </Badge>
           </h1>
           {order.createdAt && (
@@ -121,58 +118,147 @@ export default function OrderDetail() {
             </p>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={updateOrder.isPending || order.financialStatus === "paid"}
-            onClick={() => handlePaymentChange("paid")}
-          >
-            <CreditCard className="w-4 h-4 mr-2" />
-            Mark as Paid
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={updateOrder.isPending || order.fulfillmentStatus === "fulfilled"}
-            onClick={() => handleFulfillmentChange("fulfilled")}
-          >
-            <Package className="w-4 h-4 mr-2" />
-            Mark as Fulfilled
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            disabled={updateOrder.isPending || order.status === "cancelled"}
-            onClick={() => handleStatusChange("cancelled")}
-          >
-            Cancel Order
-          </Button>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
-          {/* Order Items */}
+          {/* ── Order Status / Progress ───────────────────── */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Truck className="w-5 h-5" />
+                حالة الطلب
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Progress bar — normal flow */}
+              {!isException && (
+                <div className="flex items-start">
+                  {STAGES.map((s, i) => {
+                    const reached = currentIndex >= i;
+                    const Icon = s.icon;
+                    return (
+                      <div key={s.key} className="flex-1 flex flex-col items-center relative">
+                        {/* connector */}
+                        {i > 0 && (
+                          <span
+                            className="absolute top-5 right-1/2 h-1 w-full -z-0"
+                            style={{ backgroundColor: currentIndex >= i ? ACCENT : "hsl(var(--muted))" }}
+                          />
+                        )}
+                        <div
+                          className="relative z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors"
+                          style={{
+                            backgroundColor: reached ? ACCENT : "transparent",
+                            borderColor: reached ? ACCENT : "hsl(var(--muted))",
+                            color: reached ? "#fff" : "hsl(var(--muted-foreground))",
+                          }}
+                        >
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <p className={cn("mt-2 text-xs font-semibold text-center", reached ? "text-foreground" : "text-muted-foreground")}>
+                          {s.label}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Exception state — replaces the progress bar for issue / cancelled */}
+              {isException && (
+                <div
+                  className="flex items-center gap-3 rounded-xl p-4 text-white"
+                  style={{ backgroundColor: isCancelled ? "#DC2626" : "#D97706" }}
+                >
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
+                    {isCancelled ? <XCircle className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+                  </div>
+                  <div>
+                    <p className="font-bold">{isCancelled ? "تم إلغاء الطلب" : "هناك مشكلة في الطلب"}</p>
+                    <p className="text-sm text-white/85">
+                      {isCancelled
+                        ? "أُرسل للعميل إشعار مع زر تواصل معنا."
+                        : "أُرسل للعميل إشعار مع زر تواصل معنا."}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <Separator />
+
+              {/* Stage controls */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">تغيير الحالة (يُحدّث Live Activity ويُشعر العميل فوراً)</p>
+                <div className="flex flex-wrap gap-2">
+                  {STAGES.map((s) => {
+                    const active = stage === s.key;
+                    return (
+                      <Button
+                        key={s.key}
+                        size="sm"
+                        variant={active ? "default" : "outline"}
+                        disabled={!!stageLoading}
+                        onClick={() => changeStage(s.key)}
+                        style={active ? { backgroundColor: ACCENT } : undefined}
+                      >
+                        {stageLoading === s.key ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <s.icon className="w-3.5 h-3.5 mr-1.5" />}
+                        {s.label}
+                      </Button>
+                    );
+                  })}
+                  <Button
+                    size="sm"
+                    variant={isIssue ? "default" : "outline"}
+                    disabled={!!stageLoading}
+                    onClick={() => changeStage("issue")}
+                    className={isIssue ? "bg-amber-500 hover:bg-amber-600" : "text-amber-600 border-amber-300 hover:bg-amber-50"}
+                  >
+                    {stageLoading === "issue" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />}
+                    مشكلة
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={isCancelled ? "default" : "outline"}
+                    disabled={!!stageLoading}
+                    onClick={() => changeStage("cancelled")}
+                    className={isCancelled ? "bg-red-500 hover:bg-red-600" : "text-red-600 border-red-300 hover:bg-red-50"}
+                  >
+                    {stageLoading === "cancelled" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5 mr-1.5" />}
+                    إلغاء الطلب
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Order Items ──────────────────────────────── */}
+          <Card>
+            <CardHeader>
               <CardTitle>Order Items</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {order.lineItems?.map((item: any, i) => (
-                  <div key={i} className="flex justify-between items-center py-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center border">
-                        <span className="text-xs text-muted-foreground">{item.quantity}x</span>
-                      </div>
-                      <div>
-                        <p className="font-medium">{item.title}</p>
-                        <p className="text-sm text-muted-foreground">{item.variantTitle || "Default Title"}</p>
+              <div className="space-y-3">
+                {order.lineItems?.map((item: any, i: number) => (
+                  <div key={i} className="flex justify-between items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {item.image ? (
+                        <img src={item.image} alt="" className="w-12 h-12 rounded-md object-cover border" />
+                      ) : (
+                        <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center border text-xs text-muted-foreground">
+                          {item.quantity}x
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{item.title}</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {[item.size, item.color].filter(Boolean).join(" · ") || item.variantTitle || "—"}
+                          {"  ·  ×"}{item.quantity}
+                        </p>
                       </div>
                     </div>
-                    <div className="font-medium">
-                      ${((item.price || 0) * (item.quantity || 1)).toFixed(2)}
+                    <div className="font-medium whitespace-nowrap">
+                      {formatIQD((item.price || 0) * (item.quantity || 1))}
                     </div>
                   </div>
                 ))}
@@ -182,156 +268,106 @@ export default function OrderDetail() {
             <CardFooter className="flex-col items-stretch p-6 gap-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span>${(order.subtotal || 0).toFixed(2)}</span>
+                <span>{formatIQD(order.subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Shipping</span>
-                <span>${(order.shipping || 0).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax</span>
-                <span>${(order.tax || 0).toFixed(2)}</span>
+                <span>{order.shipping ? formatIQD(order.shipping) : "Free"}</span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between font-bold text-lg">
                 <span>Total</span>
-                <span>${order.total.toFixed(2)} {order.currency || "USD"}</span>
+                <span>{formatIQD(order.total)}</span>
               </div>
             </CardFooter>
           </Card>
-
-          {/* Fulfillment Timeline */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Fulfillment Timeline
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ol className="relative border-l border-muted ml-4 space-y-6">
-                {timelineSteps.map((step, i) => (
-                  <li key={i} className="ml-6">
-                    <span className={cn(
-                      "absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full ring-4 ring-background",
-                      step.cancelled
-                        ? "bg-muted text-muted-foreground"
-                        : step.done
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    )}>
-                      {step.done && !step.cancelled
-                        ? <CheckCircle2 className="w-3.5 h-3.5" />
-                        : step.icon}
-                    </span>
-                    <div className="flex flex-col gap-0.5">
-                      <p className={cn(
-                        "font-medium text-sm",
-                        step.done && !step.cancelled ? "text-foreground" : "text-muted-foreground"
-                      )}>
-                        {step.label}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{step.description}</p>
-                      {step.time && (
-                        <p className="text-xs text-muted-foreground/70">{step.time}</p>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </CardContent>
-          </Card>
         </div>
 
+        {/* ── Sidebar ───────────────────────────────────── */}
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
-                Customer
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Link href={order.customerId ? `/customers/${order.customerId}` : "#"} className="font-medium hover:underline text-primary">
-                  {order.email}
-                </Link>
-              </div>
-              <Separator />
-              <div>
-                <h4 className="text-sm font-medium mb-1">Shipping Address</h4>
-                <div className="text-sm text-muted-foreground space-y-1">
-                  {order.shippingAddress ? (
-                    <>
-                      <p>{(order.shippingAddress as any).firstName} {(order.shippingAddress as any).lastName}</p>
-                      <p>{(order.shippingAddress as any).address1}</p>
-                      {(order.shippingAddress as any).address2 && <p>{(order.shippingAddress as any).address2}</p>}
-                      <p>{(order.shippingAddress as any).city}, {(order.shippingAddress as any).province} {(order.shippingAddress as any).zip}</p>
-                      <p>{(order.shippingAddress as any).country}</p>
-                    </>
-                  ) : (
-                    <p>No shipping address provided.</p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
+          {/* Payment */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="w-5 h-5" />
-                Payment Status
+                الدفع
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Badge variant={order.financialStatus === "paid" ? "default" : "secondary"}>
-                {order.financialStatus || "unpaid"}
-              </Badge>
-              {order.financialStatus !== "paid" && (
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                  {isOnline ? <CreditCard className="w-4 h-4" /> : <Banknote className="w-4 h-4" />}
+                </div>
+                <div>
+                  <p className="font-medium text-sm">
+                    {isOnline ? "الدفع الإلكتروني" : "الدفع عند الاستلام"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {isOnline ? "عبر Wayl" : "Cash on Delivery"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">حالة الدفع</span>
+                <Badge
+                  className={isPaid ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-amber-100 text-amber-700 hover:bg-amber-100"}
+                >
+                  {isPaid ? "مدفوع" : "غير مدفوع"}
+                </Badge>
+              </div>
+              {!isPaid && (
                 <Button
                   variant="outline"
                   className="w-full"
                   size="sm"
                   disabled={updateOrder.isPending}
-                  onClick={() => handlePaymentChange("paid")}
+                  onClick={markPaid}
                 >
-                  Mark as Paid
+                  {updateOrder.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                  تعليم كمدفوع
                 </Button>
               )}
             </CardContent>
           </Card>
 
+          {/* Customer */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Truck className="w-5 h-5" />
-                Fulfillment
+                <User className="w-5 h-5" />
+                العميل
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Badge variant={order.fulfillmentStatus === "fulfilled" ? "outline" : "secondary"}>
-                {order.fulfillmentStatus || "unfulfilled"}
-              </Badge>
-              <Select value={order.fulfillmentStatus || "unfulfilled"} onValueChange={handleFulfillmentChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unfulfilled">Unfulfilled</SelectItem>
-                  <SelectItem value="fulfilled">Fulfilled</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={order.status || "open"} onValueChange={handleStatusChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Order status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
+              <div>
+                <Link
+                  href={order.customerId ? `/customers/${order.customerId}` : "#"}
+                  className="font-medium hover:underline text-primary"
+                >
+                  {addr?.fullName || order.email || "Guest"}
+                </Link>
+                {order.email && addr?.fullName && (
+                  <p className="text-xs text-muted-foreground">{order.email}</p>
+                )}
+              </div>
+              <Separator />
+              <div className="space-y-1.5 text-sm text-muted-foreground">
+                {addr ? (
+                  <>
+                    {addr.phone && (
+                      <p className="flex items-center gap-2"><Phone className="w-3.5 h-3.5" /> {addr.phone}</p>
+                    )}
+                    <p className="flex items-start gap-2">
+                      <MapPin className="w-3.5 h-3.5 mt-0.5" />
+                      <span>
+                        {[addr.street, addr.district, addr.city].filter(Boolean).join("، ") || "—"}
+                      </span>
+                    </p>
+                  </>
+                ) : (
+                  <p>No shipping address provided.</p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

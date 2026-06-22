@@ -127,7 +127,7 @@ router.get("/admin/notifications", requireAdmin, (req, res) => {
 });
 
 // ── ADMIN: shared send logic ───────────────────────────────────────────────────
-async function doSendNotification(opts: {
+export async function doSendNotification(opts: {
   title: string;
   body: string;
   url?: string;

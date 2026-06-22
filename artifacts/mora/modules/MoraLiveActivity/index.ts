@@ -6,7 +6,8 @@ export type OrderStage =
   | "preparing"
   | "shipping"
   | "delivered"
-  | "issue";
+  | "issue"
+  | "cancelled";
 
 interface MoraLiveActivityNative {
   isAvailable(): boolean;

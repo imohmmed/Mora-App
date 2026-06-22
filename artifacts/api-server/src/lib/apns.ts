@@ -20,7 +20,8 @@ export type LiveActivityStage =
   | "preparing"
   | "shipping"
   | "delivered"
-  | "issue";
+  | "issue"
+  | "cancelled";
 
 // ── JWT helpers ────────────────────────────────────────────────────────────────
 
@@ -77,8 +78,11 @@ export async function sendLiveActivityPush(
     return { ok: false, error: "APPLE_PUSH_KEY_ID / APPLE_PUSH_KEY not configured" };
   }
 
-  const isEnd = payload.stage === "delivered";
+  // "delivered" and "cancelled" are terminal states that end the Live Activity.
+  // Cancelled stays visible longer so the customer can tap "Contact Us".
+  const isEnd = payload.stage === "delivered" || payload.stage === "cancelled";
   const ts    = Math.floor(Date.now() / 1000);
+  const dismissSecs = payload.stage === "cancelled" ? 3600 : 10;
 
   const apsPayload = {
     aps: {
@@ -88,7 +92,7 @@ export async function sendLiveActivityPush(
         stage:   payload.stage,
         message: payload.message ?? "",
       },
-      ...(isEnd ? { "dismissal-date": ts + 10 } : {}),
+      ...(isEnd ? { "dismissal-date": ts + dismissSecs } : {}),
     },
   };
 
@@ -114,7 +118,7 @@ export async function sendLiveActivityPush(
       "authorization":        `bearer ${jwt}`,
       "apns-push-type":       "liveactivity",
       "apns-topic":           topic,
-      "apns-priority":        payload.stage === "delivered" ? "10" : "5",
+      "apns-priority":        isEnd ? "10" : "5",
       "content-type":         "application/json",
       "content-length":       String(body.byteLength),
     });

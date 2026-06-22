@@ -33,3 +33,16 @@ Live Activities for order tracking require 4 synchronized layers:
 `MoraOrderActivityAttributes` struct MUST be identical in both `MoraOrderActivity.swift` AND `MoraLiveActivityModule.swift`.
 
 **Why:** expo-live-activity (software-mansion) was deprecated June 2026; expo-widgets requires SDK 56; @bacons/apple-targets is the correct SDK 54 approach.
+
+## Order delivery_stage — 6-state model
+The order status is a single `delivery_stage` string with 6 values: `confirmed`, `preparing`, `shipping`, `delivered`, `issue`, `cancelled`. This list must stay synchronized across FOUR layers or stages silently mismatch:
+1. API `VALID_STAGES` allow-list + `STAGE_NOTIF` Arabic copy map in `routes/orders.ts` (the `delivery-stage` endpoint rejects unknown stages and skips notif if no copy entry).
+2. Mobile `OrderStage` union type in `modules/MoraLiveActivity/index.ts`.
+3. Swift `stageIcon`/`stageColor`/`stageLabel` switches in `MoraOrderActivity.swift`.
+4. Admin order detail UI.
+
+**Exception states (`issue`/`cancelled`) are NOT sequential progress** — first 4 are the linear flow; in BOTH the admin UI and the Swift widget they REPLACE the progress bar with an exception block, and they deep-link to chat: admin/push url = `/(tabs)/chat`, Swift `ContactButton` = `mora://chat` (resolves to `app/(tabs)/chat.tsx`).
+
+**Single trigger point:** `POST /admin/orders/:id/delivery-stage` is the one place that fires all three customer signals together — APNs Live Activity update (`sendLiveActivityPush`) + regular push + in-app notification (`doSendNotification`). `apns.ts` treats `delivered` and `cancelled` as end states (cancelled stays visible ~1h for the contact action, delivered dismisses fast).
+
+**Wayl payment auto-confirm:** the webhook marks `financial_status='paid'` server-side; `checkout/complete.tsx` polls `GET /store/wayl/status/:orderNumber` a few times on mount (native + web) so the screen flips to paid without a manual tap. LA styling: black bg, white text, accent `#0373C2` = `rgb(0.01,0.45,0.76)`.

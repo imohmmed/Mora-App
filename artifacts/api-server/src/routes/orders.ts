@@ -3,6 +3,18 @@ import db, { parseRows, parseOne, logActivity } from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
 import type { Row } from "../lib/types.js";
 import { sendLiveActivityPush } from "../lib/apns.js";
+import { doSendNotification } from "./notifications.js";
+
+// Arabic push + in-app notification copy per delivery stage.
+// {n} is replaced with the order number.
+const STAGE_NOTIF: Record<string, { title: string; body: string }> = {
+  confirmed: { title: "تم تثبيت طلبك ✅", body: "طلبك {n} قيد المعالجة الآن" },
+  preparing: { title: "يتم تجهيز طلبك 📦", body: "نقوم بتحضير طلبك {n} للشحن" },
+  shipping:  { title: "طلبك في الطريق 🚚", body: "طلبك {n} خرج للتوصيل إليك" },
+  delivered: { title: "تم توصيل طلبك 🎉", body: "نتمنى أن ينال طلبك {n} إعجابك" },
+  issue:     { title: "هناك مشكلة في طلبك ⚠️", body: "يرجى التواصل معنا بخصوص طلبك {n}" },
+  cancelled: { title: "تم إلغاء طلبك ❌", body: "تم إلغاء طلبك {n}. تواصل معنا للمساعدة" },
+};
 
 const router = Router();
 
@@ -203,8 +215,10 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
   const id = req.params["id"];
   const { stage, message } = req.body as { stage: string; message?: string };
   if (!stage) { res.status(400).json({ data: null, error: "stage required" }); return; }
+  const VALID_STAGES = ["confirmed", "preparing", "shipping", "delivered", "issue", "cancelled"];
+  if (!VALID_STAGES.includes(stage)) { res.status(400).json({ data: null, error: "invalid stage" }); return; }
 
-  const existing = db.prepare(`SELECT order_number, live_activity_push_token FROM orders WHERE id=?`).get(id) as Row | undefined;
+  const existing = db.prepare(`SELECT order_number, customer_id, live_activity_push_token FROM orders WHERE id=?`).get(id) as Row | undefined;
   if (!existing) { res.status(404).json({ data: null, meta: {}, error: "Order not found" }); return; }
 
   const now = new Date().toISOString();
@@ -214,18 +228,40 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
   logActivity("order.stage_updated", "Orders", "order", id, `Order ${orderNum}`, "Admin",
     { orderNumber: orderNum, stage, message });
 
-  // Send APNs Live Activity push if we have a push token
+  // Default Arabic copy for this stage (admin-supplied message overrides the body)
+  const copy = STAGE_NOTIF[stage];
+  const defaultBody = copy ? copy.body.replace("{n}", orderNum) : "";
+  const laMessage = message && message.trim() ? message : defaultBody;
+  const isContact = stage === "issue" || stage === "cancelled";
+
+  // 1) Update the iOS Live Activity directly via APNs (if a token is registered)
   const laPushToken = existing["live_activity_push_token"] as string | null;
   let apnsResult: { ok: boolean; error?: string } = { ok: true };
   if (laPushToken) {
     try {
       apnsResult = await sendLiveActivityPush(laPushToken, {
         stage: stage as any,
-        message: message ?? "",
+        message: laMessage,
       });
     } catch (e: unknown) {
       apnsResult = { ok: false, error: String(e) };
     }
+  }
+
+  // 2) Send a regular push + save an in-app notification for the customer
+  //    (covers the mobile app and the web store notification center).
+  //    issue/cancelled deep-link to the in-app chat ("Contact Us").
+  const customerId = existing["customer_id"] as string | null;
+  if (customerId && copy) {
+    try {
+      await doSendNotification({
+        title: copy.title,
+        body: defaultBody,
+        url: isContact ? "/(tabs)/chat" : "",
+        targetAll: false,
+        customerIds: [customerId],
+      });
+    } catch { /* non-fatal */ }
   }
 
   const order = parseOne(db.prepare(`SELECT * FROM orders WHERE id=?`).get(id) as Row | undefined);
