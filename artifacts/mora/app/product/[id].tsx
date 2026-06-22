@@ -114,7 +114,10 @@ function RelatedCard({
   colors: ReturnType<typeof useColors>;
   cardWidth: number;
 }) {
-  const router = useRouter();
+  const router  = useRouter();
+  const { addItem } = useCart();
+  const { resolvedScheme } = useTheme();
+  const isDarkCard = resolvedScheme === "dark";
   const bg = cardColor(product.id);
   const hasDiscount =
     product.comparePrice != null && product.comparePrice > product.price;
@@ -123,6 +126,33 @@ function RelatedCard({
         ((product.comparePrice! - product.price) / product.comparePrice!) * 100
       )
     : 0;
+
+  const [quickAdded, setQuickAdded] = useState(false);
+
+  const handleQuickAdd = (e: any) => {
+    e.stopPropagation?.();
+    const variants = product.variants ?? [];
+    // If multi-variant product → go to product page to pick size/colour
+    if (variants.length > 1) {
+      router.push(`/product/${product.id}`);
+      return;
+    }
+    const v = variants[0];
+    addItem({
+      productId: product.id,
+      variantId: v?.id ?? product.id,
+      title: product.title,
+      vendor: product.vendor ?? "Mora",
+      price: v?.price ?? product.price,
+      quantity: 1,
+      size: v?.option1,
+      color: v?.option2,
+      image: product.images?.[0],
+    });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setQuickAdded(true);
+    setTimeout(() => setQuickAdded(false), 1500);
+  };
 
   return (
     <Pressable
@@ -140,6 +170,23 @@ function RelatedCard({
             <Text style={styles.relatedDiscText}>-{discountPct}%</Text>
           </View>
         )}
+        {/* Quick Add button */}
+        <Pressable style={styles.quickAddBtn} onPress={handleQuickAdd} hitSlop={6}>
+          {isIOS26Plus
+            ? <LiquidGlassBg />
+            : Platform.OS !== "web" && (
+                <BlurView
+                  style={StyleSheet.absoluteFill}
+                  intensity={70}
+                  tint={isDarkCard ? "systemThinMaterialDark" : "systemThinMaterial"}
+                />
+              )
+          }
+          {quickAdded
+            ? <Feather name="check" size={15} color={PRIMARY} />
+            : <Feather name="shopping-bag" size={14} color={colors.foreground} />
+          }
+        </Pressable>
       </View>
       <View style={styles.relatedInfo}>
         <Text style={[styles.relatedTitle, { color: colors.foreground }]} numberOfLines={2}>
@@ -784,6 +831,18 @@ const styles = StyleSheet.create({
     backgroundColor: "#E53935", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3,
   },
   relatedDiscText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 10 },
+  quickAddBtn: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.55)",
+  },
   relatedInfo: { padding: 10, gap: 4 },
   relatedTitle: { fontFamily: "Inter_500Medium", fontSize: 12, lineHeight: 17 },
   relatedPrice: { fontFamily: "Inter_700Bold", fontSize: 13 },
