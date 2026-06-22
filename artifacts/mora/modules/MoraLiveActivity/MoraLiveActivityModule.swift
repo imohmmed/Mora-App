@@ -28,6 +28,64 @@ public class MoraLiveActivityModule: Module {
             return false
         }
 
+        // Diagnostics — returns the exact device state so failures stop being silent.
+        Function("diagnose") { () -> [String: Any] in
+            var info: [String: Any] = [:]
+            info["moduleLoaded"] = true
+            info["iosVersion"] = ProcessInfo.processInfo.operatingSystemVersionString
+            if #available(iOS 16.1, *) {
+                let auth = ActivityAuthorizationInfo()
+                info["activityKitAvailable"] = true
+                info["areActivitiesEnabled"] = auth.areActivitiesEnabled
+                if #available(iOS 17.2, *) {
+                    info["frequentPushesEnabled"] = auth.frequentPushesEnabled
+                    info["pushToStartSupported"] = true
+                } else {
+                    info["pushToStartSupported"] = false
+                }
+                info["activeActivities"] = Activity<MoraOrderActivityAttributes>.activities.count
+            } else {
+                info["activityKitAvailable"] = false
+                info["areActivitiesEnabled"] = false
+            }
+            return info
+        }
+
+        // Start a test Live Activity and RESOLVE with the precise outcome/error.
+        // Unlike startActivity (which silently returns nil), this surfaces the real
+        // failure reason so the user/agent can see exactly what's wrong on-device.
+        AsyncFunction("startTestActivity") { (promise: Promise) in
+            guard #available(iOS 16.1, *) else {
+                promise.resolve(["ok": false, "error": "iOS < 16.1 — Live Activities unsupported"])
+                return
+            }
+            guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+                promise.resolve(["ok": false, "error": "Live Activities are turned OFF in Settings → Mora"])
+                return
+            }
+            // End any prior test activities so repeated taps don't accumulate.
+            for activity in Activity<MoraOrderActivityAttributes>.activities
+            where activity.attributes.orderNumber == "#TEST" {
+                Task { await activity.end(dismissalPolicy: .immediate) }
+            }
+            do {
+                let attrs = MoraOrderActivityAttributes(orderNumber: "#TEST", customerName: "Diagnostic")
+                let state = MoraOrderActivityAttributes.ContentState(
+                    stage: "confirmed",
+                    message: "Test Live Activity — if you see this, it works."
+                )
+                let activity = try Activity<MoraOrderActivityAttributes>.request(
+                    attributes: attrs,
+                    contentState: state,
+                    pushType: .token
+                )
+                self.activities[activity.id] = activity
+                promise.resolve(["ok": true, "activityId": activity.id])
+            } catch {
+                promise.resolve(["ok": false, "error": "Activity.request failed: \(error.localizedDescription)"])
+            }
+        }
+
         // Start a new Live Activity, returns activityId
         Function("startActivity") { (
             orderNumber: String,

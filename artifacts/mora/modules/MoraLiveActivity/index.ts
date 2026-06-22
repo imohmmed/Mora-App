@@ -9,8 +9,26 @@ export type OrderStage =
   | "issue"
   | "cancelled";
 
+export interface LiveActivityDiagnostics {
+  moduleLoaded: boolean;
+  iosVersion?: string;
+  activityKitAvailable?: boolean;
+  areActivitiesEnabled?: boolean;
+  frequentPushesEnabled?: boolean;
+  pushToStartSupported?: boolean;
+  activeActivities?: number;
+}
+
+export interface StartTestResult {
+  ok: boolean;
+  activityId?: string;
+  error?: string;
+}
+
 interface MoraLiveActivityNative {
   isAvailable(): boolean;
+  diagnose(): LiveActivityDiagnostics;
+  startTestActivity(): Promise<StartTestResult>;
   startActivity(
     orderNumber: string,
     customerName: string,
@@ -38,6 +56,42 @@ export const MoraLiveActivity = {
   /** Whether Live Activities are supported and enabled on this device */
   isAvailable(): boolean {
     return native?.isAvailable() ?? false;
+  },
+
+  /**
+   * Returns the precise on-device Live Activity state. If the native module is
+   * not in the installed build (old IPA, Expo Go, or web) moduleLoaded is false.
+   */
+  diagnose(): LiveActivityDiagnostics {
+    if (!native?.diagnose) {
+      return { moduleLoaded: false };
+    }
+    try {
+      return native.diagnose();
+    } catch {
+      return { moduleLoaded: false };
+    }
+  },
+
+  /**
+   * Attempts to start a test Live Activity and returns the precise outcome.
+   * Use this to diagnose why nothing appears: it surfaces the real error
+   * (disabled in Settings, request failed, module missing) instead of failing
+   * silently like startActivity().
+   */
+  async startTestActivity(): Promise<StartTestResult> {
+    if (!native?.startTestActivity) {
+      return {
+        ok: false,
+        error:
+          "Native module not in this build (Expo Go, web, or an old build that predates the widget). Install a fresh native build.",
+      };
+    }
+    try {
+      return await native.startTestActivity();
+    } catch (e: any) {
+      return { ok: false, error: e?.message ?? String(e) };
+    }
   },
 
   /** Start a Live Activity for order tracking. Returns activityId or null */

@@ -26,6 +26,7 @@ import { fetchOrders } from "@/lib/api";
 import { BlurView } from "expo-blur";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import { GlassBackButton } from "@/components/GlassBackButton";
+import { MoraLiveActivity } from "@/modules/MoraLiveActivity";
 
 const PRIMARY = "#0274C1";
 
@@ -73,6 +74,29 @@ function SettingsScreen({ onBack, insets }: { onBack: () => void; insets: any })
     sublabel: l.label,
     flag: l.flag,
   }));
+
+  async function runLiveActivityDiagnostic() {
+    const d = MoraLiveActivity.diagnose();
+    if (!d.moduleLoaded) {
+      Alert.alert(
+        "Live Activity",
+        "Native module NOT in this build (web, Expo Go, or an old build that predates the widget). Install a fresh native build to enable Live Activities.",
+      );
+      return;
+    }
+    const lines = [
+      `iOS: ${d.iosVersion ?? "?"}`,
+      `ActivityKit: ${d.activityKitAvailable ? "yes" : "no"}`,
+      `Enabled in Settings: ${d.areActivitiesEnabled ? "YES" : "NO — turn ON in Settings → Mora"}`,
+      `Push-to-start: ${d.pushToStartSupported ? "supported" : "needs iOS 17.2+"}`,
+      `Active now: ${d.activeActivities ?? 0}`,
+    ];
+    const res = await MoraLiveActivity.startTestActivity();
+    lines.push("", res.ok
+      ? "✅ Test Live Activity started — check your Dynamic Island / Lock Screen."
+      : `❌ Could not start: ${res.error ?? "unknown error"}`);
+    Alert.alert("Live Activity Diagnostic", lines.join("\n"));
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
@@ -173,6 +197,27 @@ function SettingsScreen({ onBack, insets }: { onBack: () => void; insets: any })
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>INFORMATION</Text>
           <View style={[styles.sectionCard, { backgroundColor: card }]}>
+            {Platform.OS === "ios" && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.settingsRow,
+                  { borderBottomColor: colors.border },
+                  pressed && { backgroundColor: colors.secondary },
+                ]}
+                onPress={runLiveActivityDiagnostic}
+                accessibilityRole="button"
+                accessibilityLabel="Live Activity diagnostic"
+              >
+                <View style={styles.settingsLeft}>
+                  <View style={[styles.settingsIcon, { backgroundColor: colors.secondary }]}>
+                    <Feather name="activity" size={16} color={PRIMARY} />
+                  </View>
+                  <Text style={[styles.settingsLabel, { color: colors.foreground }]}>Test Live Activity</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              </Pressable>
+            )}
+
             <Pressable
               style={({ pressed }) => [
                 styles.settingsRow,
