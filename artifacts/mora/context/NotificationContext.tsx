@@ -21,6 +21,7 @@ import {
   setBadgeCount,
 } from "@/services/notifications";
 import { MoraLiveActivity, type OrderStage } from "@/modules/MoraLiveActivity";
+import { useAuth } from "@/context/AuthContext";
 
 export type { OrderStage };
 
@@ -77,6 +78,7 @@ function getApiBase(): string {
 }
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
+  const { token: authToken } = useAuth();
   const [pushToken, setPushToken] = useState<string | null>(null);
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [cartActivity, setCartActivity] = useState<CartActivity>({ active: false, totalItems: 0 });
@@ -162,6 +164,19 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     if (pushToken) await removeTokenFromServer(pushToken);
     authTokenRef.current = null;
   }, [pushToken]);
+
+  // ── Bridge: register/unregister push token as auth session changes ───────────
+  // The server stores a push token only against a logged-in customer, so the
+  // token must be (re)sent whenever the user logs in, and removed on logout.
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    if (authToken) {
+      void onUserLogin(authToken).catch(() => {});
+    } else {
+      void onUserLogout().catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authToken, pushToken]);
 
   // ── Cart Activity ───────────────────────────────────────────────────────────
   const updateCartActivity = useCallback((totalItems: number) => {
