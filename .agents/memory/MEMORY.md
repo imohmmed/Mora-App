@@ -15,3 +15,4 @@
 - [Expo Web Import Order TDZ](expo-web-import-order.md) — All imports must precede executable code in _layout.tsx; mixing causes "Cannot access 'X' before initialization" on web
 - [Liquid Glass BlurView fallback](liquid-glass-blurview-fallback.md) — Non-iOS26 glass pattern: glassIconBtn needs overflow:hidden; BlurView absoluteFill inside; bg transparent; isDark drives tint choice
 - [Expo Router route collision loop](expo-router-route-collision.md) — duplicate route name across root + (tabs) makes Redirect infinite-loop ("Maximum update depth")
+- [useQueries needs memoized input](usequeries-memoize-input.md) — non-memoized queries array → infinite render loop, fatal on native only, fine on web

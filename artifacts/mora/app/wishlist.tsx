@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -149,7 +149,7 @@ export default function WishlistScreen() {
   const t = T[lang] ?? T.en;
   const { ids } = useWishlist();
   const { addItem } = useCart();
-  const wishlistIds = [...ids];
+  const wishlistIds = useMemo(() => [...ids], [ids]);
 
   const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
 
@@ -174,13 +174,17 @@ export default function WishlistScreen() {
   const topPad = isWeb ? 0 : insets.top;
   const bottomPad = isWeb ? 0 : insets.bottom;
 
-  const results = useQueries({
-    queries: wishlistIds.map((productId) => ({
-      queryKey: ["product", productId],
-      queryFn: () => fetchProduct(productId),
-      staleTime: 60_000,
-    })),
-  });
+  const queries = useMemo(
+    () =>
+      wishlistIds.map((productId) => ({
+        queryKey: ["product", productId],
+        queryFn: () => fetchProduct(productId),
+        staleTime: 60_000,
+      })),
+    [wishlistIds]
+  );
+
+  const results = useQueries({ queries });
 
   const isLoading = results.some((r) => r.isLoading);
   const isAnyError = results.some((r) => r.isError);
