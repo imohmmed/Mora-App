@@ -217,7 +217,7 @@ function StandaloneIOSTabBar() {
   // ── Liquid Glass (iOS 26+) — ONE capsule: Host > HStack(glassEffect) > Image[] ──
   if (useGlass) {
     const activeColor   = PRIMARY;
-    const inactiveColor = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)";
+    const inactiveColor = isDark ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.55)";
     return (
       <View
         style={[ios.glassWrapper, { bottom: Math.max(insets.bottom, 12) + 2 }]}
@@ -263,7 +263,7 @@ function StandaloneIOSTabBar() {
 
   // ── BlurView fallback (iOS < 26) ───────────────────────────────────────────
   const active   = PRIMARY;
-  const inactive = isDark ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.30)";
+  const inactive = isDark ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.55)";
 
   return (
     <View style={[ios.blurWrapper, { height: 54 + insets.bottom }]}>
@@ -357,7 +357,7 @@ function FloatingTabBarInner() {
   const pillBg     = isDark ? "rgba(2,116,193,0.30)"   : "rgba(2,116,193,0.16)";
   const pillBorder = "rgba(2,116,193,0.45)";
   const activeTint   = PRIMARY;
-  const inactiveTint = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.40)";
+  const inactiveTint = isDark ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.55)";
 
   const TAB_W = 64;
   const BAR_PADDING = 6;
