@@ -49,6 +49,18 @@ The mora-api process env is NOT in any ecosystem file. A plain `pm2 restart mora
 
 **Fix pattern:** before restarting, re-export EVERY needed var in one shell, capturing secrets without printing them, e.g. `WAYL_API_KEY="$(pm2 env 2 | sed -n 's/^WAYL_API_KEY: //p')"`, plus DATABASE_PATH, PORT=3001, NODE_ENV=production, GOOGLE_ADMIN_CLIENT_ID (public, recoverable from the admin JS bundle via grep `apps.googleusercontent.com`), ADMIN_JWT_SECRET (generate random; old tokens die but they're expired anyway). Then `pm2 restart mora-api --update-env && pm2 save`. Verify with `pm2 env 2`. **Why:** missing these = production admin lockout. **The real durable fix is a pm2 ecosystem file or systemd EnvironmentFile so env survives any restart.**
 
+## API code-only redeploy (preserve env — do NOT use --update-env)
+VPS host is `159.65.55.65` (root, password in `VPS_PASSWORD` secret). pm2 process `mora-api`
+(id 2, cluster) runs `/var/www/mora/artifacts/api-server/dist/index.mjs`.
+To ship a code change WITHOUT touching env: build locally, scp the dist, extract over
+`/var/www/mora/artifacts/api-server/dist`, then `pm2 restart mora-api` **without** `--update-env`.
+**Why:** plain restart reuses the captured env (DATABASE_PATH + secrets stay intact); `--update-env`
+would re-read the bare ssh shell and silently drop them → prod outage. Verify with a live curl of the
+changed endpoint, not just pm2 status.
+**Symptom this fixed:** prod stale until redeployed — `/store/products/related/:id` and
+`/store/special-collections/:slug` returned products with NO `variants` key, so QuickAddSheet showed
+no size/color chips and add-to-cart was impossible. Repo code was already correct; only the VPS was old.
+
 ## Installing native npm packages (e.g. sharp) on VPS
 The VPS api-server's `package.json` has `workspace:*` deps — `npm install` there fails with EUNSUPPORTEDPROTOCOL. Workaround: `mkdir /tmp/pkg-tmp && cd /tmp/pkg-tmp && npm init -y && npm install sharp multer` then `cp -r node_modules/sharp node_modules/@img node_modules/detect-libc node_modules/multer node_modules/busboy ... /var/www/mora/artifacts/api-server/node_modules/`. Copy ALL transitive deps (sharp needs: `@img/sharp-linux-x64`, `@img/sharp-libvips-linux-x64`, `@img/colour`, `detect-libc`, `semver`; multer needs: `busboy`, `streamsearch`).
 
