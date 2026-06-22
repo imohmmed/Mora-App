@@ -819,11 +819,11 @@ const styles = StyleSheet.create({
   relatedDiscText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 10 },
   relatedInfo: { padding: 10, gap: 4 },
   relatedAddBtn: {
-    backgroundColor: PRIMARY,
-    paddingVertical: 9,
+    backgroundColor: "#0274C1",
+    paddingVertical: 10,
     alignItems: "center",
     borderRadius: 100,
-    marginTop: 6,
+    marginTop: 8,
   },
   relatedAddText: {
     color: "#FFFFFF",
