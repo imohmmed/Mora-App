@@ -5,6 +5,14 @@ import type { Row } from "../lib/types.js";
 
 const router = Router();
 
+function withVariants(products: ReturnType<typeof parseRows>) {
+  const getVars = db.prepare(`SELECT * FROM variants WHERE product_id=?`);
+  return products.map((p) => ({
+    ...p,
+    variants: parseRows(getVars.all(p["id"] as string) as Row[]),
+  }));
+}
+
 const COLLECTION_META: Record<string, {
   title: string;
   description: string;
@@ -98,7 +106,7 @@ router.get("/store/special-collections", (_req, res) => {
     } else {
       ({ products, total } = getCuratedProducts(slug, 6, 0));
     }
-    return { slug, ...meta, title: titleEn, titleAr, total, products: parseRows(products) };
+    return { slug, ...meta, title: titleEn, titleAr, total, products: withVariants(parseRows(products)) };
   });
   res.json({ data: result, meta: {}, error: null });
 });
@@ -127,7 +135,7 @@ router.get("/store/special-collections/:slug", (req, res) => {
 
   const { titleEn, titleAr } = getQuickMeta(slug);
   res.json({
-    data: { slug, ...meta, title: titleEn, titleAr, products: parseRows(products) },
+    data: { slug, ...meta, title: titleEn, titleAr, products: withVariants(parseRows(products)) },
     meta: { total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum) },
     error: null,
   });
