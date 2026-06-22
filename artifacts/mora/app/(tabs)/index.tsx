@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Dimensions,
   FlatList,
+  LayoutAnimation,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
@@ -12,8 +13,10 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  UIManager,
   View,
 } from "react-native";
+
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -34,6 +37,11 @@ import { fetchProducts, fetchSpecialCollections, fetchBanners, fetchStories, fet
 import { formatIQD } from "@/lib/format";
 import { StoriesSection } from "@/components/StoriesSection";
 import type { Product, Banner, Variant } from "@/lib/types";
+
+// Enable LayoutAnimation on Android (always-on on iOS)
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
@@ -263,6 +271,10 @@ export default function HomeScreen() {
   const isWeb = Platform.OS === "web";
   const [activeCategory, setActiveCategory] = useState(0);
   const [activeBanner, setActiveBanner] = useState(0);
+  // Tracks the current banner index WITHOUT causing re-renders — used by the
+  // auto-scroll timer so it always knows the real position even before the
+  // scroll animation finishes (avoids the state-closure stale-index bug).
+  const activeBannerRef = useRef(0);
   const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
   const [previewProduct, setPreviewProduct]   = useState<Product | null>(null);
   const [previewVisible, setPreviewVisible]   = useState(false);
@@ -322,16 +334,20 @@ export default function HomeScreen() {
   const displayBanners = banners ?? [];
 
   // ── Banner auto-scroll every 3 s ──────────────────────────────────────────
+  // IMPORTANT: do NOT call setActiveBanner here.  Setting state before the
+  // scroll animation starts means onScroll fires with the OLD offset → the
+  // handler immediately sets state back to prev → dots glitch forward/back/
+  // forward on every tick.  Instead, only advance the ref and let the FlatList
+  // call scrollToIndex; onMomentumScrollEnd then syncs the React state once
+  // the scroll has actually settled.
   useEffect(() => {
     if (!displayBanners || displayBanners.length <= 1) return;
     const id = setInterval(() => {
-      setActiveBanner((prev) => {
-        const next = (prev + 1) % displayBanners.length;
-        try {
-          bannerRef.current?.scrollToIndex({ index: next, animated: true });
-        } catch {}
-        return next;
-      });
+      const next = (activeBannerRef.current + 1) % displayBanners.length;
+      activeBannerRef.current = next;
+      try {
+        bannerRef.current?.scrollToIndex({ index: next, animated: true });
+      } catch {}
     }, 3000);
     return () => clearInterval(id);
   }, [displayBanners]);
@@ -412,9 +428,17 @@ export default function HomeScreen() {
   );
   const totalCount = data?.pages[0]?.total ?? 0;
 
-  const handleBannerScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+  // Called ONLY from onMomentumScrollEnd — fires once when the scroll animation
+  // settles.  This is the single source of truth for activeBanner state.
+  // We deliberately do NOT use onScroll (continuous) because that fires during
+  // the auto-scroll animation with intermediate offsets, which caused the
+  // dots to flicker back and forth on every auto-advance.
+  const handleBannerMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-    if (idx !== activeBanner) setActiveBanner(idx);
+    activeBannerRef.current = idx;
+    // Animate the dot width change smoothly
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setActiveBanner(idx);
   };
 
   const handleEndReached = useCallback(() => {
@@ -449,9 +473,7 @@ export default function HomeScreen() {
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
-          scrollEventThrottle={16}
-          onScroll={handleBannerScroll}
-          onMomentumScrollEnd={handleBannerScroll}
+          onMomentumScrollEnd={handleBannerMomentumEnd}
           data={displayBanners}
           keyExtractor={(b) => b.id}
           renderItem={({ item }) => <BannerSlide banner={item} />}

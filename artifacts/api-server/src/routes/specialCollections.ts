@@ -92,11 +92,11 @@ router.get("/store/special-collections", (_req, res) => {
     let products: Row[];
     let total: number;
     if (slug === "super-deals") {
-      ({ products, total } = getSuperDealsProducts(2, 0));
+      ({ products, total } = getSuperDealsProducts(6, 0));
     } else if (slug === "trends") {
-      ({ products, total } = getTrendsProducts(2, 0));
+      ({ products, total } = getTrendsProducts(6, 0));
     } else {
-      ({ products, total } = getCuratedProducts(slug, 2, 0));
+      ({ products, total } = getCuratedProducts(slug, 6, 0));
     }
     return { slug, ...meta, title: titleEn, titleAr, total, products: parseRows(products) };
   });
