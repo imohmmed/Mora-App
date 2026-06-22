@@ -492,9 +492,13 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
             </View>
           ) : (
             orders.map((order) => (
-              <View key={order.id} style={[styles.orderCard, { backgroundColor: card }]}>
+              <Pressable
+                key={order.id}
+                style={({ pressed }) => [styles.orderCard, { backgroundColor: card, opacity: pressed ? 0.85 : 1 }]}
+                onPress={() => router.push({ pathname: "/orders/[id]", params: { id: order.id, email: user?.email ?? "" } } as any)}
+              >
                 <View style={styles.orderCardTop}>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={[styles.orderNum, { color: colors.foreground }]}>
                       Order #{order.orderNumber ?? order.id.slice(0, 8).toUpperCase()}
                     </Text>
@@ -505,6 +509,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
                       {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                     </Text>
                   </View>
+                  <Feather name="chevron-right" size={14} color={colors.mutedForeground} style={{ marginLeft: 6 }} />
                 </View>
                 <View style={[styles.orderCardBottom, { borderTopColor: colors.border }]}>
                   <Text style={[styles.orderItems, { color: colors.mutedForeground }]}>
@@ -512,7 +517,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
                   </Text>
                   <Text style={[styles.orderTotal, { color: colors.foreground }]}>{Math.round(order.total).toLocaleString("en-US")} IQD</Text>
                 </View>
-              </View>
+              </Pressable>
             ))
           )}
         </ScrollView>

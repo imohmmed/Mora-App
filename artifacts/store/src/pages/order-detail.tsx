@@ -110,7 +110,7 @@ export default function OrderDetail() {
                     <div className="text-sm text-muted-foreground mt-1">Qty: {item.quantity}</div>
                   </div>
                   <div className="font-bold text-sm">
-                    ${(item.price * item.quantity).toFixed(2)}
+                    {((item.price * item.quantity) | 0).toLocaleString("en-US")} IQD
                   </div>
                 </div>
               ))}
@@ -124,7 +124,7 @@ export default function OrderDetail() {
               <div className="space-y-4 text-sm mb-6">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-medium">${order.total.toFixed(2)}</span>
+                  <span className="font-medium">{Math.round(order.total).toLocaleString("en-US")} IQD</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Shipping</span>
@@ -135,15 +135,18 @@ export default function OrderDetail() {
               <div className="border-t border-border pt-6 text-sm">
                 <div className="flex justify-between text-lg font-bold mb-6">
                   <span>Total</span>
-                  <span>${order.total.toFixed(2)}</span>
+                  <span>{Math.round(order.total).toLocaleString("en-US")} IQD</span>
                 </div>
 
                 <h3 className="font-bold uppercase tracking-wider mb-2">Shipping Address</h3>
                 {order.shippingAddress ? (
                   <p className="text-muted-foreground text-sm leading-relaxed">
-                    {order.shippingAddress.firstName} {order.shippingAddress.lastName}<br />
-                    {order.shippingAddress.city}<br />
-                    {order.shippingAddress.country}
+                    {(order.shippingAddress as any).fullName
+                      || [order.shippingAddress.firstName, order.shippingAddress.lastName].filter(Boolean).join(" ")
+                      || null}
+                    {(order.shippingAddress as any).phone && <><br />{(order.shippingAddress as any).phone}</>}
+                    {order.shippingAddress.city && <><br />{[order.shippingAddress.city, (order.shippingAddress as any).district].filter(Boolean).join(", ")}</>}
+                    {(order.shippingAddress as any).street && <><br />{(order.shippingAddress as any).street}</>}
                   </p>
                 ) : (
                   <p className="text-muted-foreground text-sm">No address on file</p>

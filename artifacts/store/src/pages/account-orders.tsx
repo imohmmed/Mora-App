@@ -98,7 +98,7 @@ export default function AccountOrders() {
                     }`}>
                       {order.status}
                     </span>
-                    <span className="font-bold text-sm">${order.total.toFixed(2)}</span>
+                    <span className="font-bold text-sm">{Math.round(order.total).toLocaleString("en-US")} IQD</span>
                   </div>
                 </Link>
               ))}
