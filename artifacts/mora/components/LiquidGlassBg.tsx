@@ -1,21 +1,14 @@
 /**
  * LiquidGlassBg — iOS 26 Liquid Glass background layer.
  *
- * Renders a native SwiftUI GlassEffectContainer via @expo/ui Host.
+ * Renders a native SwiftUI GlassEffectContainer > VStack(glassEffect) via @expo/ui Host.
  * Only active on iOS 26+ (Platform.Version >= 26). All other platforms return null.
- *
- * The component handles its own useNativeReady guard internally —
- * call sites do NOT need to guard separately.
  *
  * Usage: place as the FIRST child of any container that needs a glass background.
  *   <View style={s.bar}>
  *     <LiquidGlassBg />
  *     <Text>Content above glass</Text>
  *   </View>
- *
- * NOTE: Do NOT nest SwiftUI components inside GlassEffectContainer.
- * GlassEffectContainer is itself a SwiftUIVirtualViewObjC; adding children
- * via React Native triggers _addSubview: on it which throws EXC_CRASH.
  */
 import React from "react";
 import { Platform, StyleSheet } from "react-native";
@@ -26,12 +19,19 @@ export const isIOS26Plus =
 
 let Host: any = null;
 let GlassContainer: any = null;
+let VStack: any = null;
+let glassEffect: any = null;
+let frameModifier: any = null;
 
 if (isIOS26Plus) {
   try {
     const ui = require("@expo/ui/swift-ui") as Record<string, any>;
     Host           = ui["Host"];
     GlassContainer = ui["GlassEffectContainer"];
+    VStack         = ui["VStack"];
+    const mods     = require("@expo/ui/swift-ui/modifiers") as Record<string, any>;
+    glassEffect    = mods["glassEffect"];
+    frameModifier  = mods["frame"];
   } catch {}
 }
 
@@ -43,7 +43,12 @@ type Props = {
 export function LiquidGlassBg({ style }: Props) {
   const nativeReady = useNativeReady();
 
-  if (!isIOS26Plus || !Host || !GlassContainer || !nativeReady) return null;
+  if (!isIOS26Plus || !Host || !GlassContainer || !VStack || !glassEffect || !nativeReady) return null;
+
+  const modifiers = [
+    glassEffect(),
+    ...(frameModifier ? [frameModifier({ maxWidth: "infinity", maxHeight: "infinity" })] : []),
+  ];
 
   return (
     <Host
@@ -51,7 +56,9 @@ export function LiquidGlassBg({ style }: Props) {
       ignoreSafeArea="all"
       pointerEvents="none"
     >
-      <GlassContainer style={{ flex: 1 }} />
+      <GlassContainer>
+        <VStack modifiers={modifiers} />
+      </GlassContainer>
     </Host>
   );
 }
