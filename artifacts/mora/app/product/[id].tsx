@@ -19,6 +19,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
+import { useTheme } from "@/context/ThemeContext";
 import { MoraLogo } from "@/components/MoraLogo";
 import { FloatingTabBar } from "@/components/FloatingTabBar";
 import { GlassBackButton } from "@/components/GlassBackButton";
@@ -27,6 +28,7 @@ import { formatIQD } from "@/lib/format";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
+import { BlurView } from "expo-blur";
 import { ReelPlayer } from "@/components/ReelPlayer";
 import type { ContentSectionItem } from "@/lib/api";
 import type { Variant, Product } from "@/lib/types";
@@ -183,6 +185,8 @@ export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const colors = useColors();
+  const { resolvedScheme } = useTheme();
+  const isDark = resolvedScheme === "dark";
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const { addItem, totalItems } = useCart();
@@ -489,8 +493,10 @@ export default function ProductDetailScreen() {
                       style={[
                         styles.variantChip,
                         {
-                          borderColor: isActive ? colors.foreground : colors.border,
-                          backgroundColor: isActive ? colors.foreground : colors.background,
+                          borderColor: isActive
+                            ? "transparent"
+                            : (isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.13)"),
+                          backgroundColor: isActive ? PRIMARY : "transparent",
                           opacity: outOfStock ? 0.4 : 1,
                         },
                       ]}
@@ -502,7 +508,20 @@ export default function ProductDetailScreen() {
                       }}
                       disabled={outOfStock}
                     >
-                      <Text style={[styles.variantText, { color: isActive ? colors.background : colors.foreground }]}>
+                      {/* Glass / blur background for inactive chips */}
+                      {!isActive && Platform.OS !== "web" && (
+                        <View style={styles.chipGlassBg}>
+                          {isIOS26Plus
+                            ? <LiquidGlassBg />
+                            : <BlurView
+                                style={StyleSheet.absoluteFill}
+                                intensity={55}
+                                tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
+                              />
+                          }
+                        </View>
+                      )}
+                      <Text style={[styles.variantText, { color: isActive ? "#FFFFFF" : colors.foreground }]}>
                         {v.option1 ?? v.title}
                       </Text>
                     </Pressable>
@@ -699,7 +718,19 @@ const styles = StyleSheet.create({
   /* Variants */
   variantsSection: { paddingHorizontal: 20, paddingVertical: 16, gap: 12, borderTopWidth: 1 },
   variantsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  variantChip: { paddingHorizontal: 18, paddingVertical: 9, borderRadius: 100, borderWidth: 1.5 },
+  variantChip: {
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 100,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chipGlassBg: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 100,
+    overflow: "hidden",
+  },
   variantText: { fontFamily: "Inter_500Medium", fontSize: 14 },
 
   /* Add to Bag */

@@ -7,14 +7,17 @@ import {
   Text,
   View,
 } from "react-native";
+import { BlurView } from "expo-blur";
 
 const LOGO = require("@/assets/images/mora-wordmark.png");
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/useColors";
+import { useTheme } from "@/context/ThemeContext";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
+import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 
 function getBaseUrl() {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -30,6 +33,8 @@ export function HomeHeader({
   favoritesCount = 0,
 }: HomeHeaderProps) {
   const colors = useColors();
+  const { resolvedScheme } = useTheme();
+  const isDark = resolvedScheme === "dark";
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const isWeb = Platform.OS === "web";
@@ -76,7 +81,15 @@ export function HomeHeader({
           onPress={() => router.push("/notifications" as any)}
           testID="notifications-btn"
         >
-          <Feather name="bell" size={23} color={colors.foreground} />
+          {isIOS26Plus && <LiquidGlassBg />}
+          {!isIOS26Plus && Platform.OS !== "web" && (
+            <BlurView
+              style={StyleSheet.absoluteFill}
+              intensity={60}
+              tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
+            />
+          )}
+          <Feather name="bell" size={21} color={colors.foreground} />
           {notificationCount > 0 && (
             <View style={[styles.badge, { backgroundColor: colors.primary }]}>
               <Text style={styles.badgeText}>
@@ -91,7 +104,15 @@ export function HomeHeader({
           onPress={() => router.push("/(tabs)/wishlist")}
           testID="favorites-btn"
         >
-          <Feather name="heart" size={23} color={colors.foreground} />
+          {isIOS26Plus && <LiquidGlassBg />}
+          {!isIOS26Plus && Platform.OS !== "web" && (
+            <BlurView
+              style={StyleSheet.absoluteFill}
+              intensity={60}
+              tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
+            />
+          )}
+          <Feather name="heart" size={21} color={colors.foreground} />
           {favoritesCount > 0 && (
             <View style={[styles.badge, { backgroundColor: colors.primary }]}>
               <Text style={styles.badgeText}>
@@ -122,7 +143,12 @@ const styles = StyleSheet.create({
     height: 30,
   },
   iconBtn: {
-    padding: 8,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
     position: "relative",
   },
   pressed: { opacity: 0.6 },

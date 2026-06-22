@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
+import { GlassBackButton } from "@/components/GlassBackButton";
 import { useAuth } from "@/context/AuthContext";
 import { verifyOTP, sendPhoneOTP } from "@/lib/firebase";
 
@@ -147,9 +148,7 @@ export default function VerifyScreen() {
     <View style={[styles.root, { backgroundColor: bg, paddingTop: topPad }]}>
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={22} color={fg} />
-        </Pressable>
+        <GlassBackButton onPress={() => router.back()} />
       </View>
 
       {/* ── Content ────────────────────────────────────────────────────── */}
