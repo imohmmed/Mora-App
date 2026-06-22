@@ -81,7 +81,12 @@ router.get("/store/products/related/:id", (req, res) => {
   const pageNum  = Math.max(1, parseInt(page));
   const limitNum = Math.min(20, Math.max(1, parseInt(limit)));
   const sliced = all.slice((pageNum - 1) * limitNum, pageNum * limitNum);
-  res.json({ data: sliced, meta: { total, page: pageNum, pages: Math.ceil(total / limitNum), limit: limitNum }, error: null });
+  const getVariants = db.prepare(`SELECT * FROM variants WHERE product_id=?`);
+  const withVariants = sliced.map((p) => ({
+    ...p,
+    variants: parseRows(getVariants.all(p["id"] as string) as Row[]),
+  }));
+  res.json({ data: withVariants, meta: { total, page: pageNum, pages: Math.ceil(total / limitNum), limit: limitNum }, error: null });
 });
 
 router.get("/store/search", (req, res) => {
