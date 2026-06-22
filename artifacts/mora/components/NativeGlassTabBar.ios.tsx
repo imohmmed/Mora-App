@@ -15,13 +15,13 @@ import {
   StyleSheet,
   Text,
   View,
-  useColorScheme,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { SymbolView } from "expo-symbols";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useCart } from "@/context/CartContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useNativeReady } from "@/hooks/useNativeReady";
 import { isIOS26Plus } from "@/components/LiquidGlassBg";
 import { TabEvents, TAB_HOME_SCROLL_TOP, TAB_SEARCH_FOCUS } from "@/lib/tabEvents";
@@ -79,8 +79,12 @@ const PAD_V    = 5;    // capsule internal vertical padding
 // ─────────────────────────────────────────────────────────────────────────────
 export function NativeGlassTabBar({ state, navigation }: TabBarProps) {
   const insets      = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const isDark      = colorScheme === "dark";
+  // Use the APP theme (ThemeContext.resolvedScheme), NOT the OS-level
+  // useColorScheme(). The user can override the theme inside the app
+  // (light / dark / system); driving colours off the OS scheme caused the
+  // glass background and the icon colours to disagree → invisible icons.
+  const { resolvedScheme } = useTheme();
+  const isDark      = resolvedScheme === "dark";
   const nativeReady = useNativeReady();
   const { totalItems } = useCart();
 
@@ -108,10 +112,25 @@ export function NativeGlassTabBar({ state, navigation }: TabBarProps) {
 
   // ── 🌊 Liquid Glass (iOS 26+) — ONE capsule: Host > HStack(glassEffect) > Image[] ──
   if (useGlass) {
-    const activeColor   = isDark ? "#FFFFFF" : "#0A0A0A";
+    // The active icon sits on a branded glass capsule, so it is always white
+    // (reads on the primary tint in both light & dark). Inactive icons follow
+    // the app theme so they stay visible after a theme switch.
+    const activeColor   = "#FFFFFF";
     const inactiveColor = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)";
     const cartIdx       = TAB_ORDER.indexOf("cart");
     const badgeLeft     = PAD_H + cartIdx * (ITEM_W + ITEM_GAP) + ITEM_W - 16;
+
+    // Selected-state indicator: a branded Liquid-Glass capsule behind the
+    // active icon (Instagram-style "you are here"). Built with @expo/ui's
+    // glassEffect tint, so it adapts to light/dark automatically.
+    const inactiveMods = [frameM!({ width: ITEM_W, height: ITEM_H })];
+    const activeMods = [
+      frameM!({ width: ITEM_W, height: ITEM_H }),
+      glassEffectM!({
+        glass: { variant: "regular", interactive: true, tint: PRIMARY },
+        shape: "capsule",
+      }),
+    ];
 
     return (
       <View
@@ -140,10 +159,10 @@ export function NativeGlassTabBar({ state, navigation }: TabBarProps) {
                   <ExpoImage
                     key={route.key}
                     systemName={(isFocused ? def.sfActive : def.sf) as any}
-                    size={isFocused ? 25 : 23}
+                    size={isFocused ? 24 : 23}
                     color={isFocused ? activeColor : inactiveColor}
                     onPress={() => handlePress(route)}
-                    modifiers={[frameM!({ width: ITEM_W, height: ITEM_H })]}
+                    modifiers={isFocused ? activeMods : inactiveMods}
                   />
                 );
               })}

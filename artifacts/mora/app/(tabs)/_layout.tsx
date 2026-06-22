@@ -21,11 +21,11 @@ import {
   StyleSheet,
   Text,
   View,
-  useColorScheme,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
+import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
 import { WebLiquidTabBar } from "@/components/WebLiquidTabBar";
 import { NativeGlassTabBar } from "@/components/NativeGlassTabBar";
@@ -52,8 +52,8 @@ export function ErrorBoundary({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function TabLayout() {
   const colors      = useColors();
-  const colorScheme = useColorScheme();
-  const isDark      = colorScheme === "dark";
+  const { resolvedScheme } = useTheme();
+  const isDark      = resolvedScheme === "dark";
   const isIOS       = Platform.OS === "ios";
   const isWeb       = Platform.OS === "web";
   const insets      = useSafeAreaInsets();
