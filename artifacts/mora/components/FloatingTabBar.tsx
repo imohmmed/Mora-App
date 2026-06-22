@@ -216,7 +216,7 @@ function StandaloneIOSTabBar() {
 
   // ── Liquid Glass (iOS 26+) — ONE capsule: Host > HStack(glassEffect) > Image[] ──
   if (useGlass) {
-    const activeColor   = isDark ? "#FFFFFF" : "#0A0A0A";
+    const activeColor   = PRIMARY;
     const inactiveColor = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)";
     return (
       <View
@@ -262,7 +262,7 @@ function StandaloneIOSTabBar() {
   }
 
   // ── BlurView fallback (iOS < 26) ───────────────────────────────────────────
-  const active   = isDark ? "#FFFFFF" : "#000000";
+  const active   = PRIMARY;
   const inactive = isDark ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.30)";
 
   return (
@@ -354,9 +354,9 @@ function FloatingTabBarInner() {
 
   const barBg      = isDark ? "rgba(18,18,24,0.82)"    : "rgba(245,245,248,0.82)";
   const barBorder  = isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.14)";
-  const pillBg     = isDark ? "rgba(50,50,60,0.82)"    : "rgba(208,208,215,0.88)";
-  const pillBorder = isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.18)";
-  const activeTint   = isDark ? "#FFFFFF" : "#000000";
+  const pillBg     = isDark ? "rgba(2,116,193,0.30)"   : "rgba(2,116,193,0.16)";
+  const pillBorder = "rgba(2,116,193,0.45)";
+  const activeTint   = PRIMARY;
   const inactiveTint = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.40)";
 
   const TAB_W = 64;
