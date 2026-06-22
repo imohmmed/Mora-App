@@ -98,6 +98,25 @@ public class MoraLiveActivityModule: Module {
             }
         }
 
+        // Get the push-to-start token (iOS 17.2+). This is captured on app launch
+        // and sent to the server so the backend can START a Live Activity remotely
+        // via APNs — even if the app is not running. This is the robust pattern used
+        // by delivery apps and does not depend on an on-device Activity.request().
+        AsyncFunction("getPushToStartToken") { (promise: Promise) in
+            guard #available(iOS 17.2, *) else {
+                promise.resolve(nil)
+                return
+            }
+            Task {
+                for await tokenData in Activity<MoraOrderActivityAttributes>.pushToStartTokenUpdates {
+                    let hex = tokenData.map { String(format: "%02x", $0) }.joined()
+                    promise.resolve(hex)
+                    return
+                }
+                promise.resolve(nil)
+            }
+        }
+
         // Get all active activity IDs
         Function("getActiveActivityIds") { () -> [String] in
             guard #available(iOS 16.1, *) else { return [] }

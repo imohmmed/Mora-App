@@ -79,6 +79,27 @@ export async function sendTokenToServer(
   } catch {}
 }
 
+/**
+ * Send the Live Activity push-to-start token (iOS 17.2+) to the backend.
+ * Stored against the logged-in customer so the server can START a Live Activity
+ * on this device remotely via APNs.
+ */
+export async function sendPushToStartTokenToServer(
+  token: string,
+  authToken: string
+): Promise<void> {
+  try {
+    await fetch(`${getApiBase()}/store/notifications/live-activity-pts-token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ token }),
+    });
+  } catch {}
+}
+
 /** Remove the push token from the backend (call on logout) */
 export async function removeTokenFromServer(pushToken: string): Promise<void> {
   try {

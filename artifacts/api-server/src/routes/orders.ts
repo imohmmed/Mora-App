@@ -2,7 +2,7 @@ import { Router } from "express";
 import db, { parseRows, parseOne, logActivity } from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
 import type { Row } from "../lib/types.js";
-import { sendLiveActivityPush } from "../lib/apns.js";
+import { sendLiveActivityPush, sendLiveActivityStartPush } from "../lib/apns.js";
 import { doSendNotification } from "./notifications.js";
 
 // Arabic push + in-app notification copy per delivery stage.
@@ -15,6 +15,9 @@ const STAGE_NOTIF: Record<string, { title: string; body: string }> = {
   issue:     { title: "هناك مشكلة في طلبك ⚠️", body: "يرجى التواصل معنا بخصوص طلبك {n}" },
   cancelled: { title: "تم إلغاء طلبك ❌", body: "تم إلغاء طلبك {n}. تواصل معنا للمساعدة" },
 };
+
+// Allowed delivery stages for Live Activity content-state.
+const VALID_STAGES = ["confirmed", "preparing", "shipping", "delivered", "issue", "cancelled"];
 
 const router = Router();
 
@@ -215,7 +218,6 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
   const id = req.params["id"];
   const { stage, message } = req.body as { stage: string; message?: string };
   if (!stage) { res.status(400).json({ data: null, error: "stage required" }); return; }
-  const VALID_STAGES = ["confirmed", "preparing", "shipping", "delivered", "issue", "cancelled"];
   if (!VALID_STAGES.includes(stage)) { res.status(400).json({ data: null, error: "invalid stage" }); return; }
 
   const existing = db.prepare(`SELECT order_number, customer_id, live_activity_push_token FROM orders WHERE id=?`).get(id) as Row | undefined;
@@ -275,6 +277,56 @@ router.delete("/admin/orders/:id", (req, res) => {
   logActivity("order.deleted", "Orders", "order", id, `Order ${existing["order_number"] as string}`, "Admin", {});
   db.prepare(`DELETE FROM orders WHERE id=?`).run(id);
   res.json({ data: { deleted: true }, meta: {}, error: null });
+});
+
+// ─── Admin: START a Live Activity on the customer's device via push-to-start ───
+// Requires the customer to have a stored push-to-start token (captured by the app
+// on iOS 17.2+ after launching the updated build). This is the robust, server-
+// driven way to make the Dynamic Island / Lock Screen activity appear, and lets
+// us start one on a specific device on demand for testing.
+router.post("/admin/orders/:id/start-live-activity", async (req, res) => {
+  const id = req.params["id"];
+  const { stage, message } = req.body as { stage?: string; message?: string };
+
+  const order = db.prepare(`SELECT order_number, customer_id FROM orders WHERE id=?`).get(id) as Row | undefined;
+  if (!order) { res.status(404).json({ data: null, error: "Order not found" }); return; }
+
+  const customerId = order["customer_id"] as string | null;
+  if (!customerId) { res.status(400).json({ data: null, error: "Order has no customer" }); return; }
+
+  const cust = db.prepare(`SELECT first_name, last_name, live_activity_pts_token FROM customers WHERE id=?`)
+    .get(customerId) as Row | undefined;
+  const ptsToken = cust?.["live_activity_pts_token"] as string | null | undefined;
+  if (!ptsToken) {
+    res.status(400).json({ data: null, error: "No push-to-start token for this customer. The customer must open the updated app (iOS 17.2+) at least once while logged in." });
+    return;
+  }
+
+  const useStage   = (stage && stage.trim()) ? stage : "confirmed";
+  if (!VALID_STAGES.includes(useStage)) { res.status(400).json({ data: null, error: "invalid stage" }); return; }
+  const orderNum   = order["order_number"] as string;
+  const customerName = `${cust?.["first_name"] ?? ""} ${cust?.["last_name"] ?? ""}`.trim() || "Customer";
+  const copy       = STAGE_NOTIF[useStage];
+  const defaultBody = copy ? copy.body.replace("{n}", orderNum) : "";
+  const laMessage  = message && message.trim() ? message : defaultBody;
+
+  const result = await sendLiveActivityStartPush(ptsToken, {
+    orderNumber:  orderNum,
+    customerName,
+    stage:        useStage as any,
+    message:      laMessage,
+    alertTitle:   copy?.title ?? "Mora",
+    alertBody:    laMessage,
+  });
+
+  // Record the stage we started at so subsequent per-activity updates stay consistent.
+  if (result.ok) {
+    db.prepare(`UPDATE orders SET delivery_stage=?, updated_at=? WHERE id=?`)
+      .run(useStage, new Date().toISOString(), id);
+  }
+
+  res.status(result.ok ? 200 : 502)
+    .json({ data: { ok: result.ok, apns: result }, error: result.ok ? null : result.error });
 });
 
 export default router;

@@ -1032,6 +1032,7 @@ runMigration(`ALTER TABLE orders ADD COLUMN payment_method TEXT NOT NULL DEFAULT
 runMigration(`ALTER TABLE products ADD COLUMN gender TEXT NOT NULL DEFAULT 'all'`);
 runMigration(`ALTER TABLE story_items ADD COLUMN gender TEXT NOT NULL DEFAULT 'all'`);
 runMigration(`ALTER TABLE story_items ADD COLUMN collection_id TEXT`);
+runMigration(`ALTER TABLE customers ADD COLUMN live_activity_pts_token TEXT`);
 
 // ─── In-app notifications per customer ────────────────────────────────────────
 db.exec(`

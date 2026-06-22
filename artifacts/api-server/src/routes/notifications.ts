@@ -55,6 +55,22 @@ router.post("/store/notifications/token", (req, res) => {
   return res.json({ data: { ok: true }, error: null });
 });
 
+// ── STORE: register Live Activity push-to-start token (iOS 17.2+) ──────────────
+// Captured by the app on launch. Lets the backend START a Live Activity on this
+// customer's device remotely via APNs, independent of the on-device request path.
+router.post("/store/notifications/live-activity-pts-token", (req, res) => {
+  const customerId = getCustomerId(req);
+  if (!customerId) return res.status(401).json({ data: null, error: "Unauthorized" });
+
+  const { token } = req.body as { token?: string };
+  if (!token) return res.status(400).json({ data: null, error: "token required" });
+
+  db.prepare(`UPDATE customers SET live_activity_pts_token = ?, updated_at = ? WHERE id = ?`)
+    .run(token, now(), customerId);
+
+  return res.json({ data: { ok: true }, error: null });
+});
+
 // ── STORE: remove push token (logout) ─────────────────────────────────────────
 router.delete("/store/notifications/token", (req, res) => {
   const { token } = req.body as { token?: string };

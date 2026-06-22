@@ -15,6 +15,7 @@ import { router } from "expo-router";
 import {
   registerForPushNotificationsAsync,
   sendTokenToServer,
+  sendPushToStartTokenToServer,
   removeTokenFromServer,
   scheduleLocalNotification,
   cancelScheduledNotification,
@@ -96,6 +97,23 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       if (token) { setPushToken(token); setPermissionGranted(true); }
     });
   }, []);
+
+  // ── Capture Live Activity push-to-start token (iOS 17.2+) ───────────────────
+  // Grabbed as soon as the user is authenticated so the backend can START a Live
+  // Activity directly on this device via APNs — independent of the fragile
+  // on-device Activity.request() path at checkout.
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    if (!authToken) return;
+    let cancelled = false;
+    MoraLiveActivity.getPushToStartToken()
+      .then((token) => {
+        if (!token || cancelled) return;
+        void sendPushToStartTokenToServer(token, authToken).catch(() => {});
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [authToken]);
 
   // ── Foreground push handler ─────────────────────────────────────────────────
   useEffect(() => {

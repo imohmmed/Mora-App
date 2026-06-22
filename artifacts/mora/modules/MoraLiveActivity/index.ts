@@ -20,6 +20,7 @@ interface MoraLiveActivityNative {
   updateActivity(activityId: string, stage: string, message: string): void;
   endActivity(activityId: string, stage: string, message: string): void;
   getPushToken(activityId: string): Promise<string | null>;
+  getPushToStartToken(): Promise<string | null>;
   getActiveActivityIds(): string[];
 }
 
@@ -74,6 +75,20 @@ export const MoraLiveActivity = {
     if (!native) return null;
     try {
       return await native.getPushToken(activityId);
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Get the push-to-start token (iOS 17.2+). Captured on app launch and sent to
+   * the server so the backend can START a Live Activity remotely via APNs without
+   * relying on an on-device Activity.request(). Returns null on iOS < 17.2.
+   */
+  async getPushToStartToken(): Promise<string | null> {
+    if (!native?.getPushToStartToken) return null;
+    try {
+      return await native.getPushToStartToken();
     } catch {
       return null;
     }

@@ -22,6 +22,9 @@
         "applinks:mora1.com",
         "webcredentials:mora1.com"
       ],
+      "entitlements": {
+        "aps-environment": "production"
+      },
       "infoPlist": {
         "NSSupportsLiveActivities": true,
         "NSSupportsLiveActivitiesFrequentUpdates": true,
