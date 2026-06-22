@@ -29,6 +29,12 @@ type AuthCtx = {
   register: (firstName: string, lastName: string, email: string, password: string) => Promise<void>;
   loginWithPhone: (phone: string, firebaseUid: string) => Promise<void>;
   loginWithSocial: (firebaseUid: string, name: string, email: string) => Promise<void>;
+  updateProfile: (patch: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    address?: { city?: string; district?: string; street?: string };
+  }) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -38,6 +44,7 @@ const AuthContext = createContext<AuthCtx>({
   register: async () => {},
   loginWithPhone: async () => {},
   loginWithSocial: async () => {},
+  updateProfile: async () => {},
   logout: async () => {},
 });
 
@@ -136,6 +143,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await _saveSession(result);
   }, [_saveSession]);
 
+  const updateProfile = useCallback<AuthCtx["updateProfile"]>(async (patch) => {
+    if (!token) throw new Error("Not authenticated");
+    const updated = await authFetch<AuthUser>("/store/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }, token);
+    setUser(updated);
+  }, [token]);
+
   const logout = useCallback(async () => {
     try {
       if (token) await authFetch("/store/auth/logout", { method: "POST" }, token);
@@ -144,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [token, _clearSession]);
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, loginWithPhone, loginWithSocial, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, loginWithPhone, loginWithSocial, updateProfile, logout }}>
       {children}
     </AuthContext.Provider>
   );

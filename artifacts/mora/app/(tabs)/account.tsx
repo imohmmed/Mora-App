@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -441,11 +441,28 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
   const isDark = resolvedScheme === "dark";
   const card = isDark ? "#1C1C1E" : "#EBF5FF";
   const bg   = isDark ? "#0A0A0A" : "#FFFFFF";
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
   const router = useRouter();
   const { count: wishlistCount } = useWishlist();
-  const [toggles, setToggles] = useState<Record<string, boolean>>({ notifications: true, emails: false });
   const [showOrders, setShowOrders] = useState(false);
+  const [showAddress, setShowAddress] = useState(false);
+  const [addr, setAddr] = useState({ city: "", district: "", street: "", phone: "" });
+  const [savingAddr, setSavingAddr] = useState(false);
+
+  const handleSaveAddress = async () => {
+    setSavingAddr(true);
+    try {
+      await updateProfile({
+        phone: addr.phone.trim(),
+        address: { city: addr.city.trim(), district: addr.district.trim(), street: addr.street.trim() },
+      });
+      setShowAddress(false);
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Could not save address. Please try again.");
+    } finally {
+      setSavingAddr(false);
+    }
+  };
   const topPad = Platform.OS === "web" ? 0 : insets.top;
   const botPad = Platform.OS === "web" ? 0 : insets.bottom;
 
@@ -522,6 +539,60 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
     );
   }
 
+  if (showAddress) {
+    return (
+      <View style={[styles.container, { backgroundColor: bg }]}>
+        <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
+          <GlassBackButton onPress={() => setShowAddress(false)} />
+          <Text style={[styles.acctTitle, { color: colors.foreground }]}>MY ADDRESS</Text>
+          <View style={{ width: 38 }} />
+        </View>
+
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ padding: 16, paddingBottom: botPad + 80, gap: 12 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Text style={[styles.addrHint, { color: colors.mutedForeground }]}>
+              Saved to your account and filled in automatically at checkout.
+            </Text>
+
+            {([
+              { key: "city",     label: "City / Governorate", placeholder: "بغداد",            kb: "default" as const },
+              { key: "district", label: "District / Area",    placeholder: "Al-Mansour",       kb: "default" as const },
+              { key: "street",   label: "Street (optional)",  placeholder: "Street 14, Bldg 3", kb: "default" as const },
+              { key: "phone",    label: "Phone",              placeholder: "+964 770 000 0000", kb: "phone-pad" as const },
+            ]).map((f) => (
+              <View key={f.key} style={[styles.addrField, { backgroundColor: card }]}>
+                <Text style={[styles.addrLabel, { color: colors.mutedForeground }]}>{f.label}</Text>
+                <TextInput
+                  value={(addr as Record<string, string>)[f.key]}
+                  onChangeText={(t) => setAddr((a) => ({ ...a, [f.key]: t }))}
+                  placeholder={f.placeholder}
+                  placeholderTextColor={isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.28)"}
+                  keyboardType={f.kb}
+                  style={[styles.addrInput, { color: colors.foreground }]}
+                />
+              </View>
+            ))}
+
+            <Pressable
+              onPress={handleSaveAddress}
+              disabled={savingAddr}
+              style={({ pressed }) => [styles.addrSaveBtn, { opacity: pressed || savingAddr ? 0.8 : 1 }]}
+              testID="btn-save-address"
+            >
+              {savingAddr
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.addrSaveTxt}>SAVE ADDRESS</Text>}
+            </Pressable>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
@@ -562,14 +633,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
               { id: "orders", icon: "package", label: "My Orders", arrow: true },
               { id: "wishlist", icon: "heart", label: "Wishlist", badge: wishlistCount > 0 ? String(wishlistCount) : undefined, arrow: true },
               { id: "address", icon: "map-pin", label: "Addresses", arrow: true },
-              { id: "payment", icon: "credit-card", label: "Payment Methods", arrow: true },
-            ],
-          },
-          {
-            title: "PREFERENCES",
-            items: [
-              { id: "notifications", label: "Push Notifications", icon: "bell", toggle: true },
-              { id: "emails", label: "Email Updates", icon: "mail", toggle: true },
+              { id: "mysize", icon: "sliders", label: "My Size", arrow: true },
             ],
           },
           {
@@ -586,27 +650,6 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
             <View style={[styles.sectionCard, { backgroundColor: card }]}>
               {section.items.map((item, idx) => {
                 const isLast = idx === section.items.length - 1;
-                if ((item as any).toggle) {
-                  return (
-                    <View
-                      key={item.id}
-                      style={[styles.menuRow, { borderBottomColor: colors.border }, isLast && styles.lastRow]}
-                    >
-                      <View style={styles.menuLeft}>
-                        <View style={[styles.iconBox, { backgroundColor: colors.secondary }]}>
-                          <Feather name={item.icon as any} size={16} color={PRIMARY} />
-                        </View>
-                        <Text style={[styles.menuLabel, { color: colors.foreground }]}>{item.label}</Text>
-                      </View>
-                      <Switch
-                        value={!!toggles[item.id]}
-                        onValueChange={() => setToggles((p) => ({ ...p, [item.id]: !p[item.id] }))}
-                        trackColor={{ false: colors.border, true: PRIMARY }}
-                        thumbColor="#fff"
-                      />
-                    </View>
-                  );
-                }
                 return (
                   <Pressable
                     key={item.id}
@@ -619,6 +662,15 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
                     onPress={() => {
                       if (item.id === "orders") setShowOrders(true);
                       else if (item.id === "wishlist") router.push("/wishlist");
+                      else if (item.id === "address") {
+                        setAddr({
+                          city: user?.address?.city ?? "",
+                          district: user?.address?.district ?? "",
+                          street: user?.address?.street ?? "",
+                          phone: user?.phone ?? "",
+                        });
+                        setShowAddress(true);
+                      }
                     }}
                     testID={`menu-${item.id}`}
                   >
@@ -836,6 +888,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   memberBadgeText: { fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 0.5 },
+
+  addrHint: { fontFamily: "Inter_400Regular", fontSize: 12.5, lineHeight: 18, marginBottom: 4, paddingHorizontal: 2 },
+  addrField: { borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10 },
+  addrLabel: { fontFamily: "Inter_500Medium", fontSize: 11, letterSpacing: 0.4, marginBottom: 4 },
+  addrInput: { fontFamily: "Inter_500Medium", fontSize: 15, paddingVertical: 2 },
+  addrSaveBtn: { backgroundColor: PRIMARY, height: 52, borderRadius: 50, alignItems: "center", justifyContent: "center", marginTop: 8 },
+  addrSaveTxt: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15, letterSpacing: 0.8 },
 
   section: { paddingHorizontal: 16, marginBottom: 16 },
   sectionLabel: { fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 1, marginBottom: 8 },
