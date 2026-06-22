@@ -358,13 +358,27 @@ export default function CartScreen() {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 100 }}
         >
           {storiesLoading ? (
             <ActivityIndicator color={PRIMARY} style={{ marginTop: 48 }} />
           ) : (
             <StoriesSection rows={storyRows} circlesOnly />
           )}
+
+          <View style={s.emptyWrap}>
+            <View style={[s.emptyIconCircle, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}>
+              <Feather name="shopping-bag" size={38} color={sub} />
+            </View>
+            <Text style={[s.emptyTitle, { color: textCol }]}>
+              {lang === "ar" ? "سلتك فارغة" : "Your cart is empty"}
+            </Text>
+            <Text style={[s.emptySub, { color: sub }]}>
+              {lang === "ar"
+                ? "يمكنك تصفّح أقسامنا واكتشاف منتجاتنا"
+                : "You can browse our collections"}
+            </Text>
+          </View>
         </ScrollView>
       </View>
     );
@@ -440,4 +454,8 @@ const s = StyleSheet.create({
   barTotal:    { fontSize: 18, fontWeight: "800", letterSpacing: -0.4 },
   checkBtn:    { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: PRIMARY, paddingHorizontal: 22, paddingVertical: 14, borderRadius: 50 },
   checkTxt:    { color: "#fff", fontSize: 14, fontWeight: "700", letterSpacing: 0.6 },
+  emptyWrap:      { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40, paddingVertical: 40 },
+  emptyIconCircle:{ width: 92, height: 92, borderRadius: 46, alignItems: "center", justifyContent: "center", marginBottom: 18 },
+  emptyTitle:     { fontSize: 19, fontWeight: "800", letterSpacing: -0.4, textAlign: "center" },
+  emptySub:       { fontSize: 13.5, fontWeight: "500", textAlign: "center", lineHeight: 20, marginTop: 6 },
 });
