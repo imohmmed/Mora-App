@@ -16,7 +16,8 @@
         "image": "latest"
       },
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "moramoda.tech"
+        "EXPO_PUBLIC_DOMAIN": "moramoda.tech",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "274592364900-gshknmnv2l1sgp157pr08bifs36jk3su.apps.googleusercontent.com"
       }
     },
     "development-simulator": {
@@ -27,7 +28,8 @@
         "image": "latest"
       },
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "moramoda.tech"
+        "EXPO_PUBLIC_DOMAIN": "moramoda.tech",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "274592364900-gshknmnv2l1sgp157pr08bifs36jk3su.apps.googleusercontent.com"
       }
     },
     "preview": {
@@ -40,7 +42,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "moramoda.tech"
+        "EXPO_PUBLIC_DOMAIN": "moramoda.tech",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "274592364900-gshknmnv2l1sgp157pr08bifs36jk3su.apps.googleusercontent.com"
       }
     },
     "production": {
@@ -54,7 +57,8 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "moramoda.tech"
+        "EXPO_PUBLIC_DOMAIN": "moramoda.tech",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "274592364900-gshknmnv2l1sgp157pr08bifs36jk3su.apps.googleusercontent.com"
       }
     }
   },

@@ -24,7 +24,14 @@
       ],
       "infoPlist": {
         "NSSupportsLiveActivities": true,
-        "NSSupportsLiveActivitiesFrequentUpdates": true
+        "NSSupportsLiveActivitiesFrequentUpdates": true,
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.274592364900-gshknmnv2l1sgp157pr08bifs36jk3su"
+            ]
+          }
+        ]
       }
     },
     "android": {
