@@ -25,7 +25,6 @@ import { useCart } from "@/context/CartContext";
 import { fetchSpecialCollection, fetchCollection, searchProducts } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
-import { FloatingTabBar } from "@/components/FloatingTabBar";
 import { GlassBackButton } from "@/components/GlassBackButton";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
@@ -286,7 +285,7 @@ export default function CollectionScreen() {
           {/* Cart button */}
           <Pressable
             style={[styles.iconBtn, { backgroundColor: isIOS26Plus ? "transparent" : (scrolled ? ICON_BG_SCROLLED : ICON_BG_TOP) }]}
-            onPress={() => router.push("/(tabs)/cart")}
+            onPress={() => router.push("/cart")}
             testID="cart-btn"
           >
             {isIOS26Plus && <LiquidGlassBg />}
@@ -410,8 +409,6 @@ export default function CollectionScreen() {
           </View>
         )}
       </Animated.ScrollView>
-
-      <FloatingTabBar />
 
       <QuickAddSheet
         visible={!!quickAddProduct}

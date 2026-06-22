@@ -59,7 +59,7 @@ export default function VerifyScreen() {
     try {
       const { uid, phone: verifiedPhone } = await verifyOTP(code);
       await loginWithPhone(verifiedPhone || phone, uid);
-      router.replace(((returnTo as string) || "/(tabs)/account") as any);
+      router.replace(((returnTo as string) || "/account") as any);
     } catch (err: any) {
       setError(err.message ?? "رمز التحقق غير صحيح");
       setDigits(Array(BOX_COUNT).fill(""));

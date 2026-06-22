@@ -92,7 +92,7 @@ export default function AuthScreen() {
   const afterSignIn = async (user: { uid: string; email: string; name: string }, errMsg: string) => {
     try {
       await loginWithSocial(user.uid, user.name, user.email);
-      router.replace(((returnTo || "/(tabs)/account") as any));
+      router.replace(((returnTo || "/account") as any));
     } catch (err: any) {
       setError(err.message ?? errMsg);
     }
@@ -187,7 +187,7 @@ export default function AuthScreen() {
         style={[styles.closeBtn, { top: topPad + 4 }]}
         onPress={() => {
           if (router.canGoBack()) router.back();
-          else router.replace("/(tabs)" as any);
+          else router.replace("/" as any);
         }}
       >
         <Feather name="x" size={22} color={fg} />

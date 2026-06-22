@@ -62,7 +62,7 @@ type IconName = React.ComponentProps<typeof Feather>["name"];
 const TABS: { name: string; icon: IconName; sf: string; sfActive: string; path: string | null }[] = [
   { name: "index",   icon: "home",           sf: "house",           sfActive: "house.fill",         path: "/" },
   { name: "search",  icon: "search",         sf: "magnifyingglass", sfActive: "magnifyingglass",     path: "/search" },
-  { name: "chat",    icon: "message-circle", sf: "message.circle",  sfActive: "message.circle.fill", path: "/(tabs)/chat" },
+  { name: "chat",    icon: "message-circle", sf: "message.circle",  sfActive: "message.circle.fill", path: "/chat" },
   { name: "cart",    icon: "shopping-bag",   sf: "bag",             sfActive: "bag.fill",            path: "/cart" },
   { name: "account", icon: "user",           sf: "person",          sfActive: "person.fill",         path: "/account" },
 ];

@@ -314,7 +314,7 @@ export default function OrderCompleteScreen() {
         },
       ]}>
         <LiquidGlassBg />
-        <Pressable onPress={() => router.replace("/(tabs)" as any)}
+        <Pressable onPress={() => router.replace("/" as any)}
           style={({ pressed }) => [s.contBtn, pressed && { opacity: 0.82 }]}>
           <Text style={s.contTxt}>CONTINUE SHOPPING</Text>
           <Feather name="arrow-right" size={15} color="#fff" />

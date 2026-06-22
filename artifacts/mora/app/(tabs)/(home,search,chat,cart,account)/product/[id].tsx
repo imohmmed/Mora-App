@@ -21,7 +21,6 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
 import { MoraLogo } from "@/components/MoraLogo";
-import { FloatingTabBar } from "@/components/FloatingTabBar";
 import { GlassBackButton } from "@/components/GlassBackButton";
 import { fetchProduct, fetchRelatedProducts, fetchContentSections } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
@@ -320,7 +319,7 @@ export default function ProductDetailScreen() {
         <MoraLogo size="small" />
         {isIOS26Plus ? (
           <Pressable
-            onPress={() => router.push("/(tabs)/cart")}
+            onPress={() => router.push("/cart")}
             style={styles.glassIconBtn}
             testID="cart-header-btn"
           >
@@ -334,7 +333,7 @@ export default function ProductDetailScreen() {
           </Pressable>
         ) : (
           <Pressable
-            onPress={() => router.push("/(tabs)/cart")}
+            onPress={() => router.push("/cart")}
             style={[styles.glassIconBtn, { backgroundColor: "transparent" }]}
             testID="cart-header-btn"
           >
@@ -631,7 +630,6 @@ export default function ProductDetailScreen() {
       ) : null}
 
       {/* ── Floating Tab Bar (web only) ── */}
-      <FloatingTabBar />
 
       {/* ── Quick Add Sheet for related products ── */}
       <QuickAddSheet

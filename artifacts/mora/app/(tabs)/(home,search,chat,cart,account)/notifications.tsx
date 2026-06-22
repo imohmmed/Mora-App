@@ -14,7 +14,6 @@ import { useRouter } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { GlassBackButton } from "@/components/GlassBackButton";
-import { FloatingTabBar } from "@/components/FloatingTabBar";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -124,8 +123,6 @@ export default function NotificationsScreen() {
         <Text style={[styles.title, { color: colors.foreground }]}>{t.title}</Text>
         <View style={styles.spacer} />
       </View>
-
-      <FloatingTabBar />
 
       {!token ? (
         <View style={styles.emptyWrap}>

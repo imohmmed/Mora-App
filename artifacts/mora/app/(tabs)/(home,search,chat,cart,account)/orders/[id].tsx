@@ -224,7 +224,7 @@ export default function OrderDetailScreen() {
         <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
           <Pressable
             style={({ pressed }) => [st.shopBtn, { backgroundColor: PRIMARY, opacity: pressed ? 0.85 : 1 }]}
-            onPress={() => router.push("/(tabs)" as any)}
+            onPress={() => router.push("/" as any)}
           >
             <Feather name="shopping-bag" size={16} color="#fff" />
             <Text style={st.shopBtnTxt}>SHOP AGAIN</Text>

@@ -280,7 +280,7 @@ function GuestScreen({
           </Pressable>
         </View>
 
-        <Pressable style={[styles.helpRow, { bottom: botPad + 24 }]} onPress={() => router.push("/(tabs)/chat" as any)}>
+        <Pressable style={[styles.helpRow, { bottom: botPad + 24 }]} onPress={() => router.push("/chat" as any)}>
           <Text style={[styles.helpText, { color: colors.mutedForeground }]}>Need help?</Text>
           <Feather name="help-circle" size={18} color={colors.mutedForeground} />
         </Pressable>

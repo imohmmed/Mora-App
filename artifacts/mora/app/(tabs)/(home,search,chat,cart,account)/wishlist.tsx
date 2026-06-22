@@ -19,7 +19,6 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useLanguage } from "@/context/LanguageContext";
 import { GlassBackButton } from "@/components/GlassBackButton";
-import { FloatingTabBar } from "@/components/FloatingTabBar";
 import { formatIQD } from "@/lib/format";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
@@ -206,8 +205,6 @@ export default function WishlistScreen() {
           )}
         </View>
       </View>
-
-      <FloatingTabBar />
 
       {/* ── Content ── */}
       {wishlistIds.length === 0 ? (

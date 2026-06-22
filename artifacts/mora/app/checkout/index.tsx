@@ -249,7 +249,7 @@ export default function CheckoutScreen() {
           <GlassBackButton
             onPress={() => {
               if (router.canGoBack()) router.back();
-              else router.replace("/(tabs)/cart" as any);
+              else router.replace("/cart" as any);
             }}
           />
           <Text style={[st.headTitle, { color: textCol }]}>Checkout</Text>
