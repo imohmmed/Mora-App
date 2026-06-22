@@ -22,16 +22,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { getAdminToken } from "@/lib/api";
 
 const API = "/api";
-const ADMIN_TOKEN = "mora-admin-2025";
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      "x-admin-token": ADMIN_TOKEN,
+      Authorization: `Bearer ${getAdminToken()}`,
       ...(init?.headers ?? {}),
     },
   });

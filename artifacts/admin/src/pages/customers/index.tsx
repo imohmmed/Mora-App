@@ -21,8 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Search, Plus, Users as UsersIcon, Trash2, Bell, Radio } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useToast } from "@/hooks/use-toast";
-
-const ADMIN_TOKEN = "mora-admin-2025";
+import { getAdminToken } from "@/lib/api";
 
 async function sendNotification(payload: {
   title: string;
@@ -35,7 +34,7 @@ async function sendNotification(payload: {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-admin-token": ADMIN_TOKEN,
+      Authorization: `Bearer ${getAdminToken()}`,
     },
     body: JSON.stringify(payload),
   });

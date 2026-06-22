@@ -6,6 +6,7 @@
 - [Live Activities Architecture](live-activities.md) — Full Live Activity + Dynamic Island stack for iOS order tracking
 - [Products Gender Field](products-gender.md) — gender column added to products table; WOMEN/MEN home tabs use gender filter; FOR YOU tab uses AsyncStorage view tracking
 - [Admin JWT secret rotation](admin-jwt-secret-rotation.md) — rotating/dropping ADMIN_JWT_SECRET strands admins (gate checks exp not signature); 401→auto-relogin in admin App.tsx
+- [Admin notifications auth](admin-notifications-auth.md) — requireAdmin only accepts Authorization: Bearer JWT; dead x-admin-token scheme caused "Unauthorized" on push send; always use getAdminToken()
 - [@expo/ui Form release crash](expo-ui-account-form-crash.md) — heavy SwiftUI Form (Picker/Slider/Stepper) segfaults at Fabric mount on TestFlight; keep native glass to small pieces
 - [@expo/ui Host wrapper](expo-ui-host-wrapper.md) — SwiftUI views (GlassEffectContainer etc.) MUST be inside <Host> or Fabric crashes at launch (SwiftUIVirtualViewObjC SIGABRT)
 - [iOS Native Crash — expo-glass-effect](ios-glass-crash.md) — EXC_BAD_ACCESS in registerNativeViews on iOS 26 beta; use @expo/ui instead
