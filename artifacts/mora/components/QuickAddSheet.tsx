@@ -185,21 +185,19 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
 
   return (
     <Modal transparent animationType="none" visible={visible} onRequestClose={onClose}>
-      {/* ── Blur backdrop ─────────────────────────────────────────────────── */}
-      <Animated.View
-        style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}
-        pointerEvents={visible ? "auto" : "none"}
-      >
-        <BlurView
-          style={StyleSheet.absoluteFill}
-          intensity={55}
-          tint={isDark ? "dark" : "light"}
-        />
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.28)" }]} />
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-      </Animated.View>
+      {/* ── Tap-anywhere-to-close backdrop ────────────────────────────────── */}
+      <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}>
+          <BlurView
+            style={StyleSheet.absoluteFill}
+            intensity={55}
+            tint={isDark ? "dark" : "light"}
+          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.28)" }]} />
+        </Animated.View>
+      </Pressable>
 
-      {/* ── Sheet ─────────────────────────────────────────────────────────── */}
+      {/* ── Sheet (rendered after backdrop → on top, touches don't reach backdrop) */}
       <Animated.View
         style={[
           styles.sheet,

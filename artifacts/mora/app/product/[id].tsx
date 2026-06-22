@@ -29,6 +29,7 @@ import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import { BlurView } from "expo-blur";
+import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { ReelPlayer } from "@/components/ReelPlayer";
 import type { ContentSectionItem } from "@/lib/api";
 import type { Variant, Product } from "@/lib/types";
@@ -109,15 +110,14 @@ function RelatedCard({
   product,
   colors,
   cardWidth,
+  onQuickAdd,
 }: {
   product: Product;
   colors: ReturnType<typeof useColors>;
   cardWidth: number;
+  onQuickAdd: (p: Product) => void;
 }) {
-  const router  = useRouter();
-  const { addItem } = useCart();
-  const { resolvedScheme } = useTheme();
-  const isDarkCard = resolvedScheme === "dark";
+  const router = useRouter();
   const bg = cardColor(product.id);
   const hasDiscount =
     product.comparePrice != null && product.comparePrice > product.price;
@@ -126,33 +126,6 @@ function RelatedCard({
         ((product.comparePrice! - product.price) / product.comparePrice!) * 100
       )
     : 0;
-
-  const [quickAdded, setQuickAdded] = useState(false);
-
-  const handleQuickAdd = (e: any) => {
-    e.stopPropagation?.();
-    const variants = product.variants ?? [];
-    // If multi-variant product → go to product page to pick size/colour
-    if (variants.length > 1) {
-      router.push(`/product/${product.id}`);
-      return;
-    }
-    const v = variants[0];
-    addItem({
-      productId: product.id,
-      variantId: v?.id ?? product.id,
-      title: product.title,
-      vendor: product.vendor ?? "Mora",
-      price: v?.price ?? product.price,
-      quantity: 1,
-      size: v?.option1,
-      color: v?.option2,
-      image: product.images?.[0],
-    });
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setQuickAdded(true);
-    setTimeout(() => setQuickAdded(false), 1500);
-  };
 
   return (
     <Pressable
@@ -170,23 +143,6 @@ function RelatedCard({
             <Text style={styles.relatedDiscText}>-{discountPct}%</Text>
           </View>
         )}
-        {/* Quick Add button */}
-        <Pressable style={styles.quickAddBtn} onPress={handleQuickAdd} hitSlop={6}>
-          {isIOS26Plus
-            ? <LiquidGlassBg />
-            : Platform.OS !== "web" && (
-                <BlurView
-                  style={StyleSheet.absoluteFill}
-                  intensity={70}
-                  tint={isDarkCard ? "systemThinMaterialDark" : "systemThinMaterial"}
-                />
-              )
-          }
-          {quickAdded
-            ? <Feather name="check" size={15} color={PRIMARY} />
-            : <Feather name="shopping-bag" size={14} color={colors.foreground} />
-          }
-        </Pressable>
       </View>
       <View style={styles.relatedInfo}>
         <Text style={[styles.relatedTitle, { color: colors.foreground }]} numberOfLines={2}>
@@ -202,6 +158,12 @@ function RelatedCard({
             </Text>
           )}
         </View>
+        <Pressable
+          style={styles.relatedAddBtn}
+          onPress={(e) => { e.stopPropagation?.(); onQuickAdd(product); }}
+        >
+          <Text style={styles.relatedAddText}>ADD TO BAG</Text>
+        </Pressable>
       </View>
     </Pressable>
   );
@@ -240,6 +202,7 @@ export default function ProductDetailScreen() {
   const { isWishlisted, toggle } = useWishlist();
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
   const [added, setAdded] = useState(false);
+  const [quickAddRelated, setQuickAddRelated] = useState<Product | null>(null);
 
   const topPadding = isWeb ? 0 : insets.top;
   const bottomPadding = isWeb ? 0 : insets.bottom;
@@ -654,7 +617,7 @@ export default function ProductDetailScreen() {
               </Text>
               <View style={styles.relatedGrid}>
                 {relatedItems.map((p) => (
-                  <RelatedCard key={p.id} product={p} colors={colors} cardWidth={cardWidth} />
+                  <RelatedCard key={p.id} product={p} colors={colors} cardWidth={cardWidth} onQuickAdd={setQuickAddRelated} />
                 ))}
               </View>
               {loadingMore && (
@@ -669,6 +632,29 @@ export default function ProductDetailScreen() {
 
       {/* ── Floating Tab Bar (web only) ── */}
       <FloatingTabBar />
+
+      {/* ── Quick Add Sheet for related products ── */}
+      <QuickAddSheet
+        visible={!!quickAddRelated}
+        product={quickAddRelated}
+        onClose={() => setQuickAddRelated(null)}
+        onConfirm={(variant) => {
+          if (!quickAddRelated) return;
+          addItem({
+            productId: quickAddRelated.id,
+            variantId: variant.id ?? quickAddRelated.id,
+            title: quickAddRelated.title,
+            vendor: quickAddRelated.vendor ?? "Mora",
+            price: variant.price ?? quickAddRelated.price,
+            quantity: 1,
+            size: variant.option1,
+            color: variant.option2,
+            image: quickAddRelated.images?.[0],
+          });
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          setQuickAddRelated(null);
+        }}
+      />
     </View>
   );
 }
@@ -831,19 +817,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#E53935", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3,
   },
   relatedDiscText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 10 },
-  quickAddBtn: {
-    position: "absolute",
-    bottom: 8,
-    right: 8,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.55)",
-  },
   relatedInfo: { padding: 10, gap: 4 },
+  relatedAddBtn: {
+    backgroundColor: PRIMARY,
+    paddingVertical: 9,
+    alignItems: "center",
+    borderRadius: 100,
+    marginTop: 6,
+  },
+  relatedAddText: {
+    color: "#FFFFFF",
+    fontFamily: "Inter_700Bold",
+    fontSize: 11,
+    letterSpacing: 0.8,
+  },
   relatedTitle: { fontFamily: "Inter_500Medium", fontSize: 12, lineHeight: 17 },
   relatedPrice: { fontFamily: "Inter_700Bold", fontSize: 13 },
 });
