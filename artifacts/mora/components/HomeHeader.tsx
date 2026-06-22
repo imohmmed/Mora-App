@@ -101,7 +101,7 @@ export function HomeHeader({
 
         <Pressable
           style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
-          onPress={() => router.push("/(tabs)/wishlist")}
+          onPress={() => router.push("/wishlist" as any)}
           testID="favorites-btn"
         >
           {isIOS26Plus && <LiquidGlassBg />}
