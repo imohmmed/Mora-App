@@ -13,3 +13,4 @@
 - [LiquidGlassBg pattern](liquid-glass-pattern.md) — @expo/ui Host+GlassEffectContainer+VStack(glassEffect) as reusable background layer for iOS 26+
 - [Metro Context Import Safety](metro-context-imports.md) — Never import Context objects directly; always use exported hooks to avoid Metro circular-dep crash (n._currentValue undefined)
 - [Expo Web Import Order TDZ](expo-web-import-order.md) — All imports must precede executable code in _layout.tsx; mixing causes "Cannot access 'X' before initialization" on web
+- [Liquid Glass BlurView fallback](liquid-glass-blurview-fallback.md) — Non-iOS26 glass pattern: glassIconBtn needs overflow:hidden; BlurView absoluteFill inside; bg transparent; isDark drives tint choice

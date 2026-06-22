@@ -23,7 +23,9 @@ import { AppleActionSheet } from "@/components/AppleActionSheet";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
 import { fetchOrders } from "@/lib/api";
+import { BlurView } from "expo-blur";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
+import { GlassBackButton } from "@/components/GlassBackButton";
 
 const PRIMARY = "#0274C1";
 
@@ -75,9 +77,7 @@ function SettingsScreen({ onBack, insets }: { onBack: () => void; insets: any })
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
-        <Pressable onPress={onBack} style={styles.iconBtn}>
-          <Feather name="arrow-left" size={22} color={colors.foreground} />
-        </Pressable>
+        <GlassBackButton onPress={onBack} />
         <Text style={[styles.acctTitle, { color: colors.foreground }]}>SETTINGS</Text>
         <View style={{ width: 38 }} />
       </View>
@@ -221,6 +221,8 @@ function GuestScreen({
   onSignIn, onJoin, onOpenSettings, insets,
 }: { onSignIn: () => void; onJoin: () => void; onOpenSettings: () => void; insets: any }) {
   const colors = useColors();
+  const { resolvedScheme } = useTheme();
+  const isDark = resolvedScheme === "dark";
   const router = useRouter();
   const topPad = Platform.OS === "web" ? 0 : insets.top;
   // On web the floating tab bar is ~90px tall, so push content above it
@@ -231,16 +233,13 @@ function GuestScreen({
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         <View style={{ width: 38 }} />
         <Text style={[styles.acctTitle, { color: colors.foreground }]}>MY ACCOUNT</Text>
-        {isIOS26Plus ? (
-          <Pressable style={styles.glassIconBtn} onPress={onOpenSettings} testID="btn-settings">
-            <LiquidGlassBg />
-            <Feather name="settings" size={18} color={colors.foreground} />
-          </Pressable>
-        ) : (
-          <Pressable style={styles.iconBtn} onPress={onOpenSettings} testID="btn-settings">
-            <Feather name="settings" size={20} color={colors.mutedForeground} />
-          </Pressable>
-        )}
+        <Pressable style={styles.glassIconBtn} onPress={onOpenSettings} testID="btn-settings">
+          {isIOS26Plus
+            ? <LiquidGlassBg />
+            : Platform.OS !== "web" && <BlurView style={StyleSheet.absoluteFill} intensity={60} tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"} />
+          }
+          <Feather name="settings" size={18} color={colors.foreground} />
+        </Pressable>
       </View>
 
       <View style={[styles.guestBody, { paddingBottom: botPad + 80 }]}>
@@ -469,9 +468,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
-          <Pressable onPress={() => setShowOrders(false)} style={styles.iconBtn}>
-            <Feather name="arrow-left" size={22} color={colors.foreground} />
-          </Pressable>
+          <GlassBackButton onPress={() => setShowOrders(false)} />
           <Text style={[styles.acctTitle, { color: colors.foreground }]}>MY ORDERS</Text>
           <View style={{ width: 38 }} />
         </View>
@@ -530,16 +527,13 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         <View style={{ width: 38 }} />
         <Text style={[styles.acctTitle, { color: colors.foreground }]}>MY ACCOUNT</Text>
-        {isIOS26Plus ? (
-          <Pressable style={styles.glassIconBtn} onPress={onOpenSettings} testID="btn-settings">
-            <LiquidGlassBg />
-            <Feather name="settings" size={18} color={colors.foreground} />
-          </Pressable>
-        ) : (
-          <Pressable style={styles.iconBtn} onPress={onOpenSettings} testID="btn-settings">
-            <Feather name="settings" size={20} color={colors.mutedForeground} />
-          </Pressable>
-        )}
+        <Pressable style={styles.glassIconBtn} onPress={onOpenSettings} testID="btn-settings">
+          {isIOS26Plus
+            ? <LiquidGlassBg />
+            : Platform.OS !== "web" && <BlurView style={StyleSheet.absoluteFill} intensity={60} tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"} />
+          }
+          <Feather name="settings" size={18} color={colors.foreground} />
+        </Pressable>
       </View>
 
       <ScrollView

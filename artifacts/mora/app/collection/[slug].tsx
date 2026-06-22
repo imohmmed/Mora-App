@@ -18,10 +18,13 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
+import { BlurView } from "expo-blur";
 import { useColors } from "@/hooks/useColors";
+import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
 import { fetchSpecialCollection, fetchCollection, searchProducts } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
+import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import { FloatingTabBar } from "@/components/FloatingTabBar";
 import { GlassBackButton } from "@/components/GlassBackButton";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
@@ -105,6 +108,8 @@ export default function CollectionScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
   const colors = useColors();
+  const { resolvedScheme } = useTheme();
+  const isDark = resolvedScheme === "dark";
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const { totalItems } = useCart();
@@ -228,10 +233,21 @@ export default function CollectionScreen() {
           {/* Animated search bar that expands when scrolled */}
           <Animated.View style={[styles.searchBarWrap, { width: searchBarWidth, overflow: "hidden" }]}>
             <Pressable
-              style={[styles.searchBarInner, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+              style={[
+                styles.searchBarInner,
+                {
+                  backgroundColor: isIOS26Plus ? "transparent" : colors.secondary,
+                  borderColor: isIOS26Plus ? "transparent" : colors.border,
+                  overflow: "hidden",
+                },
+              ]}
               onPress={handleSearchBarTap}
               testID="search-bar-tap"
             >
+              {isIOS26Plus && <LiquidGlassBg />}
+              {!isIOS26Plus && Platform.OS !== "web" && (
+                <BlurView style={StyleSheet.absoluteFill} intensity={55} tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"} />
+              )}
               <Feather name="search" size={14} color={colors.mutedForeground} />
               <TextInput
                 ref={searchRef}
@@ -255,20 +271,32 @@ export default function CollectionScreen() {
           {/* Search icon — visible only when NOT scrolled */}
           {!scrolled && (
             <Pressable
-              style={[styles.iconBtn, { backgroundColor: ICON_BG_TOP }]}
+              style={[styles.iconBtn, { backgroundColor: isIOS26Plus ? "transparent" : ICON_BG_TOP }]}
               onPress={handleSearchIconTap}
               testID="search-btn"
             >
+              {isIOS26Plus && <LiquidGlassBg />}
+              {!isIOS26Plus && Platform.OS !== "web" && (
+                <BlurView style={StyleSheet.absoluteFill} intensity={55} tint="systemThinMaterialDark" />
+              )}
               <Feather name="search" size={20} color="#fff" />
             </Pressable>
           )}
 
           {/* Cart button */}
           <Pressable
-            style={[styles.iconBtn, { backgroundColor: scrolled ? ICON_BG_SCROLLED : ICON_BG_TOP }]}
+            style={[styles.iconBtn, { backgroundColor: isIOS26Plus ? "transparent" : (scrolled ? ICON_BG_SCROLLED : ICON_BG_TOP) }]}
             onPress={() => router.push("/(tabs)/cart")}
             testID="cart-btn"
           >
+            {isIOS26Plus && <LiquidGlassBg />}
+            {!isIOS26Plus && Platform.OS !== "web" && (
+              <BlurView
+                style={StyleSheet.absoluteFill}
+                intensity={55}
+                tint={scrolled ? (isDark ? "systemThinMaterialDark" : "systemThinMaterial") : "systemThinMaterialDark"}
+              />
+            )}
             <Feather name="shopping-bag" size={20} color={iconColor} />
             {totalItems > 0 && (
               <View style={styles.cartBadge}>
@@ -441,6 +469,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
   cartBadge: {
     position: "absolute",

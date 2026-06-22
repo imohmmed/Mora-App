@@ -325,10 +325,17 @@ export default function ProductDetailScreen() {
         ) : (
           <Pressable
             onPress={() => router.push("/(tabs)/cart")}
-            style={styles.cartHeaderBtn}
+            style={[styles.glassIconBtn, { backgroundColor: "transparent" }]}
             testID="cart-header-btn"
           >
-            <Feather name="shopping-bag" size={22} color={colors.foreground} />
+            {Platform.OS !== "web" && (
+              <BlurView
+                style={StyleSheet.absoluteFill}
+                intensity={60}
+                tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
+              />
+            )}
+            <Feather name="shopping-bag" size={20} color={colors.foreground} />
             {totalItems > 0 && (
               <View style={[styles.cartBadge, { backgroundColor: colors.primary }]}>
                 <Text style={styles.cartBadgeText}>{totalItems > 9 ? "9+" : totalItems}</Text>
