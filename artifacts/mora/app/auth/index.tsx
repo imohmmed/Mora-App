@@ -118,10 +118,13 @@ export default function AuthScreen() {
       return;
     }
     // ── Web: Firebase popup ────────────────────────────────────────────────
+    // setGLoading(true) must come BEFORE the await so the button is disabled
+    // immediately — otherwise a second tap fires while the popup is open and
+    // causes auth/cancelled-popup-request.
     if (!configured) { setError(t.errNoFB); return; }
     try {
-      const user = await signInWithGoogle();
       setGLoading(true);
+      const user = await signInWithGoogle();
       await afterSignIn(user, t.errGoogle);
     } catch (err: any) {
       setError(err.message ?? t.errGoogle);
@@ -147,14 +150,20 @@ export default function AuthScreen() {
       }
       return;
     }
-    // ── Web: Firebase popup ────────────────────────────────────────────────
+    // ── Web: Firebase popup (Apple) ────────────────────────────────────────
+    // setALoading(true) must come BEFORE the await — same reason as Google above:
+    // prevents double-tap from sending two simultaneous popup requests, which
+    // Firebase rejects with auth/cancelled-popup-request.
     if (!configured) { setError(t.errNoFB); return; }
     try {
-      const user = await signInWithApple();
       setALoading(true);
+      const user = await signInWithApple();
       await afterSignIn(user, t.errApple);
     } catch (err: any) {
-      setError(err.message ?? t.errApple);
+      // Ignore user-cancelled Apple sign-in (sheet dismissed)
+      if (err?.code !== "auth/popup-closed-by-user" && err?.code !== "auth/cancelled-popup-request") {
+        setError(err.message ?? t.errApple);
+      }
     } finally {
       setALoading(false);
     }
@@ -188,7 +197,7 @@ export default function AuthScreen() {
         <ScrollView
           contentContainerStyle={[
             styles.scroll,
-            { paddingTop: topPad + 80, paddingBottom: botPad + 24 },
+            { paddingTop: topPad + 48, paddingBottom: botPad + 24 },
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
