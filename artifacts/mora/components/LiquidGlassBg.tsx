@@ -18,20 +18,18 @@ export const isIOS26Plus =
   Platform.OS === "ios" && parseInt(String(Platform.Version), 10) >= 26;
 
 let Host: any = null;
-let GlassContainer: any = null;
 let VStack: any = null;
 let glassEffect: any = null;
 let frameModifier: any = null;
 
 if (isIOS26Plus) {
   try {
-    const ui = require("@expo/ui/swift-ui") as Record<string, any>;
-    Host           = ui["Host"];
-    GlassContainer = ui["GlassEffectContainer"];
-    VStack         = ui["VStack"];
-    const mods     = require("@expo/ui/swift-ui/modifiers") as Record<string, any>;
-    glassEffect    = mods["glassEffect"];
-    frameModifier  = mods["frame"];
+    const ui   = require("@expo/ui/swift-ui") as Record<string, any>;
+    Host       = ui["Host"];
+    VStack     = ui["VStack"];
+    const mods = require("@expo/ui/swift-ui/modifiers") as Record<string, any>;
+    glassEffect   = mods["glassEffect"];
+    frameModifier = mods["frame"];
   } catch {}
 }
 
@@ -43,7 +41,7 @@ type Props = {
 export function LiquidGlassBg({ style }: Props) {
   const nativeReady = useNativeReady();
 
-  if (!isIOS26Plus || !Host || !GlassContainer || !VStack || !glassEffect || !nativeReady) return null;
+  if (!isIOS26Plus || !Host || !VStack || !glassEffect || !nativeReady) return null;
 
   const modifiers = [
     glassEffect(),
@@ -56,9 +54,7 @@ export function LiquidGlassBg({ style }: Props) {
       ignoreSafeArea="all"
       pointerEvents="none"
     >
-      <GlassContainer>
-        <VStack modifiers={modifiers} />
-      </GlassContainer>
+      <VStack modifiers={modifiers} />
     </Host>
   );
 }

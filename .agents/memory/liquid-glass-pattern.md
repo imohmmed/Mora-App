@@ -4,14 +4,22 @@ description: How to apply iOS 26 Liquid Glass backgrounds using @expo/ui without
 ---
 
 ## Rule
-Use `components/LiquidGlassBg.tsx` (Host + GlassEffectContainer + VStack with glassEffect modifier)
-as an `absoluteFill` layer inside any container that needs Liquid Glass on iOS 26+.
+Use `components/LiquidGlassBg.tsx` — `Host → VStack(glassEffect, frame)` — as an
+`absoluteFill` layer inside any container that needs Liquid Glass on iOS 26+.
 
-**Why:**
-- `expo-glass-effect` (GlassView) crashes on iOS 26 beta (EXC_BAD_ACCESS in registerNativeViews).
-- `@expo/ui` Host + GlassEffectContainer works because it uses SwiftUI hosting, not a Fabric native view.
-- GlassEffectContainer docs: children must have `.glassEffect()` modifier applied.
-- The pattern: `<Host ignoreSafeArea="all"><GlassContainer><VStack modifiers={[glassEffect(), frame(maxSize)]} /></GlassContainer></Host>`
+**Why GlassEffectContainer is NOT used:**
+`GlassEffectContainer` is for morphing animations between multiple glass elements and
+needs a global coordinator connection in the UIWindow hierarchy. This connection fails
+inside pushed UINavigationController Stack screens (product/collection pages), so glass
+renders on Tab screens but NOT on Stack screens. Removing it and applying `glassEffect()`
+directly on VStack works in every context (Tab, Stack, Modal).
+
+**Correct pattern:**
+```tsx
+<Host ignoreSafeArea="all" style={StyleSheet.absoluteFill} pointerEvents="none">
+  <VStack modifiers={[glassEffect(), frame({ maxWidth: "infinity", maxHeight: "infinity" })]} />
+</Host>
+```
 
 **How to apply:**
 ```tsx
@@ -42,9 +50,8 @@ tabBarBackground: () => isIOS26Plus ? <LiquidGlassBg /> : <BlurView .../>
 ```tsx
 export const isIOS26Plus = Platform.OS === "ios" && Number(Platform.Version) >= 26;
 ```
-iOS 26 (the beta) reports `Platform.Version` as `26`. Older iOS reports 17/18/etc.
 
 **Do NOT:**
-- Use `nativeReady` guard with `@expo/ui` Host — it handles its own deferred render.
-- Use `expo-glass-effect` GlassView — permanently banned, crashes on iOS 26 beta.
-- Mix SwiftUI (GlassContainer children) with native RN views — use the layering pattern instead.
+- Wrap in `GlassEffectContainer` for static backgrounds — breaks on Stack screens.
+- Use `expo-glass-effect` GlassView — crashes on iOS 26 beta (EXC_BAD_ACCESS).
+- Mix SwiftUI children with native RN views — use the layering pattern instead.
