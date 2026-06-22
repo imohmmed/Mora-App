@@ -87,7 +87,7 @@ function GlassHeader({ notificationCount = 0, favoritesCount = 0 }: HomeHeaderPr
               color={colors.foreground}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push("/(tabs)/wishlist" as any);
+                router.push("/wishlist" as any);
               }}
               modifiers={[
                 frameM({ width: 46, height: 46 }),
@@ -136,7 +136,7 @@ function FallbackHeader({ notificationCount = 0, favoritesCount = 0, cartCount =
 
         <Pressable
           style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
-          onPress={() => router.push("/(tabs)/wishlist")}
+          onPress={() => router.push("/wishlist")}
         >
           <Feather name="heart" size={23} color={colors.foreground} />
           {favoritesCount > 0 && (

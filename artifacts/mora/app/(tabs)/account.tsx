@@ -618,7 +618,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
                     ]}
                     onPress={() => {
                       if (item.id === "orders") setShowOrders(true);
-                      else if (item.id === "wishlist") router.push("/(tabs)/wishlist");
+                      else if (item.id === "wishlist") router.push("/wishlist");
                     }}
                     testID={`menu-${item.id}`}
                   >
