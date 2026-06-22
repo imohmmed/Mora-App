@@ -68,9 +68,11 @@ router.post("/store/orders", (req, res) => {
     } catch { /* ignore */ }
   }
 
+  const paymentMethod = (b["paymentMethod"] as string) ?? "cod";
+
   db.prepare(
-    `INSERT INTO orders (id,order_number,customer_id,email,status,financial_status,fulfillment_status,subtotal,shipping,tax,total,currency,shipping_address,line_items,note,tags,is_draft,is_abandoned,delivery_stage,created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    `INSERT INTO orders (id,order_number,customer_id,email,status,financial_status,fulfillment_status,subtotal,shipping,tax,total,currency,shipping_address,line_items,note,tags,is_draft,is_abandoned,delivery_stage,payment_method,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).run(
     id, orderNum, customerId, email,
     "pending", "pending", "unfulfilled",
@@ -78,7 +80,7 @@ router.post("/store/orders", (req, res) => {
     JSON.stringify(b["shippingAddress"] ?? {}),
     JSON.stringify(b["lineItems"] ?? []),
     (b["note"] as string) ?? "", "[]",
-    0, 0, "confirmed", now, now
+    0, 0, "confirmed", paymentMethod, now, now
   );
 
   if (customerId) {
