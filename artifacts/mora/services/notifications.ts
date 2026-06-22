@@ -4,11 +4,22 @@
  * Works in both Expo Go (limited) and Development Build (full).
  */
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 
 let Notifications: typeof import("expo-notifications") | null = null;
 try {
   Notifications = require("expo-notifications");
 } catch {}
+
+/** Resolve the EAS projectId required by getExpoPushTokenAsync in production builds. */
+function getProjectId(): string | undefined {
+  return (
+    process.env.EXPO_PUBLIC_PROJECT_ID ||
+    (Constants.expoConfig?.extra?.eas?.projectId as string | undefined) ||
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((Constants as any).easConfig?.projectId as string | undefined)
+  );
+}
 
 function getApiBase(): string {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -41,7 +52,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 
     if (finalStatus !== "granted") return null;
 
-    const projectId = process.env.EXPO_PUBLIC_PROJECT_ID;
+    const projectId = getProjectId();
     const tokenData = await Notifications.getExpoPushTokenAsync(
       projectId ? { projectId } : undefined
     );
