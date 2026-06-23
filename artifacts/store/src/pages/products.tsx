@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchProducts } from "@/lib/api";
+import { fetchProducts, getShippingRules } from "@/lib/api";
 import { ProductCard } from "@/components/ui/ProductCard";
 import { Layout } from "@/components/layout/Layout";
 import { useSearch, useLocation } from "wouter";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Grid, List, SlidersHorizontal, X, ChevronDown } from "lucide-react";
+import { Grid, List, SlidersHorizontal, X, ChevronDown, Truck } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Product } from "@/lib/types";
 
@@ -305,6 +305,13 @@ export default function Products() {
     queryFn: () => fetchProducts({ category: category || undefined, limit: 50 }),
   });
 
+  const { data: shippingRules = [] } = useQuery({
+    queryKey: ["shipping-rules"],
+    queryFn: getShippingRules,
+  });
+
+  const shippingBanner = shippingRules.find((r) => r.enabled)?.textEn;
+
   const clearFilters = () => {
     setFilters(DEFAULT_FILTERS);
     setPage(1);
@@ -352,6 +359,12 @@ export default function Products() {
           </div>
 
           <div className="flex-1">
+            {shippingBanner && (
+              <div className="mb-6 flex items-center gap-2 bg-primary/10 border border-primary/20 text-primary text-sm font-medium px-4 py-2.5 rounded">
+                <Truck className="h-4 w-4 flex-shrink-0" />
+                <span>{shippingBanner}</span>
+              </div>
+            )}
             <div className="flex flex-wrap gap-4 justify-between items-center mb-6">
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold uppercase tracking-tighter">

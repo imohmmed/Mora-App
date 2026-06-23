@@ -66,23 +66,51 @@ router.post("/store/orders", (req, res) => {
   const orderNum = `#${1000 + count + 1}`;
 
   const subtotal = Number(b["subtotal"]) || 0;
-  const shipping = Number(b["shipping"]) || 0;
+
+  const lineItems = (b["lineItems"] as Array<{ quantity?: number }> | undefined) ?? [];
+  const itemCount = lineItems.reduce((n, it) => n + (Number(it?.quantity) || 0), 0);
+
+  // ── Shipping: compute from the selected governorate (server-authoritative) ──
+  // The client-sent `shipping` is never trusted; price is derived only from the
+  // selected enabled zone. A valid governorate is required.
+  const governorate = ((b["governorate"] as string) ?? "").trim();
+  if (!governorate) {
+    res.status(400).json({ data: null, meta: {}, error: "governorate is required" });
+    return;
+  }
+  const zone = db.prepare(
+    `SELECT price FROM shipping_zones WHERE enabled=1 AND lower(governorate)=lower(?)`,
+  ).get(governorate) as Row | undefined;
+  if (!zone) {
+    res.status(400).json({ data: null, meta: {}, error: "Invalid or unavailable governorate" });
+    return;
+  }
+  let shipping = Number(zone["price"]) || 0;
 
   // ── Discount: re-validate server-side (never trust a client-sent amount) ──
   const discountCode = ((b["discountCode"] as string) ?? "").trim();
   let discountAmount = 0;
   let appliedCode: string | null = null;
+  let freeShipping = false;
   if (discountCode) {
-    const lineItems = (b["lineItems"] as Array<{ quantity?: number }> | undefined) ?? [];
-    const itemCount = lineItems.reduce((n, it) => n + (Number(it?.quantity) || 0), 0);
     const result = validateDiscount(discountCode, subtotal, itemCount);
     if (!result.ok) {
       res.status(400).json({ data: null, meta: {}, error: result.error ?? "Invalid discount code" });
       return;
     }
     discountAmount = result.discountAmount;
+    if (result.freeShipping) freeShipping = true;
     appliedCode = (result.discount?.["code"] as string) ?? discountCode.toUpperCase();
   }
+
+  // ── Free-delivery rule: any enabled rule whose threshold is met zeroes shipping ──
+  if (!freeShipping) {
+    const rule = db.prepare(
+      `SELECT id FROM shipping_rules WHERE enabled=1 AND threshold IS NOT NULL AND threshold <= ? LIMIT 1`,
+    ).get(subtotal) as Row | undefined;
+    if (rule) freeShipping = true;
+  }
+  if (freeShipping) shipping = 0;
 
   const total = Math.max(0, subtotal + shipping - discountAmount);
 

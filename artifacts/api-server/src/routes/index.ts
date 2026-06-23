@@ -16,6 +16,7 @@ import waylRouter from "./wayl.js";
 import adminAuthRouter from "./admin-auth.js";
 import webhooksRouter from "./webhooks.js";
 import uploadsRouter from "./uploads.js";
+import shippingRouter from "./shipping.js";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(storiesRouter);
 router.use(contentRouter);
 router.use(notificationsRouter);
 router.use(webhooksRouter);
+router.use(shippingRouter);
 
 export default router;

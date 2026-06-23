@@ -22,7 +22,9 @@ import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useNotification } from "@/context/NotificationContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { formatIQD } from "@/lib/format";
+import { fetchShippingZones, fetchShippingRules, type ShippingZone, type ShippingRule } from "@/lib/api";
 import { CompactPicker } from "@/components/CompactPicker";
 import { GlassBackButton } from "@/components/GlassBackButton";
 
@@ -35,13 +37,6 @@ const PAYMENT_LOGOS = [
   { key: "fib",        src: require("@/assets/payment/fib.jpeg")       as number },
   { key: "qicard",     src: require("@/assets/payment/qicard.png")     as number },
 ];
-
-const IRAQ_GOVERNORATES = [
-  "بغداد", "البصرة", "نينوى", "أربيل", "السليمانية",
-  "الأنبار", "ديالى", "كركوك", "بابل", "كربلاء",
-  "النجف", "ذي قار", "ميسان", "المثنى", "القادسية",
-  "صلاح الدين", "واسط", "دهوك",
-].map((g) => ({ label: g, value: g }));
 
 function getBaseUrl() {
   const d = process.env.EXPO_PUBLIC_DOMAIN;
@@ -93,21 +88,31 @@ export default function CheckoutScreen() {
   const { user, token, isLoading } = useAuth();
   const { items, subtotal, clearCart } = useCart();
   const { startOrderActivity } = useNotification();
+  const { lang } = useLanguage();
 
   const [form, setForm] = useState<FormState>({ name: "", phone: "", city: "", district: "", street: "", note: "" });
   const [payMethod, setPayMethod] = useState<PayMethod>("cod");
   const [submitting, setSubmitting] = useState(false);
-  const [showCityPicker, setShowCityPicker] = useState(false);
+  const [showGovPicker, setShowGovPicker] = useState(false);
+
+  // Shipping state
+  const [zones, setZones] = useState<ShippingZone[]>([]);
+  const [rules, setRules] = useState<ShippingRule[]>([]);
+  const [selectedZone, setSelectedZone] = useState<ShippingZone | null>(null);
 
   // Discount code state
   const [discountInput, setDiscountInput] = useState("");
   const [applyingDiscount, setApplyingDiscount] = useState(false);
-  const [discount, setDiscount] = useState<{ code: string; amount: number } | null>(null);
+  const [discount, setDiscount] = useState<{ code: string; amount: number; freeShipping?: boolean } | null>(null);
   const [discountError, setDiscountError] = useState<string | null>(null);
 
   const itemCount = items.reduce((n, i) => n + i.quantity, 0);
   const discountAmount = discount?.amount ?? 0;
-  const grandTotal = Math.max(0, subtotal - discountAmount);
+  const enabledThresholds = rules.map((r) => r.threshold).filter((t): t is number => t != null);
+  const freeShipThreshold = enabledThresholds.length ? Math.min(...enabledThresholds) : null;
+  const freeShipping = (discount?.freeShipping ?? false) || (freeShipThreshold != null && subtotal >= freeShipThreshold);
+  const shipping = freeShipping ? 0 : (selectedZone?.price ?? 0);
+  const grandTotal = Math.max(0, subtotal + shipping - discountAmount);
   // Holds the created order + Wayl link for online payments so a retry after a
   // failed/abandoned payment reuses the same order instead of creating a new one.
   const [pendingOnline, setPendingOnline] = useState<{
@@ -136,6 +141,11 @@ export default function CheckoutScreen() {
     }));
   }, [user, isLoading]);
 
+  useEffect(() => {
+    fetchShippingZones().then(setZones).catch(() => {});
+    fetchShippingRules().then(setRules).catch(() => {});
+  }, []);
+
   const set = (key: keyof FormState) => (val: string) => setForm((f) => ({ ...f, [key]: val }));
 
   const buildSnapshot = () =>
@@ -163,13 +173,13 @@ export default function CheckoutScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, subtotal, itemCount }),
       });
-      const json = await res.json() as { data: { code?: string; discountAmount?: number } | null; error?: string };
+      const json = await res.json() as { data: { code?: string; discountAmount?: number; type?: string } | null; error?: string };
       if (!res.ok || !json.data) {
         setDiscount(null);
         setDiscountError(json.error || "Invalid discount code");
         return;
       }
-      setDiscount({ code: json.data.code || code.toUpperCase(), amount: Number(json.data.discountAmount) || 0 });
+      setDiscount({ code: json.data.code || code.toUpperCase(), amount: Number(json.data.discountAmount) || 0, freeShipping: json.data.type === "free_shipping" });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
       setDiscount(null);
@@ -192,7 +202,8 @@ export default function CheckoutScreen() {
       body: JSON.stringify({
         email: user?.email || "",
         subtotal,
-        shipping: 0,
+        shipping,
+        governorate: selectedZone?.governorate ?? "",
         discountCode: discount?.code,
         shippingAddress: { fullName: form.name, phone: form.phone, city: form.city, district: form.district, street: form.street },
         lineItems: items.map((i) => ({ productId: i.productId, variantId: i.variantId, title: i.title, quantity: i.quantity, price: i.price, size: i.size, color: i.color, image: i.image })),
@@ -245,7 +256,7 @@ export default function CheckoutScreen() {
   const handlePlaceOrder = async () => {
     if (!form.name.trim())     { Alert.alert("Missing", "Please enter your name"); return; }
     if (!form.phone.trim())    { Alert.alert("Missing", "Please enter your phone"); return; }
-    if (!form.city.trim())     { Alert.alert("Missing", "Please enter your city"); return; }
+    if (!selectedZone)         { Alert.alert(lang === "ar" ? "مطلوب" : "Missing", lang === "ar" ? "يرجى اختيار المحافظة" : "Please select your governorate"); return; }
     if (!form.district.trim()) { Alert.alert("Missing", "Please enter your district/area"); return; }
     if (items.length === 0)    { Alert.alert("Empty Cart", "Your cart is empty"); return; }
 
@@ -410,10 +421,10 @@ export default function CheckoutScreen() {
             <Divider color={divClr} />
             <FieldRow label="Phone"            value={form.phone}    onChangeText={set("phone")}    placeholder="+964 770 000 0000"  textCol={textCol} sub={sub} isDark={isDark} keyboardType="phone-pad" />
             <Divider color={divClr} />
-            <Pressable style={st.fieldRow} onPress={() => setShowCityPicker(true)}>
-              <Text style={[st.fieldLbl, { color: sub }]}>City</Text>
+            <Pressable style={st.fieldRow} onPress={() => setShowGovPicker(true)}>
+              <Text style={[st.fieldLbl, { color: sub }]}>{lang === "ar" ? "المحافظة" : "Governorate"}</Text>
               <Text style={[st.fieldInput, { color: form.city ? textCol : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)") }]}>
-                {form.city || "Select city..."}
+                {form.city || (lang === "ar" ? "اختر المحافظة..." : "Select governorate...")}
               </Text>
               <Feather name="chevron-down" size={15} color={sub} />
             </Pressable>
@@ -556,19 +567,29 @@ export default function CheckoutScreen() {
                 <Text style={{ fontSize: 13, fontWeight: "700", color: "#22C55E" }}>−{formatIQD(discountAmount)}</Text>
               </View>
             )}
-            <View style={st.totalRow}><Text style={[st.totalLbl, { color: sub }]}>Shipping</Text><Text style={{ fontSize: 13, fontWeight: "600", color: "#22C55E" }}>Free</Text></View>
+            <View style={st.totalRow}>
+              <Text style={[st.totalLbl, { color: sub }]}>{lang === "ar" ? "الشحن" : "Shipping"}</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: shipping === 0 ? "#22C55E" : textCol }}>
+                {shipping === 0 ? (lang === "ar" ? "مجاني" : "Free") : formatIQD(shipping)}
+              </Text>
+            </View>
             <View style={st.totalRow}><Text style={[st.totalLbl, { color: textCol }]}>Total</Text><Text style={[st.totalAmt, { color: PRIMARY }]}>{formatIQD(grandTotal)}</Text></View>
           </View>
 
         </ScrollView>
 
         <CompactPicker
-          visible={showCityPicker}
-          title="Select Governorate"
-          options={IRAQ_GOVERNORATES}
-          selectedValue={form.city}
-          onSelect={(val) => { set("city")(val); setShowCityPicker(false); }}
-          onCancel={() => setShowCityPicker(false)}
+          visible={showGovPicker}
+          title={lang === "ar" ? "اختر المحافظة" : "Select Governorate"}
+          options={zones.map((z) => ({ label: lang === "ar" ? (z.governorateAr || z.governorate) : z.governorate, value: z.governorate }))}
+          selectedValue={selectedZone?.governorate}
+          onSelect={(val) => {
+            const z = zones.find((zo) => zo.governorate === val) ?? null;
+            setSelectedZone(z);
+            if (z) set("city")(lang === "ar" ? (z.governorateAr || z.governorate) : z.governorate);
+            setShowGovPicker(false);
+          }}
+          onCancel={() => setShowGovPicker(false)}
         />
 
         <View style={[

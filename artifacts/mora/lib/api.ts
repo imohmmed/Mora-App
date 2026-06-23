@@ -185,3 +185,29 @@ export async function fetchSpecialCollection(
   };
   return { ...json.data, meta: json.meta as { total: number; pages: number } };
 }
+
+export type ShippingZone = {
+  id: string;
+  governorate: string;
+  governorateAr: string;
+  price: number;
+  sortOrder: number;
+  enabled: boolean;
+};
+
+export type ShippingRule = {
+  id: string;
+  textEn: string;
+  textAr: string;
+  threshold: number | null;
+  enabled: boolean;
+  sortOrder: number;
+};
+
+export async function fetchShippingZones(): Promise<ShippingZone[]> {
+  return apiFetch<ShippingZone[]>("/store/shipping-zones");
+}
+
+export async function fetchShippingRules(): Promise<ShippingRule[]> {
+  return apiFetch<ShippingRule[]>("/store/shipping-rules");
+}

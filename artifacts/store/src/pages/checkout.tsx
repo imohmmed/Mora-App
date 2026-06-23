@@ -1,12 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { useCart } from "@/hooks/use-cart";
 import { useStoreAuth } from "@/hooks/use-store-auth";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { getShippingZones, getShippingRules, type ShippingZone } from "@/lib/api";
 import {
   Check, ArrowLeft, Loader2, Eye, EyeOff,
   ShoppingBag, User, Package,
@@ -209,7 +214,19 @@ function LoginGate({
 }
 
 // ── Order sidebar ─────────────────────────────────────────────────────────────
-function OrderSidebar({ items, subtotal }: { items: ReturnType<typeof useCart>["items"]; subtotal: number }) {
+function OrderSidebar({
+  items,
+  subtotal,
+  shipping,
+  shippingFree,
+  hasGovernorate,
+}: {
+  items: ReturnType<typeof useCart>["items"];
+  subtotal: number;
+  shipping: number;
+  shippingFree: boolean;
+  hasGovernorate: boolean;
+}) {
   return (
     <div className="lg:w-2/5">
       <div className="border border-border bg-secondary/30 p-6 sticky top-24">
@@ -248,11 +265,17 @@ function OrderSidebar({ items, subtotal }: { items: ReturnType<typeof useCart>["
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Shipping</span>
-            <span className="text-green-600 font-semibold">Free</span>
+            {!hasGovernorate ? (
+              <span className="text-muted-foreground">Select governorate</span>
+            ) : shippingFree ? (
+              <span className="text-green-600 font-semibold">Free</span>
+            ) : (
+              <span className="font-medium">{fmtIQD(shipping)}</span>
+            )}
           </div>
           <div className="flex justify-between font-bold text-base border-t border-border pt-3 mt-1">
             <span>Total</span>
-            <span>{fmtIQD(subtotal)}</span>
+            <span>{fmtIQD(subtotal + (hasGovernorate ? shipping : 0))}</span>
           </div>
         </div>
       </div>
@@ -272,6 +295,36 @@ export default function Checkout() {
   const [form, setForm] = useState<FormState>({
     name: "", phone: "", city: "", district: "", street: "", note: "",
   });
+
+  const [governorate, setGovernorate] = useState<string>("");
+
+  const { data: shippingZones = [] } = useQuery({
+    queryKey: ["shipping-zones"],
+    queryFn: getShippingZones,
+  });
+
+  const { data: shippingRules = [] } = useQuery({
+    queryKey: ["shipping-rules"],
+    queryFn: getShippingRules,
+  });
+
+  // Smallest enabled rule threshold (threshold != null)
+  const freeShippingThreshold = useMemo(() => {
+    const thresholds = shippingRules
+      .filter((r) => r.enabled && r.threshold != null)
+      .map((r) => r.threshold as number);
+    return thresholds.length > 0 ? Math.min(...thresholds) : null;
+  }, [shippingRules]);
+
+  const selectedZone: ShippingZone | undefined = useMemo(
+    () => shippingZones.find((z) => z.governorate === governorate),
+    [shippingZones, governorate],
+  );
+
+  const shippingFree =
+    freeShippingThreshold != null && total >= freeShippingThreshold;
+
+  const shipping = shippingFree ? 0 : (selectedZone?.price ?? 0);
 
 
   // Auto-fill form from user profile
@@ -293,6 +346,10 @@ export default function Checkout() {
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!governorate) {
+      setPlaceError("Please select a governorate.");
+      return;
+    }
     setPlacing(true); setPlaceError("");
     try {
       const res = await fetch(`${BASE}/store/orders`, {
@@ -303,7 +360,7 @@ export default function Checkout() {
         },
         body: JSON.stringify({
           email: user?.email || "",
-          subtotal: total, shipping: 0,
+          subtotal: total, shipping, governorate,
           shippingAddress: { fullName: form.name, phone: form.phone, city: form.city, district: form.district, street: form.street },
           lineItems: items.map((i) => ({ variantId: i.variantId, title: i.title, quantity: i.quantity, price: i.price, option1: i.option1, option2: i.option2, image: i.image })),
           paymentMethod: "cod", note: form.note,
@@ -427,6 +484,29 @@ export default function Checkout() {
                   </div>
 
                   <div className="space-y-2">
+                    <Label>Governorate</Label>
+                    <Select value={governorate} onValueChange={setGovernorate}>
+                      <SelectTrigger className="h-12">
+                        <SelectValue placeholder="Select your governorate" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {shippingZones.map((zone) => (
+                          <SelectItem key={zone.id} value={zone.governorate}>
+                            {zone.governorate} · {fmtIQD(zone.price)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {governorate && (
+                      <p className="text-xs text-muted-foreground">
+                        {shippingFree
+                          ? <span className="text-green-600 font-semibold">Free shipping applied</span>
+                          : `Shipping: ${fmtIQD(shipping)}`}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
                     <Label>Street <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
                     <Input className="h-12" value={form.street} onChange={upd("street")} placeholder="Street 14, Building 3" />
                   </div>
@@ -463,18 +543,24 @@ export default function Checkout() {
                     </motion.div>
                   )}
 
-                  <Button type="submit" disabled={placing}
+                  <Button type="submit" disabled={placing || !governorate}
                     className="w-full h-14 text-base uppercase font-bold tracking-wider gap-2"
                   >
                     {placing
                       ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order…</>
-                      : <><Check className="h-4 w-4" /> Place Order · {fmtIQD(total)}</>
+                      : <><Check className="h-4 w-4" /> Place Order · {fmtIQD(total + shipping)}</>
                     }
                   </Button>
                 </form>
               </div>
 
-              <OrderSidebar items={items} subtotal={total} />
+              <OrderSidebar
+                items={items}
+                subtotal={total}
+                shipping={shipping}
+                shippingFree={shippingFree}
+                hasGovernorate={!!governorate}
+              />
             </motion.div>
           )}
 

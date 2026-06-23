@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAdminCreateDiscount } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
+import { getAdminToken } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,7 @@ export default function NewDiscount() {
 
   const [form, setForm] = useState({
     code: "",
-    type: "percentage" as "percentage" | "fixed",
+    type: "percentage" as "percentage" | "fixed" | "free_shipping",
     value: "",
     hasLimit: false,
     usageLimit: "",
@@ -41,10 +42,13 @@ export default function NewDiscount() {
   const set = (key: keyof typeof form, value: string | boolean) =>
     setForm((f) => ({ ...f, [key]: value }));
 
+  const [submitting, setSubmitting] = useState(false);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const value = parseFloat(form.value);
-    if (!form.code || isNaN(value) || value <= 0) {
+    const isFreeShipping = form.type === "free_shipping";
+    const value = isFreeShipping ? 0 : parseFloat(form.value);
+    if (!form.code || (!isFreeShipping && (isNaN(value) || value <= 0))) {
       toast({ title: "Missing fields", description: "Code and value are required.", variant: "destructive" });
       return;
     }
@@ -52,33 +56,58 @@ export default function NewDiscount() {
       toast({ title: "Invalid value", description: "Percentage cannot exceed 100%.", variant: "destructive" });
       return;
     }
+
+    const payload = {
+      code: form.code.toUpperCase(),
+      type: form.type,
+      value,
+      usageLimit: form.hasLimit && form.usageLimit ? parseInt(form.usageLimit, 10) : null,
+      minSubtotal: form.hasMinSubtotal && form.minSubtotal ? parseFloat(form.minSubtotal) : null,
+      minItems: form.hasMinItems && form.minItems ? parseInt(form.minItems, 10) : null,
+      maxDiscount: form.type === "percentage" && form.hasMaxDiscount && form.maxDiscount ? parseFloat(form.maxDiscount) : null,
+      endsAt: form.hasEnd && form.endsAt ? form.endsAt : null,
+    };
+
+    const onCreated = () => {
+      toast({ title: "Discount created" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/discounts"] });
+      navigate("/discounts");
+    };
+    const onFail = () =>
+      toast({ title: "Error", description: "Failed to create discount.", variant: "destructive" });
+
+    // The generated client's enum is limited to percentage/fixed, so free_shipping
+    // is sent via a raw fetch to avoid the strict type rejection.
+    if (isFreeShipping) {
+      setSubmitting(true);
+      fetch("/api/admin/discounts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getAdminToken()}`,
+        },
+        body: JSON.stringify(payload),
+      })
+        .then(async (res) => {
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || json?.error) throw new Error(json?.error || "Failed");
+          onCreated();
+        })
+        .catch(onFail)
+        .finally(() => setSubmitting(false));
+      return;
+    }
+
     createDiscount.mutate(
-      {
-        data: {
-          code: form.code.toUpperCase(),
-          type: form.type,
-          value,
-          usageLimit: form.hasLimit && form.usageLimit ? parseInt(form.usageLimit, 10) : null,
-          minSubtotal: form.hasMinSubtotal && form.minSubtotal ? parseFloat(form.minSubtotal) : null,
-          minItems: form.hasMinItems && form.minItems ? parseInt(form.minItems, 10) : null,
-          maxDiscount: form.type === "percentage" && form.hasMaxDiscount && form.maxDiscount ? parseFloat(form.maxDiscount) : null,
-          endsAt: form.hasEnd && form.endsAt ? form.endsAt : null,
-        },
-      },
-      {
-        onSuccess: () => {
-          toast({ title: "Discount created" });
-          queryClient.invalidateQueries({ queryKey: ["/api/admin/discounts"] });
-          navigate("/discounts");
-        },
-        onError: () =>
-          toast({ title: "Error", description: "Failed to create discount.", variant: "destructive" }),
-      }
+      { data: payload as Parameters<typeof createDiscount.mutate>[0]["data"] },
+      { onSuccess: onCreated, onError: onFail }
     );
   };
 
   const preview =
-    form.value
+    form.type === "free_shipping"
+      ? "Free shipping"
+      : form.value
       ? form.type === "percentage"
         ? `${form.value}% off`
         : `${parseFloat(form.value || "0").toLocaleString("en-US")} IQD off`
@@ -133,38 +162,46 @@ export default function NewDiscount() {
             <CardContent className="space-y-4">
               <div className="grid gap-2">
                 <Label>Discount Type</Label>
-                <Select value={form.type} onValueChange={(v: "percentage" | "fixed") => set("type", v)}>
+                <Select value={form.type} onValueChange={(v: "percentage" | "fixed" | "free_shipping") => set("type", v)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="percentage">Percentage (%)</SelectItem>
                     <SelectItem value="fixed">Fixed Amount (IQD)</SelectItem>
+                    <SelectItem value="free_shipping">Free Shipping</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="value">
-                  {form.type === "percentage" ? "Percentage Off *" : "Amount Off (IQD) *"}
-                </Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                    {form.type === "percentage" ? "%" : "IQD"}
-                  </span>
-                  <Input
-                    id="value"
-                    type="number"
-                    step={form.type === "percentage" ? "1" : "250"}
-                    min="0"
-                    max={form.type === "percentage" ? "100" : undefined}
-                    className={form.type === "percentage" ? "pl-8" : "pl-12"}
-                    placeholder={form.type === "percentage" ? "10" : "5000"}
-                    value={form.value}
-                    onChange={(e) => set("value", e.target.value)}
-                    required
-                  />
+              {form.type === "free_shipping" ? (
+                <p className="text-sm text-muted-foreground">
+                  This code makes delivery free. Add conditions below (e.g. a minimum order
+                  subtotal) to control when it applies.
+                </p>
+              ) : (
+                <div className="grid gap-2">
+                  <Label htmlFor="value">
+                    {form.type === "percentage" ? "Percentage Off *" : "Amount Off (IQD) *"}
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                      {form.type === "percentage" ? "%" : "IQD"}
+                    </span>
+                    <Input
+                      id="value"
+                      type="number"
+                      step={form.type === "percentage" ? "1" : "250"}
+                      min="0"
+                      max={form.type === "percentage" ? "100" : undefined}
+                      className={form.type === "percentage" ? "pl-8" : "pl-12"}
+                      placeholder={form.type === "percentage" ? "10" : "5000"}
+                      value={form.value}
+                      onChange={(e) => set("value", e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
               {form.type === "percentage" && (
                 <div className="grid gap-2">
                   <div className="flex items-center justify-between">
@@ -332,8 +369,8 @@ export default function NewDiscount() {
                 <span>{form.hasEnd ? (form.endsAt || "—") : "No end date"}</span>
               </div>
               <div className="pt-3 border-t space-y-2">
-                <Button type="submit" disabled={createDiscount.isPending} className="w-full">
-                  {createDiscount.isPending ? "Saving..." : "Create Discount"}
+                <Button type="submit" disabled={createDiscount.isPending || submitting} className="w-full">
+                  {createDiscount.isPending || submitting ? "Saving..." : "Create Discount"}
                 </Button>
                 <Button type="button" variant="outline" className="w-full" onClick={() => navigate("/discounts")}>
                   Cancel

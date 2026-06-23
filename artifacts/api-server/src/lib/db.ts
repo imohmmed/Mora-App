@@ -1072,4 +1072,76 @@ db.exec(`
   }
 }
 
+// ─── Shipping: per-governorate delivery pricing + free-delivery rules ──────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS shipping_zones (
+    id             TEXT PRIMARY KEY,
+    governorate    TEXT NOT NULL,
+    governorate_ar TEXT NOT NULL DEFAULT '',
+    price          REAL NOT NULL DEFAULT 0,
+    sort_order     INTEGER NOT NULL DEFAULT 0,
+    enabled        INTEGER NOT NULL DEFAULT 1
+  );
+
+  CREATE TABLE IF NOT EXISTS shipping_rules (
+    id         TEXT PRIMARY KEY,
+    text_en    TEXT NOT NULL DEFAULT '',
+    text_ar    TEXT NOT NULL DEFAULT '',
+    threshold  REAL,
+    enabled    INTEGER NOT NULL DEFAULT 1,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+`);
+
+// Seed the 18 Iraqi governorates once (independent of the product seed so an
+// existing production DB also gets them on first deploy of this feature).
+{
+  const n = (db.prepare(`SELECT COUNT(*) AS n FROM shipping_zones`).get() as { n: number }).n;
+  if (n === 0) {
+    const govs: Array<[string, string, number]> = [
+      ["Baghdad", "بغداد", 4000],
+      ["Basra", "البصرة", 6000],
+      ["Nineveh", "نينوى", 6000],
+      ["Erbil", "أربيل", 6000],
+      ["Kirkuk", "كركوك", 5000],
+      ["Najaf", "النجف", 5000],
+      ["Karbala", "كربلاء", 5000],
+      ["Babil", "بابل", 5000],
+      ["Diyala", "ديالى", 5000],
+      ["Anbar", "الأنبار", 6000],
+      ["Dhi Qar", "ذي قار", 6000],
+      ["Maysan", "ميسان", 6000],
+      ["Muthanna", "المثنى", 6000],
+      ["Diwaniyah", "الديوانية", 5000],
+      ["Wasit", "واسط", 5000],
+      ["Saladin", "صلاح الدين", 5000],
+      ["Dohuk", "دهوك", 7000],
+      ["Sulaymaniyah", "السليمانية", 7000],
+    ];
+    const ins = db.prepare(
+      `INSERT INTO shipping_zones (id,governorate,governorate_ar,price,sort_order,enabled) VALUES (?,?,?,?,?,1)`,
+    );
+    govs.forEach((g, i) => ins.run(`sz_${i + 1}`, g[0], g[1], g[2], i));
+  }
+}
+
+// Seed one default free-delivery rule once.
+{
+  const n = (db.prepare(`SELECT COUNT(*) AS n FROM shipping_rules`).get() as { n: number }).n;
+  if (n === 0) {
+    db.prepare(
+      `INSERT INTO shipping_rules (id,text_en,text_ar,threshold,enabled,sort_order,created_at) VALUES (?,?,?,?,?,?,?)`,
+    ).run(
+      "sr_1",
+      "Free delivery on orders over 100,000 IQD",
+      "توصيل مجاني للطلبات فوق 100,000 دينار",
+      100000,
+      1,
+      0,
+      new Date().toISOString(),
+    );
+  }
+}
+
 export default db;

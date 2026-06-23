@@ -26,6 +26,7 @@ import { formatIQD } from "@/lib/format";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import { ProductPreviewModal } from "@/components/ProductPreviewModal";
+import { ShippingRulesNote } from "@/components/ShippingRulesNote";
 import type { Product, Variant } from "@/lib/types";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -347,6 +348,7 @@ export default function SearchScreen() {
           ) : undefined
         }
       >
+        <ShippingRulesNote style={styles.shippingRules} />
         {!showResults ? (
           <>
             {/* ── Trending keywords ── */}
@@ -479,6 +481,7 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
+  shippingRules: { paddingHorizontal: 16, paddingTop: 14 },
   searchInputRow: {
     flexDirection: "row",
     alignItems: "center",

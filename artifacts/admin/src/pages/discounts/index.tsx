@@ -72,10 +72,12 @@ export default function Discounts() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <span className="capitalize">{discount.type}</span>
+                    <span className="capitalize">{discount.type.replace("_", " ")}</span>
                     {" · "}
                     <span className="font-medium">
-                      {discount.type === "percentage"
+                      {discount.type === "free_shipping"
+                        ? "Free shipping"
+                        : discount.type === "percentage"
                         ? `${discount.value}% off`
                         : `${discount.value.toLocaleString("en-US")} IQD off`}
                     </span>

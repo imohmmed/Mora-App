@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, ShoppingCart, Package, Users, FolderTree, Tags, FileText,
   Settings, BarChart3, ChevronDown, ChevronRight, UserSearch, Boxes, File,
-  List as ListIcon, Warehouse, Bell,
+  List as ListIcon, Warehouse, Bell, Truck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth, type AdminPermissions } from "@/context/AdminAuthContext";
@@ -71,7 +71,8 @@ const NAV: NavSection[] = [
   },
 ];
 
-const BOTTOM: (NavLeaf & { icon: React.ElementType })[] = [
+const BOTTOM: (NavLeaf & { icon: React.ElementType; permission?: keyof AdminPermissions })[] = [
+  { href: "/settings/shipping", label: "Shipping", icon: Truck, permission: "settings" },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -153,7 +154,7 @@ export function SidebarContent() {
       </nav>
 
       <div className="p-2 border-t flex-shrink-0">
-        {BOTTOM.map((item) => renderLeaf(item))}
+        {BOTTOM.filter((item) => !item.permission || hasPermission(item.permission)).map((item) => renderLeaf(item))}
       </div>
     </>
   );

@@ -29,6 +29,7 @@ import { useWishlist } from "@/context/WishlistContext";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import { BlurView } from "expo-blur";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
+import { ShippingRulesNote } from "@/components/ShippingRulesNote";
 import { ReelPlayer } from "@/components/ReelPlayer";
 import type { ContentSectionItem } from "@/lib/api";
 import type { Variant, Product } from "@/lib/types";
@@ -563,13 +564,8 @@ export default function ProductDetailScreen() {
               </Text>
             </Pressable>
 
-            {/* Delivery info */}
-            <View style={[styles.deliveryRow, { borderColor: colors.border }]}>
-              <Feather name="package" size={14} color={PRIMARY} />
-              <Text style={[styles.deliveryText, { color: colors.mutedForeground }]}>
-                Free delivery on orders over 100,000 IQD
-              </Text>
-            </View>
+            {/* Shipping rules */}
+            <ShippingRulesNote style={[styles.deliveryRow, { borderTopColor: colors.border }]} />
           </View>
 
           {/* ── Instagram Reel ── */}

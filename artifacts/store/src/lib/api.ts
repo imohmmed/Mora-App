@@ -93,3 +93,35 @@ export async function fetchStoreSettings() {
   const json = await res.json() as ApiResponse<StoreSettings>;
   return { settings: json.data };
 }
+
+export type ShippingZone = {
+  id: string;
+  governorate: string;
+  governorateAr: string;
+  price: number;
+  sortOrder: number;
+  enabled: boolean;
+};
+
+export type ShippingRule = {
+  id: string;
+  textEn: string;
+  textAr: string;
+  threshold: number | null;
+  enabled: boolean;
+  sortOrder: number;
+};
+
+export async function getShippingZones(): Promise<ShippingZone[]> {
+  const res = await fetch(`${BASE_URL}/store/shipping-zones`);
+  if (!res.ok) throw new Error("Failed to fetch shipping zones");
+  const json = await res.json() as ApiResponse<ShippingZone[]>;
+  return json.data ?? [];
+}
+
+export async function getShippingRules(): Promise<ShippingRule[]> {
+  const res = await fetch(`${BASE_URL}/store/shipping-rules`);
+  if (!res.ok) throw new Error("Failed to fetch shipping rules");
+  const json = await res.json() as ApiResponse<ShippingRule[]>;
+  return json.data ?? [];
+}

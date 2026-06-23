@@ -5,6 +5,8 @@ export interface DiscountValidation {
   ok: boolean;
   discount?: Row;
   discountAmount: number;
+  /** True for a `free_shipping` discount — the order route zeroes shipping. */
+  freeShipping?: boolean;
   error?: string;
 }
 
@@ -64,6 +66,13 @@ export function validateDiscount(
 
   // Compute the discount amount
   const type = disc["type"] as string;
+
+  // Free-shipping discount: carries no monetary value; it zeroes the order's
+  // shipping cost instead (handled in the order route via `freeShipping`).
+  if (type === "free_shipping") {
+    return { ok: true, discount: disc, discountAmount: 0, freeShipping: true };
+  }
+
   const value = (disc["value"] as number) ?? 0;
   let amount = type === "percentage" ? (subtotal * value) / 100 : value;
 
