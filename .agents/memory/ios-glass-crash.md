@@ -18,6 +18,8 @@ No JS ErrorBoundary or ErrorUtils.setGlobalHandler can catch it.
 The module registers `GlassView` as a Fabric native view; on iOS 26 beta, its
 `name()` accessor dereferences nil, causing SIGSEGV.
 
+**The `isGlassEffectAPIAvailable()` guard does NOT save us:** the expo-glass-effect docs added `isGlassEffectAPIAvailable()` (a JS runtime check) for iOS 26 beta. It is useless here because our crash is at *native module registration at startup, before JS runs* — a JS-level guard can't prevent it. Bundled version is still ~56.0.4 (the version that crashed). Do not reintroduce the package on the strength of that guard.
+
 **How to apply:**
 - `expo-glass-effect` is removed from `package.json`
 - All files set `const GlassViewComp: any = null` (existing View fallbacks used)

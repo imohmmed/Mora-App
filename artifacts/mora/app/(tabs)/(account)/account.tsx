@@ -27,6 +27,32 @@ const STAR_THRESHOLD = 200000;
 const STAR_SRC = require("@/assets/lottie/star.json");
 const STAR_BURST_SRC = require("@/assets/lottie/star-burst.json");
 
+// Glass surfaces: native (iOS/Android) get a glass/blur base; web keeps solid.
+const useGlassSurface = Platform.OS !== "web";
+const SURFACE_TINT_LIGHT = "rgba(235,245,255,0.5)";
+const SURFACE_TINT_DARK = "rgba(28,28,30,0.5)";
+
+/**
+ * GlassBase — Liquid Glass / blur base layer for a rounded surface.
+ * iOS 26+ : native SwiftUI glassEffect (LiquidGlassBg)
+ * iOS < 26 / Android : BlurView
+ * Web : nothing (caller keeps a solid background)
+ * The parent View/Pressable MUST have overflow:"hidden".
+ */
+function GlassBase({ isDark, intensity = 55 }: { isDark: boolean; intensity?: number }) {
+  if (isIOS26Plus) return <LiquidGlassBg />;
+  if (Platform.OS !== "web") {
+    return (
+      <BlurView
+        style={StyleSheet.absoluteFill}
+        intensity={intensity}
+        tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
+      />
+    );
+  }
+  return null;
+}
+
 /* ─────────────────────────────────────────────
    GUEST SCREEN
 ────────────────────────────────────────────── */
@@ -84,11 +110,12 @@ function GuestScreen({
           <Pressable
             style={({ pressed }) => [
               styles.joinBtn,
-              { borderColor: PRIMARY, opacity: pressed ? 0.85 : 1 },
+              { borderColor: PRIMARY, overflow: "hidden", opacity: pressed ? 0.85 : 1 },
             ]}
             onPress={onJoin}
             testID="btn-join"
           >
+            {useGlassSurface && <GlassBase isDark={isDark} intensity={45} />}
             <Text style={[styles.joinBtnText, { color: PRIMARY }]}>JOIN</Text>
           </Pressable>
         </View>
@@ -151,7 +178,11 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: botPad + 80 }}
       >
-        <View style={[styles.profileCard, { backgroundColor: card }]}>
+        <View style={[styles.profileCard, { backgroundColor: useGlassSurface ? "transparent" : card, overflow: "hidden" }]}>
+          {useGlassSurface && <GlassBase isDark={isDark} />}
+          {useGlassSurface && (
+            <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? SURFACE_TINT_DARK : SURFACE_TINT_LIGHT }]} />
+          )}
           <View style={[styles.avatar, { backgroundColor: PRIMARY }]}>
             <Text style={styles.avatarText}>{initials.toUpperCase()}</Text>
           </View>
@@ -202,7 +233,11 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
         ].map((section) => (
           <View key={section.title} style={styles.section}>
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{section.title}</Text>
-            <View style={[styles.sectionCard, { backgroundColor: card }]}>
+            <View style={[styles.sectionCard, { backgroundColor: useGlassSurface ? "transparent" : card }]}>
+              {useGlassSurface && <GlassBase isDark={isDark} />}
+              {useGlassSurface && (
+                <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? SURFACE_TINT_DARK : SURFACE_TINT_LIGHT }]} />
+              )}
               {section.items.map((item, idx) => {
                 const isLast = idx === section.items.length - 1;
                 return (
@@ -248,11 +283,12 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
         <Pressable
           style={({ pressed }) => [
             styles.signOutRow,
-            { borderColor: colors.border, marginHorizontal: 16, opacity: pressed ? 0.7 : 1 },
+            { borderColor: colors.border, marginHorizontal: 16, overflow: "hidden", opacity: pressed ? 0.7 : 1 },
           ]}
           onPress={logout}
           testID="btn-sign-out"
         >
+          {useGlassSurface && <GlassBase isDark={isDark} intensity={45} />}
           <Feather name="log-out" size={16} color="#DC2626" />
           <Text style={styles.signOutTxt}>Sign Out</Text>
         </Pressable>

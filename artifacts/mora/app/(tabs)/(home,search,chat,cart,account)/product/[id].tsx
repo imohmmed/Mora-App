@@ -553,11 +553,36 @@ export default function ProductDetailScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.addBtn,
-                { backgroundColor: added ? "#43A047" : PRIMARY, opacity: pressed ? 0.88 : 1 },
+                {
+                  backgroundColor: isIOS26Plus
+                    ? (added ? "rgba(67,160,71,0.55)" : "rgba(2,116,193,0.5)")
+                    : (!isIOS26Plus && Platform.OS !== "web"
+                        ? "transparent"
+                        : (added ? "#43A047" : PRIMARY)),
+                  overflow: "hidden",
+                  opacity: pressed ? 0.88 : 1,
+                },
               ]}
               onPress={handleAddToCart}
               testID="add-to-bag-btn"
             >
+              {isIOS26Plus && <LiquidGlassBg />}
+              {!isIOS26Plus && Platform.OS !== "web" && (
+                <>
+                  <BlurView
+                    style={StyleSheet.absoluteFill}
+                    intensity={50}
+                    tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
+                  />
+                  <View
+                    pointerEvents="none"
+                    style={[
+                      StyleSheet.absoluteFill,
+                      { backgroundColor: added ? "rgba(67,160,71,0.78)" : "rgba(2,116,193,0.78)" },
+                    ]}
+                  />
+                </>
+              )}
               <Feather name={added ? "check" : "shopping-bag"} size={18} color="#FFFFFF" />
               <Text style={styles.addBtnText}>
                 {added ? "ADDED TO BAG" : "ADD TO BAG"}
