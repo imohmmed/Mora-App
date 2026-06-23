@@ -1,0 +1,33 @@
+[Expo] Enabling modular headers for pod RNScreens
+[!] Invalid `Podfile` file: exit.
+ #  from /Users/expo/workingdir/build/artifacts/mora/ios/Podfile:45
+ #  -------------------------------------------
+ #  
+ >    config = use_native_modules!(config_command)
+ #  
+ #  -------------------------------------------
+[!] [Expo-precompiled] Failed to read external config at /Users/expo/workingdir/build/node_modules/.pnpm/expo-modules-autolinking@56.0.15_typescript@5.9.3/node_modules/expo-modules-autolinking/scripts/ios/../../external-configs/ios/react-native-reanimated/spm.config.json: Failed to invoke `expo-modules-autolinking react-native-config`: unexpected token at ''
+[!] [Expo-precompiled] Failed to read external config at /Users/expo/workingdir/build/node_modules/.pnpm/expo-modules-autolinking@56.0.15_typescript@5.9.3/node_modules/expo-modules-autolinking/scripts/ios/../../external-configs/ios/react-native-safe-area-context/spm.config.json: Failed to invoke `expo-modules-autolinking react-native-config`: unexpected token at ''
+[!] [Expo-precompiled] Failed to read external config at /Users/expo/workingdir/build/node_modules/.pnpm/expo-modules-autolinking@56.0.15_typescript@5.9.3/node_modules/expo-modules-autolinking/scripts/ios/../../external-configs/ios/react-native-screens/spm.config.json: Failed to invoke `expo-modules-autolinking react-native-config`: unexpected token at ''
+[!] [Expo-precompiled] Failed to read external config at /Users/expo/workingdir/build/node_modules/.pnpm/expo-modules-autolinking@56.0.15_typescript@5.9.3/node_modules/expo-modules-autolinking/scripts/ios/../../external-configs/ios/react-native-svg/spm.config.json: Failed to invoke `expo-modules-autolinking react-native-config`: unexpected token at ''
+[!] [Expo-precompiled] Failed to read external config at /Users/expo/workingdir/build/node_modules/.pnpm/expo-modules-autolinking@56.0.15_typescript@5.9.3/node_modules/expo-modules-autolinking/scripts/ios/../../external-configs/ios/react-native-worklets/spm.config.json: Failed to invoke `expo-modules-autolinking react-native-config`: unexpected token at ''
+[!] [Expo-precompiled] Failed to read external config at /Users/expo/workingdir/build/node_modules/.pnpm/expo-modules-autolinking@56.0.15_typescript@5.9.3/node_modules/expo-modules-autolinking/scripts/ios/../../external-configs/ios/@react-native-async-storage/async-storage/spm.config.json: Failed to invoke `expo-modules-autolinking react-native-config`: unexpected token at ''
+[!] [Expo-precompiled] Failed to read external config at /Users/expo/workingdir/build/node_modules/.pnpm/expo-modules-autolinking@56.0.15_typescript@5.9.3/node_modules/expo-modules-autolinking/scripts/ios/../../external-configs/ios/@shopify/react-native-skia/spm.config.json: Failed to invoke `expo-modules-autolinking react-native-config`: unexpected token at ''
+[!] The command: 'node --no-warnings --eval require('expo/bin/autolinking') expo-modules-autolinking react-native-config --json --platform ios' returned a status code of 1
+- In order to autolink using Cocoapods, this framework uses @react-native-community/cli to discover React Native native modules
+    - Please either add it: yarn add -D @react-native-community/cli or consult your framework's documentation.
+pod install exited with non-zero code: 1
+
+Clean up credentials
+
+754ms
+
+
+Fail job
+
+0ms
+
+
+Build failed
+
+pod install exited with non-zero code: 1
