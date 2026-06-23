@@ -77,7 +77,7 @@ export default function Discounts() {
                     <span className="font-medium">
                       {discount.type === "percentage"
                         ? `${discount.value}% off`
-                        : `$${discount.value.toFixed(2)} off`}
+                        : `${discount.value.toLocaleString("en-US")} IQD off`}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -125,7 +125,7 @@ export default function Discounts() {
                 <p className="text-sm text-muted-foreground">
                   {discount.type === "percentage"
                     ? `${discount.value}% off`
-                    : `$${discount.value.toFixed(2)} off`}
+                    : `${discount.value.toLocaleString("en-US")} IQD off`}
                   {" · "}
                   {discount.usageCount ?? 0}{discount.usageLimit ? `/${discount.usageLimit}` : ""} used
                 </p>

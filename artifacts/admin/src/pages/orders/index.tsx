@@ -190,7 +190,7 @@ export default function Orders() {
                   </TableCell>
                   <TableCell>{order.email}</TableCell>
                   <TableCell>{statusBadge(order.financialStatus, order.fulfillmentStatus)}</TableCell>
-                  <TableCell className="text-right font-semibold">${order.total.toFixed(2)}</TableCell>
+                  <TableCell className="text-right font-semibold">{order.total.toLocaleString("en-US")} IQD</TableCell>
                   <TableCell className="text-right">
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -241,7 +241,7 @@ export default function Orders() {
                 <CardContent className="pt-4 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold">{order.orderNumber}</span>
-                    <span className="font-semibold">${order.total.toFixed(2)}</span>
+                    <span className="font-semibold">{order.total.toLocaleString("en-US")} IQD</span>
                   </div>
                   <p className="text-sm text-muted-foreground">{order.email}</p>
                   <div className="flex items-center justify-between gap-2">

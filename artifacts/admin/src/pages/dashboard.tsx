@@ -17,6 +17,7 @@ import { fmt } from "@/lib/date";
 import { Package, ShoppingCart, Users, DollarSign, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
+import { formatIQD } from "@/lib/format";
 
 export default function Dashboard() {
   const { data: summaryRes, isLoading: loadingSummary } = useAdminGetAnalyticsSummary();
@@ -47,7 +48,7 @@ export default function Dashboard() {
   }> = [
     {
       title: "Today's Revenue",
-      value: `$${todayRevenue.toFixed(2)}`,
+      value: formatIQD(todayRevenue),
       subLabel: "vs yesterday",
       change: `${revenueUp ? "+" : ""}${revenueChange}%`,
       up: revenueUp,
@@ -74,9 +75,7 @@ export default function Dashboard() {
     },
     {
       title: "Avg Order Value",
-      value: summary
-        ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(summary.avgOrderValue)
-        : "—",
+      value: summary ? formatIQD(summary.avgOrderValue) : "—",
       subLabel: "this period",
       change: revenueUp ? "+2.1%" : "-1.3%",
       up: revenueUp,
@@ -180,14 +179,14 @@ export default function Dashboard() {
                     axisLine={false}
                   />
                   <YAxis
-                    tickFormatter={(val) => `$${val}`}
+                    tickFormatter={(val) => `${Number(val).toLocaleString("en-US")}`}
                     stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                   />
                   <Tooltip
-                    formatter={(value: number) => [`$${value.toFixed(2)}`, "Revenue"]}
+                    formatter={(value: number) => [formatIQD(value), "Revenue"]}
                     labelFormatter={(label) => fmt(label, "MMM d, yyyy")}
                     contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))" }}
                   />
@@ -228,7 +227,7 @@ export default function Dashboard() {
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">{product.unitsSold} units sold</p>
                     </div>
-                    <span className="font-semibold text-sm flex-shrink-0">${product.revenue.toFixed(2)}</span>
+                    <span className="font-semibold text-sm flex-shrink-0">{formatIQD(product.revenue)}</span>
                   </div>
                 ))}
                 {topProducts.length === 0 && (
@@ -279,7 +278,7 @@ export default function Dashboard() {
                     <Badge variant={order.financialStatus === "paid" ? "default" : "secondary"} className="text-xs">
                       {order.financialStatus ?? "pending"}
                     </Badge>
-                    <span className="font-semibold text-sm">${order.total.toFixed(2)}</span>
+                    <span className="font-semibold text-sm">{formatIQD(order.total)}</span>
                   </div>
                 </div>
               ))}

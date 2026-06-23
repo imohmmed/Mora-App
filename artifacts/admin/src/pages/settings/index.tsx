@@ -95,7 +95,7 @@ export default function Settings() {
     storeName: "",
     storeEmail: "",
     storePhone: "",
-    currency: "USD",
+    currency: "IQD",
     timezone: "UTC",
     shippingMethods: [],
     tax: { enabled: true, inclusive: false, regions: [] },
@@ -110,7 +110,7 @@ export default function Settings() {
         storeName: settings.storeName || "",
         storeEmail: settings.storeEmail || "",
         storePhone: settings.storePhone || "",
-        currency: settings.currency || "USD",
+        currency: settings.currency || "IQD",
         timezone: settings.timezone || "UTC",
         shippingMethods: settings.shippingMethods ?? [],
         tax: {
@@ -285,13 +285,6 @@ export default function Settings() {
                   <Select value={formData.currency} onValueChange={(v) => setFormData((p) => ({ ...p, currency: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="USD">USD — US Dollar</SelectItem>
-                      <SelectItem value="EUR">EUR — Euro</SelectItem>
-                      <SelectItem value="GBP">GBP — British Pound</SelectItem>
-                      <SelectItem value="JPY">JPY — Japanese Yen</SelectItem>
-                      <SelectItem value="CAD">CAD — Canadian Dollar</SelectItem>
-                      <SelectItem value="AED">AED — UAE Dirham</SelectItem>
-                      <SelectItem value="SAR">SAR — Saudi Riyal</SelectItem>
                       <SelectItem value="IQD">IQD — Iraqi Dinar</SelectItem>
                     </SelectContent>
                   </Select>

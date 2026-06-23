@@ -119,7 +119,7 @@ export default function Inventory() {
                           : "In stock"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">${v.price.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{v.price.toLocaleString("en-US")} IQD</TableCell>
                     <TableCell className="text-right font-semibold">{v.inventory}</TableCell>
                     <TableCell className="text-right">
                       <Input

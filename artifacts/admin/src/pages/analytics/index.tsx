@@ -1246,7 +1246,7 @@ export default function AnalyticsPage() {
 
         {/* Currency badge */}
         <div className="border rounded-md h-8 px-3 flex items-center text-xs font-medium">
-          $≈IQD
+          IQD
         </div>
       </div>
 

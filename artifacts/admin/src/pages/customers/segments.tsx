@@ -135,7 +135,7 @@ export default function CustomerSegments() {
                           <TableCell>{c.email}</TableCell>
                           <TableCell className="text-right">{c.ordersCount ?? 0}</TableCell>
                           <TableCell className="text-right font-medium">
-                            ${(c.totalSpent ?? 0).toFixed(2)}
+                            {(c.totalSpent ?? 0).toLocaleString("en-US")} IQD
                           </TableCell>
                         </TableRow>
                       ))

@@ -72,7 +72,7 @@ export default function NewDiscount() {
     form.value
       ? form.type === "percentage"
         ? `${form.value}% off`
-        : `$${parseFloat(form.value || "0").toFixed(2)} off`
+        : `${parseFloat(form.value || "0").toLocaleString("en-US")} IQD off`
       : "—";
 
   return (

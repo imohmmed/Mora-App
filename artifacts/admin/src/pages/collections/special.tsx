@@ -148,7 +148,7 @@ function EditablePanel({ slug }: { slug: string }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{p.title}</p>
-                <p className="text-xs text-muted-foreground">{p.vendor} · ${p.price.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground">{p.vendor} · {p.price.toLocaleString("en-US")} IQD</p>
               </div>
               <Button
                 variant="ghost"
@@ -198,7 +198,7 @@ function EditablePanel({ slug }: { slug: string }) {
                   <p className="text-sm font-medium truncate">{p.title}</p>
                   <p className="text-xs text-muted-foreground">{p.vendor}</p>
                 </div>
-                <span className="text-sm font-semibold">${p.price.toFixed(2)}</span>
+                <span className="text-sm font-semibold">{p.price.toLocaleString("en-US")} IQD</span>
               </button>
             ))}
             {filtered.length === 0 && (
@@ -244,7 +244,7 @@ function ReadOnlyPanel({ slug }: { slug: string }) {
               <p className="text-xs text-muted-foreground">{p.vendor}</p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-sm font-semibold">${p.price.toFixed(2)}</span>
+              <span className="text-sm font-semibold">{p.price.toLocaleString("en-US")} IQD</span>
               {disc && <Badge variant="destructive" className="text-xs">{disc}% off</Badge>}
               {p.sold_count != null && (
                 <Badge variant="secondary" className="text-xs">{p.sold_count} sold</Badge>

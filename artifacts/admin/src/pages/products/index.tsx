@@ -134,7 +134,7 @@ export default function Products() {
                     <div className="text-xs text-muted-foreground">{product.variantsCount} variants</div>
                   </TableCell>
                   <TableCell className="capitalize">{product.category}</TableCell>
-                  <TableCell className="text-right font-medium">${product.price.toFixed(2)}</TableCell>
+                  <TableCell className="text-right font-medium">{product.price.toLocaleString("en-US")} IQD</TableCell>
                 </TableRow>
               ))
             )}
@@ -169,7 +169,7 @@ export default function Products() {
                       <p className="text-sm text-muted-foreground capitalize">{product.category}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="font-semibold">${product.price.toFixed(2)}</p>
+                      <p className="font-semibold">{product.price.toLocaleString("en-US")} IQD</p>
                       <Badge variant={product.status === "active" ? "default" : "secondary"} className="text-xs">
                         {product.status}
                       </Badge>
