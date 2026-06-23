@@ -472,7 +472,7 @@ export default function ProductDetail() {
                 .filter((p) => p.id !== product.id)
                 .slice(0, 4)
                 .map((p) => (
-                  <ProductCard key={p.id} product={p} />
+                  <ProductCard key={p.id} product={p} showQuickAdd />
                 ))}
             </div>
           </div>

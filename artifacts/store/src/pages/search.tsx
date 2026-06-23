@@ -189,7 +189,7 @@ export default function Search() {
               ) : filteredResults.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                   {filteredResults.map((product) => (
-                    <ProductCard key={product.id} product={product} />
+                    <ProductCard key={product.id} product={product} showQuickAdd />
                   ))}
                 </div>
               ) : allResults.length > 0 ? (
