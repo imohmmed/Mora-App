@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
@@ -439,11 +439,11 @@ export default function ProductDetailScreen() {
               {isIOS26Plus ? (
                 <View style={styles.wishlistBtnGlass}>
                   <LiquidGlassBg />
-                  <Feather name="heart" size={22} color={liked ? "#E53935" : "#FFF"} />
+                  <Ionicons name={liked ? "heart" : "heart-outline"} size={22} color={liked ? "#0274C1" : "#FFF"} />
                 </View>
               ) : (
                 <View style={[styles.wishlistBtnFallback, { backgroundColor: "rgba(255,255,255,0.9)" }]}>
-                  <Feather name="heart" size={22} color={liked ? "#E53935" : "#1A1A1A"} />
+                  <Ionicons name={liked ? "heart" : "heart-outline"} size={22} color={liked ? "#0274C1" : "#1A1A1A"} />
                 </View>
               )}
             </Pressable>

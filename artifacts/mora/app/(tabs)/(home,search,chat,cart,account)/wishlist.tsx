@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useQueries } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
@@ -104,7 +104,7 @@ function WishlistCard({
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
           >
-            <Feather name="heart" size={16} color="#E53935" />
+            <Ionicons name="heart" size={16} color="#0274C1" />
           </Pressable>
         </ProductImageCarousel>
         <View style={styles.cardInfo}>

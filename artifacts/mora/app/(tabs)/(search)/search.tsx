@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
@@ -137,11 +137,11 @@ function SearchResultCard({
           >
             {useGlass ? (
               <GlassViewComp style={styles.likeBtnGlass} glassEffectStyle="clear">
-                <Feather name="heart" size={15} color={liked ? "#E53935" : "#1A1A1A"} />
+                <Ionicons name={liked ? "heart" : "heart-outline"} size={15} color={liked ? "#0274C1" : "#1A1A1A"} />
               </GlassViewComp>
             ) : (
               <View style={[styles.likeBtnFallback, { backgroundColor: "rgba(255,255,255,0.92)" }]}>
-                <Feather name="heart" size={15} color={liked ? "#E53935" : "#1A1A1A"} />
+                <Ionicons name={liked ? "heart" : "heart-outline"} size={15} color={liked ? "#0274C1" : "#1A1A1A"} />
               </View>
             )}
           </Pressable>

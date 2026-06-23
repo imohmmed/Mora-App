@@ -1,14 +1,22 @@
 /**
  * QuickAddSheet — slides up when user taps ADD TO BAG.
  *
- * On iOS: GlassView background (expo-glass-effect) + glass chip buttons (@expo/ui).
- * On Android / web: clean solid-card fallback.
+ * Layout (shared across every section + related products):
+ *   1. Horizontal scrollable product images (with page dots)
+ *   2. Product name + price
+ *   3. Variant chips
+ *   4. Action row: [ADD TO BAG]  +  [♥ favorite]
+ *
+ * The heart fills blue when the product is in the wishlist.
  */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Dimensions,
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,11 +25,17 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useTheme } from "@/context/ThemeContext";
+import { useWishlist } from "@/context/WishlistContext";
 import { formatIQD } from "@/lib/format";
 import type { Product, Variant } from "@/lib/types";
 
 const PRIMARY = "#0274C1";
+const { width: SW } = Dimensions.get("window");
+const GALLERY_W = SW - 40; // sheet has 20px horizontal padding
+const GALLERY_H = Math.min(GALLERY_W, 300);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -50,16 +64,19 @@ interface Props {
 export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   const { resolvedScheme } = useTheme();
   const isDark = resolvedScheme === "dark";
+  const { isWishlisted, toggle } = useWishlist();
 
-  const slideAnim = useRef(new Animated.Value(500)).current;
+  const slideAnim = useRef(new Animated.Value(600)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
 
   const [selectedOpt1, setSelectedOpt1] = useState<string | null>(null);
   const [selectedOpt2, setSelectedOpt2] = useState<string | null>(null);
+  const [activeImg, setActiveImg] = useState(0);
 
   useEffect(() => {
     setSelectedOpt1(null);
     setSelectedOpt2(null);
+    setActiveImg(0);
   }, [product?.id]);
 
   useEffect(() => {
@@ -71,7 +88,7 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
     } else {
       Animated.parallel([
         Animated.timing(fadeAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: 500, duration: 180, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 600, duration: 180, useNativeDriver: true }),
       ]).start();
     }
   }, [visible]);
@@ -102,6 +119,9 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
 
   if (!product) return null;
 
+  const liked = isWishlisted(product.id);
+  const images = (product.images ?? []).filter(Boolean);
+
   const isOpt1OOS = (val: string) =>
     variants.filter((v) => v.option1 === val).every((v) => v.inventory === 0);
   const isOpt2OOS = (val: string) => {
@@ -116,8 +136,19 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   const handleAdd = () => {
     const toAdd = selectedVariant ?? variants[0];
     if (!toAdd) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onConfirm(toAdd);
     onClose();
+  };
+
+  const handleHeart = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    toggle(product.id);
+  };
+
+  const onGalleryScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / GALLERY_W);
+    if (idx !== activeImg) setActiveImg(idx);
   };
 
   const btnLabel = (() => {
@@ -134,7 +165,9 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   const chipBorder = isDark ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.14)";
   const imageBg    = isDark ? "#2C2C2E" : "#F2F2F7";
   const divider    = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)";
-  const sheetBg    = isDark ? "rgba(30,30,34,0.96)" : "rgba(255,255,255,0.97)";
+  const sheetBg    = isDark ? "rgba(30,30,34,0.98)" : "rgba(255,255,255,0.98)";
+  const heartBg    = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.05)";
+  const heartBorder = liked ? PRIMARY : (isDark ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.12)");
 
   // ── Chip renderer ─────────────────────────────────────────────────────────────
   const renderChips = (
@@ -156,8 +189,6 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
         {values.map((val) => {
           const active = selected === val;
           const oos    = isOOS(val);
-
-          // ── Plain chip (no glass) ────────────────────────────────────────
           return (
             <Pressable
               key={val}
@@ -197,30 +228,67 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
         </Animated.View>
       </Pressable>
 
-      {/* ── Sheet (rendered after backdrop → on top, touches don't reach backdrop) */}
+      {/* ── Sheet ─────────────────────────────────────────────────────────── */}
       <Animated.View
         style={[
           styles.sheet,
           { backgroundColor: sheetBg, transform: [{ translateY: slideAnim }] },
         ]}
       >
-
         {/* Handle */}
         <View style={[styles.handle, { backgroundColor: handleCol }]} />
 
-        {/* ── Product mini-header ──────────────────────────────────────────── */}
-        <View style={styles.productRow}>
-          <View style={[styles.thumbBox, { backgroundColor: imageBg }]}>
-            {product.images?.[0] ? (
-              <Image
-                source={{ uri: product.images[0] }}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                transition={150}
-              />
-            ) : null}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          contentContainerStyle={{ paddingBottom: 8 }}
+        >
+          {/* ── Scrollable image gallery ─────────────────────────────────── */}
+          <View style={[styles.gallery, { backgroundColor: imageBg }]}>
+            {images.length > 0 ? (
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={onGalleryScroll}
+                scrollEventThrottle={16}
+              >
+                {images.map((uri, i) => (
+                  <Image
+                    key={`${uri}-${i}`}
+                    source={{ uri }}
+                    style={{ width: GALLERY_W, height: GALLERY_H }}
+                    contentFit="cover"
+                    transition={150}
+                  />
+                ))}
+              </ScrollView>
+            ) : (
+              <View style={styles.galleryEmpty}>
+                <Feather name="shopping-bag" size={48} color={textMuted} />
+              </View>
+            )}
+
+            {/* Page dots */}
+            {images.length > 1 && (
+              <View style={styles.dotsRow}>
+                {images.map((_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.dot,
+                      i === activeImg
+                        ? { backgroundColor: "#FFF", width: 7 }
+                        : { backgroundColor: "rgba(255,255,255,0.5)", width: 6 },
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
           </View>
-          <View style={styles.productMeta}>
+
+          {/* ── Name + price ─────────────────────────────────────────────── */}
+          <View style={styles.metaBlock}>
             <Text style={[styles.vendorText, { color: textMuted }]}>
               {product.vendor ?? "Mora"}
             </Text>
@@ -231,40 +299,57 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
               {formatIQD(product.price)}
             </Text>
           </View>
+
+          {/* ── Variants ─────────────────────────────────────────────────── */}
+          {(hasOpt1 || hasOpt2) && (
+            <View style={[styles.optionsWrap, { borderTopColor: divider }]}>
+              {hasOpt1 && renderChips(
+                opt1Values, selectedOpt1,
+                (v) => { setSelectedOpt1(v); setSelectedOpt2(null); },
+                isOpt1OOS, label1,
+              )}
+              {hasOpt2 && renderChips(
+                opt2Values, selectedOpt2, setSelectedOpt2, isOpt2OOS, label2,
+              )}
+            </View>
+          )}
+        </ScrollView>
+
+        {/* ── Action row: Add to Bag + Favorite ─────────────────────────── */}
+        <View style={styles.actionRow}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.heartBtn,
+              { backgroundColor: heartBg, borderColor: heartBorder, opacity: pressed ? 0.7 : 1 },
+            ]}
+            onPress={handleHeart}
+            hitSlop={6}
+          >
+            <Ionicons
+              name={liked ? "heart" : "heart-outline"}
+              size={24}
+              color={liked ? PRIMARY : textPri}
+            />
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.addBtn,
+              {
+                backgroundColor: canAdd
+                  ? PRIMARY
+                  : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+            onPress={handleAdd}
+            disabled={!canAdd}
+          >
+            <Text style={[styles.addBtnText, { color: canAdd ? "#FFF" : textMuted }]}>
+              {btnLabel}
+            </Text>
+          </Pressable>
         </View>
-
-        {/* ── Option axes ──────────────────────────────────────────────────── */}
-        {(hasOpt1 || hasOpt2) && (
-          <View style={[styles.optionsWrap, { borderTopColor: divider }]}>
-            {hasOpt1 && renderChips(
-              opt1Values, selectedOpt1,
-              (v) => { setSelectedOpt1(v); setSelectedOpt2(null); },
-              isOpt1OOS, label1,
-            )}
-            {hasOpt2 && renderChips(
-              opt2Values, selectedOpt2, setSelectedOpt2, isOpt2OOS, label2,
-            )}
-          </View>
-        )}
-
-        {/* ── Add button (capsule, no glass) ───────────────────────────────── */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.addBtn,
-            {
-              backgroundColor: canAdd
-                ? PRIMARY
-                : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
-              opacity: pressed ? 0.85 : 1,
-            },
-          ]}
-          onPress={handleAdd}
-          disabled={!canAdd}
-        >
-          <Text style={[styles.addBtnText, { color: canAdd ? "#FFF" : textMuted }]}>
-            {btnLabel}
-          </Text>
-        </Pressable>
       </Animated.View>
     </Modal>
   );
@@ -276,6 +361,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    maxHeight: "90%",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 12,
@@ -293,23 +379,37 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     alignSelf: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  productRow: {
-    flexDirection: "row",
-    gap: 14,
-    marginBottom: 20,
-  },
-  thumbBox: {
-    width: 72,
-    height: 88,
-    borderRadius: 12,
+  gallery: {
+    width: GALLERY_W,
+    height: GALLERY_H,
+    borderRadius: 16,
     overflow: "hidden",
+    position: "relative",
   },
-  productMeta: {
-    flex: 1,
-    gap: 4,
+  galleryEmpty: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
     justifyContent: "center",
+  },
+  dotsRow: {
+    position: "absolute",
+    bottom: 12,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 5,
+  },
+  dot: {
+    height: 6,
+    borderRadius: 3,
+  },
+  metaBlock: {
+    gap: 4,
+    paddingTop: 16,
+    paddingBottom: 4,
   },
   vendorText: {
     fontFamily: "Inter_500Medium",
@@ -318,20 +418,20 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   titleText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 15,
-    lineHeight: 20,
+    fontFamily: "Inter_700Bold",
+    fontSize: 17,
+    lineHeight: 22,
   },
   priceText: {
     fontFamily: "Inter_700Bold",
-    fontSize: 16,
+    fontSize: 17,
     marginTop: 2,
   },
   optionsWrap: {
     borderTopWidth: 1,
+    marginTop: 16,
     paddingTop: 16,
     gap: 18,
-    marginBottom: 20,
   },
   axisWrap: {
     gap: 10,
@@ -371,7 +471,22 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "rgba(150,150,150,0.6)",
   },
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingTop: 16,
+  },
+  heartBtn: {
+    width: 54,
+    height: 54,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   addBtn: {
+    flex: 1,
     borderRadius: 999,
     paddingVertical: 16,
     alignItems: "center",

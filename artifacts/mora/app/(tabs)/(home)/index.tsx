@@ -19,7 +19,7 @@ import {
 
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -156,11 +156,11 @@ function ProductCard({
           <Pressable style={styles.likeBtnWrap} onPress={handleLike}>
             {useGlass ? (
               <GlassViewComp style={styles.likeBtnGlass} glassEffectStyle="clear">
-                <Feather name="heart" size={16} color={liked ? "#E53935" : "#1A1A1A"} />
+                <Ionicons name={liked ? "heart" : "heart-outline"} size={16} color={liked ? "#0274C1" : "#1A1A1A"} />
               </GlassViewComp>
             ) : (
               <View style={[styles.likeBtnFallback, { backgroundColor: "rgba(255,255,255,0.92)" }]}>
-                <Feather name="heart" size={16} color={liked ? "#E53935" : "#1A1A1A"} />
+                <Ionicons name={liked ? "heart" : "heart-outline"} size={16} color={liked ? "#0274C1" : "#1A1A1A"} />
               </View>
             )}
           </Pressable>
