@@ -64,7 +64,10 @@ export function QuickAddModal({
 
   const images = (product.images ?? []).filter(Boolean);
   const liked = has(product.id);
-  const canAdd = (!hasColors || !!selectedColor) && (!hasSizes || !!selectedSize);
+  const optionsChosen =
+    (!hasColors || !!selectedColor) && (!hasSizes || !!selectedSize);
+  const inStock = !!selectedVariant && selectedVariant.inventory > 0;
+  const canAdd = optionsChosen && inStock;
 
   const colorHasStock = (color: string) =>
     variants.some((v) => v.option2 === color && v.inventory > 0);
@@ -77,8 +80,8 @@ export function QuickAddModal({
     );
 
   const handleAdd = () => {
-    const toAdd = selectedVariant ?? variants[0];
-    if (!toAdd) return;
+    const toAdd = selectedVariant;
+    if (!toAdd || toAdd.inventory <= 0) return;
     addItem({
       productId: product.id,
       variantId: toAdd.id,
@@ -107,6 +110,7 @@ export function QuickAddModal({
   const btnLabel = (() => {
     if (hasColors && !selectedColor) return "Select Color";
     if (hasSizes && !selectedSize) return "Select Size";
+    if (!inStock) return "Out of Stock";
     return "Add to Bag";
   })();
 
@@ -180,6 +184,8 @@ export function QuickAddModal({
                     <button
                       key={color}
                       title={color}
+                      aria-label={`Color ${color}${!stock ? " (out of stock)" : ""}`}
+                      aria-pressed={isSelected}
                       disabled={!stock}
                       onClick={() => {
                         setSelectedColor(color);
@@ -211,6 +217,8 @@ export function QuickAddModal({
                   return (
                     <button
                       key={size}
+                      aria-label={`Size ${size}${!stock ? " (out of stock)" : ""}`}
+                      aria-pressed={isSelected}
                       disabled={!stock}
                       onClick={() => setSelectedSize(size)}
                       className={`min-w-12 h-12 px-3 border text-sm font-bold transition-colors ${

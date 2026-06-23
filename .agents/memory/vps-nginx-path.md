@@ -8,6 +8,13 @@ Expo web builds must be deployed to `/var/www/mora/artifacts/mora/dist` on the V
 
 **Why:** The nginx config at `/etc/nginx/sites-available/mora` has `root /var/www/mora/artifacts/mora/dist`. Deploying to `/var/www/mora-web/` does nothing — nginx never reads from there.
 
+## Building the Expo web bundle (moramoda.tech)
+The website is the Expo **web export**, NOT the `pnpm build` script (that one — `scripts/build.js` — produces Expo Go ios/android bundles for the landing page, not web). Build the website with:
+```bash
+cd artifacts/mora && rm -rf dist && pnpm exec expo export --platform web --output-dir dist
+```
+Base path is `/` (no `experiments.baseUrl` in app.json); assets resolve at `/_expo/...` matching nginx root. The export takes >2min, so run it backgrounded. Same codebase as the mobile app, so app feature changes land on the website after a rebuild+redeploy.
+
 ## How to apply
 Deploy command (credentials come from env/secret, NEVER hardcode them — the VPS root password must not live in the repo):
 ```bash
