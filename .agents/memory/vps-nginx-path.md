@@ -11,9 +11,12 @@ Expo web builds must be deployed to `/var/www/mora/artifacts/mora/dist` on the V
 ## Building the Expo web bundle (moramoda.tech)
 The website is the Expo **web export**, NOT the `pnpm build` script (that one — `scripts/build.js` — produces Expo Go ios/android bundles for the landing page, not web). Build the website with:
 ```bash
-cd artifacts/mora && rm -rf dist && pnpm exec expo export --platform web --output-dir dist
+cd artifacts/mora && rm -rf dist && timeout 110 pnpm exec expo export --platform web --output-dir dist
 ```
-Base path is `/` (no `experiments.baseUrl` in app.json); assets resolve at `/_expo/...` matching nginx root. The export takes >2min, so run it backgrounded. Same codebase as the mobile app, so app feature changes land on the website after a rebuild+redeploy.
+Base path is `/` (no `experiments.baseUrl` in app.json); assets resolve at `/_expo/...` matching nginx root. **The export actually finishes in <110s — run it in the FOREGROUND.** Do NOT background it with `nohup ... &` or `setsid ... & disown`: the export dies silently the moment the launching shell exits (log stops after the "Expo Autolinking module resolution enabled" line, dist stays empty). The progress spinner doesn't flush to a piped log, so a stalled-looking log ≠ stuck. Also note `pgrep -f "expo export"` gives false positives by matching your own polling commands — check `ps -eo pid,cmd | rg expo/bin` and whether `dist` is filling instead.
+
+## admin build needs BOTH PORT and BASE_PATH
+`vite.config.ts` for admin throws "PORT environment variable is required" at config load, even for `build`. Build the admin SPA with `PORT=5000 BASE_PATH=/ pnpm --filter @workspace/admin run build` → outputs to `dist/public`. Store build needs no vars (base defaults to `/store/`). Same codebase as the mobile app, so app feature changes land on the website after a rebuild+redeploy.
 
 ## How to apply
 Deploy command (credentials come from env/secret, NEVER hardcode them — the VPS root password must not live in the repo):
