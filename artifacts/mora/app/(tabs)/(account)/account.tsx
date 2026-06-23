@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -10,7 +10,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
+import LottieView from "lottie-react-native";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
 import { useWishlist } from "@/context/WishlistContext";
@@ -19,6 +20,12 @@ import { BlurView } from "expo-blur";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 
 const PRIMARY = "#0274C1";
+
+// MORA STAR loyalty tier: customers whose lifetime spend reaches this (IQD)
+// are upgraded from "MORA MEMBER" to "MORA STAR".
+const STAR_THRESHOLD = 200000;
+const STAR_SRC = require("@/assets/lottie/star.json");
+const STAR_BURST_SRC = require("@/assets/lottie/star-burst.json");
 
 /* ─────────────────────────────────────────────
    GUEST SCREEN
@@ -114,6 +121,18 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
     ? (user.firstName[0] ?? "") + (user.lastName[0] ?? "")
     : "M";
 
+  // ── MORA STAR tier ──
+  const isStar = (user?.totalSpent ?? 0) >= STAR_THRESHOLD;
+  // Full-screen celebratory burst that plays once each time a MORA STAR opens
+  // the account screen.
+  const [showBurst, setShowBurst] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (isStar) setShowBurst(true);
+      return undefined;
+    }, [isStar]),
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
@@ -141,9 +160,24 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
               {user?.firstName} {user?.lastName}
             </Text>
             <Text style={[styles.profileEmail, { color: colors.mutedForeground }]}>{user?.email}</Text>
-            <View style={[styles.memberBadge, { backgroundColor: colors.accent }]}>
-              <Text style={[styles.memberBadgeText, { color: colors.accentForeground }]}>MORA MEMBER</Text>
-            </View>
+            {isStar ? (
+              <View style={styles.starBadgeRow}>
+                <View style={styles.starBadge}>
+                  <Text style={styles.starBadgeText}>MORA STAR</Text>
+                </View>
+                <LottieView
+                  source={STAR_SRC}
+                  autoPlay
+                  loop
+                  style={styles.starIcon}
+                  webStyle={{ width: 30, height: 30 }}
+                />
+              </View>
+            ) : (
+              <View style={[styles.memberBadge, { backgroundColor: colors.accent }]}>
+                <Text style={[styles.memberBadgeText, { color: colors.accentForeground }]}>MORA MEMBER</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -224,6 +258,21 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
         </Pressable>
         <Text style={[styles.version, { color: colors.mutedForeground }]}>Mora v1.0.0</Text>
       </ScrollView>
+
+      {showBurst && (
+        <View pointerEvents="none" style={styles.burstOverlay}>
+          <LottieView
+            source={STAR_BURST_SRC}
+            autoPlay
+            loop={false}
+            resizeMode="cover"
+            style={StyleSheet.absoluteFill}
+            webStyle={{ width: "100%", height: "100%" }}
+            onAnimationFinish={() => setShowBurst(false)}
+            onAnimationFailure={() => setShowBurst(false)}
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -356,6 +405,24 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   memberBadgeText: { fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 0.5 },
+
+  /* ── MORA STAR tier ── */
+  starBadgeRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
+  starBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: "#F5B301",
+  },
+  starBadgeText: { fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 0.5, color: "#1A1A1A" },
+  starIcon: { width: 30, height: 30 },
+  burstOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 50,
+  },
 
   section: { paddingHorizontal: 16, marginBottom: 16 },
   sectionLabel: { fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 1, marginBottom: 8 },
