@@ -21,3 +21,4 @@
 - [Unified FloatingTabBar](unified-tab-bar.md) — ONE FloatingTabBar everywhere (tabs via custom tabBar + detail pages); Hermes has no Event() ctor; expo-router 56 vendors bottom-tabs
 - [NativeTabs migration](native-tabs-migration.md) — expo-router unstable-native-tabs API; restore re-press (scroll-top/focus) via screenListeners tabPress + isFocused; watch double bottom padding
 - [useQueries needs memoized input](usequeries-memoize-input.md) — non-memoized queries array → infinite render loop, fatal on native only, fine on web
+- [Wayl payment flow](wayl-payment-flow.md) — online checkout gates complete-screen on verified status poll (not webhook); webhook is unauthenticated (forgeable) — harden before trusting it

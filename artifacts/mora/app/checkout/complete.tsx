@@ -66,7 +66,7 @@ export default function OrderCompleteScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const params = useLocalSearchParams<{ orderNumber: string; total: string; name: string; city: string; district: string; phone: string; items: string; paymentMethod?: string; waylUrl?: string; fromWayl?: string }>();
+  const params = useLocalSearchParams<{ orderNumber: string; total: string; name: string; city: string; district: string; phone: string; items: string; paymentMethod?: string; waylUrl?: string; fromWayl?: string; paid?: string }>();
 
   // Web: load snapshot from sessionStorage when returning from Wayl
   const [snapData, setSnapData] = useState<{ orderNumber: string; total: string; name: string; city: string; district: string; phone: string; snapshot: string } | null>(null);
@@ -89,7 +89,7 @@ export default function OrderCompleteScreen() {
   try { parsedItems = JSON.parse(itemsRaw || "[]"); } catch {}
   const totalNum = Number(total) || 0;
 
-  const [payStatus, setPayStatus] = useState<PayStatus>(isCOD ? "paid" : "pending");
+  const [payStatus, setPayStatus] = useState<PayStatus>(isCOD || params.paid === "1" ? "paid" : "pending");
   const [openingPayment, setOpeningPayment] = useState(false);
 
   const payMethodLabel: Record<string, string> = {

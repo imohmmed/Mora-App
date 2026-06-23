@@ -98,6 +98,11 @@ export default function CheckoutScreen() {
   const [payMethod, setPayMethod] = useState<PayMethod>("cod");
   const [submitting, setSubmitting] = useState(false);
   const [showCityPicker, setShowCityPicker] = useState(false);
+  // Holds the created order + Wayl link for online payments so a retry after a
+  // failed/abandoned payment reuses the same order instead of creating a new one.
+  const [pendingOnline, setPendingOnline] = useState<{
+    orderId: string; orderNumber: string; orderTotal: number; waylUrl: string; snapshot: string;
+  } | null>(null);
 
   const bg      = isDark ? "#0A0A0A" : "#FFFFFF";
   const card    = isDark ? "#1C1C1E" : "#EBF5FF";
@@ -123,6 +128,73 @@ export default function CheckoutScreen() {
 
   const set = (key: keyof FormState) => (val: string) => setForm((f) => ({ ...f, [key]: val }));
 
+  const buildSnapshot = () =>
+    JSON.stringify(items.map((i) => ({ title: i.title, quantity: i.quantity, price: i.price, image: i.image, size: i.size, color: i.color })));
+
+  // Persist the delivery address to the profile (best-effort, non-blocking)
+  const saveAddressToProfile = (base: string) => {
+    if (!token) return;
+    fetch(`${base}/store/auth/me`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ phone: form.phone, address: { city: form.city, district: form.district, street: form.street } }),
+    }).catch(() => {});
+  };
+
+  const createOrder = async (base: string) => {
+    const orderRes = await fetch(`${base}/store/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({
+        email: user?.email || "",
+        subtotal,
+        shipping: 0,
+        shippingAddress: { fullName: form.name, phone: form.phone, city: form.city, district: form.district, street: form.street },
+        lineItems: items.map((i) => ({ productId: i.productId, variantId: i.variantId, title: i.title, quantity: i.quantity, price: i.price, size: i.size, color: i.color, image: i.image })),
+        paymentMethod: payMethod,
+        note: form.note,
+      }),
+    });
+    const orderJson = await orderRes.json() as { data: { id?: string; order_number?: string; orderNumber?: string; total?: number } | null; error?: string };
+    if (!orderRes.ok) throw new Error(orderJson.error || "Order failed");
+    return {
+      orderId:     (orderJson.data as any)?.id ?? "",
+      orderNumber: orderJson.data?.order_number || orderJson.data?.orderNumber || "#—",
+      orderTotal:  orderJson.data?.total ?? subtotal,
+      snapshot:    buildSnapshot(),
+    };
+  };
+
+  const createWaylLink = async (base: string, orderNumber: string, orderTotal: number): Promise<string | null> => {
+    try {
+      const waylRes = await fetch(`${base}/store/wayl/create-link`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderNumber,
+          total: orderTotal,
+          lineItems: items.map((i) => ({ title: i.title, quantity: i.quantity, price: i.price })),
+          redirectionUrl: `https://${process.env.EXPO_PUBLIC_DOMAIN || "moramoda.tech"}/checkout/complete?fromWayl=1`,
+        }),
+      });
+      const waylJson = await waylRes.json() as { data: { url?: string } | null; error?: string };
+      return waylJson.data?.url || null;
+    } catch {
+      return null;
+    }
+  };
+
+  // Asks the server (which queries Wayl directly) whether the payment is settled.
+  const checkWaylStatus = async (base: string, num: string): Promise<"paid" | "failed" | "pending"> => {
+    try {
+      const res = await fetch(`${base}/store/wayl/status/${num}`);
+      const json = await res.json() as { data: { status?: string; paid?: boolean } | null };
+      if (json.data?.paid || json.data?.status === "completed") return "paid";
+      if (json.data?.status === "failed" || json.data?.status === "expired") return "failed";
+    } catch { /* ignore */ }
+    return "pending";
+  };
+
   const handlePlaceOrder = async () => {
     if (!form.name.trim())     { Alert.alert("Missing", "Please enter your name"); return; }
     if (!form.phone.trim())    { Alert.alert("Missing", "Please enter your phone"); return; }
@@ -135,97 +207,106 @@ export default function CheckoutScreen() {
     const base = getBaseUrl();
 
     try {
-      const orderRes = await fetch(`${base}/store/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({
-          email: user?.email || "",
-          subtotal,
-          shipping: 0,
-          shippingAddress: { fullName: form.name, phone: form.phone, city: form.city, district: form.district, street: form.street },
-          lineItems: items.map((i) => ({ productId: i.productId, variantId: i.variantId, title: i.title, quantity: i.quantity, price: i.price, size: i.size, color: i.color, image: i.image })),
-          paymentMethod: payMethod,
-          note: form.note,
-        }),
-      });
-      const orderJson = await orderRes.json() as { data: { order_number?: string; orderNumber?: string; total?: number } | null; error?: string };
-      if (!orderRes.ok) throw new Error(orderJson.error || "Order failed");
+      // ───────────── ONLINE PAYMENT (Wayl) ─────────────
+      // We do NOT advance to the confirmation screen until the payment is
+      // verified as paid. The order stays "pending" and the user stays on
+      // checkout until Wayl confirms the transaction.
+      if (payMethod === "online") {
+        // Reuse the order/link from a previous attempt so retrying does not
+        // create duplicate orders.
+        let info = pendingOnline;
 
-      const orderId     = (orderJson.data as any)?.id ?? "";
-      const orderNumber = orderJson.data?.order_number || orderJson.data?.orderNumber || "#—";
-      const orderTotal  = orderJson.data?.total ?? subtotal;
-      const snapshot    = JSON.stringify(items.map((i) => ({ title: i.title, quantity: i.quantity, price: i.price, image: i.image, size: i.size, color: i.color })));
+        // Step 1: ensure the order exists (created only once).
+        if (!info) {
+          const created = await createOrder(base);
+          startOrderActivity({
+            orderId: created.orderId,
+            orderNumber: created.orderNumber,
+            customerName: form.name || user?.firstName || "Customer",
+            stage: "confirmed",
+            message: "Your order has been placed!",
+          });
+          info = { ...created, waylUrl: "" };
+          setPendingOnline(info);
+          saveAddressToProfile(base);
+        }
 
-      // Start iOS Live Activity (Dynamic Island) — non-blocking, native-only
+        // Step 2: ensure a Wayl link exists. If link creation failed on a
+        // previous attempt, regenerate it for the SAME order (no duplicate).
+        if (!info.waylUrl) {
+          const waylUrl = await createWaylLink(base, info.orderNumber, info.orderTotal);
+          if (!waylUrl) throw new Error("Could not start the payment. Please try again.");
+          info = { ...info, waylUrl };
+          setPendingOnline(info);
+        }
+
+        // Web: redirect out to Wayl; the complete page verifies on return.
+        if (Platform.OS === "web") {
+          sessionStorage.setItem("mora_wayl_snap", JSON.stringify({
+            orderNumber: info.orderNumber, total: info.orderTotal, name: form.name,
+            city: form.city, district: form.district, phone: form.phone, snapshot: info.snapshot,
+          }));
+          (window as Window & typeof globalThis).location.href = info.waylUrl;
+          return;
+        }
+
+        // Native: open the hosted payment page and wait for the user to finish.
+        await WebBrowser.openBrowserAsync(info.waylUrl, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        });
+
+        // Verify BEFORE leaving checkout — poll a few times for processing lag.
+        let status: "paid" | "failed" | "pending" = "pending";
+        for (let i = 0; i < 5; i++) {
+          status = await checkWaylStatus(base, info.orderNumber);
+          if (status !== "pending") break;
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+
+        if (status !== "paid") {
+          setSubmitting(false);
+          Alert.alert(
+            status === "failed" ? "Payment Failed" : "Payment Not Completed",
+            status === "failed"
+              ? "Your payment was not completed. You can try paying again."
+              : "We couldn't confirm your payment yet. If you already paid, wait a moment and tap to pay again.",
+          );
+          return; // stay on checkout; pendingOnline kept for retry
+        }
+
+        // Paid ✓ — clear the cart and move to the confirmation screen.
+        clearCart();
+        setPendingOnline(null);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        router.replace({
+          pathname: "/checkout/complete",
+          params: {
+            orderNumber: info.orderNumber, total: String(info.orderTotal), name: form.name,
+            city: form.city, district: form.district, phone: form.phone,
+            items: info.snapshot, paymentMethod: "online", paid: "1", waylUrl: "",
+          },
+        } as any);
+        return;
+      }
+
+      // ───────────── CASH ON DELIVERY ─────────────
+      const created = await createOrder(base);
       startOrderActivity({
-        orderId,
-        orderNumber,
+        orderId: created.orderId,
+        orderNumber: created.orderNumber,
         customerName: form.name || user?.firstName || "Customer",
         stage: "confirmed",
         message: "Your order has been placed!",
       });
-
-      const isOnline = payMethod === "online";
-      let waylUrl: string | null = null;
-
-      if (isOnline) {
-        try {
-          const waylRes = await fetch(`${base}/store/wayl/create-link`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              orderNumber,
-              total: orderTotal,
-              lineItems: items.map((i) => ({ title: i.title, quantity: i.quantity, price: i.price })),
-              redirectionUrl: `https://${process.env.EXPO_PUBLIC_DOMAIN || "moramoda.tech"}/checkout/complete?fromWayl=1`,
-            }),
-          });
-          const waylJson = await waylRes.json() as { data: { url?: string } | null; error?: string };
-          waylUrl = waylJson.data?.url || null;
-        } catch {
-          // Non-fatal
-        }
-      }
-
       clearCart();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      // Save delivery address back to profile (best-effort, non-blocking)
-      if (token) {
-        fetch(`${base}/store/auth/me`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ phone: form.phone, address: { city: form.city, district: form.district, street: form.street } }),
-        }).catch(() => {});
-      }
-
-      if (isOnline && waylUrl) {
-        if (Platform.OS === "web") {
-          sessionStorage.setItem("mora_wayl_snap", JSON.stringify({
-            orderNumber, total: orderTotal, name: form.name,
-            city: form.city, district: form.district, phone: form.phone, snapshot,
-          }));
-          (window as Window & typeof globalThis).location.href = waylUrl;
-          return;
-        } else {
-          await WebBrowser.openBrowserAsync(waylUrl, {
-            presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-          });
-          router.replace({
-            pathname: "/checkout/complete",
-            params: { orderNumber, total: String(orderTotal), name: form.name, city: form.city, district: form.district, phone: form.phone, items: snapshot, paymentMethod: "online", waylUrl: "" },
-          } as any);
-          return;
-        }
-      }
-
+      saveAddressToProfile(base);
       router.replace({
         pathname: "/checkout/complete",
         params: {
-          orderNumber, total: String(orderTotal), name: form.name,
+          orderNumber: created.orderNumber, total: String(created.orderTotal), name: form.name,
           city: form.city, district: form.district, phone: form.phone,
-          items: snapshot, paymentMethod: payMethod,
-          waylUrl: waylUrl || "",
+          items: created.snapshot, paymentMethod: "cod", waylUrl: "",
         },
       } as any);
     } catch (err: any) {
@@ -401,7 +482,7 @@ export default function CheckoutScreen() {
             {submitting
               ? <ActivityIndicator color="#fff" />
               : payMethod === "online"
-                ? <><Feather name="credit-card" size={16} color="#fff" /><Text style={st.placeTxt}>PROCEED TO PAYMENT</Text></>
+                ? <><Feather name="credit-card" size={16} color="#fff" /><Text style={st.placeTxt}>{pendingOnline ? "TRY PAYMENT AGAIN" : "PROCEED TO PAYMENT"}</Text></>
                 : <><Feather name="check-circle" size={16} color="#fff" /><Text style={st.placeTxt}>PLACE ORDER</Text></>
             }
           </Pressable>
