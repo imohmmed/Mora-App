@@ -98,6 +98,16 @@ export default function CheckoutScreen() {
   const [payMethod, setPayMethod] = useState<PayMethod>("cod");
   const [submitting, setSubmitting] = useState(false);
   const [showCityPicker, setShowCityPicker] = useState(false);
+
+  // Discount code state
+  const [discountInput, setDiscountInput] = useState("");
+  const [applyingDiscount, setApplyingDiscount] = useState(false);
+  const [discount, setDiscount] = useState<{ code: string; amount: number } | null>(null);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+
+  const itemCount = items.reduce((n, i) => n + i.quantity, 0);
+  const discountAmount = discount?.amount ?? 0;
+  const grandTotal = Math.max(0, subtotal - discountAmount);
   // Holds the created order + Wayl link for online payments so a retry after a
   // failed/abandoned payment reuses the same order instead of creating a new one.
   const [pendingOnline, setPendingOnline] = useState<{
@@ -141,6 +151,40 @@ export default function CheckoutScreen() {
     }).catch(() => {});
   };
 
+  const applyDiscount = async () => {
+    const code = discountInput.trim();
+    if (!code) return;
+    setApplyingDiscount(true);
+    setDiscountError(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const res = await fetch(`${getBaseUrl()}/store/discounts/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, subtotal, itemCount }),
+      });
+      const json = await res.json() as { data: { code?: string; discountAmount?: number } | null; error?: string };
+      if (!res.ok || !json.data) {
+        setDiscount(null);
+        setDiscountError(json.error || "Invalid discount code");
+        return;
+      }
+      setDiscount({ code: json.data.code || code.toUpperCase(), amount: Number(json.data.discountAmount) || 0 });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      setDiscount(null);
+      setDiscountError("Couldn't check the code. Please try again.");
+    } finally {
+      setApplyingDiscount(false);
+    }
+  };
+
+  const removeDiscount = () => {
+    setDiscount(null);
+    setDiscountInput("");
+    setDiscountError(null);
+  };
+
   const createOrder = async (base: string) => {
     const orderRes = await fetch(`${base}/store/orders`, {
       method: "POST",
@@ -149,6 +193,7 @@ export default function CheckoutScreen() {
         email: user?.email || "",
         subtotal,
         shipping: 0,
+        discountCode: discount?.code,
         shippingAddress: { fullName: form.name, phone: form.phone, city: form.city, district: form.district, street: form.street },
         lineItems: items.map((i) => ({ productId: i.productId, variantId: i.variantId, title: i.title, quantity: i.quantity, price: i.price, size: i.size, color: i.color, image: i.image })),
         paymentMethod: payMethod,
@@ -165,7 +210,9 @@ export default function CheckoutScreen() {
     };
   };
 
-  const createWaylLink = async (base: string, orderNumber: string, orderTotal: number): Promise<string | null> => {
+  const createWaylLink = async (
+    base: string, orderNumber: string, orderTotal: number,
+  ): Promise<{ url: string | null; paid: boolean }> => {
     try {
       const waylRes = await fetch(`${base}/store/wayl/create-link`, {
         method: "POST",
@@ -177,10 +224,10 @@ export default function CheckoutScreen() {
           redirectionUrl: `https://${process.env.EXPO_PUBLIC_DOMAIN || "moramoda.tech"}/checkout/complete?fromWayl=1`,
         }),
       });
-      const waylJson = await waylRes.json() as { data: { url?: string } | null; error?: string };
-      return waylJson.data?.url || null;
+      const waylJson = await waylRes.json() as { data: { url?: string; paid?: boolean } | null; error?: string };
+      return { url: waylJson.data?.url || null, paid: !!waylJson.data?.paid };
     } catch {
-      return null;
+      return { url: null, paid: false };
     }
   };
 
@@ -234,9 +281,24 @@ export default function CheckoutScreen() {
         // Step 2: ensure a Wayl link exists. If link creation failed on a
         // previous attempt, regenerate it for the SAME order (no duplicate).
         if (!info.waylUrl) {
-          const waylUrl = await createWaylLink(base, info.orderNumber, info.orderTotal);
-          if (!waylUrl) throw new Error("Could not start the payment. Please try again.");
-          info = { ...info, waylUrl };
+          const wayl = await createWaylLink(base, info.orderNumber, info.orderTotal);
+          // Fully-discounted order: nothing to pay, server already settled it.
+          if (wayl.paid) {
+            clearCart();
+            setPendingOnline(null);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            router.replace({
+              pathname: "/checkout/complete",
+              params: {
+                orderNumber: info.orderNumber, total: String(info.orderTotal), name: form.name,
+                city: form.city, district: form.district, phone: form.phone,
+                items: info.snapshot, paymentMethod: "online", paid: "1", waylUrl: "",
+              },
+            } as any);
+            return;
+          }
+          if (!wayl.url) throw new Error("Could not start the payment. Please try again.");
+          info = { ...info, waylUrl: wayl.url };
           setPendingOnline(info);
         }
 
@@ -431,6 +493,47 @@ export default function CheckoutScreen() {
             />
           </View>
 
+          {/* Discount Code */}
+          <Text style={[st.sectionLbl, { color: sub }]}>DISCOUNT CODE</Text>
+          <View style={[st.group, { backgroundColor: card, padding: 14, gap: 10 }]}>
+            {discount ? (
+              <View style={st.discountApplied}>
+                <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(34,197,94,0.16)", alignItems: "center", justifyContent: "center" }}>
+                  <Feather name="check" size={16} color="#22C55E" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: textCol }}>{discount.code}</Text>
+                  <Text style={{ fontSize: 11, color: "#22C55E", marginTop: 1 }}>−{formatIQD(discount.amount)} applied</Text>
+                </View>
+                <Pressable onPress={removeDiscount} hitSlop={10} style={{ padding: 4 }}>
+                  <Feather name="x" size={18} color={sub} />
+                </Pressable>
+              </View>
+            ) : (
+              <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+                <TextInput
+                  value={discountInput}
+                  onChangeText={(t) => { setDiscountInput(t.toUpperCase()); if (discountError) setDiscountError(null); }}
+                  placeholder="Enter code"
+                  placeholderTextColor={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)"}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  style={[st.discountInput, { color: textCol, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}
+                />
+                <Pressable
+                  onPress={applyDiscount}
+                  disabled={applyingDiscount || !discountInput.trim()}
+                  style={({ pressed }) => [st.discountBtn, { backgroundColor: PRIMARY }, (pressed || applyingDiscount || !discountInput.trim()) && { opacity: 0.6 }]}
+                >
+                  {applyingDiscount ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>APPLY</Text>}
+                </Pressable>
+              </View>
+            )}
+            {discountError && (
+              <Text style={{ fontSize: 12, color: "#EF4444" }}>{discountError}</Text>
+            )}
+          </View>
+
           {/* Order Summary */}
           <Text style={[st.sectionLbl, { color: sub }]}>ORDER SUMMARY</Text>
           <View style={[st.group, { backgroundColor: card }]}>
@@ -446,8 +549,15 @@ export default function CheckoutScreen() {
               </View>
             ))}
             <View style={[st.divider, { backgroundColor: divClr }]} />
+            <View style={st.totalRow}><Text style={[st.totalLbl, { color: sub }]}>Subtotal</Text><Text style={{ fontSize: 13, fontWeight: "600", color: textCol }}>{formatIQD(subtotal)}</Text></View>
+            {discount && (
+              <View style={st.totalRow}>
+                <Text style={[st.totalLbl, { color: sub }]}>Discount ({discount.code})</Text>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: "#22C55E" }}>−{formatIQD(discountAmount)}</Text>
+              </View>
+            )}
             <View style={st.totalRow}><Text style={[st.totalLbl, { color: sub }]}>Shipping</Text><Text style={{ fontSize: 13, fontWeight: "600", color: "#22C55E" }}>Free</Text></View>
-            <View style={st.totalRow}><Text style={[st.totalLbl, { color: textCol }]}>Total</Text><Text style={[st.totalAmt, { color: PRIMARY }]}>{formatIQD(subtotal)}</Text></View>
+            <View style={st.totalRow}><Text style={[st.totalLbl, { color: textCol }]}>Total</Text><Text style={[st.totalAmt, { color: PRIMARY }]}>{formatIQD(grandTotal)}</Text></View>
           </View>
 
         </ScrollView>
@@ -526,6 +636,9 @@ const st = StyleSheet.create({
   radio:       { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
   radioDot:    { width: 10, height: 10, borderRadius: 5 },
   noteInput:   { padding: 16, fontSize: 14, minHeight: 72, textAlignVertical: "top" },
+  discountInput: { flex: 1, height: 44, borderRadius: 12, paddingHorizontal: 14, fontSize: 14, fontWeight: "600", letterSpacing: 1 },
+  discountBtn:  { height: 44, paddingHorizontal: 20, borderRadius: 12, alignItems: "center", justifyContent: "center", minWidth: 80 },
+  discountApplied: { flexDirection: "row", alignItems: "center", gap: 12 },
   summaryRow:  { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
   summaryImg:  { width: 42, height: 52, borderRadius: 8 },
   summaryTitle:{ fontSize: 13, fontWeight: "600" },

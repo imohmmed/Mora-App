@@ -62,6 +62,7 @@ export * from './discountListResponse';
 export * from './discountResponse';
 export * from './discountResponseMeta';
 export * from './discountUpdate';
+export * from './discountUpdateType';
 export * from './healthStatus';
 export * from './listMeta';
 export * from './market';

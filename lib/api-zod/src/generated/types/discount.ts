@@ -14,6 +14,12 @@ export interface Discount {
   usageCount?: number;
   /** @nullable */
   usageLimit?: number | null;
+  /** @nullable */
+  minSubtotal?: number | null;
+  /** @nullable */
+  minItems?: number | null;
+  /** @nullable */
+  maxDiscount?: number | null;
   startsAt?: string;
   /** @nullable */
   endsAt?: string | null;

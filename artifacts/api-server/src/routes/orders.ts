@@ -4,6 +4,7 @@ import { requireAdmin } from "../middlewares/auth.js";
 import type { Row } from "../lib/types.js";
 import { sendLiveActivityPush, sendLiveActivityStartPush } from "../lib/apns.js";
 import { doSendNotification } from "./notifications.js";
+import { validateDiscount, redeemDiscount } from "../lib/discounts.js";
 
 // Arabic push + in-app notification copy per delivery stage.
 // {n} is replaced with the order number.
@@ -66,7 +67,24 @@ router.post("/store/orders", (req, res) => {
 
   const subtotal = Number(b["subtotal"]) || 0;
   const shipping = Number(b["shipping"]) || 0;
-  const total = subtotal + shipping;
+
+  // ── Discount: re-validate server-side (never trust a client-sent amount) ──
+  const discountCode = ((b["discountCode"] as string) ?? "").trim();
+  let discountAmount = 0;
+  let appliedCode: string | null = null;
+  if (discountCode) {
+    const lineItems = (b["lineItems"] as Array<{ quantity?: number }> | undefined) ?? [];
+    const itemCount = lineItems.reduce((n, it) => n + (Number(it?.quantity) || 0), 0);
+    const result = validateDiscount(discountCode, subtotal, itemCount);
+    if (!result.ok) {
+      res.status(400).json({ data: null, meta: {}, error: result.error ?? "Invalid discount code" });
+      return;
+    }
+    discountAmount = result.discountAmount;
+    appliedCode = (result.discount?.["code"] as string) ?? discountCode.toUpperCase();
+  }
+
+  const total = Math.max(0, subtotal + shipping - discountAmount);
 
   // Resolve customer from Bearer token if present
   let customerId: string | null = null;
@@ -86,17 +104,23 @@ router.post("/store/orders", (req, res) => {
   const paymentMethod = (b["paymentMethod"] as string) ?? "cod";
 
   db.prepare(
-    `INSERT INTO orders (id,order_number,customer_id,email,status,financial_status,fulfillment_status,subtotal,shipping,tax,total,currency,shipping_address,line_items,note,tags,is_draft,is_abandoned,delivery_stage,payment_method,created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    `INSERT INTO orders (id,order_number,customer_id,email,status,financial_status,fulfillment_status,subtotal,shipping,tax,total,currency,discount_code,discount_amount,shipping_address,line_items,note,tags,is_draft,is_abandoned,delivery_stage,payment_method,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).run(
     id, orderNum, customerId, email,
     "pending", "pending", "unfulfilled",
     subtotal, shipping, 0, total, "IQD",
+    appliedCode, discountAmount,
     JSON.stringify(b["shippingAddress"] ?? {}),
     JSON.stringify(b["lineItems"] ?? []),
     (b["note"] as string) ?? "", "[]",
     0, 0, "confirmed", paymentMethod, now, now
   );
+
+  // Count usage now for COD; online codes are redeemed when payment settles.
+  if (appliedCode && paymentMethod !== "online") {
+    redeemDiscount(appliedCode);
+  }
 
   if (customerId) {
     const addr = (b["shippingAddress"] as Record<string, string> | undefined) ?? {};

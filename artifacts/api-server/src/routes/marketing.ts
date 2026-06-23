@@ -1,7 +1,14 @@
 import { Router } from "express";
 import db, { parseRows, parseOne } from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
+import { validateDiscount } from "../lib/discounts.js";
 import type { Row } from "../lib/types.js";
+
+const numOrNull = (v: unknown): number | null => {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
 
 const router = Router();
 
@@ -61,8 +68,12 @@ router.get("/admin/discounts/:id", (req, res) => {
 router.post("/admin/discounts", (req, res) => {
   const id = `disc_${Date.now()}`;
   const b = req.body as Record<string, unknown>;
-  db.prepare(`INSERT INTO discounts (id,code,type,value,usage_count,usage_limit,starts_at,ends_at,status) VALUES (?,?,?,?,?,?,?,?,?)`)
-    .run(id, b["code"] ?? "", b["type"] ?? "percentage", b["value"] ?? 0, 0, b["usageLimit"] ?? null, new Date().toISOString(), b["endsAt"] ?? null, "active");
+  db.prepare(`INSERT INTO discounts (id,code,type,value,usage_count,usage_limit,min_subtotal,min_items,max_discount,starts_at,ends_at,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(
+      id, b["code"] ?? "", b["type"] ?? "percentage", b["value"] ?? 0, 0,
+      numOrNull(b["usageLimit"]), numOrNull(b["minSubtotal"]), numOrNull(b["minItems"]), numOrNull(b["maxDiscount"]),
+      new Date().toISOString(), b["endsAt"] ?? null, "active",
+    );
   const d = parseOne(db.prepare(`SELECT * FROM discounts WHERE id=?`).get(id) as Row | undefined);
   res.status(201).json({ data: d, meta: {}, error: null });
 });
@@ -71,7 +82,27 @@ router.put("/admin/discounts/:id", (req, res) => {
   const id = req.params["id"];
   if (!db.prepare(`SELECT id FROM discounts WHERE id=?`).get(id)) { res.status(404).json({ data: null, meta: {}, error: "Discount not found" }); return; }
   const b = req.body as Record<string, unknown>;
-  db.prepare(`UPDATE discounts SET code=COALESCE(?,code), value=COALESCE(?,value), status=COALESCE(?,status), ends_at=COALESCE(?,ends_at) WHERE id=?`).run(b["code"] ?? null, b["value"] ?? null, b["status"] ?? null, b["endsAt"] ?? null, id);
+  const has = (k: string) => Object.prototype.hasOwnProperty.call(b, k);
+  db.prepare(
+    `UPDATE discounts SET
+       code=COALESCE(?,code),
+       type=COALESCE(?,type),
+       value=COALESCE(?,value),
+       status=COALESCE(?,status),
+       usage_limit=CASE WHEN ?=1 THEN ? ELSE usage_limit END,
+       min_subtotal=CASE WHEN ?=1 THEN ? ELSE min_subtotal END,
+       min_items=CASE WHEN ?=1 THEN ? ELSE min_items END,
+       max_discount=CASE WHEN ?=1 THEN ? ELSE max_discount END,
+       ends_at=COALESCE(?,ends_at)
+     WHERE id=?`,
+  ).run(
+    b["code"] ?? null, b["type"] ?? null, b["value"] ?? null, b["status"] ?? null,
+    has("usageLimit") ? 1 : 0, numOrNull(b["usageLimit"]),
+    has("minSubtotal") ? 1 : 0, numOrNull(b["minSubtotal"]),
+    has("minItems") ? 1 : 0, numOrNull(b["minItems"]),
+    has("maxDiscount") ? 1 : 0, numOrNull(b["maxDiscount"]),
+    b["endsAt"] ?? null, id,
+  );
   const d = parseOne(db.prepare(`SELECT * FROM discounts WHERE id=?`).get(id) as Row | undefined);
   res.json({ data: d, meta: {}, error: null });
 });
@@ -81,12 +112,17 @@ router.delete("/admin/discounts/:id", (req, res) => {
   res.json({ data: { deleted: true }, meta: {}, error: null });
 });
 
-// Public: validate discount code
+// Public: validate discount code against the current cart
 router.post("/store/discounts/validate", (req, res) => {
-  const { code } = req.body as { code: string };
-  const disc = parseOne(db.prepare(`SELECT * FROM discounts WHERE upper(code)=upper(?) AND status='active'`).get(code ?? "") as Row | undefined);
-  if (!disc) { res.status(404).json({ data: null, meta: {}, error: "Invalid or expired discount code" }); return; }
-  res.json({ data: disc, meta: {}, error: null });
+  const b = req.body as { code?: string; subtotal?: number; itemCount?: number };
+  const subtotal = Number(b.subtotal) || 0;
+  const itemCount = Number(b.itemCount) || 0;
+  const result = validateDiscount(b.code ?? "", subtotal, itemCount);
+  if (!result.ok) {
+    res.status(404).json({ data: null, meta: {}, error: result.error ?? "Invalid discount code" });
+    return;
+  }
+  res.json({ data: { ...result.discount, discountAmount: result.discountAmount }, meta: {}, error: null });
 });
 
 // ─── Content: Blog posts ──────────────────────────────────────────────────────

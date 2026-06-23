@@ -5,11 +5,21 @@
  * Mora e-commerce admin API
  * OpenAPI spec version: 0.1.0
  */
+import type { DiscountUpdateType } from './discountUpdateType';
 
 export interface DiscountUpdate {
   code?: string;
+  type?: DiscountUpdateType;
   value?: number;
   status?: string;
+  /** @nullable */
+  usageLimit?: number | null;
+  /** @nullable */
+  minSubtotal?: number | null;
+  /** @nullable */
+  minItems?: number | null;
+  /** @nullable */
+  maxDiscount?: number | null;
   /** @nullable */
   endsAt?: string | null;
 }

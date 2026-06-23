@@ -1033,6 +1033,11 @@ runMigration(`ALTER TABLE products ADD COLUMN gender TEXT NOT NULL DEFAULT 'all'
 runMigration(`ALTER TABLE story_items ADD COLUMN gender TEXT NOT NULL DEFAULT 'all'`);
 runMigration(`ALTER TABLE story_items ADD COLUMN collection_id TEXT`);
 runMigration(`ALTER TABLE customers ADD COLUMN live_activity_pts_token TEXT`);
+runMigration(`ALTER TABLE discounts ADD COLUMN min_subtotal REAL`);
+runMigration(`ALTER TABLE discounts ADD COLUMN min_items INTEGER`);
+runMigration(`ALTER TABLE discounts ADD COLUMN max_discount REAL`);
+runMigration(`ALTER TABLE orders ADD COLUMN discount_code TEXT`);
+runMigration(`ALTER TABLE orders ADD COLUMN discount_amount REAL NOT NULL DEFAULT 0`);
 
 // ─── In-app notifications per customer ────────────────────────────────────────
 db.exec(`

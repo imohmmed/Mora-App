@@ -409,6 +409,12 @@ export interface Discount {
   usageCount?: number;
   /** @nullable */
   usageLimit?: number | null;
+  /** @nullable */
+  minSubtotal?: number | null;
+  /** @nullable */
+  minItems?: number | null;
+  /** @nullable */
+  maxDiscount?: number | null;
   startsAt?: string;
   /** @nullable */
   endsAt?: string | null;
@@ -430,13 +436,36 @@ export interface DiscountInput {
   /** @nullable */
   usageLimit?: number | null;
   /** @nullable */
+  minSubtotal?: number | null;
+  /** @nullable */
+  minItems?: number | null;
+  /** @nullable */
+  maxDiscount?: number | null;
+  /** @nullable */
   endsAt?: string | null;
 }
 
+export type DiscountUpdateType = typeof DiscountUpdateType[keyof typeof DiscountUpdateType];
+
+
+export const DiscountUpdateType = {
+  percentage: 'percentage',
+  fixed: 'fixed',
+} as const;
+
 export interface DiscountUpdate {
   code?: string;
+  type?: DiscountUpdateType;
   value?: number;
   status?: string;
+  /** @nullable */
+  usageLimit?: number | null;
+  /** @nullable */
+  minSubtotal?: number | null;
+  /** @nullable */
+  minItems?: number | null;
+  /** @nullable */
+  maxDiscount?: number | null;
   /** @nullable */
   endsAt?: string | null;
 }

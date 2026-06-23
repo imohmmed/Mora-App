@@ -1689,6 +1689,9 @@ components:
         value: { type: number }
         usageCount: { type: integer }
         usageLimit: { type: ["integer", "null"] }
+        minSubtotal: { type: ["number", "null"] }
+        minItems: { type: ["integer", "null"] }
+        maxDiscount: { type: ["number", "null"] }
         startsAt: { type: string }
         endsAt: { type: ["string", "null"] }
         status: { type: string }
@@ -1701,6 +1704,9 @@ components:
         type: { type: string, enum: [percentage, fixed] }
         value: { type: number }
         usageLimit: { type: ["integer", "null"] }
+        minSubtotal: { type: ["number", "null"] }
+        minItems: { type: ["integer", "null"] }
+        maxDiscount: { type: ["number", "null"] }
         endsAt: { type: ["string", "null"] }
       required: [code, type, value]
 
@@ -1708,8 +1714,13 @@ components:
       type: object
       properties:
         code: { type: string }
+        type: { type: string, enum: [percentage, fixed] }
         value: { type: number }
         status: { type: string }
+        usageLimit: { type: ["integer", "null"] }
+        minSubtotal: { type: ["number", "null"] }
+        minItems: { type: ["integer", "null"] }
+        maxDiscount: { type: ["number", "null"] }
         endsAt: { type: ["string", "null"] }
 
     DiscountListResponse:

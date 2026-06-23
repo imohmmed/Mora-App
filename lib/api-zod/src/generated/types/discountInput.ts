@@ -14,5 +14,11 @@ export interface DiscountInput {
   /** @nullable */
   usageLimit?: number | null;
   /** @nullable */
+  minSubtotal?: number | null;
+  /** @nullable */
+  minItems?: number | null;
+  /** @nullable */
+  maxDiscount?: number | null;
+  /** @nullable */
   endsAt?: string | null;
 }

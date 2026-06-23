@@ -993,6 +993,9 @@ export const AdminListDiscountsResponse = zod.object({
   "value": zod.number(),
   "usageCount": zod.number().optional(),
   "usageLimit": zod.number().nullish(),
+  "minSubtotal": zod.number().nullish(),
+  "minItems": zod.number().nullish(),
+  "maxDiscount": zod.number().nullish(),
   "startsAt": zod.string().optional(),
   "endsAt": zod.string().nullish(),
   "status": zod.string()
@@ -1012,6 +1015,9 @@ export const AdminCreateDiscountBody = zod.object({
   "type": zod.enum(['percentage', 'fixed']),
   "value": zod.number(),
   "usageLimit": zod.number().nullish(),
+  "minSubtotal": zod.number().nullish(),
+  "minItems": zod.number().nullish(),
+  "maxDiscount": zod.number().nullish(),
   "endsAt": zod.string().nullish()
 })
 
@@ -1031,6 +1037,9 @@ export const AdminGetDiscountResponse = zod.object({
   "value": zod.number(),
   "usageCount": zod.number().optional(),
   "usageLimit": zod.number().nullish(),
+  "minSubtotal": zod.number().nullish(),
+  "minItems": zod.number().nullish(),
+  "maxDiscount": zod.number().nullish(),
   "startsAt": zod.string().optional(),
   "endsAt": zod.string().nullish(),
   "status": zod.string()
@@ -1051,8 +1060,13 @@ export const AdminUpdateDiscountParams = zod.object({
 
 export const AdminUpdateDiscountBody = zod.object({
   "code": zod.string().optional(),
+  "type": zod.enum(['percentage', 'fixed']).optional(),
   "value": zod.number().optional(),
   "status": zod.string().optional(),
+  "usageLimit": zod.number().nullish(),
+  "minSubtotal": zod.number().nullish(),
+  "minItems": zod.number().nullish(),
+  "maxDiscount": zod.number().nullish(),
   "endsAt": zod.string().nullish()
 })
 
@@ -1064,6 +1078,9 @@ export const AdminUpdateDiscountResponse = zod.object({
   "value": zod.number(),
   "usageCount": zod.number().optional(),
   "usageLimit": zod.number().nullish(),
+  "minSubtotal": zod.number().nullish(),
+  "minItems": zod.number().nullish(),
+  "maxDiscount": zod.number().nullish(),
   "startsAt": zod.string().optional(),
   "endsAt": zod.string().nullish(),
   "status": zod.string()

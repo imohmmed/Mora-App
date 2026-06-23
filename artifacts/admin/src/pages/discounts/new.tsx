@@ -28,6 +28,12 @@ export default function NewDiscount() {
     value: "",
     hasLimit: false,
     usageLimit: "",
+    hasMinSubtotal: false,
+    minSubtotal: "",
+    hasMinItems: false,
+    minItems: "",
+    hasMaxDiscount: false,
+    maxDiscount: "",
     hasEnd: false,
     endsAt: "",
   });
@@ -53,6 +59,9 @@ export default function NewDiscount() {
           type: form.type,
           value,
           usageLimit: form.hasLimit && form.usageLimit ? parseInt(form.usageLimit, 10) : null,
+          minSubtotal: form.hasMinSubtotal && form.minSubtotal ? parseFloat(form.minSubtotal) : null,
+          minItems: form.hasMinItems && form.minItems ? parseInt(form.minItems, 10) : null,
+          maxDiscount: form.type === "percentage" && form.hasMaxDiscount && form.maxDiscount ? parseFloat(form.maxDiscount) : null,
           endsAt: form.hasEnd && form.endsAt ? form.endsAt : null,
         },
       },
@@ -130,32 +139,108 @@ export default function NewDiscount() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="percentage">Percentage (%)</SelectItem>
-                    <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
+                    <SelectItem value="fixed">Fixed Amount (IQD)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="value">
-                  {form.type === "percentage" ? "Percentage Off *" : "Amount Off ($) *"}
+                  {form.type === "percentage" ? "Percentage Off *" : "Amount Off (IQD) *"}
                 </Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    {form.type === "percentage" ? "%" : "$"}
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                    {form.type === "percentage" ? "%" : "IQD"}
                   </span>
                   <Input
                     id="value"
                     type="number"
-                    step={form.type === "percentage" ? "1" : "0.01"}
+                    step={form.type === "percentage" ? "1" : "250"}
                     min="0"
                     max={form.type === "percentage" ? "100" : undefined}
-                    className="pl-8"
-                    placeholder={form.type === "percentage" ? "10" : "0.00"}
+                    className={form.type === "percentage" ? "pl-8" : "pl-12"}
+                    placeholder={form.type === "percentage" ? "10" : "5000"}
                     value={form.value}
                     onChange={(e) => set("value", e.target.value)}
                     required
                   />
                 </div>
               </div>
+              {form.type === "percentage" && (
+                <div className="grid gap-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="hasMaxDiscount">Cap the discount amount</Label>
+                    <Switch
+                      id="hasMaxDiscount"
+                      checked={form.hasMaxDiscount}
+                      onCheckedChange={(v) => set("hasMaxDiscount", v)}
+                    />
+                  </div>
+                  {form.hasMaxDiscount && (
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">IQD</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="250"
+                        className="pl-12"
+                        placeholder="Max discount, e.g. 20000"
+                        value={form.maxDiscount}
+                        onChange={(e) => set("maxDiscount", e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Conditions</CardTitle>
+              <CardDescription>Limit when this code can be used. Leave off to apply to any order.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="hasMinSubtotal">Minimum order subtotal</Label>
+                <Switch
+                  id="hasMinSubtotal"
+                  checked={form.hasMinSubtotal}
+                  onCheckedChange={(v) => set("hasMinSubtotal", v)}
+                />
+              </div>
+              {form.hasMinSubtotal && (
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">IQD</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    className="pl-12"
+                    placeholder="e.g. 100000"
+                    value={form.minSubtotal}
+                    onChange={(e) => set("minSubtotal", e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-2 border-t">
+                <Label htmlFor="hasMinItems">Minimum number of items</Label>
+                <Switch
+                  id="hasMinItems"
+                  checked={form.hasMinItems}
+                  onCheckedChange={(v) => set("hasMinItems", v)}
+                />
+              </div>
+              {form.hasMinItems && (
+                <Input
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="e.g. 3"
+                  value={form.minItems}
+                  onChange={(e) => set("minItems", e.target.value)}
+                />
+              )}
             </CardContent>
           </Card>
 
@@ -227,6 +312,20 @@ export default function NewDiscount() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Usage Limit</span>
                 <span>{form.hasLimit ? (form.usageLimit || "—") : "Unlimited"}</span>
+              </div>
+              {form.type === "percentage" && form.hasMaxDiscount && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Max discount</span>
+                  <span>{form.maxDiscount ? `${parseFloat(form.maxDiscount).toLocaleString("en-US")} IQD` : "—"}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Min subtotal</span>
+                <span>{form.hasMinSubtotal ? (form.minSubtotal ? `${parseFloat(form.minSubtotal).toLocaleString("en-US")} IQD` : "—") : "None"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Min items</span>
+                <span>{form.hasMinItems ? (form.minItems || "—") : "None"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Ends</span>

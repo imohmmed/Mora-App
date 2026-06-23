@@ -2,6 +2,7 @@
 - [Firebase Auth Setup](firebase-auth.md) — phone/Google/Apple auth built, waiting on Firebase credentials (6 env vars needed)
 - [VPS nginx serve path](vps-nginx-path.md) — Expo web dist must go to /var/www/mora/artifacts/mora/dist NOT /var/www/mora-web/; also covers API/admin deploy (scp dist, not git), DATABASE_PATH persistence fix + pm2 save, and admin-token security hole
 - [IQD Pricing & Content Sections](iqd-content-sections.md) — All prices in IQD (×1300 from USD), formatIQD() in lib/format.ts, warranty+testimonials via content_sections API
+- [Discount codes (COD + Wayl)](discount-codes.md) — COD redeems immediately, online/Wayl redeems on atomic paid transition; zero-total returns {paid:true}; webhook auth left as-is on purpose
 - [bacons apple-targets pnpm fix](bacons-apple-targets-pnpm.md) — @bacons/apple-targets needs @expo/image-utils symlinked into its node_modules; metro blockList fix for _tmp_ dirs
 - [pnpm override semver majors](pnpm-override-semver-majors.md) — CVE overrides must use caret (^), not >=; >= pulled @babel/core 8 / js-yaml 5 and broke EAS pod install
 - [Live Activities Architecture](live-activities.md) — Full Live Activity + Dynamic Island stack for iOS order tracking
