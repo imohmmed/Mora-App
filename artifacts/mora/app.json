@@ -20,6 +20,8 @@
       "usesAppleSignIn": true,
       "associatedDomains": [
         "applinks:mora1.com",
+        "webcredentials:mora1.com",
+        "applinks:mora1.com",
         "webcredentials:mora1.com"
       ],
       "entitlements": {
@@ -33,8 +35,14 @@
             "CFBundleURLSchemes": [
               "com.googleusercontent.apps.274592364900-gshknmnv2l1sgp157pr08bifs36jk3su"
             ]
+          },
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.274592364900-gshknmnv2l1sgp157pr08bifs36jk3su"
+            ]
           }
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
