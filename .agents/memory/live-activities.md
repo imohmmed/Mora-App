@@ -22,6 +22,25 @@ Live Activities for order tracking require 4 synchronized layers:
 > clone → the dangerousMod's "Missing source files" throw killed prebuild on EAS while local (where
 > the files existed on disk) passed. Fix: source files live at `plugins/withMoraLiveActivity/MoraOrderWidget/`
 > (no `ios` segment). Rule: never put committed plugin assets under a path segment named `ios`.
+>
+> GOTCHA 2 (eas credentials never showed "Select target"; EAS build "No profiles for app.mora1.com.widget"):
+> node-xcode's `project.addTarget(name,"app_extension",...)` creates the widget PBXNativeTarget + the
+> host's Embed-Foundation-Extensions copy phase + the `.appex` product ref, but does NOT create a
+> `PBXTargetDependency`. `eas credentials` (GENERIC workflow, i.e. a local `ios/` exists) and EAS Build
+> discover embedded extensions by walking the HOST target's `dependencies` array → with none, only the
+> main app gets provisioned. WORSE: `addTargetDependency(host,[widget])` is a SILENT NO-OP on a fresh
+> prebuild because xcode@3.0.1 guards on `if (proxySection && depSection)` and those two object sections
+> don't exist yet. Fix in the plugin (after creating the target): pre-create
+> `objects.PBXTargetDependency = {}` and `objects.PBXContainerItemProxy = {}`, ensure host
+> `.dependencies` is an array, THEN call `project.addTargetDependency(hostUuid,[widgetUuid])`. Verify:
+> prebuild → pbxproj must contain `isa = PBXTargetDependency` + `remoteInfo = "MoraOrderWidget"` and the
+> host target's `dependencies = ( ... PBXTargetDependency )` non-empty.
+>
+> ENV GOTCHA: eas-cli is NOT installed globally in Replit, and `npx eas-cli`/`npm` hit a corrupted
+> `~/.npm` cache (ECOMPROMISED lock, then ENOTEMPTY in `_npx`). Use `pnpm dlx eas-cli ...` (pnpm store
+> is healthy) and run it FROM `artifacts/mora` (running from repo root makes eas-cli link to the wrong
+> project `@itmohmmed/workspace` + write a stray root app.json). iOS prebuild can't run on Windows, so
+> credentials/builds for the widget target must be driven from the Replit Linux shell.
 
 ### 1. Swift Widget (`plugins/withMoraLiveActivity/MoraOrderWidget/MoraOrderActivity.swift`)
 - `MoraOrderActivityAttributes` struct with `orderNumber` + `customerName` static, `stage` + `message` as ContentState

@@ -172,6 +172,64 @@ function withWidgetExtensionTarget(config) {
       Object.assign(buildCfg.buildSettings, isDebug ? debugSettings : releaseSettings);
     }
 
+    // ── Declare the widget as a TARGET DEPENDENCY of the host app target.
+    //    node-xcode's addTarget() created the "Embed Foundation Extensions"
+    //    copy-files phase + the .appex product reference, but it does NOT add a
+    //    PBXTargetDependency. Both `eas credentials` (GENERIC workflow, when a
+    //    local ios/ exists) and EAS Build discover embedded app-extension
+    //    targets by walking the HOST target's `dependencies` array. With no
+    //    PBXTargetDependency the widget is invisible to provisioning → the
+    //    "Select target" step never appears and the build fails with
+    //    "No profiles for 'app.mora1.com.widget'". Add it explicitly.
+    let hostTargetUuid;
+    for (const [uuid, t] of Object.entries(project.pbxNativeTargetSection() || {})) {
+      if (typeof t !== "object" || uuid.endsWith("_comment")) continue;
+      if (stripQuotes(t.productType || "") === "com.apple.product-type.application") {
+        hostTargetUuid = uuid;
+        break;
+      }
+    }
+
+    if (hostTargetUuid) {
+      // node-xcode 3.x's addTargetDependency() only pushes the dependency when
+      // the PBXTargetDependency / PBXContainerItemProxy sections ALREADY exist
+      // (it guards on `if (proxySection && depSection)`). A fresh Expo prebuild
+      // has neither section, so the call would be a silent no-op. Pre-create the
+      // empty sections (and ensure the host's `dependencies` array exists) so
+      // the built-in does its job and serializes correctly.
+      const objects = project.hash.project.objects;
+      objects.PBXTargetDependency = objects.PBXTargetDependency || {};
+      objects.PBXContainerItemProxy = objects.PBXContainerItemProxy || {};
+      const hostTarget = project.pbxNativeTargetSection()[hostTargetUuid];
+      if (!Array.isArray(hostTarget.dependencies)) hostTarget.dependencies = [];
+
+      if (typeof project.addTargetDependency === "function") {
+        project.addTargetDependency(hostTargetUuid, [targetUuid]);
+      } else {
+        // Manual fallback for non-3.x node-xcode.
+        const depUuid = project.generateUuid();
+        const proxyUuid = project.generateUuid();
+        objects.PBXContainerItemProxy[proxyUuid] = {
+          isa: "PBXContainerItemProxy",
+          containerPortal: project.hash.project.rootObject,
+          containerPortal_comment: "Project object",
+          proxyType: 1,
+          remoteGlobalIDString: targetUuid,
+          remoteInfo: EXT_TARGET_NAME,
+        };
+        objects.PBXContainerItemProxy[`${proxyUuid}_comment`] = "PBXContainerItemProxy";
+        objects.PBXTargetDependency[depUuid] = {
+          isa: "PBXTargetDependency",
+          target: targetUuid,
+          target_comment: EXT_TARGET_NAME,
+          targetProxy: proxyUuid,
+          targetProxy_comment: "PBXContainerItemProxy",
+        };
+        objects.PBXTargetDependency[`${depUuid}_comment`] = "PBXTargetDependency";
+        hostTarget.dependencies.push({ value: depUuid, comment: "PBXTargetDependency" });
+      }
+    }
+
     return cfg;
   });
 }
