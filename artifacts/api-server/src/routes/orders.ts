@@ -9,13 +9,18 @@ import { validateDiscount, redeemDiscount } from "../lib/discounts.js";
 // Arabic push + in-app notification copy per delivery stage.
 // {n} is replaced with the order number.
 const STAGE_NOTIF: Record<string, { title: string; body: string }> = {
-  confirmed: { title: "تم تثبيت طلبك ✅", body: "طلبك {n} قيد المعالجة الآن" },
-  preparing: { title: "يتم تجهيز طلبك 📦", body: "نقوم بتحضير طلبك {n} للشحن" },
-  shipping:  { title: "طلبك في الطريق 🚚", body: "طلبك {n} خرج للتوصيل إليك" },
-  delivered: { title: "تم توصيل طلبك 🎉", body: "نتمنى أن ينال طلبك {n} إعجابك" },
-  issue:     { title: "هناك مشكلة في طلبك ⚠️", body: "يرجى التواصل معنا بخصوص طلبك {n}" },
-  cancelled: { title: "تم إلغاء طلبك ❌", body: "تم إلغاء طلبك {n}. تواصل معنا للمساعدة" },
+  confirmed: { title: "تم تثبيت طلبك ✅", body: "استلمنا طلبك {n} وراح نبلش نجهزه إلك" },
+  preparing: { title: "يتم تجهيز طلبك 📦", body: "نجهز طلبك {n} ونحضّره للشحن" },
+  shipping:  { title: "طلبك في الطريق 🚚", body: "تم تسليم طلبك {n} لشركة التوصيل، الوصول خلال 1-2 يوم" },
+  delivered: { title: "تم توصيل طلبك 🎉", body: "نتمنى ينال طلبك {n} إعجابك، انطينا رأيك" },
+  issue:     { title: "صارت مشكلة بطلبك ⚠️", body: "تواصل ويانا بخصوص طلبك {n} حتى نحلها إلك" },
+  cancelled: { title: "تم إلغاء طلبك ❌", body: "تم إلغاء طلبك {n}. تواصل ويانا للمساعدة" },
 };
+
+// Format an amount as Iraqi Dinar for the Live Activity, e.g. 75000 → "75,000 IQD".
+function formatIQD(amount: number): string {
+  return `${Math.round(amount).toLocaleString("en-US")} IQD`;
+}
 
 // Allowed delivery stages for Live Activity content-state.
 const VALID_STAGES = ["confirmed", "preparing", "shipping", "delivered", "issue", "cancelled"];
@@ -340,8 +345,11 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
   // Default Arabic copy for this stage (admin-supplied message overrides the body)
   const copy = STAGE_NOTIF[stage];
   const defaultBody = copy ? copy.body.replace("{n}", orderNum) : "";
-  const laMessage = message && message.trim() ? message : defaultBody;
-  const isContact = stage === "issue" || stage === "cancelled";
+  // Only push a custom message into the Live Activity; otherwise leave it empty
+  // so the widget renders its own per-stage subtitle.
+  const laMessage = message && message.trim() ? message : "";
+  // delivered/issue/cancelled deep-link to the in-app chat; the rest → My Orders.
+  const toChat = stage === "delivered" || stage === "issue" || stage === "cancelled";
 
   // 1) Update the iOS Live Activity directly via APNs (if a token is registered)
   const laPushToken = existing["live_activity_push_token"] as string | null;
@@ -366,7 +374,7 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
       await doSendNotification({
         title: copy.title,
         body: defaultBody,
-        url: isContact ? "/(tabs)/chat" : "",
+        url: toChat ? "/(tabs)/chat" : "/orders",
         targetAll: false,
         customerIds: [customerId],
       });
@@ -395,7 +403,7 @@ router.post("/admin/orders/:id/start-live-activity", async (req, res) => {
   const id = req.params["id"];
   const { stage, message } = req.body as { stage?: string; message?: string };
 
-  const order = db.prepare(`SELECT order_number, customer_id FROM orders WHERE id=?`).get(id) as Row | undefined;
+  const order = db.prepare(`SELECT order_number, customer_id, total, payment_method, financial_status FROM orders WHERE id=?`).get(id) as Row | undefined;
   if (!order) { res.status(404).json({ data: null, error: "Order not found" }); return; }
 
   const customerId = order["customer_id"] as string | null;
@@ -415,15 +423,20 @@ router.post("/admin/orders/:id/start-live-activity", async (req, res) => {
   const customerName = `${cust?.["first_name"] ?? ""} ${cust?.["last_name"] ?? ""}`.trim() || "Customer";
   const copy       = STAGE_NOTIF[useStage];
   const defaultBody = copy ? copy.body.replace("{n}", orderNum) : "";
-  const laMessage  = message && message.trim() ? message : defaultBody;
+  // Leave the content-state message empty so the widget shows its per-stage subtitle.
+  const laMessage  = message && message.trim() ? message : "";
+  const priceText  = formatIQD(Number(order["total"] ?? 0));
+  const isPaid     = order["payment_method"] === "online" && order["financial_status"] === "paid";
 
   const result = await sendLiveActivityStartPush(ptsToken, {
     orderNumber:  orderNum,
     customerName,
     stage:        useStage as any,
     message:      laMessage,
+    priceText,
+    isPaid,
     alertTitle:   copy?.title ?? "Mora",
-    alertBody:    laMessage,
+    alertBody:    defaultBody,
   });
 
   // Record the stage we started at so subsequent per-activity updates stay consistent.

@@ -277,13 +277,6 @@ export default function CheckoutScreen() {
         // Step 1: ensure the order exists (created only once).
         if (!info) {
           const created = await createOrder(base);
-          startOrderActivity({
-            orderId: created.orderId,
-            orderNumber: created.orderNumber,
-            customerName: form.name || user?.firstName || "Customer",
-            stage: "confirmed",
-            message: "Your order has been placed!",
-          });
           info = { ...created, waylUrl: "" };
           setPendingOnline(info);
           saveAddressToProfile(base);
@@ -295,6 +288,15 @@ export default function CheckoutScreen() {
           const wayl = await createWaylLink(base, info.orderNumber, info.orderTotal);
           // Fully-discounted order: nothing to pay, server already settled it.
           if (wayl.paid) {
+            startOrderActivity({
+              orderId: info.orderId,
+              orderNumber: info.orderNumber,
+              customerName: form.name || user?.firstName || "Customer",
+              stage: "confirmed",
+              message: "",
+              priceText: formatIQD(info.orderTotal),
+              isPaid: true,
+            });
             clearCart();
             setPendingOnline(null);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -347,7 +349,16 @@ export default function CheckoutScreen() {
           return; // stay on checkout; pendingOnline kept for retry
         }
 
-        // Paid ✓ — clear the cart and move to the confirmation screen.
+        // Paid ✓ — start the Live Activity, clear the cart and confirm.
+        startOrderActivity({
+          orderId: info.orderId,
+          orderNumber: info.orderNumber,
+          customerName: form.name || user?.firstName || "Customer",
+          stage: "confirmed",
+          message: "",
+          priceText: formatIQD(info.orderTotal),
+          isPaid: true,
+        });
         clearCart();
         setPendingOnline(null);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -369,7 +380,9 @@ export default function CheckoutScreen() {
         orderNumber: created.orderNumber,
         customerName: form.name || user?.firstName || "Customer",
         stage: "confirmed",
-        message: "Your order has been placed!",
+        message: "",
+        priceText: formatIQD(created.orderTotal),
+        isPaid: false,
       });
       clearCart();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

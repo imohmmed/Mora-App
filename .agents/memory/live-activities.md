@@ -13,8 +13,13 @@ Live Activities for order tracking require 4 synchronized layers:
 > Widget Swift now lives at `plugins/withMoraLiveActivity/ios/MoraOrderWidget/MoraOrderActivity.swift`
 > (+ its own `Info.plist`). Verified: `expo prebuild -p ios --clean` emits a `MoraOrderWidget`
 > app-extension target embedded via the host Embed-Foundation-Extensions phase (dstSubfolderSpec=13),
-> DEVELOPMENT_TEAM resolved, GENERATE_INFOPLIST_FILE=NO. Mora's widget uses a TEXT "M" logo (no
-> image) so the entire actool/Base64-logo machinery Carti needed is unnecessary here.
+> DEVELOPMENT_TEAM resolved, GENERATE_INFOPLIST_FILE=NO.
+>
+> LOGO (June 2026 redesign): widget now embeds a WHITE Mora wordmark as a Base64 PNG string constant
+> (`kMoraLogoBase64`) decoded to UIImage and rendered `.renderingMode(.template)` tinted white — same
+> Base64 trick Carti uses, because asset-catalog/loose-PNG is unreliable in iOS17+ app-extensions. To
+> regenerate: `magick assets/images/mora-wordmark.png -resize 240x -channel RGB -fill white -colorize 100
+> +channel out.png` then `base64 -w0`. (sharp is NOT installed; ImageMagick `magick`/`convert` is.)
 >
 > GOTCHA (EAS prebuild failed, local passed): the plugin's widget source files must NOT live under
 > any directory named `ios` — `artifacts/mora/.gitignore` has an `ios/` rule that ALSO matches
@@ -103,7 +108,7 @@ Live Activities for order tracking require 4 synchronized layers:
 - `APPLE_PUSH_KEY` — contents of .p8 file (with or without PEM headers)
 
 ### Critical sync requirement
-`MoraOrderActivityAttributes` struct MUST be identical in both `MoraOrderActivity.swift` AND `MoraLiveActivityModule.swift`.
+`MoraOrderActivityAttributes` struct MUST be identical in both `MoraOrderActivity.swift` AND `MoraLiveActivityModule.swift`. As of the June 2026 redesign the attributes are FOUR fields: `orderNumber`, `customerName`, `priceText` (String), `isPaid` (Bool) — and ContentState stays `{stage, message}`. `priceText`/`isPaid` are START-ONLY (ActivityKit attributes are immutable; per-activity updates only change content-state), so they must be set at the on-device `startActivity` (checkout) AND the server `start-live-activity` push, and propagated through `index.ts` startActivity, `NotificationContext.startOrderActivity`, and `apns.ts` `sendLiveActivityStartPush` attributes. Any name/type/count drift silently breaks the whole LA decode. The widget renders price normally, or a green "تم دفع الطلب" badge when `isPaid` (set true only for online+paid).
 
 **Why:** expo-live-activity (software-mansion) was deprecated June 2026; expo-widgets requires SDK 56. @bacons/apple-targets was the interim approach but has now been replaced by the hand-written `withMoraLiveActivity` plugin (see banner at top) for build reliability and to drop the third-party dep.
 
@@ -116,7 +121,7 @@ The order status is a single `delivery_stage` string with 6 values: `confirmed`,
 
 **Exception states (`issue`/`cancelled`) are NOT sequential progress** — first 4 are the linear flow; in BOTH the admin UI and the Swift widget they REPLACE the progress bar with an exception block, and they deep-link to chat: admin/push url = `/(tabs)/chat`, Swift `ContactButton` = `mora://chat` (resolves to `app/(tabs)/chat.tsx`).
 
-**Single trigger point:** `POST /admin/orders/:id/delivery-stage` is the one place that fires all three customer signals together — APNs Live Activity update (`sendLiveActivityPush`) + regular push + in-app notification (`doSendNotification`). `apns.ts` treats `delivered` and `cancelled` as end states (cancelled stays visible ~1h for the contact action, delivered dismisses fast).
+**Single trigger point:** `POST /admin/orders/:id/delivery-stage` is the one place that fires all three customer signals together — APNs Live Activity update (`sendLiveActivityPush`) + regular push + in-app notification (`doSendNotification`). `apns.ts` treats `delivered` and `cancelled` as END states; `issue` is an UPDATE (NOT ended) so its "تواصل معنا" action persists. Dismissal windows: delivered ~6h (so the delivered "انطينا رأيك" rating CTA lingers), cancelled ~1h (contact action). Notification deep-link routing per stage: confirmed/preparing/shipping → `/orders`; delivered/issue/cancelled → `/(tabs)/chat`. Widget `widgetURL` mirrors this: confirmed/preparing/shipping → `mora://orders`, the rest → `mora://chat`. The widget is a Dribbble-style 4-step tracker (icon nodes + connecting line + checkmarks for completed steps), per-stage Arabic headline+subtitle (ContentState.message overrides subtitle only when non-empty — server sends empty by default so the widget's own subtitle shows), ETA pill (confirmed/preparing "3-4 أيام", shipping "1-2 يوم").
 
 **Wayl payment auto-confirm:** the webhook marks `financial_status='paid'` server-side; `checkout/complete.tsx` polls `GET /store/wayl/status/:orderNumber` a few times on mount (native + web) so the screen flips to paid without a manual tap. LA styling: black bg, white text, accent `#0373C2` = `rgb(0.01,0.45,0.76)`.
 

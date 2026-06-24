@@ -10,6 +10,8 @@ struct MoraOrderActivityAttributes: ActivityAttributes {
     }
     var orderNumber: String
     var customerName: String
+    var priceText: String
+    var isPaid: Bool
 }
 
 // ── Module ─────────────────────────────────────────────────────────────────────
@@ -69,7 +71,7 @@ public class MoraLiveActivityModule: Module {
                 Task { await activity.end(dismissalPolicy: .immediate) }
             }
             do {
-                let attrs = MoraOrderActivityAttributes(orderNumber: "#TEST", customerName: "Diagnostic")
+                let attrs = MoraOrderActivityAttributes(orderNumber: "#TEST", customerName: "Diagnostic", priceText: "75,000 IQD", isPaid: false)
                 let state = MoraOrderActivityAttributes.ContentState(
                     stage: "confirmed",
                     message: "Test Live Activity — if you see this, it works."
@@ -91,7 +93,9 @@ public class MoraLiveActivityModule: Module {
             orderNumber: String,
             customerName: String,
             stage: String,
-            message: String
+            message: String,
+            priceText: String,
+            isPaid: Bool
         ) -> String? in
             guard #available(iOS 16.1, *) else { return nil }
             guard ActivityAuthorizationInfo().areActivitiesEnabled else { return nil }
@@ -99,7 +103,9 @@ public class MoraLiveActivityModule: Module {
             do {
                 let attrs = MoraOrderActivityAttributes(
                     orderNumber: orderNumber,
-                    customerName: customerName
+                    customerName: customerName,
+                    priceText: priceText,
+                    isPaid: isPaid
                 )
                 let state = MoraOrderActivityAttributes.ContentState(
                     stage: stage,

@@ -53,6 +53,8 @@ type NotificationCtx = {
     customerName: string;
     stage?: OrderStage;
     message?: string;
+    priceText?: string;
+    isPaid?: boolean;
   }) => void;
   updateOrderStage: (stage: OrderStage, message?: string) => void;
   endOrderActivity: () => void;
@@ -221,6 +223,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     customerName: string;
     stage?: OrderStage;
     message?: string;
+    priceText?: string;
+    isPaid?: boolean;
   }) => {
     const stage = params.stage ?? "confirmed";
 
@@ -242,6 +246,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         customerName: params.customerName,
         stage,
         message: params.message,
+        priceText: params.priceText,
+        isPaid: params.isPaid,
       });
       if (activityId) {
         liveActivityIdRef.current = activityId;

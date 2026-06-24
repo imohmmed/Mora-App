@@ -33,7 +33,9 @@ interface MoraLiveActivityNative {
     orderNumber: string,
     customerName: string,
     stage: string,
-    message: string
+    message: string,
+    priceText: string,
+    isPaid: boolean
   ): string | null;
   updateActivity(activityId: string, stage: string, message: string): void;
   endActivity(activityId: string, stage: string, message: string): void;
@@ -100,6 +102,8 @@ export const MoraLiveActivity = {
     customerName: string;
     stage?: OrderStage;
     message?: string;
+    priceText?: string;
+    isPaid?: boolean;
   }): string | null {
     if (!native) return null;
     try {
@@ -107,7 +111,9 @@ export const MoraLiveActivity = {
         params.orderNumber,
         params.customerName,
         params.stage ?? "confirmed",
-        params.message ?? ""
+        params.message ?? "",
+        params.priceText ?? "",
+        params.isPaid ?? false
       );
     } catch {
       return null;

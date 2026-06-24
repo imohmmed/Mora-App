@@ -78,11 +78,14 @@ export async function sendLiveActivityPush(
     return { ok: false, error: "APPLE_PUSH_KEY_ID / APPLE_PUSH_KEY not configured" };
   }
 
-  // "delivered" and "cancelled" are terminal states that end the Live Activity.
-  // Cancelled stays visible longer so the customer can tap "Contact Us".
+  // "delivered" and "cancelled" are terminal states that END the Live Activity.
+  // "issue" stays an UPDATE (not ended) so the customer keeps the "Contact Us"
+  // action available until the problem is resolved.
+  // delivered lingers ~6h so the "rate us" CTA stays usable; cancelled ~1h so the
+  // customer can still tap "Contact Us".
   const isEnd = payload.stage === "delivered" || payload.stage === "cancelled";
   const ts    = Math.floor(Date.now() / 1000);
-  const dismissSecs = payload.stage === "cancelled" ? 3600 : 10;
+  const dismissSecs = payload.stage === "delivered" ? 6 * 3600 : 3600;
 
   const apsPayload = {
     aps: {
@@ -151,6 +154,8 @@ export interface LiveActivityStartPayload {
   customerName: string;
   stage: LiveActivityStage;
   message?: string;
+  priceText?: string;
+  isPaid?: boolean;
   alertTitle?: string;
   alertBody?: string;
 }
@@ -178,6 +183,8 @@ export async function sendLiveActivityStartPush(
       attributes: {
         orderNumber:  payload.orderNumber,
         customerName: payload.customerName,
+        priceText:    payload.priceText ?? "",
+        isPaid:       payload.isPaid ?? false,
       },
       alert: {
         title: payload.alertTitle ?? "Mora",
