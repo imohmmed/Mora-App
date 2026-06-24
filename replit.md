@@ -34,7 +34,8 @@ _Describe the high-level user-facing capabilities of this app once they exist._
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Deployment workflow: always make code changes in this Replit workspace first, then deploy/move them to the VPS. Never edit the VPS files directly as the source of truth.
+- Prefers communication in Arabic.
 
 ## Gotchas
 
