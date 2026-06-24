@@ -77,7 +77,7 @@
           "defaultChannel": "default"
         }
       ],
-      "@bacons/apple-targets",
+      "./plugins/withMoraLiveActivity",
       "expo-apple-authentication"
     ],
     "experiments": {

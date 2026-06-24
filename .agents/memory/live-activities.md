@@ -6,7 +6,17 @@ description: Full iOS Live Activity + Dynamic Island stack for Mora order tracki
 ## Rule
 Live Activities for order tracking require 4 synchronized layers:
 
-### 1. Swift Widget (`targets/widget/MoraOrderActivity.swift`)
+> MIGRATED OFF @bacons (Option Y): the widget is now produced by a hand-written self-contained
+> config plugin `plugins/withMoraLiveActivity/index.js` (registered in app.json as
+> `./plugins/withMoraLiveActivity`). The Expo native module was KEPT (autolinks fine) — only the
+> @bacons widget was replaced. `targets/widget/` and the `@bacons/apple-targets` dep are deleted.
+> Widget Swift now lives at `plugins/withMoraLiveActivity/ios/MoraOrderWidget/MoraOrderActivity.swift`
+> (+ its own `Info.plist`). Verified: `expo prebuild -p ios --clean` emits a `MoraOrderWidget`
+> app-extension target embedded via the host Embed-Foundation-Extensions phase (dstSubfolderSpec=13),
+> DEVELOPMENT_TEAM resolved, GENERATE_INFOPLIST_FILE=NO. Mora's widget uses a TEXT "M" logo (no
+> image) so the entire actool/Base64-logo machinery Carti needed is unnecessary here.
+
+### 1. Swift Widget (`plugins/withMoraLiveActivity/ios/MoraOrderWidget/MoraOrderActivity.swift`)
 - `MoraOrderActivityAttributes` struct with `orderNumber` + `customerName` static, `stage` + `message` as ContentState
 - `MoraOrderActivityWidget` for Lock Screen + Dynamic Island (expanded/compact/minimal)
 - `@main MoraWidgetBundle` wraps it
@@ -32,7 +42,7 @@ Live Activities for order tracking require 4 synchronized layers:
 ### Critical sync requirement
 `MoraOrderActivityAttributes` struct MUST be identical in both `MoraOrderActivity.swift` AND `MoraLiveActivityModule.swift`.
 
-**Why:** expo-live-activity (software-mansion) was deprecated June 2026; expo-widgets requires SDK 56; @bacons/apple-targets is the correct SDK 54 approach.
+**Why:** expo-live-activity (software-mansion) was deprecated June 2026; expo-widgets requires SDK 56. @bacons/apple-targets was the interim approach but has now been replaced by the hand-written `withMoraLiveActivity` plugin (see banner at top) for build reliability and to drop the third-party dep.
 
 ## Order delivery_stage — 6-state model
 The order status is a single `delivery_stage` string with 6 values: `confirmed`, `preparing`, `shipping`, `delivered`, `issue`, `cancelled`. This list must stay synchronized across FOUR layers or stages silently mismatch:

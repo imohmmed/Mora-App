@@ -20,6 +20,24 @@ const STAGE_NOTIF: Record<string, { title: string; body: string }> = {
 // Allowed delivery stages for Live Activity content-state.
 const VALID_STAGES = ["confirmed", "preparing", "shipping", "delivered", "issue", "cancelled"];
 
+// Arabic copy for general order-field changes (status / fulfillment / financial).
+// Sent to the order owner so ANY change reaches the customer. {n} → order number.
+const STATUS_NOTIF: Record<string, { title: string; body: string }> = {
+  processing: { title: "جارٍ تجهيز طلبك 📦", body: "بدأنا بتجهيز طلبك {n}" },
+  completed:  { title: "اكتمل طلبك 🎉", body: "تم إكمال طلبك {n}، شكراً لتسوقك معنا" },
+  cancelled:  { title: "تم إلغاء طلبك ❌", body: "تم إلغاء طلبك {n}. تواصل معنا للمساعدة" },
+  pending:    { title: "تحديث على طلبك", body: "طلبك {n} بانتظار المعالجة" },
+};
+const FULFILL_NOTIF: Record<string, { title: string; body: string }> = {
+  fulfilled:   { title: "تم شحن طلبك 🚚", body: "طلبك {n} في طريقه إليك" },
+  unfulfilled: { title: "تحديث على شحن طلبك", body: "تم تحديث حالة شحن طلبك {n}" },
+};
+const FINANCIAL_NOTIF: Record<string, { title: string; body: string }> = {
+  paid:     { title: "تم تأكيد الدفع ✅", body: "تم استلام دفعة طلبك {n}" },
+  refunded: { title: "تم استرجاع المبلغ 💸", body: "تم استرجاع مبلغ طلبك {n}" },
+  pending:  { title: "تحديث على دفع طلبك", body: "تم تحديث حالة دفع طلبك {n}" },
+};
+
 const router = Router();
 
 // ─── Public: customer order lookup ────────────────────────────────────────────
@@ -233,20 +251,23 @@ router.post("/admin/orders", (req, res) => {
   res.status(201).json({ data: order, meta: {}, error: null });
 });
 
-router.put("/admin/orders/:id", (req, res) => {
+router.put("/admin/orders/:id", async (req, res) => {
   const id = req.params["id"];
-  const existing = db.prepare(`SELECT order_number, status, fulfillment_status FROM orders WHERE id=?`).get(id) as Row | undefined;
+  const existing = db.prepare(`SELECT order_number, customer_id, status, financial_status, fulfillment_status FROM orders WHERE id=?`).get(id) as Row | undefined;
   if (!existing) { res.status(404).json({ data: null, meta: {}, error: "Order not found" }); return; }
   const b = req.body as Record<string, unknown>;
   const now = new Date().toISOString();
-  const prevStatus  = existing["status"]              as string;
-  const prevFulfill = existing["fulfillment_status"]  as string;
-  const orderNum    = existing["order_number"]        as string;
+  const prevStatus    = existing["status"]              as string;
+  const prevFulfill   = existing["fulfillment_status"]  as string;
+  const prevFinancial = existing["financial_status"]    as string;
+  const orderNum      = existing["order_number"]        as string;
+  const customerId    = existing["customer_id"]         as string | null;
   db.prepare(`UPDATE orders SET status=COALESCE(?,status), financial_status=COALESCE(?,financial_status), fulfillment_status=COALESCE(?,fulfillment_status), note=COALESCE(?,note), updated_at=? WHERE id=?`)
     .run(b["status"] ?? null, b["financialStatus"] ?? null, b["fulfillmentStatus"] ?? null, b["note"] ?? null, now, id);
   // Log meaningful status changes
-  const newStatus  = (b["status"]              as string | undefined) ?? prevStatus;
-  const newFulfill = (b["fulfillmentStatus"]   as string | undefined) ?? prevFulfill;
+  const newStatus    = (b["status"]            as string | undefined) ?? prevStatus;
+  const newFulfill   = (b["fulfillmentStatus"] as string | undefined) ?? prevFulfill;
+  const newFinancial = (b["financialStatus"]   as string | undefined) ?? prevFinancial;
   if (newStatus !== prevStatus) {
     const actionMap: Record<string, string> = { cancelled: "order.cancelled", processing: "order.processing", completed: "order.completed" };
     logActivity(actionMap[newStatus] ?? "order.updated", "Orders", "order", id, `Order ${orderNum}`, "Admin",
@@ -260,6 +281,40 @@ router.put("/admin/orders/:id", (req, res) => {
     logActivity("order.refunded", "Orders", "order", id, `Order ${orderNum}`, "Admin",
       { orderNumber: orderNum });
   }
+
+  // ── Notify the order owner on ANY meaningful change ──────────────────────────
+  // Priority: order status → fulfillment → financial (one push per request to
+  // avoid spamming when several fields change together). cancelled deep-links to
+  // the in-app chat so the customer can reach support.
+  const statusChanged    = newStatus    !== prevStatus;
+  const fulfillChanged   = newFulfill   !== prevFulfill;
+  const financialChanged = newFinancial !== prevFinancial;
+  let notif: { title: string; body: string } | null = null;
+  let notifUrl = "";
+  if (statusChanged && STATUS_NOTIF[newStatus]) {
+    notif = STATUS_NOTIF[newStatus]!;
+    if (newStatus === "cancelled") notifUrl = "/(tabs)/chat";
+  } else if (fulfillChanged && FULFILL_NOTIF[newFulfill]) {
+    notif = FULFILL_NOTIF[newFulfill]!;
+  } else if (financialChanged && FINANCIAL_NOTIF[newFinancial]) {
+    notif = FINANCIAL_NOTIF[newFinancial]!;
+  } else if (statusChanged || fulfillChanged || financialChanged) {
+    // Fallback: a tracked field changed to a value without specific copy —
+    // still notify the owner so NO order change goes unannounced.
+    notif = { title: "تحديث على طلبك", body: "تم تحديث حالة طلبك {n}" };
+  }
+  if (customerId && notif) {
+    try {
+      await doSendNotification({
+        title: notif.title,
+        body: notif.body.replace("{n}", orderNum),
+        url: notifUrl,
+        targetAll: false,
+        customerIds: [customerId],
+      });
+    } catch { /* non-fatal: notification failure must not block the update */ }
+  }
+
   const order = parseOne(db.prepare(`SELECT * FROM orders WHERE id=?`).get(id) as Row | undefined);
   res.json({ data: order, meta: {}, error: null });
 });
