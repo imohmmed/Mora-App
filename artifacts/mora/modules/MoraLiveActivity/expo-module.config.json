@@ -1,4 +1,6 @@
 {
-  "name": "MoraLiveActivity",
-  "platforms": ["ios"]
+  "platforms": ["apple"],
+  "apple": {
+    "modules": ["MoraLiveActivityModule"]
+  }
 }

@@ -49,6 +49,30 @@ Live Activities for order tracking require 4 synchronized layers:
 > profile before upload). targetName MUST equal the plugin's EXT_TARGET_NAME; bundleIdentifier MUST equal
 > EXT_BUNDLE_ID. This is the documented Expo path for app-extension credentials in managed workflow.
 >
+> GOTCHA 4 (build succeeded + widget signed, but app's diagnose alert still said "Native module NOT in
+> this build" → `requireNativeModule("MoraLiveActivity")` threw): this is the HOST-side Expo native
+> module `modules/MoraLiveActivity/` (separate from the widget extension). It silently never compiled
+> into the IPA. THREE compounding causes, all required to fix:
+>   (a) `expo-module.config.json` declared `"platforms":["ios"]` with no platform block. Expo SDK 56
+>       autolinking uses the `"apple"` platform key — `search` still finds the module (reads config) but
+>       `resolve -p apple` DROPS any module that doesn't declare `apple` support, so it never becomes a
+>       pod. Fix: `{ "platforms":["apple"], "apple": { "modules": ["MoraLiveActivityModule"] } }`
+>       (the class name = the Swift class that `: Module`, NOT the `Name()` string).
+>   (b) There was NO `.podspec` at all (and the Swift sat at the module root). Autolinking only resolves
+>       an apple module when it finds a podspec, and it expects it under the module's `ios/` dir
+>       (podspecDir). A root-level podspec is NOT discovered. Fix: `modules/MoraLiveActivity/ios/<Name>.podspec`
+>       + move the Swift into that same `ios/` dir (podspec `source_files = '**/*.{swift,...}'` is relative
+>       to podspecDir).
+>   (c) But `ios/` is gitignored (the generic `ios/` rule), so the committed module dir would be stripped
+>       from the EAS clone (same trap as GOTCHA 1). Fix: add negations to `artifacts/mora/.gitignore`:
+>       `!modules/MoraLiveActivity/ios/` + `!modules/MoraLiveActivity/ios/**`. Verify with
+>       `git status --porcelain` showing `?? modules/MoraLiveActivity/ios/` (untracked, NOT ignored) —
+>       `git check-ignore -v` is misleading here (it prints the negation pattern line).
+> VERIFY the whole fix on Linux without macOS/pods via:
+> `npx expo-modules-autolinking resolve -p apple --json` → the module must appear with
+> `pods[0].podName` + `modules[0].class`. That's the authoritative pre-pod-install signal that EAS's
+> macOS `pod install` will compile + register it. Requires a NEW EAS build + reinstall to take effect.
+>
 > ENV GOTCHA: eas-cli is NOT installed globally in Replit, and `npx eas-cli`/`npm` hit a corrupted
 > `~/.npm` cache (ECOMPROMISED lock, then ENOTEMPTY in `_npx`). Use `pnpm dlx eas-cli ...` (pnpm store
 > is healthy) and run it FROM `artifacts/mora` (running from repo root makes eas-cli link to the wrong

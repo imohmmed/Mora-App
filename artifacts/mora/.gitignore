@@ -12,6 +12,12 @@ expo-env.d.ts
 # Native
 ios/
 android/
+
+# Keep the local Expo native module's apple sources (autolinking needs the
+# podspec + Swift in the EAS clone; the generic `ios/` rule above would
+# otherwise strip this committed module directory).
+!modules/MoraLiveActivity/ios/
+!modules/MoraLiveActivity/ios/**
 *.orig.*
 *.jks
 *.p8
