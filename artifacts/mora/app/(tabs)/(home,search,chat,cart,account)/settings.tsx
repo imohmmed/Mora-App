@@ -17,8 +17,30 @@ import { useLanguage, LANGUAGES } from "@/context/LanguageContext";
 import { AppleActionSheet } from "@/components/AppleActionSheet";
 import { GlassBackButton } from "@/components/GlassBackButton";
 import { MoraLiveActivity } from "@/modules/MoraLiveActivity";
+import { BlurView } from "expo-blur";
+import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 
 const PRIMARY = "#0274C1";
+
+// Glass surfaces: native (iOS/Android) get a glass/blur base; web keeps solid.
+const useGlassSurface = Platform.OS !== "web";
+const SURFACE_TINT_LIGHT = "rgba(235,245,255,0.5)";
+const SURFACE_TINT_DARK = "rgba(28,28,30,0.5)";
+
+/** Liquid Glass / blur base layer for a rounded surface. Parent needs overflow:"hidden". */
+function GlassBase({ isDark, intensity = 55 }: { isDark: boolean; intensity?: number }) {
+  if (isIOS26Plus) return <LiquidGlassBg />;
+  if (Platform.OS !== "web") {
+    return (
+      <BlurView
+        style={StyleSheet.absoluteFill}
+        intensity={intensity}
+        tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
+      />
+    );
+  }
+  return null;
+}
 
 export default function SettingsScreen() {
   const colors = useColors();
@@ -84,7 +106,11 @@ export default function SettingsScreen() {
         {/* ── Appearance ── */}
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>APPEARANCE</Text>
-          <View style={[styles.sectionCard, { backgroundColor: card }]}>
+          <View style={[styles.sectionCard, { backgroundColor: useGlassSurface ? "transparent" : card }]}>
+            {useGlassSurface && <GlassBase isDark={isDark} />}
+            {useGlassSurface && (
+              <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? SURFACE_TINT_DARK : SURFACE_TINT_LIGHT }]} />
+            )}
             <View style={[styles.themeRow, { borderBottomColor: colors.border }]}>
               {THEME_OPTIONS.map((opt) => {
                 const active = mode === opt.value;
@@ -123,7 +149,11 @@ export default function SettingsScreen() {
         {/* ── Language ── */}
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>LANGUAGE</Text>
-          <View style={[styles.sectionCard, { backgroundColor: card }]}>
+          <View style={[styles.sectionCard, { backgroundColor: useGlassSurface ? "transparent" : card }]}>
+            {useGlassSurface && <GlassBase isDark={isDark} />}
+            {useGlassSurface && (
+              <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? SURFACE_TINT_DARK : SURFACE_TINT_LIGHT }]} />
+            )}
             <Pressable
               style={({ pressed }) => [
                 styles.settingsRow,
@@ -167,7 +197,11 @@ export default function SettingsScreen() {
         {/* ── Information ── */}
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>INFORMATION</Text>
-          <View style={[styles.sectionCard, { backgroundColor: card }]}>
+          <View style={[styles.sectionCard, { backgroundColor: useGlassSurface ? "transparent" : card }]}>
+            {useGlassSurface && <GlassBase isDark={isDark} />}
+            {useGlassSurface && (
+              <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? SURFACE_TINT_DARK : SURFACE_TINT_LIGHT }]} />
+            )}
             {Platform.OS === "ios" && (
               <Pressable
                 style={({ pressed }) => [
