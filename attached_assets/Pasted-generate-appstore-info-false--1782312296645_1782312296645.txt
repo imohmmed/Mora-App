@@ -1,0 +1,47 @@
+generate_appstore_info                            | false                                                                                                                                       |
+| xcode_path                                        | /Applications/Xcode.app                                                                                                                     |
++---------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------+
+$ set -o pipefail && xcodebuild -workspace ./Mora.xcworkspace -scheme Mora -configuration Release -derivedDataPath ./build -destination 'generic/platform=iOS' -archivePath /Users/expo/Library/Developer/Xcode/Archives/2026-06-24/Mora\ 2026-06-24\ 07.44.18.xcarchive -resultBundlePath '/var/folders/30/t4k1d_016_zd82ctc7xgs9_h0000gn/T/result-bundle-1782312250837.xcresult' archive | tee /Users/expo/workingdir/logs/Mora-Mora.log > /dev/null
+
+❌  No profiles for 'app.mora1.com.widget' were found: Xcode couldn't find any iOS App Development provisioning profiles matching 'app.mora1.com.widget'. Automatic signing is disabled and unable to generate a profile. To enable automatic signing, pass -allowProvisioningUpdates to xcodebuild. (in target 'MoraOrderWidget' from project 'Mora')
+
+⚠️  Pods/RNCAsyncStorage-RNCAsyncStorage_resources: iOS@9.0 deployment version mismatch, expected >= 2.0 <= 26.4.99
+▸ ** ARCHIVE FAILED **
+▸ The following build commands failed:
+▸ 	Archiving workspace Mora with scheme Mora
+▸ (1 failure)
+Exit status: 65
++---------------------------------------+
+|           Build environment           |
++-------------+-------------------------+
+| xcode_path  | /Applications/Xcode.app |
+| gym_version | 2.233.1                 |
+| sdk         | iPhoneOS26.4.sdk        |
++-------------+-------------------------+
+Looks like fastlane ran into a build/archive error with your project
+It's hard to tell what's causing the error, so we wrote some guides on how
+to troubleshoot build and signing issues: https://docs.fastlane.tools/codesigning/getting-started/
+Before submitting an issue on GitHub, please follow the guide above and make
+sure your project is set up correctly.
+fastlane uses `xcodebuild` commands to generate your binary, you can see the
+the full commands printed out in yellow in the above log.
+Make sure to inspect the output above, as usually you'll find more error information there
+[!] Error building the application - see the log above
+Error: The "Run fastlane" step failed because of an error in the Xcode build process. We automatically detected following errors in your Xcode build logs:
+- No profiles for 'app.mora1.com.widget' were found: Xcode couldn't find any iOS App Development provisioning profiles matching 'app.mora1.com.widget'. Automatic signing is disabled and unable to generate a profile. To enable automatic signing, pass -allowProvisioningUpdates to xcodebuild. (in target 'MoraOrderWidget' from project 'Mora')
+Refer to "Xcode Logs" below for additional, more detailed logs.
+Clean up credentials
+
+857ms
+
+
+Fail job
+
+
+1
+1ms
+
+
+Build failed: The "Run fastlane" step failed because of an error in the Xcode build process. We automatically detected following errors in your Xcode build logs:
+- No profiles for 'app.mora1.com.widget' were found: Xcode couldn't find any iOS App Development provisioning profiles matching 'app.mora1.com.widget'. Automatic signing is disabled and unable to generate a profile. To enable automatic signing, pass -allowProvisioningUpdates to xcodebuild. (in target 'MoraOrderWidget' from project 'Mora')
+Refer to "Xcode Logs" below for additional, more detailed logs.
