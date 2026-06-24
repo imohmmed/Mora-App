@@ -53,5 +53,9 @@ export const isIOS26Plus = Platform.OS === "ios" && Number(Platform.Version) >= 
 
 **Do NOT:**
 - Wrap in `GlassEffectContainer` for static backgrounds — breaks on Stack screens.
-- Use `expo-glass-effect` GlassView — crashes on iOS 26 beta (EXC_BAD_ACCESS).
+- Use `expo-glass-effect` GlassView — crashes on iOS 26 beta (EXC_BAD_ACCESS). NOTE: it is still present as a TRANSITIVE dep (expo-router → expo-glass-effect@56.0.4) and IS autolinked; we just never import it. Don't be alarmed seeing it in `expo-modules-autolinking search`.
 - Mix SwiftUI children with native RN views — use the layering pattern instead.
+
+**Glass is invisible over solid backgrounds (the #1 "it doesn't work" complaint):**
+- BlurView over a plain solid bg blurs nothing → looks like the same solid color. Real glass only "pops" when there is varied/scrolling content BEHIND it (that's why the tab bar + back-buttons-over-images read as glass but full-screen cards on a white page don't).
+- **Tint wash-out trap:** layering a heavy tint overlay (e.g. rgba 0.5) ON TOP of a `LiquidGlassBg` washes out the real iOS-26 material so it looks like a solid card. Make the tint conditional: `isIOS26Plus ? ~0.1 : 0.5`. The strong tint is only for the BlurView fallback (which has no material of its own); iOS 26 needs the tint near-transparent so the genuine glass shows.

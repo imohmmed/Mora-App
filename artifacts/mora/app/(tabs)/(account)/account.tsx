@@ -29,8 +29,11 @@ const STAR_BURST_SRC = require("@/assets/lottie/star-burst.json");
 
 // Glass surfaces: native (iOS/Android) get a glass/blur base; web keeps solid.
 const useGlassSurface = Platform.OS !== "web";
-const SURFACE_TINT_LIGHT = "rgba(235,245,255,0.5)";
-const SURFACE_TINT_DARK = "rgba(28,28,30,0.5)";
+// On iOS 26 the real Liquid Glass renders its own material — a heavy tint on top
+// washes it out, so keep the tint very light there. The BlurView fallback (older
+// iOS / Android) has no glass of its own, so it needs a stronger tint to read.
+const SURFACE_TINT_LIGHT = isIOS26Plus ? "rgba(235,245,255,0.1)" : "rgba(235,245,255,0.5)";
+const SURFACE_TINT_DARK = isIOS26Plus ? "rgba(28,28,30,0.14)" : "rgba(28,28,30,0.5)";
 
 /**
  * GlassBase — Liquid Glass / blur base layer for a rounded surface.
