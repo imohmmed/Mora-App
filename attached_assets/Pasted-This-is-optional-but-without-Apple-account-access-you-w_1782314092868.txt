@@ -1,0 +1,74 @@
+This is optional, but without Apple account access you will need to provide all the missing values manually and we can only run minimal validation on them.
+✔ Do you want to log in to your Apple account? … yes
+
+› Log in to your Apple Developer account to continue
+✔ Apple ID: … aaaa35059@gmail.com
+› The password is only used to authenticate with Apple and never stored on EAS servers
+  Learn more: https://bit.ly/2VtGWhU
+✔ Password (for aaaa35059@gmail.com): … ***************
+› Saving Apple ID password to the local Keychain
+  Learn more: https://docs.expo.dev/distribution/security#keychain
+✔ Logged in, verify your Apple account to continue
+Two-factor Authentication (6 digit code) is enabled for aaaa35059@gmail.com. Learn more: https://support.apple.com/en-us/HT204915
+
+✔ How do you want to validate your account? … device / sms
+✔ Please enter the 6 digit code … 190314
+✔ Valid code
+✔ Logged in and verified
+› Team MoHammeD ABDULKareem (PM27C7JC3M)
+› Provider MoHammeD ABDULKareem (128840101)
+iOS Credentials            
+Project                    @itmohmmed/mora
+Bundle Identifier          app.mora1.com
+Apple Team                 PM27C7JC3M (MoHammeD ABDULKareem (Individual))
+                           
+Push Key                   
+Developer Portal ID        2FSMWQ93N5
+Apple Team                 PM27C7JC3M (MoHammeD ABDULKareem (Individual))
+Updated                    1 month ago
+                           
+App Store Connect API Key  
+Developer Portal ID        YP6XUC672D
+Issuer ID                  2b194fe3-a633-4a7f-b98c-cfbd374441b0
+Updated                    1 month ago
+                           
+                           
+App Store Configuration    
+                           
+Distribution Certificate   
+Serial Number              6ACBAC95A89DC19BE2E66C11EAC12789
+Expiration Date            Fri, 30 Apr 2027 11:47:12 UTC
+Apple Team                 PM27C7JC3M (MoHammeD ABDULKareem (Individual))
+Updated                    1 month ago
+                           
+Provisioning Profile       
+Developer Portal ID        SWQY42Z6GN
+Status                     active
+Expiration                 Fri, 30 Apr 2027 11:47:12 UTC
+Apple Team                 PM27C7JC3M (MoHammeD ABDULKareem (Individual))
+Updated                    8 days ago
+                           
+                           
+Ad Hoc Configuration       
+                           
+Distribution Certificate   
+Serial Number              6ACBAC95A89DC19BE2E66C11EAC12789
+Expiration Date            Fri, 30 Apr 2027 11:47:12 UTC
+Apple Team                 PM27C7JC3M (MoHammeD ABDULKareem (Individual))
+Updated                    1 month ago
+                           
+Provisioning Profile       
+Developer Portal ID        USJ6GUAT3Z
+Status                     active
+Expiration                 Fri, 30 Apr 2027 11:47:12 UTC
+Apple Team                 PM27C7JC3M (MoHammeD ABDULKareem (Individual))
+Provisioned devices        - iPhone (UDID: 00008150-0014744A3C82401C)
+Updated                    10 days ago
+                           
+? What do you want to do? › - Use arrow-keys. Return to submit.
+❯   Build Credentials: Manage everything needed to build your project
+    Push Notifications: Manage your Apple Push Notifications Key
+    App Store Connect: Manage your API Key
+    credentials.json: Upload/Download credentials between EAS servers and your local json 
+    Go back
+    Exit
