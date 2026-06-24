@@ -30,8 +30,10 @@ const { withInfoPlist, withDangerousMod, withXcodeProject } = require("expo/conf
 const fs = require("fs");
 const path = require("path");
 
-const PLUGIN_IOS_ROOT = path.join(__dirname, "ios");
-const EXT_DIR = path.join(PLUGIN_IOS_ROOT, "MoraOrderWidget");
+// Source files live OUTSIDE any dir named "ios" — artifacts/mora/.gitignore
+// has an `ios/` rule that also ignores `plugins/.../ios/`, which would strip
+// the widget sources from the EAS clone and break prebuild.
+const EXT_DIR = path.join(__dirname, "MoraOrderWidget");
 
 const EXT_TARGET_NAME = "MoraOrderWidget";
 const EXT_BUNDLE_ID = "app.mora1.com.widget";

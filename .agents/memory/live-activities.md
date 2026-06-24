@@ -15,8 +15,15 @@ Live Activities for order tracking require 4 synchronized layers:
 > app-extension target embedded via the host Embed-Foundation-Extensions phase (dstSubfolderSpec=13),
 > DEVELOPMENT_TEAM resolved, GENERATE_INFOPLIST_FILE=NO. Mora's widget uses a TEXT "M" logo (no
 > image) so the entire actool/Base64-logo machinery Carti needed is unnecessary here.
+>
+> GOTCHA (EAS prebuild failed, local passed): the plugin's widget source files must NOT live under
+> any directory named `ios` — `artifacts/mora/.gitignore` has an `ios/` rule that ALSO matches
+> `plugins/withMoraLiveActivity/ios/`, so those files were untracked and absent from the fresh EAS
+> clone → the dangerousMod's "Missing source files" throw killed prebuild on EAS while local (where
+> the files existed on disk) passed. Fix: source files live at `plugins/withMoraLiveActivity/MoraOrderWidget/`
+> (no `ios` segment). Rule: never put committed plugin assets under a path segment named `ios`.
 
-### 1. Swift Widget (`plugins/withMoraLiveActivity/ios/MoraOrderWidget/MoraOrderActivity.swift`)
+### 1. Swift Widget (`plugins/withMoraLiveActivity/MoraOrderWidget/MoraOrderActivity.swift`)
 - `MoraOrderActivityAttributes` struct with `orderNumber` + `customerName` static, `stage` + `message` as ContentState
 - `MoraOrderActivityWidget` for Lock Screen + Dynamic Island (expanded/compact/minimal)
 - `@main MoraWidgetBundle` wraps it
