@@ -93,7 +93,19 @@
     },
     "extra": {
       "eas": {
-        "projectId": "f245a229-e776-496d-88cf-992ec1ac7e36"
+        "projectId": "f245a229-e776-496d-88cf-992ec1ac7e36",
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "MoraOrderWidget",
+                  "bundleIdentifier": "app.mora1.com.widget"
+                }
+              ]
+            }
+          }
+        }
       }
     }
   }

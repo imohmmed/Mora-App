@@ -36,6 +36,19 @@ Live Activities for order tracking require 4 synchronized layers:
 > prebuild → pbxproj must contain `isa = PBXTargetDependency` + `remoteInfo = "MoraOrderWidget"` and the
 > host target's `dependencies = ( ... PBXTargetDependency )` non-empty.
 >
+> GOTCHA 3 (THE actual credentials blocker — build reaches Xcode archive then fails "No profiles for
+> 'app.mora1.com.widget' ... Automatic signing is disabled and unable to generate a profile"):
+> EAS Build signs with MANUAL signing using ONLY the profiles in EAS's OWN credential store. A profile
+> created by hand in the Apple portal is NOT used. In MANAGED workflow (ios/ gitignored) `eas credentials`
+> only ever sees the main app target, so the widget profile never enters EAS's store → archive fails on
+> the widget target even though the target-dependency fix made the widget build correctly. FIX: declare
+> the extension in app.json at `expo.extra.eas.build.experimental.ios.appExtensions` =
+> [{ targetName:"MoraOrderWidget", bundleIdentifier:"app.mora1.com.widget" }] (+ `entitlements` only if
+> the widget needs App Groups/Push — Mora's needs none). Then re-run `eas credentials -p ios` (now it
+> exposes the widget target → set up all) OR re-run `eas build` (it provisions+stores the widget cert &
+> profile before upload). targetName MUST equal the plugin's EXT_TARGET_NAME; bundleIdentifier MUST equal
+> EXT_BUNDLE_ID. This is the documented Expo path for app-extension credentials in managed workflow.
+>
 > ENV GOTCHA: eas-cli is NOT installed globally in Replit, and `npx eas-cli`/`npm` hit a corrupted
 > `~/.npm` cache (ECOMPROMISED lock, then ENOTEMPTY in `_npx`). Use `pnpm dlx eas-cli ...` (pnpm store
 > is healthy) and run it FROM `artifacts/mora` (running from repo root makes eas-cli link to the wrong
