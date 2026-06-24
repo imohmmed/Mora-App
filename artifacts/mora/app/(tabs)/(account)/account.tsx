@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -156,10 +156,21 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
   // Full-screen celebratory burst that plays once each time a MORA STAR opens
   // the account screen.
   const [showBurst, setShowBurst] = useState(false);
+  // Bump on every focus to force a fresh LottieView mount so it replays.
+  const [burstKey, setBurstKey] = useState(0);
+  const burstRef = useRef<LottieView>(null);
+  const burstPlayedRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      if (isStar) setShowBurst(true);
-      return undefined;
+      if (!isStar) return undefined;
+      burstPlayedRef.current = false;
+      setBurstKey((k) => k + 1);
+      setShowBurst(true);
+      // Hide via a duration timer rather than onAnimationFinish: on the New
+      // Architecture (Fabric) lottie-react-native often fires onAnimationFinish
+      // immediately on mount, which would hide the burst before it's seen.
+      const t = setTimeout(() => setShowBurst(false), 1400);
+      return () => clearTimeout(t);
     }, [isStar]),
   );
 
@@ -301,14 +312,24 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
       {showBurst && (
         <View pointerEvents="none" style={styles.burstOverlay}>
           <LottieView
+            key={burstKey}
+            ref={burstRef}
             source={STAR_BURST_SRC}
             autoPlay
             loop={false}
             resizeMode="cover"
             style={StyleSheet.absoluteFill}
             webStyle={{ width: "100%", height: "100%" }}
-            onAnimationFinish={() => setShowBurst(false)}
-            onAnimationFailure={() => setShowBurst(false)}
+            // Explicitly start once the view is measured. autoPlay alone is
+            // unreliable on Fabric for a freshly-mounted, conditionally-rendered
+            // LottieView; the web path plays from autoPlay so we skip it there.
+            // Guarded so repeated layout passes don't restart mid-animation.
+            onLayout={() => {
+              if (Platform.OS === "web" || burstPlayedRef.current) return;
+              burstPlayedRef.current = true;
+              burstRef.current?.reset();
+              burstRef.current?.play();
+            }}
           />
         </View>
       )}
