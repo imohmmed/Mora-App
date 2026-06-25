@@ -22,15 +22,10 @@ import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 
 const PRIMARY = "#0274C1";
 
-// Glass surfaces: native (iOS/Android) get a glass/blur base; web keeps solid.
 const useGlassSurface = Platform.OS !== "web";
-// On iOS 26 the real Liquid Glass renders its own material — a heavy tint on top
-// washes it out, so keep the tint very light there. The BlurView fallback (older
-// iOS / Android) has no glass of its own, so it needs a stronger tint to read.
 const SURFACE_TINT_LIGHT = isIOS26Plus ? "rgba(235,245,255,0.1)" : "rgba(235,245,255,0.5)";
-const SURFACE_TINT_DARK = isIOS26Plus ? "rgba(28,28,30,0.14)" : "rgba(28,28,30,0.5)";
+const SURFACE_TINT_DARK  = isIOS26Plus ? "rgba(28,28,30,0.14)"  : "rgba(28,28,30,0.5)";
 
-/** Liquid Glass / blur base layer for a rounded surface. Parent needs overflow:"hidden". */
 function GlassBase({ isDark, intensity = 55 }: { isDark: boolean; intensity?: number }) {
   if (isIOS26Plus) return <LiquidGlassBg />;
   if (Platform.OS !== "web") {
@@ -52,16 +47,17 @@ export default function SettingsScreen() {
   const { mode, setMode, resolvedScheme } = useTheme();
   const isDark = resolvedScheme === "dark";
   const card = isDark ? "#1C1C1E" : "#EBF5FF";
-  const bg = isDark ? "#0A0A0A" : "#FFFFFF";
+  const bg   = isDark ? "#0A0A0A" : "#FFFFFF";
   const { lang, language, setLang } = useLanguage();
+  const isAr = lang === "ar";
   const [showLangPicker, setShowLangPicker] = useState(false);
   const topPad = Platform.OS === "web" ? 0 : insets.top;
   const botPad = Platform.OS === "web" ? 0 : insets.bottom;
 
-  const THEME_OPTIONS: { value: ThemeMode; label: string; icon: string }[] = [
-    { value: "light", label: "Light", icon: "sun" },
-    { value: "dark", label: "Dark", icon: "moon" },
-    { value: "system", label: "System", icon: "smartphone" },
+  const THEME_OPTIONS: { value: ThemeMode; labelEn: string; labelAr: string; icon: string }[] = [
+    { value: "light",  labelEn: "Light",  labelAr: "فاتح",   icon: "sun" },
+    { value: "dark",   labelEn: "Dark",   labelAr: "داكن",   icon: "moon" },
+    { value: "system", labelEn: "System", labelAr: "النظام", icon: "smartphone" },
   ];
 
   const langOptions = LANGUAGES.map((l) => ({
@@ -96,9 +92,12 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
+      {/* ── Header — back button always on left ── */}
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         <GlassBackButton onPress={() => router.back()} />
-        <Text style={[styles.acctTitle, { color: colors.foreground }]}>SETTINGS</Text>
+        <Text style={[styles.acctTitle, { color: colors.foreground }]}>
+          {isAr ? "الإعدادات" : "SETTINGS"}
+        </Text>
         <View style={{ width: 38 }} />
       </View>
 
@@ -108,7 +107,9 @@ export default function SettingsScreen() {
       >
         {/* ── Appearance ── */}
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>APPEARANCE</Text>
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }, isAr && { textAlign: "right" }]}>
+            {isAr ? "المظهر" : "APPEARANCE"}
+          </Text>
           <View style={[styles.sectionCard, { backgroundColor: useGlassSurface ? "transparent" : card }]}>
             {useGlassSurface && <GlassBase isDark={isDark} />}
             {useGlassSurface && (
@@ -129,18 +130,9 @@ export default function SettingsScreen() {
                       },
                     ]}
                   >
-                    <Feather
-                      name={opt.icon as any}
-                      size={17}
-                      color={active ? "#fff" : colors.foreground}
-                    />
-                    <Text
-                      style={[
-                        styles.themeOptionLabel,
-                        { color: active ? "#fff" : colors.foreground },
-                      ]}
-                    >
-                      {opt.label}
+                    <Feather name={opt.icon as any} size={17} color={active ? "#fff" : colors.foreground} />
+                    <Text style={[styles.themeOptionLabel, { color: active ? "#fff" : colors.foreground }]}>
+                      {isAr ? opt.labelAr : opt.labelEn}
                     </Text>
                   </Pressable>
                 );
@@ -151,7 +143,9 @@ export default function SettingsScreen() {
 
         {/* ── Language ── */}
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>LANGUAGE</Text>
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }, isAr && { textAlign: "right" }]}>
+            {isAr ? "اللغة" : "LANGUAGE"}
+          </Text>
           <View style={[styles.sectionCard, { backgroundColor: useGlassSurface ? "transparent" : card }]}>
             {useGlassSurface && <GlassBase isDark={isDark} />}
             {useGlassSurface && (
@@ -163,22 +157,31 @@ export default function SettingsScreen() {
                 styles.lastRow,
                 { borderBottomColor: colors.border },
                 pressed && { backgroundColor: colors.secondary },
+                isAr && { flexDirection: "row-reverse" },
               ]}
               onPress={() => setShowLangPicker(true)}
               accessibilityRole="button"
               accessibilityLabel="Select language"
             >
-              <View style={styles.settingsLeft}>
+              {/* Icon + label — right in Arabic */}
+              <View style={[styles.settingsLeft, isAr && { flexDirection: "row-reverse" }]}>
                 <View style={[styles.settingsIcon, { backgroundColor: isDark ? "#1C1C1E" : "#EBF5FF" }]}>
                   <Feather name="globe" size={16} color={PRIMARY} />
                 </View>
-                <Text style={[styles.settingsLabel, { color: colors.foreground }]}>Language</Text>
+                <Text style={[styles.settingsLabel, { color: colors.foreground }]}>
+                  {isAr ? "اللغة" : "Language"}
+                </Text>
               </View>
+              {/* Value + chevron — left in Arabic */}
               <View style={styles.settingsRight}>
                 <Text style={[styles.settingsValue, { color: colors.mutedForeground }]}>
                   {language.flag} {language.nativeLabel}
                 </Text>
-                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                <Feather
+                  name={isAr ? "chevron-left" : "chevron-right"}
+                  size={16}
+                  color={colors.mutedForeground}
+                />
               </View>
             </Pressable>
           </View>
@@ -187,7 +190,7 @@ export default function SettingsScreen() {
         {/* ── Apple-style language picker ── */}
         <AppleActionSheet
           visible={showLangPicker}
-          title="Choose Language"
+          title={isAr ? "اختر اللغة" : "Choose Language"}
           options={langOptions}
           selectedValue={lang}
           onSelect={(val) => {
@@ -199,30 +202,35 @@ export default function SettingsScreen() {
 
         {/* ── Information ── */}
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>INFORMATION</Text>
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }, isAr && { textAlign: "right" }]}>
+            {isAr ? "معلومات" : "INFORMATION"}
+          </Text>
           <View style={[styles.sectionCard, { backgroundColor: useGlassSurface ? "transparent" : card }]}>
             {useGlassSurface && <GlassBase isDark={isDark} />}
             {useGlassSurface && (
               <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? SURFACE_TINT_DARK : SURFACE_TINT_LIGHT }]} />
             )}
+
             {Platform.OS === "ios" && (
               <Pressable
                 style={({ pressed }) => [
                   styles.settingsRow,
                   { borderBottomColor: colors.border },
                   pressed && { backgroundColor: colors.secondary },
+                  isAr && { flexDirection: "row-reverse" },
                 ]}
                 onPress={runLiveActivityDiagnostic}
                 accessibilityRole="button"
-                accessibilityLabel="Live Activity diagnostic"
               >
-                <View style={styles.settingsLeft}>
+                <View style={[styles.settingsLeft, isAr && { flexDirection: "row-reverse" }]}>
                   <View style={[styles.settingsIcon, { backgroundColor: isDark ? "#1C1C1E" : "#EBF5FF" }]}>
                     <Feather name="activity" size={16} color={PRIMARY} />
                   </View>
-                  <Text style={[styles.settingsLabel, { color: colors.foreground }]}>Test Live Activity</Text>
+                  <Text style={[styles.settingsLabel, { color: colors.foreground }]}>
+                    {isAr ? "اختبار Live Activity" : "Test Live Activity"}
+                  </Text>
                 </View>
-                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                <Feather name={isAr ? "chevron-left" : "chevron-right"} size={16} color={colors.mutedForeground} />
               </Pressable>
             )}
 
@@ -231,15 +239,18 @@ export default function SettingsScreen() {
                 styles.settingsRow,
                 { borderBottomColor: colors.border },
                 pressed && { backgroundColor: colors.secondary },
+                isAr && { flexDirection: "row-reverse" },
               ]}
             >
-              <View style={styles.settingsLeft}>
+              <View style={[styles.settingsLeft, isAr && { flexDirection: "row-reverse" }]}>
                 <View style={[styles.settingsIcon, { backgroundColor: isDark ? "#1C1C1E" : "#EBF5FF" }]}>
                   <Feather name="info" size={16} color={PRIMARY} />
                 </View>
-                <Text style={[styles.settingsLabel, { color: colors.foreground }]}>About Mora</Text>
+                <Text style={[styles.settingsLabel, { color: colors.foreground }]}>
+                  {isAr ? "عن مورا" : "About Mora"}
+                </Text>
               </View>
-              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              <Feather name={isAr ? "chevron-left" : "chevron-right"} size={16} color={colors.mutedForeground} />
             </Pressable>
 
             <Pressable
@@ -248,15 +259,18 @@ export default function SettingsScreen() {
                 styles.lastRow,
                 { borderBottomColor: colors.border },
                 pressed && { backgroundColor: colors.secondary },
+                isAr && { flexDirection: "row-reverse" },
               ]}
             >
-              <View style={styles.settingsLeft}>
+              <View style={[styles.settingsLeft, isAr && { flexDirection: "row-reverse" }]}>
                 <View style={[styles.settingsIcon, { backgroundColor: isDark ? "#1C1C1E" : "#EBF5FF" }]}>
                   <Feather name="shield" size={16} color={PRIMARY} />
                 </View>
-                <Text style={[styles.settingsLabel, { color: colors.foreground }]}>Privacy Policy</Text>
+                <Text style={[styles.settingsLabel, { color: colors.foreground }]}>
+                  {isAr ? "سياسة الخصوصية" : "Privacy Policy"}
+                </Text>
               </View>
-              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              <Feather name={isAr ? "chevron-left" : "chevron-right"} size={16} color={colors.mutedForeground} />
             </Pressable>
           </View>
         </View>
@@ -277,35 +291,19 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
   },
-  acctTitle: { fontFamily: "Inter_700Bold", fontSize: 15, letterSpacing: 1 },
-  themeRow: { flexDirection: "row", padding: 12, gap: 10 },
-  themeOption: {
-    flex: 1,
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1.5,
-  },
+  acctTitle:        { fontFamily: "Inter_700Bold", fontSize: 15, letterSpacing: 1 },
+  themeRow:         { flexDirection: "row", padding: 12, gap: 10 },
+  themeOption:      { flex: 1, flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 12, borderRadius: 8, borderWidth: 1.5 },
   themeOptionLabel: { fontFamily: "Inter_600SemiBold", fontSize: 12, letterSpacing: 0.3 },
-  settingsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-  },
-  settingsLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
-  settingsRight: { flexDirection: "row", alignItems: "center", gap: 6 },
-  settingsIcon: { width: 32, height: 32, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  settingsLabel: { fontFamily: "Inter_500Medium", fontSize: 15 },
-  settingsValue: { fontFamily: "Inter_400Regular", fontSize: 14 },
-  section: { paddingHorizontal: 16, marginBottom: 16, marginTop: 16 },
-  sectionLabel: { fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 1, marginBottom: 8 },
-  sectionCard: { borderRadius: 16, overflow: "hidden" },
-  lastRow: { borderBottomWidth: 0 },
-  version: { textAlign: "center", fontFamily: "Inter_400Regular", fontSize: 12, paddingBottom: 8 },
+  settingsRow:      { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
+  settingsLeft:     { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+  settingsRight:    { flexDirection: "row", alignItems: "center", gap: 6 },
+  settingsIcon:     { width: 32, height: 32, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  settingsLabel:    { fontFamily: "Inter_500Medium", fontSize: 15 },
+  settingsValue:    { fontFamily: "Inter_400Regular", fontSize: 14 },
+  section:          { paddingHorizontal: 16, marginBottom: 16, marginTop: 16 },
+  sectionLabel:     { fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 1, marginBottom: 8 },
+  sectionCard:      { borderRadius: 16, overflow: "hidden" },
+  lastRow:          { borderBottomWidth: 0 },
+  version:          { textAlign: "center", fontFamily: "Inter_400Regular", fontSize: 12, paddingBottom: 8 },
 });
