@@ -4,17 +4,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
     <script>
-      var isDark = new URLSearchParams(window.location.search).get("dark") === "1";
-      var bg = isDark ? "#0D0D0F" : "#FFFFFF";
-      document.documentElement.style.background = bg;
-      document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+      // Always render Chatwoot in LIGHT mode (its built-in dark theme renders
+      // text too faint). The app applies a CSS invert() filter on the iframe
+      // for dark mode instead — see chat.tsx.
+      document.documentElement.style.background = "#FFFFFF";
+      document.documentElement.style.colorScheme = "light";
     </script>
     <style>
-      html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+      html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #FFFFFF; }
 
-      /* Make the Chatwoot widget FILL this iframe completely — no popup box,
-         no corner positioning, no rounded corners, no shadow. It becomes the
-         whole page (embedded in the chat tab section). */
+      /* Make the Chatwoot widget FILL this iframe completely — no popup box. */
       .woot-widget-holder {
         top: 0 !important;
         left: 0 !important;
@@ -41,9 +40,6 @@
   </head>
   <body>
     <script>
-      var isDark = new URLSearchParams(window.location.search).get("dark") === "1";
-      var scheme = isDark ? "dark" : "light";
-
       function hideCloseBtns() {
         document.querySelectorAll("button").forEach(function (btn) {
           var label = (btn.getAttribute("aria-label") || "").toLowerCase();
@@ -62,7 +58,7 @@
         position: "right",
         locale: "ar",
         type: "standard",
-        darkMode: scheme,
+        darkMode: "light",
         showPopoutButton: false,
       };
 
@@ -78,17 +74,24 @@
         s.parentNode.insertBefore(g, s);
       })(document, "script");
 
-      // Open the widget + force the color scheme. Retry a few times because
-      // set-color-scheme is a postMessage that's dropped if the inner widget
-      // iframe isn't mounted yet.
-      function applyScheme() {
-        try { window.$chatwoot && window.$chatwoot.setColorScheme(scheme); } catch (e) {}
+      // When embedded in another iframe the height isn't stable at boot, so
+      // Chatwoot renders a collapsed (header-only) widget. We force it to
+      // recompute and fill the frame by (a) re-dispatching resize whenever the
+      // viewport size actually changes (ResizeObserver — robust across devices)
+      // and (b) a few timed nudges as a fallback for the very first paint.
+      function nudge() {
+        try { window.dispatchEvent(new Event("resize")); } catch (e) {}
       }
       window.addEventListener("chatwoot:ready", function () {
         try { window.$chatwoot.toggle("open"); } catch (e) {}
-        applyScheme();
-        [300, 800, 1500, 2500].forEach(function (ms) { setTimeout(applyScheme, ms); });
+        [100, 400, 900, 1600, 2600].forEach(function (ms) { setTimeout(nudge, ms); });
       });
+      try {
+        new ResizeObserver(nudge).observe(document.documentElement);
+      } catch (e) {}
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", nudge);
+      }
     </script>
   </body>
 </html>

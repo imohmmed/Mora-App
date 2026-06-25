@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useIsFocused } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
@@ -126,19 +127,31 @@ true;
 // it (no lingering <body>-level popup).
 function WebChatScreen({ isDark, bg }: { isDark: boolean; bg: string }) {
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   // Reserve room for the floating tab bar so the embedded chat sits flush above
   // it (no overlap → tab bar stays clickable). 84px ≈ pill + margins.
   const reserve = 84 + (insets.bottom || 0);
 
-  // The iframe is part of the React tree: navigating away unmounts it, so the
-  // chat truly goes away (unlike a <body>-level popup). It loads
-  // /chat-widget.html which runs the SDK and fills itself completely.
+  // Guarantee the chat disappears on other tabs: render the iframe ONLY while
+  // this tab is focused, regardless of the navigator's mount policy. It also
+  // means the SDK re-runs fresh each visit (conversation persists server-side).
+  if (!isFocused) {
+    return <View style={{ flex: 1, height: "100%", backgroundColor: bg }} />;
+  }
+
+  // The iframe is part of the React tree: leaving the tab hides this screen
+  // (and the iframe with it), so the chat truly goes away — no lingering
+  // <body>-level popup. It loads /chat-widget.html which runs the SDK and
+  // fills itself completely (always in LIGHT mode).
+  //
+  // Dark mode: Chatwoot's own dark theme renders text too faint and its widget
+  // is cross-origin (can't inject CSS), so we invert the whole iframe with a
+  // CSS filter — a real, manual dark mode that bypasses the cross-origin limit.
   return (
-    <View style={{ flex: 1, backgroundColor: bg }}>
+    <View style={{ flex: 1, height: "100%", backgroundColor: bg }}>
       {/* @ts-ignore web-only element */}
       <iframe
-        key={isDark ? "dark" : "light"}
-        src={`/chat-widget.html?dark=${isDark ? "1" : "0"}`}
+        src="/chat-widget.html"
         style={{
           position: "absolute",
           top: 0,
@@ -148,6 +161,7 @@ function WebChatScreen({ isDark, bg }: { isDark: boolean; bg: string }) {
           width: "100%",
           border: "none",
           background: bg,
+          filter: isDark ? "invert(0.92) hue-rotate(180deg)" : "none",
         }}
         title="Mora Support"
         allow="microphone; camera"
