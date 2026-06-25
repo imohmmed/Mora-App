@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import {
   ActivityIndicator,
   Animated,
@@ -10,6 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import * as WebBrowser from "expo-web-browser";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,6 +18,9 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { formatIQD } from "@/lib/format";
+
+// Tab bar height on web (portal-rendered FloatingTabBar: 48px bar + 6*2 padding + 12 bottom = 72px)
+const WEB_TAB_BAR_OFFSET = Platform.OS === "web" ? 80 : 0;
 
 const PRIMARY   = "#0274C1";
 const WAYL_BLUE = "#3B82F6";
@@ -354,7 +357,7 @@ export default function OrderCompleteScreen() {
         s.footer,
         {
           backgroundColor: isIOS26Plus ? "transparent" : bg,
-          paddingBottom: insets.bottom + 12,
+          paddingBottom: insets.bottom + 12 + WEB_TAB_BAR_OFFSET,
         },
       ]}>
         <LiquidGlassBg />
