@@ -62,7 +62,7 @@ interface Props {
   visible: boolean;
   product: Product | null;
   onClose: () => void;
-  onConfirm: (variant: Variant) => void;
+  onConfirm: (variant: Variant, qty: number) => void;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -84,6 +84,7 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   const [activeImg, setActiveImg] = useState(0);
   const [notifying, setNotifying] = useState(false);
   const [notified, setNotified] = useState(false);
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     setSelectedOpt1(null);
@@ -91,7 +92,10 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
     setActiveImg(0);
     setNotified(false);
     setNotifying(false);
+    setQuantity(1);
   }, [product?.id]);
+
+  useEffect(() => { setQuantity(1); }, [selectedOpt1, selectedOpt2]);
 
   useEffect(() => {
     if (visible) {
@@ -158,11 +162,15 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   // Whole product sold out → offer "Notify me" instead of "Add to bag".
   const fullyOOS = variants.length > 0 && variants.every((v) => (v.inventory ?? 0) <= 0);
 
+  const maxStock = selectedVariant
+    ? (selectedVariant.inventory ?? 0)
+    : (variants.find((v) => (v.inventory ?? 0) > 0)?.inventory ?? 99);
+
   const handleAdd = () => {
     const toAdd = selectedVariant ?? variants[0];
     if (!toAdd) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onConfirm(toAdd);
+    onConfirm(toAdd, quantity);
     onClose();
   };
 
@@ -376,6 +384,34 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
               {hasOpt2 && renderChips(
                 opt2Values, selectedOpt2, setSelectedOpt2, isOpt2OOS, label2,
               )}
+            </View>
+          )}
+
+          {/* ── Quantity stepper ─────────────────────────────────────────── */}
+          {!fullyOOS && (
+            <View style={[styles.qtySection, { borderTopColor: divider }, lang === "ar" && { flexDirection: "row-reverse" }]}>
+              <Text style={[styles.qtyLabel, { color: textMuted }]}>
+                {lang === "ar" ? "الكمية" : "QUANTITY"}
+              </Text>
+              <View style={[styles.qtyStepper, { backgroundColor: chipBg, borderColor: chipBorder }]}>
+                <Pressable
+                  style={[styles.qtyBtn, quantity <= 1 && { opacity: 0.3 }]}
+                  onPress={() => setQuantity((q) => Math.max(1, q - 1))}
+                  disabled={quantity <= 1}
+                  hitSlop={4}
+                >
+                  <Feather name="minus" size={13} color={textPri} />
+                </Pressable>
+                <Text style={[styles.qtyNum, { color: textPri }]}>{quantity}</Text>
+                <Pressable
+                  style={[styles.qtyBtn, quantity >= maxStock && { opacity: 0.3 }]}
+                  onPress={() => setQuantity((q) => Math.min(maxStock, q + 1))}
+                  disabled={quantity >= maxStock}
+                  hitSlop={4}
+                >
+                  <Feather name="plus" size={13} color={textPri} />
+                </Pressable>
+              </View>
             </View>
           )}
         </ScrollView>
@@ -593,5 +629,38 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     fontSize: 14,
     letterSpacing: 0.5,
+  },
+  qtySection: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    marginTop: 16,
+    paddingTop: 14,
+  },
+  qtyLabel: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 11,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  qtyStepper: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 999,
+    borderWidth: 1.5,
+    overflow: "hidden",
+  },
+  qtyBtn: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  qtyNum: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 15,
+    minWidth: 30,
+    textAlign: "center",
   },
 });

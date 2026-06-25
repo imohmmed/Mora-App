@@ -446,7 +446,7 @@ export default function CollectionScreen() {
         visible={!!quickAddProduct}
         product={quickAddProduct}
         onClose={() => setQuickAddProduct(null)}
-        onConfirm={(variant: Variant) => {
+        onConfirm={(variant: Variant, qty: number) => {
           if (!quickAddProduct) return;
           addItem({
             productId: quickAddProduct.id,
@@ -454,7 +454,7 @@ export default function CollectionScreen() {
             title: quickAddProduct.title,
             vendor: quickAddProduct.vendor ?? "",
             price: variant.price ?? quickAddProduct.price,
-            quantity: 1,
+            quantity: qty,
             size: variant.option1 ?? undefined,
             color: variant.option2 ?? undefined,
             image: quickAddProduct.images?.[0],

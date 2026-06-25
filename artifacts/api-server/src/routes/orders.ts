@@ -205,19 +205,53 @@ router.post("/store/orders", (req, res) => {
 
   const paymentMethod = (b["paymentMethod"] as string) ?? "cod";
 
-  db.prepare(
-    `INSERT INTO orders (id,order_number,customer_id,email,status,financial_status,fulfillment_status,subtotal,shipping,tax,total,currency,discount_code,discount_amount,shipping_address,line_items,note,tags,is_draft,is_abandoned,delivery_stage,payment_method,created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
-  ).run(
-    id, orderNum, customerId, email,
-    "pending", "pending", "unfulfilled",
-    subtotal, shipping, 0, total, "IQD",
-    appliedCode, discountAmount,
-    JSON.stringify(b["shippingAddress"] ?? {}),
-    JSON.stringify(b["lineItems"] ?? []),
-    (b["note"] as string) ?? "", "[]",
-    0, 0, "confirmed", paymentMethod, now, now
-  );
+  // ── Stock check + order insert + inventory decrement (atomic) ──────────────
+  type OLI = { variantId?: string; quantity?: number; title?: string };
+  let stockErrMsg: string | null = null;
+  const insertOrder = db.transaction(() => {
+    // 1. Verify sufficient inventory for every line item
+    for (const item of lineItems as OLI[]) {
+      if (!item.variantId || !(item.quantity ?? 0)) continue;
+      const v = db.prepare("SELECT inventory FROM variants WHERE id=?")
+        .get(item.variantId) as { inventory: number } | undefined;
+      if (v !== undefined && v.inventory < (item.quantity ?? 1)) {
+        stockErrMsg = `Not enough stock for "${item.title ?? item.variantId}" — only ${v.inventory} left`;
+        throw new Error("STOCK_LOW");
+      }
+    }
+    // 2. Insert order row
+    db.prepare(
+      `INSERT INTO orders (id,order_number,customer_id,email,status,financial_status,fulfillment_status,subtotal,shipping,tax,total,currency,discount_code,discount_amount,shipping_address,line_items,note,tags,is_draft,is_abandoned,delivery_stage,payment_method,created_at,updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    ).run(
+      id, orderNum, customerId, email,
+      "pending", "pending", "unfulfilled",
+      subtotal, shipping, 0, total, "IQD",
+      appliedCode, discountAmount,
+      JSON.stringify(b["shippingAddress"] ?? {}),
+      JSON.stringify(b["lineItems"] ?? []),
+      (b["note"] as string) ?? "", "[]",
+      0, 0, "confirmed", paymentMethod, now, now
+    );
+    // 3. Decrement inventory for each variant
+    for (const item of lineItems as OLI[]) {
+      if (item.variantId && (item.quantity ?? 0) > 0) {
+        db.prepare("UPDATE variants SET inventory = MAX(0, inventory - ?) WHERE id=?")
+          .run(item.quantity, item.variantId);
+      }
+    }
+  });
+
+  try {
+    insertOrder();
+  } catch {
+    if (stockErrMsg) {
+      res.status(409).json({ data: null, meta: {}, error: stockErrMsg });
+      return;
+    }
+    res.status(500).json({ data: null, meta: {}, error: "Order creation failed" });
+    return;
+  }
 
   // Count usage now for COD; online codes are redeemed when payment settles.
   if (appliedCode && paymentMethod !== "online") {

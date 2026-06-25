@@ -210,10 +210,13 @@ export default function ProductDetailScreen() {
   const { token } = useAuth();
   const { lang } = useLanguage();
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
+  const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const [quickAddRelated, setQuickAddRelated] = useState<Product | null>(null);
   const [notifyingVariant, setNotifyingVariant] = useState<string | null>(null);
   const [locallyNotified, setLocallyNotified] = useState<string[]>([]);
+
+  useEffect(() => { setQty(1); }, [selectedVariant?.id]);
 
   const topPadding = isWeb ? 0 : insets.top;
   const bottomPadding = isWeb ? 0 : insets.bottom;
@@ -310,11 +313,12 @@ export default function ProductDetailScreen() {
       title: product.title,
       vendor: product.vendor ?? "Mora",
       price: variant?.price ?? product.price,
-      quantity: 1,
+      quantity: qty,
       size: variant?.option1,
       color: variant?.option2,
       image: imageUri,
     });
+    setQty(1);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
@@ -621,6 +625,33 @@ export default function ProductDetailScreen() {
 
           {/* ── Add to Bag / Notify me ── */}
           <View style={[styles.addBagSection, { borderTopColor: colors.border }]}>
+            {/* Quantity stepper */}
+            {!activeOOS && (
+              <View style={[styles.qtyWrap, lang === "ar" && { flexDirection: "row-reverse" }]}>
+                <Text style={[styles.qtyLabel, { color: colors.mutedForeground }]}>
+                  {lang === "ar" ? "الكمية" : "QUANTITY"}
+                </Text>
+                <View style={[styles.qtyStepper, { borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.12)", backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}>
+                  <Pressable
+                    style={[styles.qtyBtn, qty <= 1 && { opacity: 0.3 }]}
+                    onPress={() => setQty((q) => Math.max(1, q - 1))}
+                    disabled={qty <= 1}
+                    hitSlop={4}
+                  >
+                    <Feather name="minus" size={14} color={colors.foreground} />
+                  </Pressable>
+                  <Text style={[styles.qtyNum, { color: colors.foreground }]}>{qty}</Text>
+                  <Pressable
+                    style={[styles.qtyBtn, qty >= (activeVariant?.inventory ?? 99) && { opacity: 0.3 }]}
+                    onPress={() => setQty((q) => Math.min(activeVariant?.inventory ?? 99, q + 1))}
+                    disabled={qty >= (activeVariant?.inventory ?? 99)}
+                    hitSlop={4}
+                  >
+                    <Feather name="plus" size={14} color={colors.foreground} />
+                  </Pressable>
+                </View>
+              </View>
+            )}
             {activeOOS ? (
               <Pressable
                 style={({ pressed }) => [
@@ -749,7 +780,7 @@ export default function ProductDetailScreen() {
         visible={!!quickAddRelated}
         product={quickAddRelated}
         onClose={() => setQuickAddRelated(null)}
-        onConfirm={(variant) => {
+        onConfirm={(variant, qty: number) => {
           if (!quickAddRelated) return;
           addItem({
             productId: quickAddRelated.id,
@@ -757,7 +788,7 @@ export default function ProductDetailScreen() {
             title: quickAddRelated.title,
             vendor: quickAddRelated.vendor ?? "Mora",
             price: variant.price ?? quickAddRelated.price,
-            quantity: 1,
+            quantity: qty,
             size: variant.option1,
             color: variant.option2,
             image: quickAddRelated.images?.[0],
@@ -886,6 +917,13 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   variantText: { fontFamily: "Inter_500Medium", fontSize: 14 },
+
+  /* Quantity stepper */
+  qtyWrap: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  qtyLabel: { fontFamily: "Inter_600SemiBold", fontSize: 11, letterSpacing: 1, textTransform: "uppercase" },
+  qtyStepper: { flexDirection: "row", alignItems: "center", borderRadius: 999, borderWidth: 1.5, overflow: "hidden" },
+  qtyBtn: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
+  qtyNum: { fontFamily: "Inter_700Bold", fontSize: 15, minWidth: 32, textAlign: "center" },
 
   /* Add to Bag */
   addBagSection: { paddingHorizontal: 16, paddingVertical: 16, gap: 12, borderTopWidth: 1 },

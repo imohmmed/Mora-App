@@ -156,7 +156,7 @@ export default function WishlistScreen() {
 
   const handleAddToBag = (product: Product) => setQuickAddProduct(product);
 
-  const handleQuickAddConfirm = (variant: Variant) => {
+  const handleQuickAddConfirm = (variant: Variant, qty: number) => {
     if (!quickAddProduct) return;
     addItem({
       productId: quickAddProduct.id,
@@ -164,7 +164,7 @@ export default function WishlistScreen() {
       title: quickAddProduct.title,
       vendor: quickAddProduct.vendor ?? "Mora",
       price: variant.price,
-      quantity: 1,
+      quantity: qty,
       size: variant.option1,
       color: variant.option2,
       image: quickAddProduct.images?.[0],
