@@ -374,18 +374,40 @@ router.put("/admin/orders/:id", async (req, res) => {
   }
 
   // ── If payment just confirmed → update Live Activity isPaid flag via APNs ───
-  // This flips the price pill to "تم دفع الطلب" on the Dynamic Island immediately.
   if (financialChanged && newFinancial === "paid") {
-    const laPushToken = existing["live_activity_push_token"] as string | null;
+    const laToken      = existing["live_activity_push_token"] as string | null;
     const currentStage = (existing["delivery_stage"] as string | null) ?? "confirmed";
-    if (laPushToken && VALID_STAGES.includes(currentStage)) {
-      try {
-        await sendLiveActivityPush(laPushToken, {
-          stage: currentStage as any,
-          message: "",
-          isPaid: true,
-        });
-      } catch { /* non-fatal */ }
+    if (VALID_STAGES.includes(currentStage)) {
+      const GONE_PAY = new Set(["BadDeviceToken", "Gone", "Unregistered", "ExpiredToken"]);
+      let payLaGone = !laToken;
+      if (laToken) {
+        try {
+          const r = await sendLiveActivityPush(laToken, { stage: currentStage as any, message: "", isPaid: true });
+          if (!r.ok && GONE_PAY.has(r.error ?? "")) {
+            payLaGone = true;
+            db.prepare(`UPDATE orders SET live_activity_push_token=NULL, updated_at=? WHERE id=?`).run(now, id);
+          }
+        } catch { /* non-fatal */ }
+      }
+      // Push-to-start fallback if the activity is gone
+      if (payLaGone && customerId) {
+        try {
+          const custRow = db.prepare(`SELECT first_name, last_name, live_activity_pts_token FROM customers WHERE id=?`).get(customerId) as Row | undefined;
+          const pts = custRow?.["live_activity_pts_token"] as string | null;
+          if (pts) {
+            const oRow = db.prepare(`SELECT total FROM orders WHERE id=?`).get(id) as Row | undefined;
+            const cName = `${custRow?.["first_name"] ?? ""} ${custRow?.["last_name"] ?? ""}`.trim();
+            await sendLiveActivityStartPush(pts, {
+              orderNumber:  orderNum,
+              customerName: cName,
+              stage:        currentStage as any,
+              message:      "",
+              priceText:    formatIQD(Number(oRow?.["total"] ?? 0)),
+              isPaid:       true,
+            });
+          }
+        } catch { /* non-fatal */ }
+      }
     }
   }
 
@@ -401,7 +423,12 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
   if (!stage) { res.status(400).json({ data: null, error: "stage required" }); return; }
   if (!VALID_STAGES.includes(stage)) { res.status(400).json({ data: null, error: "invalid stage" }); return; }
 
-  const existing = db.prepare(`SELECT order_number, customer_id, live_activity_push_token, financial_status FROM orders WHERE id=?`).get(id) as Row | undefined;
+  const existing = db.prepare(`
+    SELECT o.order_number, o.customer_id, o.live_activity_push_token, o.financial_status, o.total,
+           c.first_name, c.last_name, c.live_activity_pts_token
+    FROM orders o LEFT JOIN customers c ON c.id = o.customer_id
+    WHERE o.id = ?
+  `).get(id) as Row | undefined;
   if (!existing) { res.status(404).json({ data: null, meta: {}, error: "Order not found" }); return; }
 
   const now = new Date().toISOString();
@@ -411,35 +438,55 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
   logActivity("order.stage_updated", "Orders", "order", id, `Order ${orderNum}`, "Admin",
     { orderNumber: orderNum, stage, message });
 
-  // Only push a custom message into the Live Activity; otherwise leave it empty
-  // so the widget renders its own per-stage subtitle.
   const laMessage = message && message.trim() ? message : "";
-  // delivered/issue/cancelled deep-link to the in-app chat; the rest → My Orders.
   const toChat = stage === "delivered" || stage === "issue" || stage === "cancelled";
-  // Load notification copy from template (with variable substitution)
   const vars = buildVars(id, orderNum, existing["customer_id"] as string | null);
   const copy = getTemplate(STAGE_TO_KEY[stage] ?? `stage:${stage}`, vars);
 
-  // 1) Update the iOS Live Activity directly via APNs (if a token is registered)
-  const laPushToken = existing["live_activity_push_token"] as string | null;
+  // 1) Update the iOS Live Activity directly via APNs
+  const laPushToken    = existing["live_activity_push_token"] as string | null;
+  const ptsToken       = existing["live_activity_pts_token"]  as string | null;
   const financialStatus = existing["financial_status"] as string | null;
-  const isPaid = financialStatus === "paid";
+  const isPaid         = financialStatus === "paid";
+  const customerName   = `${existing["first_name"] ?? ""} ${existing["last_name"] ?? ""}`.trim();
+  const priceText      = formatIQD(Number(existing["total"] ?? 0));
+
+  // APNs errors that mean the Live Activity was dismissed/ended on the device
+  const GONE_ERRORS = new Set(["BadDeviceToken", "Gone", "Unregistered", "ExpiredToken"]);
   let apnsResult: { ok: boolean; error?: string } = { ok: true };
+  let activityWasGone = !laPushToken;
+
   if (laPushToken) {
     try {
-      apnsResult = await sendLiveActivityPush(laPushToken, {
-        stage: stage as any,
-        message: laMessage,
-        isPaid,
-      });
+      apnsResult = await sendLiveActivityPush(laPushToken, { stage: stage as any, message: laMessage, isPaid });
     } catch (e: unknown) {
       apnsResult = { ok: false, error: String(e) };
     }
+    // Token is stale (activity was dismissed by the user) — clear it
+    if (!apnsResult.ok && GONE_ERRORS.has(apnsResult.error ?? "")) {
+      activityWasGone = true;
+      db.prepare(`UPDATE orders SET live_activity_push_token=NULL, updated_at=? WHERE id=?`).run(now, id);
+    }
   }
 
-  // 2) Send a regular push + save an in-app notification for the customer
-  //    (covers the mobile app and the web store notification center).
-  //    issue/cancelled deep-link to the in-app chat ("Contact Us").
+  // Push-to-start fallback: if no active LA (never started or dismissed) → start a new one
+  if (activityWasGone && ptsToken) {
+    try {
+      const startResult = await sendLiveActivityStartPush(ptsToken, {
+        orderNumber:  orderNum,
+        customerName,
+        stage:        stage as any,
+        message:      laMessage,
+        priceText,
+        isPaid,
+        alertTitle:   copy?.title ?? "Mora",
+        alertBody:    copy?.body ?? "",
+      });
+      if (startResult.ok) apnsResult = startResult;
+    } catch { /* non-fatal */ }
+  }
+
+  // 2) Regular push + in-app notification
   const customerId = existing["customer_id"] as string | null;
   if (customerId && copy) {
     try {
@@ -454,7 +501,7 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
   }
 
   const order = parseOne(db.prepare(`SELECT * FROM orders WHERE id=?`).get(id) as Row | undefined);
-  res.json({ data: { order, apns: apnsResult, hasPushToken: !!laPushToken }, error: null });
+  res.json({ data: { order, apns: apnsResult, hasPushToken: !!laPushToken, ptsUsed: activityWasGone && !!ptsToken }, error: null });
 });
 
 router.delete("/admin/orders/:id", (req, res) => {
@@ -493,8 +540,8 @@ router.post("/admin/orders/:id/start-live-activity", async (req, res) => {
   if (!VALID_STAGES.includes(useStage)) { res.status(400).json({ data: null, error: "invalid stage" }); return; }
   const orderNum   = order["order_number"] as string;
   const customerName = `${cust?.["first_name"] ?? ""} ${cust?.["last_name"] ?? ""}`.trim() || "Customer";
-  const copy       = STAGE_NOTIF[useStage];
-  const defaultBody = copy ? copy.body.replace("{n}", orderNum) : "";
+  const copy       = getTemplate(STAGE_TO_KEY[useStage] ?? `stage:${useStage}`, buildVars(id, orderNum, customerId));
+  const defaultBody = copy?.body ?? "";
   // Leave the content-state message empty so the widget shows its per-stage subtitle.
   const laMessage  = message && message.trim() ? message : "";
   const priceText  = formatIQD(Number(order["total"] ?? 0));

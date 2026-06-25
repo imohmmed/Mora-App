@@ -15,11 +15,12 @@ public struct MoraOrderActivityAttributes: ActivityAttributes {
 }
 
 // ── Brand palette (background black, text white, accent = site blue) ───────────
-let kAccent  = Color(red: 0.008, green: 0.455, blue: 0.757)  // #0274C1
-let kDanger  = Color(red: 0.898, green: 0.286, blue: 0.302)  // #E5494D
-let kSuccess = Color(red: 0.204, green: 0.780, blue: 0.349)  // #34C759
-let kDim     = Color.white.opacity(0.55)
-let kTrack   = Color.white.opacity(0.14)
+let kAccent   = Color(red: 0.008, green: 0.455, blue: 0.757)  // #0274C1
+let kDanger   = Color(red: 0.898, green: 0.286, blue: 0.302)  // #E5494D  (cancelled)
+let kWarning  = Color(red: 0.961, green: 0.620, blue: 0.043)  // #F59E0B  (issue / amber)
+let kSuccess  = Color(red: 0.204, green: 0.780, blue: 0.349)  // #34C759
+let kDim      = Color.white.opacity(0.55)
+let kTrack    = Color.white.opacity(0.14)
 
 // ── Embedded hollow Mora wordmark (white, base64 PNG — no asset catalog) ───────
 let kMoraLogoBase64 = "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"
@@ -84,7 +85,21 @@ extension String {
         }
     }
 
-    var stageAccent: Color { isExceptionStage ? kDanger : kAccent }
+    var stageAccent: Color {
+        switch self {
+        case "issue":     return kWarning
+        case "cancelled": return kDanger
+        default:          return kAccent
+        }
+    }
+
+    var stageHeadlineColor: Color {
+        switch self {
+        case "issue":     return kWarning
+        case "cancelled": return kDanger
+        default:          return .white
+        }
+    }
 
     var stageIndex: Int { kStageFlow.firstIndex(of: self) ?? 0 }
 
@@ -154,6 +169,7 @@ struct EtaPill: View {
 
 // ── Action buttons ───────────────────────────────────────────────────────────────
 struct ContactButton: View {
+    var tint: Color = kDanger
     var body: some View {
         Link(destination: URL(string: "mora://chat")!) {
             HStack(spacing: 6) {
@@ -165,7 +181,7 @@ struct ContactButton: View {
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 9)
-            .background(kDanger)
+            .background(tint)
             .cornerRadius(11)
         }
     }
@@ -251,7 +267,7 @@ struct OrderBannerView: View {
                     HStack(spacing: 7) {
                         Text(stage.stageHeadline)
                             .font(.system(size: 15, weight: .heavy))
-                            .foregroundColor(isException ? kDanger : .white)
+                            .foregroundColor(stage.stageHeadlineColor)
                             .lineLimit(1)
                         Image(systemName: isException ? "exclamationmark.triangle.fill" : stage.stepIcon)
                             .font(.system(size: 15, weight: .bold))
@@ -270,7 +286,7 @@ struct OrderBannerView: View {
 
             // ── الخط السفلي: tracker المراحل / أزرار ──────────────────────
             if isException {
-                ContactButton()
+                ContactButton(tint: stage.stageAccent)
             } else {
                 OrderStepsBar(stage: stage)
                 if stage == "delivered" { RateButton() }
@@ -311,7 +327,7 @@ struct MoraOrderActivityWidget: Widget {
                     HStack(spacing: 6) {
                         Text(stage.stageHeadline)
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(isException ? kDanger : .white)
+                            .foregroundColor(stage.stageHeadlineColor)
                             .lineLimit(2)
                             .multilineTextAlignment(.trailing)
                         Image(systemName: isException ? "exclamationmark.triangle.fill" : stage.stepIcon)
@@ -330,7 +346,7 @@ struct MoraOrderActivityWidget: Widget {
                             .lineLimit(2)
                             .padding(.horizontal, 4)
                         if isException {
-                            ContactButton().padding(.horizontal, 4).padding(.bottom, 4)
+                            ContactButton(tint: stage.stageAccent).padding(.horizontal, 4).padding(.bottom, 4)
                         } else {
                             OrderStepsBar(stage: stage, nodeSize: 26)
                                 .padding(.horizontal, 4)
