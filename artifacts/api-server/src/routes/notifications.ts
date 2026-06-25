@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db } from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
+import { TEMPLATE_DEFAULTS } from "../lib/templates.js";
 
 const router = Router();
 
@@ -335,6 +336,58 @@ router.post("/admin/notifications/live-activity", requireAdmin, async (req, res)
   ).run(logId, "live_activity", title, body, JSON.stringify(payload), tokens.length, success, failed, now());
 
   return res.json({ data: { sent: tokens.length, success, failed, logId }, error: null });
+});
+
+// ─── Admin: notification template CRUD ───────────────────────────────────────
+
+router.get("/admin/notification-templates", requireAdmin, (req, res) => {
+  const rows = db.prepare("SELECT key, title, body, updated_at FROM notification_templates").all() as Array<{
+    key: string; title: string; body: string; updated_at: string;
+  }>;
+  const rowMap = Object.fromEntries(rows.map((r) => [r.key, r]));
+
+  const result = TEMPLATE_DEFAULTS.map((def) => ({
+    key:          def.key,
+    label:        def.label,
+    vars:         def.vars,
+    defaultTitle: def.title,
+    defaultBody:  def.body,
+    title:        rowMap[def.key]?.title      ?? def.title,
+    body:         rowMap[def.key]?.body       ?? def.body,
+    isCustomized: !!rowMap[def.key],
+    updated_at:   rowMap[def.key]?.updated_at ?? null,
+  }));
+
+  return res.json({ data: result, error: null });
+});
+
+router.put("/admin/notification-templates/:key", requireAdmin, (req, res) => {
+  const key = req.params["key"];
+  const { title, body } = req.body as { title?: string; body?: string };
+
+  if (!TEMPLATE_DEFAULTS.find((d) => d.key === key)) {
+    return res.status(400).json({ data: null, error: "مفتاح قالب غير صحيح" });
+  }
+  if (!title?.trim() || !body?.trim()) {
+    return res.status(400).json({ data: null, error: "العنوان والمحتوى مطلوبان" });
+  }
+
+  db.prepare(`
+    INSERT INTO notification_templates (key, title, body, updated_at)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(key) DO UPDATE SET title = excluded.title, body = excluded.body, updated_at = excluded.updated_at
+  `).run(key, title.trim(), body.trim(), now());
+
+  return res.json({ data: { ok: true }, error: null });
+});
+
+router.delete("/admin/notification-templates/:key", requireAdmin, (req, res) => {
+  const key = req.params["key"];
+  const def = TEMPLATE_DEFAULTS.find((d) => d.key === key);
+  if (!def) return res.status(400).json({ data: null, error: "مفتاح قالب غير صحيح" });
+
+  db.prepare("DELETE FROM notification_templates WHERE key = ?").run(key);
+  return res.json({ data: { ok: true, title: def.title, body: def.body }, error: null });
 });
 
 export default router;

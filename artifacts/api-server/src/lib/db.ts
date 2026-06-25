@@ -293,6 +293,16 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_nlog_created ON notification_log(created_at DESC);
 `);
 
+// ─── Notification templates ───────────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS notification_templates (
+    key        TEXT PRIMARY KEY,
+    title      TEXT NOT NULL,
+    body       TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+`);
+
 // ─── Migrations (add columns to existing DBs) ────────────────────────────────
 try { db.exec(`ALTER TABLE customers ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''`); } catch { /* column already exists */ }
 try { db.exec(`ALTER TABLE products ADD COLUMN rating REAL NOT NULL DEFAULT 0`); } catch { /* already exists */ }

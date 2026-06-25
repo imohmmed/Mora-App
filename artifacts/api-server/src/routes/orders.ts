@@ -5,6 +5,29 @@ import type { Row } from "../lib/types.js";
 import { sendLiveActivityPush, sendLiveActivityStartPush } from "../lib/apns.js";
 import { doSendNotification } from "./notifications.js";
 import { validateDiscount, redeemDiscount } from "../lib/discounts.js";
+import { getTemplate } from "../lib/templates.js";
+
+// Build variable map for a given order (used in notification template replacement)
+function buildVars(orderId: string, orderNum: string, customerId: string | null): Record<string, string> {
+  const order = db.prepare("SELECT total, line_items FROM orders WHERE id = ?").get(orderId) as { total: number; line_items: string } | undefined;
+  const total = order?.total ?? 0;
+  let itemCount = 0;
+  try {
+    const items = JSON.parse(order?.line_items ?? "[]") as Array<{ quantity?: number }>;
+    itemCount = items.reduce((n, it) => n + (Number(it?.quantity) || 0), 0);
+  } catch { /* ignore parse error */ }
+  let customerName = "";
+  if (customerId) {
+    const c = db.prepare("SELECT first_name, last_name FROM customers WHERE id = ?").get(customerId) as { first_name: string; last_name: string } | undefined;
+    if (c) customerName = `${c.first_name} ${c.last_name}`.trim();
+  }
+  return {
+    orderNum,
+    price: formatIQD(total),
+    itemCount: String(itemCount),
+    customerName,
+  };
+}
 
 // ── Unique order number generator: #XXXX (4 uppercase alphanumeric chars) ─────
 // 36^4 = 1,679,616 combinations. Retries on the rare collision.
@@ -21,15 +44,14 @@ function generateOrderNumber(): string {
   }
 }
 
-// Arabic push + in-app notification copy per delivery stage.
-// {n} is replaced with the order number.
-const STAGE_NOTIF: Record<string, { title: string; body: string }> = {
-  confirmed: { title: "تم تثبيت طلبك ✅", body: "استلمنا طلبك {n} وراح نبلش نجهزه إلك" },
-  preparing: { title: "يتم تجهيز طلبك 📦", body: "نجهز طلبك {n} ونحضّره للشحن" },
-  shipping:  { title: "طلبك في الطريق 🚚", body: "تم تسليم طلبك {n} لشركة التوصيل، الوصول خلال 1-2 يوم" },
-  delivered: { title: "تم توصيل طلبك 🎉", body: "نتمنى ينال طلبك {n} إعجابك، انطينا رأيك" },
-  issue:     { title: "صارت مشكلة بطلبك ⚠️", body: "تواصل ويانا بخصوص طلبك {n} حتى نحلها إلك" },
-  cancelled: { title: "تم إلغاء طلبك ❌", body: "تم إلغاء طلبك {n}. تواصل ويانا للمساعدة" },
+// Delivery stage keys mapped to template keys
+const STAGE_TO_KEY: Record<string, string> = {
+  confirmed: "stage:confirmed",
+  preparing: "stage:preparing",
+  shipping:  "stage:shipping",
+  delivered: "stage:delivered",
+  issue:     "stage:issue",
+  cancelled: "stage:cancelled",
 };
 
 // Format an amount as Iraqi Dinar for the Live Activity, e.g. 75000 → "75,000 IQD".
@@ -40,23 +62,10 @@ function formatIQD(amount: number): string {
 // Allowed delivery stages for Live Activity content-state.
 const VALID_STAGES = ["confirmed", "preparing", "shipping", "delivered", "issue", "cancelled"];
 
-// Arabic copy for general order-field changes (status / fulfillment / financial).
-// Sent to the order owner so ANY change reaches the customer. {n} → order number.
-const STATUS_NOTIF: Record<string, { title: string; body: string }> = {
-  processing: { title: "جارٍ تجهيز طلبك 📦", body: "بدأنا بتجهيز طلبك {n}" },
-  completed:  { title: "اكتمل طلبك 🎉", body: "تم إكمال طلبك {n}، شكراً لتسوقك معنا" },
-  cancelled:  { title: "تم إلغاء طلبك ❌", body: "تم إلغاء طلبك {n}. تواصل معنا للمساعدة" },
-  pending:    { title: "تحديث على طلبك", body: "طلبك {n} بانتظار المعالجة" },
-};
-const FULFILL_NOTIF: Record<string, { title: string; body: string }> = {
-  fulfilled:   { title: "تم شحن طلبك 🚚", body: "طلبك {n} في طريقه إليك" },
-  unfulfilled: { title: "تحديث على شحن طلبك", body: "تم تحديث حالة شحن طلبك {n}" },
-};
-const FINANCIAL_NOTIF: Record<string, { title: string; body: string }> = {
-  paid:     { title: "تم تأكيد الدفع ✅", body: "تم استلام دفعة طلبك {n}" },
-  refunded: { title: "تم استرجاع المبلغ 💸", body: "تم استرجاع مبلغ طلبك {n}" },
-  pending:  { title: "تحديث على دفع طلبك", body: "تم تحديث حالة دفع طلبك {n}" },
-};
+// Template keys for order status / fulfillment / financial changes
+const STATUS_KEYS: Record<string, string>   = { processing: "status:processing", completed: "status:completed", cancelled: "status:cancelled" };
+const FULFILL_KEYS: Record<string, string>  = { fulfilled: "fulfill:fulfilled" };
+const FINANCIAL_KEYS: Record<string, string> = { paid: "financial:paid", refunded: "financial:refunded" };
 
 const router = Router();
 
@@ -336,25 +345,27 @@ router.put("/admin/orders/:id", async (req, res) => {
   const statusChanged    = newStatus    !== prevStatus;
   const fulfillChanged   = newFulfill   !== prevFulfill;
   const financialChanged = newFinancial !== prevFinancial;
-  let notif: { title: string; body: string } | null = null;
+  let notifKey: string | null = null;
   let notifUrl = "";
-  if (statusChanged && STATUS_NOTIF[newStatus]) {
-    notif = STATUS_NOTIF[newStatus]!;
+  if (statusChanged && STATUS_KEYS[newStatus]) {
+    notifKey = STATUS_KEYS[newStatus]!;
     if (newStatus === "cancelled") notifUrl = "/(tabs)/chat";
-  } else if (fulfillChanged && FULFILL_NOTIF[newFulfill]) {
-    notif = FULFILL_NOTIF[newFulfill]!;
-  } else if (financialChanged && FINANCIAL_NOTIF[newFinancial]) {
-    notif = FINANCIAL_NOTIF[newFinancial]!;
-  } else if (statusChanged || fulfillChanged || financialChanged) {
-    // Fallback: a tracked field changed to a value without specific copy —
-    // still notify the owner so NO order change goes unannounced.
-    notif = { title: "تحديث على طلبك", body: "تم تحديث حالة طلبك {n}" };
+  } else if (fulfillChanged && FULFILL_KEYS[newFulfill]) {
+    notifKey = FULFILL_KEYS[newFulfill]!;
+  } else if (financialChanged && FINANCIAL_KEYS[newFinancial]) {
+    notifKey = FINANCIAL_KEYS[newFinancial]!;
   }
+  const vars = buildVars(id, orderNum, customerId);
+  const notif = notifKey
+    ? getTemplate(notifKey, vars)
+    : (statusChanged || fulfillChanged || financialChanged)
+      ? { title: "تحديث على طلبك", body: `تم تحديث حالة طلبك ${orderNum}` }
+      : null;
   if (customerId && notif) {
     try {
       await doSendNotification({
         title: notif.title,
-        body: notif.body.replace("{n}", orderNum),
+        body: notif.body,
         url: notifUrl,
         targetAll: false,
         customerIds: [customerId],
@@ -400,14 +411,14 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
   logActivity("order.stage_updated", "Orders", "order", id, `Order ${orderNum}`, "Admin",
     { orderNumber: orderNum, stage, message });
 
-  // Default Arabic copy for this stage (admin-supplied message overrides the body)
-  const copy = STAGE_NOTIF[stage];
-  const defaultBody = copy ? copy.body.replace("{n}", orderNum) : "";
   // Only push a custom message into the Live Activity; otherwise leave it empty
   // so the widget renders its own per-stage subtitle.
   const laMessage = message && message.trim() ? message : "";
   // delivered/issue/cancelled deep-link to the in-app chat; the rest → My Orders.
   const toChat = stage === "delivered" || stage === "issue" || stage === "cancelled";
+  // Load notification copy from template (with variable substitution)
+  const vars = buildVars(id, orderNum, existing["customer_id"] as string | null);
+  const copy = getTemplate(STAGE_TO_KEY[stage] ?? `stage:${stage}`, vars);
 
   // 1) Update the iOS Live Activity directly via APNs (if a token is registered)
   const laPushToken = existing["live_activity_push_token"] as string | null;
@@ -434,7 +445,7 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
     try {
       await doSendNotification({
         title: copy.title,
-        body: defaultBody,
+        body: copy.body,
         url: toChat ? "/(tabs)/chat" : "/orders",
         targetAll: false,
         customerIds: [customerId],
