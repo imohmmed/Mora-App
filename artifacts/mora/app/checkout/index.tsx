@@ -42,13 +42,15 @@ function getBaseUrl() {
   return d ? `https://${d}/api` : "/api";
 }
 
-function StepIndicator({ isDark }: { isDark: boolean }) {
-  const steps = ["Cart", "Checkout", "Done"];
+function StepIndicator({ isDark, isAr }: { isDark: boolean; isAr: boolean }) {
+  const steps = isAr
+    ? ["سلتي", "الدفع", "تم التثبيت"]
+    : ["Cart", "Checkout", "Done"];
   const inactiveCir = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
   const inactiveTxt = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)";
   const inactiveLn  = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
   return (
-    <View style={si.container}>
+    <View style={[si.container, isAr && { flexDirection: "row-reverse" }]}>
       {steps.map((label, i) => {
         const step   = i + 1;
         const done   = step < 2;
@@ -88,6 +90,7 @@ export default function CheckoutScreen() {
   const { items, subtotal, clearCart } = useCart();
   const { startOrderActivity } = useNotification();
   const { lang } = useLanguage();
+  const isAr = lang === "ar";
 
   const [form, setForm] = useState<FormState>({ name: "", phone: "", city: "", district: "", street: "", note: "" });
   const [payMethod, setPayMethod] = useState<PayMethod>("cod");
@@ -112,8 +115,6 @@ export default function CheckoutScreen() {
   const freeShipping = (discount?.freeShipping ?? false) || (freeShipThreshold != null && subtotal >= freeShipThreshold);
   const shipping = freeShipping ? 0 : (selectedZone?.price ?? 0);
   const grandTotal = Math.max(0, subtotal + shipping - discountAmount);
-  // Holds the created order + Wayl link for online payments so a retry after a
-  // failed/abandoned payment reuses the same order instead of creating a new one.
   const [pendingOnline, setPendingOnline] = useState<{
     orderId: string; orderNumber: string; orderTotal: number; waylUrl: string; snapshot: string;
   } | null>(null);
@@ -125,7 +126,7 @@ export default function CheckoutScreen() {
   const divClr  = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
 
   useEffect(() => {
-    if (isLoading) return; // wait for auth state to hydrate
+    if (isLoading) return;
     if (!user) {
       router.replace({ pathname: "/auth", params: { returnTo: "/checkout" } } as any);
       return;
@@ -147,9 +148,6 @@ export default function CheckoutScreen() {
 
   const set = (key: keyof FormState) => (val: string) => setForm((f) => ({ ...f, [key]: val }));
 
-  // Always show the governorate in Arabic: once zones load, normalize a
-  // prefilled/saved city (which may be an English governorate) to its Arabic
-  // name and restore the matching selectedZone so shipping recomputes.
   useEffect(() => {
     if (!zones.length || !form.city) return;
     const z = zones.find((zo) => zo.governorate === form.city || zo.governorateAr === form.city);
@@ -162,7 +160,6 @@ export default function CheckoutScreen() {
   const buildSnapshot = () =>
     JSON.stringify(items.map((i) => ({ title: i.title, quantity: i.quantity, price: i.price, image: i.image, size: i.size, color: i.color })));
 
-  // Persist the delivery address to the profile (best-effort, non-blocking)
   const saveAddressToProfile = (base: string) => {
     if (!token) return;
     fetch(`${base}/store/auth/me`, {
@@ -253,7 +250,6 @@ export default function CheckoutScreen() {
     }
   };
 
-  // Asks the server (which queries Wayl directly) whether the payment is settled.
   const checkWaylStatus = async (base: string, num: string): Promise<"paid" | "failed" | "pending"> => {
     try {
       const res = await fetch(`${base}/store/wayl/status/${num}`);
@@ -265,27 +261,20 @@ export default function CheckoutScreen() {
   };
 
   const handlePlaceOrder = async () => {
-    if (!form.name.trim())     { Alert.alert("Missing", "Please enter your name"); return; }
-    if (!form.phone.trim())    { Alert.alert("Missing", "Please enter your phone"); return; }
-    if (!selectedZone)         { Alert.alert(lang === "ar" ? "مطلوب" : "Missing", lang === "ar" ? "يرجى اختيار المحافظة" : "Please select your governorate"); return; }
-    if (!form.district.trim()) { Alert.alert("Missing", "Please enter your district/area"); return; }
-    if (items.length === 0)    { Alert.alert("Empty Cart", "Your cart is empty"); return; }
+    if (!form.name.trim())     { Alert.alert(isAr ? "مطلوب" : "Missing", isAr ? "يرجى إدخال اسمك" : "Please enter your name"); return; }
+    if (!form.phone.trim())    { Alert.alert(isAr ? "مطلوب" : "Missing", isAr ? "يرجى إدخال رقم هاتفك" : "Please enter your phone"); return; }
+    if (!selectedZone)         { Alert.alert(isAr ? "مطلوب" : "Missing", isAr ? "يرجى اختيار المحافظة" : "Please select your governorate"); return; }
+    if (!form.district.trim()) { Alert.alert(isAr ? "مطلوب" : "Missing", isAr ? "يرجى إدخال المنطقة" : "Please enter your district/area"); return; }
+    if (items.length === 0)    { Alert.alert(isAr ? "السلة فارغة" : "Empty Cart", isAr ? "لا يوجد منتجات في السلة" : "Your cart is empty"); return; }
 
     setSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const base = getBaseUrl();
 
     try {
-      // ───────────── ONLINE PAYMENT (Wayl) ─────────────
-      // We do NOT advance to the confirmation screen until the payment is
-      // verified as paid. The order stays "pending" and the user stays on
-      // checkout until Wayl confirms the transaction.
       if (payMethod === "online") {
-        // Reuse the order/link from a previous attempt so retrying does not
-        // create duplicate orders.
         let info = pendingOnline;
 
-        // Step 1: ensure the order exists (created only once).
         if (!info) {
           const created = await createOrder(base);
           info = { ...created, waylUrl: "" };
@@ -293,11 +282,8 @@ export default function CheckoutScreen() {
           saveAddressToProfile(base);
         }
 
-        // Step 2: ensure a Wayl link exists. If link creation failed on a
-        // previous attempt, regenerate it for the SAME order (no duplicate).
         if (!info.waylUrl) {
           const wayl = await createWaylLink(base, info.orderNumber, info.orderTotal);
-          // Fully-discounted order: nothing to pay, server already settled it.
           if (wayl.paid) {
             startOrderActivity({
               orderId: info.orderId,
@@ -321,12 +307,11 @@ export default function CheckoutScreen() {
             } as any);
             return;
           }
-          if (!wayl.url) throw new Error("Could not start the payment. Please try again.");
+          if (!wayl.url) throw new Error(isAr ? "تعذّر بدء الدفع، حاول مجدداً" : "Could not start the payment. Please try again.");
           info = { ...info, waylUrl: wayl.url };
           setPendingOnline(info);
         }
 
-        // Web: redirect out to Wayl; the complete page verifies on return.
         if (Platform.OS === "web") {
           sessionStorage.setItem("mora_wayl_snap", JSON.stringify({
             orderNumber: info.orderNumber, total: info.orderTotal, name: form.name,
@@ -336,12 +321,10 @@ export default function CheckoutScreen() {
           return;
         }
 
-        // Native: open the hosted payment page and wait for the user to finish.
         await WebBrowser.openBrowserAsync(info.waylUrl, {
           presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
         });
 
-        // Verify BEFORE leaving checkout — poll a few times for processing lag.
         let status: "paid" | "failed" | "pending" = "pending";
         for (let i = 0; i < 5; i++) {
           status = await checkWaylStatus(base, info.orderNumber);
@@ -352,15 +335,16 @@ export default function CheckoutScreen() {
         if (status !== "paid") {
           setSubmitting(false);
           Alert.alert(
-            status === "failed" ? "Payment Failed" : "Payment Not Completed",
             status === "failed"
-              ? "Your payment was not completed. You can try paying again."
-              : "We couldn't confirm your payment yet. If you already paid, wait a moment and tap to pay again.",
+              ? (isAr ? "فشل الدفع" : "Payment Failed")
+              : (isAr ? "لم يكتمل الدفع" : "Payment Not Completed"),
+            status === "failed"
+              ? (isAr ? "لم يكتمل دفعك. يمكنك المحاولة مجدداً." : "Your payment was not completed. You can try paying again.")
+              : (isAr ? "لم نتمكن من تأكيد دفعك بعد. إذا دفعت بالفعل، انتظر لحظة وحاول مجدداً." : "We couldn't confirm your payment yet. If you already paid, wait a moment and tap to pay again."),
           );
-          return; // stay on checkout; pendingOnline kept for retry
+          return;
         }
 
-        // Paid ✓ — start the Live Activity, clear the cart and confirm.
         startOrderActivity({
           orderId: info.orderId,
           orderNumber: info.orderNumber,
@@ -384,7 +368,6 @@ export default function CheckoutScreen() {
         return;
       }
 
-      // ───────────── CASH ON DELIVERY ─────────────
       const created = await createOrder(base);
       startOrderActivity({
         orderId: created.orderId,
@@ -408,7 +391,7 @@ export default function CheckoutScreen() {
       } as any);
     } catch (err: any) {
       setSubmitting(false);
-      Alert.alert("Error", err.message || "Something went wrong. Please try again.");
+      Alert.alert(isAr ? "خطأ" : "Error", err.message || (isAr ? "حدث خطأ، حاول مجدداً" : "Something went wrong. Please try again."));
     }
   };
 
@@ -422,18 +405,19 @@ export default function CheckoutScreen() {
   return (
     <View style={[{ flex: 1 }, { backgroundColor: bg }]}>
 
-        <View style={[st.header, { paddingTop: insets.top + 6, paddingHorizontal: 16 }]}>
+        {/* ── Header ── */}
+        <View style={[st.header, { paddingTop: insets.top + 6, paddingHorizontal: 16 }, isAr && { flexDirection: "row-reverse" }]}>
           <GlassBackButton
             onPress={() => {
               if (router.canGoBack()) router.back();
               else router.replace("/cart" as any);
             }}
           />
-          <Text style={[st.headTitle, { color: textCol }]}>Checkout</Text>
+          <Text style={[st.headTitle, { color: textCol }]}>{isAr ? "الدفع" : "Checkout"}</Text>
           <View style={{ width: 36 }} />
         </View>
 
-        <StepIndicator isDark={isDark} />
+        <StepIndicator isDark={isDark} isAr={isAr} />
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -443,53 +427,97 @@ export default function CheckoutScreen() {
           automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         >
 
-          {/* Delivery */}
-          <Text style={[st.sectionLbl, { color: sub }]}>DELIVERY INFO</Text>
+          {/* ── Delivery Info ── */}
+          <Text style={[st.sectionLbl, { color: sub }, isAr && { textAlign: "right" }]}>
+            {isAr ? "معلومات التوصيل" : "DELIVERY INFO"}
+          </Text>
           <View style={[st.group, { backgroundColor: card }]}>
-            <FieldRow label="Full Name"        value={form.name}     onChangeText={set("name")}     placeholder="Ahmed Al-Rashidi"   textCol={textCol} sub={sub} isDark={isDark} />
-            <Divider color={divClr} />
-            <FieldRow label="Phone"            value={form.phone}    onChangeText={set("phone")}    placeholder="+964 770 000 0000"  textCol={textCol} sub={sub} isDark={isDark} keyboardType="phone-pad" />
-            <Divider color={divClr} />
-            <Pressable style={st.fieldRow} onPress={() => setShowGovPicker(true)}>
-              <Text style={[st.fieldLbl, { color: sub }]}>{lang === "ar" ? "المحافظة" : "Governorate"}</Text>
-              <Text style={[st.fieldInput, { color: form.city ? textCol : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)") }]}>
-                {form.city || (lang === "ar" ? "اختر المحافظة..." : "Select governorate...")}
-              </Text>
-              <Feather name="chevron-down" size={15} color={sub} />
+            <FieldRow
+              label={isAr ? "الاسم الكامل" : "Full Name"}
+              value={form.name} onChangeText={set("name")}
+              placeholder={isAr ? "محمد عبدالكريم" : "Ahmed Al-Rashidi"}
+              textCol={textCol} sub={sub} isDark={isDark} isAr={isAr}
+            />
+            <Divider color={divClr} isAr={isAr} />
+            <FieldRow
+              label={isAr ? "الهاتف" : "Phone"}
+              value={form.phone} onChangeText={set("phone")}
+              placeholder="+964 770 000 0000"
+              textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="phone-pad"
+            />
+            <Divider color={divClr} isAr={isAr} />
+            {/* Governorate picker row */}
+            <Pressable
+              style={[st.fieldRow, isAr && { flexDirection: "row-reverse" }]}
+              onPress={() => setShowGovPicker(true)}
+            >
+              {isAr ? (
+                <>
+                  <Feather name="chevron-down" size={15} color={sub} />
+                  <Text style={[st.fieldInput, { color: form.city ? textCol : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)"), textAlign: "right" }]}>
+                    {form.city || "اختر المحافظة..."}
+                  </Text>
+                  <Text style={[st.fieldLbl, { color: sub, textAlign: "right" }]}>المحافظة</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={[st.fieldLbl, { color: sub }]}>Governorate</Text>
+                  <Text style={[st.fieldInput, { color: form.city ? textCol : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)") }]}>
+                    {form.city || "Select governorate..."}
+                  </Text>
+                  <Feather name="chevron-down" size={15} color={sub} />
+                </>
+              )}
             </Pressable>
-            <Divider color={divClr} />
-            <FieldRow label="District / Area"  value={form.district} onChangeText={set("district")} placeholder="Al-Mansour"         textCol={textCol} sub={sub} isDark={isDark} />
-            <Divider color={divClr} />
-            <FieldRow label="Street (optional)" value={form.street}  onChangeText={set("street")}   placeholder="Street 14, Bldg 3"  textCol={textCol} sub={sub} isDark={isDark} />
+            <Divider color={divClr} isAr={isAr} />
+            <FieldRow
+              label={isAr ? "المنطقة / الحي" : "District / Area"}
+              value={form.district} onChangeText={set("district")}
+              placeholder={isAr ? "المنصور" : "Al-Mansour"}
+              textCol={textCol} sub={sub} isDark={isDark} isAr={isAr}
+            />
+            <Divider color={divClr} isAr={isAr} />
+            <FieldRow
+              label={isAr ? "الشارع (اختياري)" : "Street (optional)"}
+              value={form.street} onChangeText={set("street")}
+              placeholder={isAr ? "شارع 14، مبنى 3" : "Street 14, Bldg 3"}
+              textCol={textCol} sub={sub} isDark={isDark} isAr={isAr}
+            />
           </View>
 
-          {/* Payment Method */}
-          <Text style={[st.sectionLbl, { color: sub }]}>PAYMENT METHOD</Text>
+          {/* ── Payment Method ── */}
+          <Text style={[st.sectionLbl, { color: sub }, isAr && { textAlign: "right" }]}>
+            {isAr ? "طريقة الدفع" : "PAYMENT METHOD"}
+          </Text>
           <View style={[st.group, { backgroundColor: card }]}>
 
             {/* Cash on Delivery */}
             <Pressable
               onPress={() => setPayMethod("cod")}
-              style={[st.payCard, payMethod === "cod" && { backgroundColor: isDark ? "rgba(34,197,94,0.08)" : "rgba(34,197,94,0.06)" }]}
+              style={[st.payCard, isAr && { flexDirection: "row-reverse" }, payMethod === "cod" && { backgroundColor: isDark ? "rgba(34,197,94,0.08)" : "rgba(34,197,94,0.06)" }]}
             >
               <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: payMethod === "cod" ? "rgba(34,197,94,0.18)" : (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"), alignItems: "center", justifyContent: "center" }}>
                 <Text style={{ fontSize: 22 }}>💵</Text>
               </View>
               <View style={{ flex: 1, gap: 3 }}>
-                <Text style={[st.payTitle, { color: payMethod === "cod" ? "#22C55E" : textCol }]}>Cash on Delivery</Text>
-                <Text style={[st.paySub, { color: sub }]}>Pay in cash when your order arrives</Text>
+                <Text style={[st.payTitle, { color: payMethod === "cod" ? "#22C55E" : textCol }, isAr && { textAlign: "right" }]}>
+                  {isAr ? "الدفع عند الاستلام" : "Cash on Delivery"}
+                </Text>
+                <Text style={[st.paySub, { color: sub }, isAr && { textAlign: "right" }]}>
+                  {isAr ? "ادفع نقداً عند وصول طلبك" : "Pay in cash when your order arrives"}
+                </Text>
               </View>
               <View style={[st.radio, { borderColor: payMethod === "cod" ? "#22C55E" : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
                 {payMethod === "cod" && <View style={[st.radioDot, { backgroundColor: "#22C55E" }]} />}
               </View>
             </Pressable>
 
-            <Divider color={divClr} />
+            <Divider color={divClr} isAr={isAr} />
 
-            {/* Online Payment — all logos */}
+            {/* Online Payment */}
             <Pressable
               onPress={() => setPayMethod("online")}
-              style={[st.payCard, payMethod === "online" && { backgroundColor: isDark ? "rgba(2,116,193,0.08)" : "rgba(2,116,193,0.06)" }]}
+              style={[st.payCard, isAr && { flexDirection: "row-reverse" }, payMethod === "online" && { backgroundColor: isDark ? "rgba(2,116,193,0.08)" : "rgba(2,116,193,0.06)" }]}
             >
               <View style={{ width: 44, alignItems: "flex-start", gap: 2 }}>
                 <View style={{ flexDirection: "row", gap: 3 }}>
@@ -504,13 +532,17 @@ export default function CheckoutScreen() {
                 </View>
               </View>
               <View style={{ flex: 1, gap: 5 }}>
-                <Text style={[st.payTitle, { color: payMethod === "online" ? PRIMARY : textCol }]}>Online Payment</Text>
+                <Text style={[st.payTitle, { color: payMethod === "online" ? PRIMARY : textCol }, isAr && { textAlign: "right" }]}>
+                  {isAr ? "الدفع الإلكتروني" : "Online Payment"}
+                </Text>
                 <View style={{ flexDirection: "row", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                   {PAYMENT_LOGOS.map((logo) => (
                     <Image key={logo.key} source={logo.src} style={{ width: 28, height: 28, borderRadius: 7 }} contentFit="cover" />
                   ))}
                 </View>
-                <Text style={[st.paySub, { color: sub }]}>Card, wallet & more · secured via Wayl</Text>
+                <Text style={[st.paySub, { color: sub }, isAr && { textAlign: "right" }]}>
+                  {isAr ? "بطاقة، محفظة وأكثر · مؤمّن عبر Wayl" : "Card, wallet & more · secured via Wayl"}
+                </Text>
               </View>
               <View style={[st.radio, { borderColor: payMethod === "online" ? PRIMARY : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
                 {payMethod === "online" && <View style={[st.radioDot, { backgroundColor: PRIMARY }]} />}
@@ -519,45 +551,53 @@ export default function CheckoutScreen() {
 
           </View>
 
-          {/* Note */}
-          <Text style={[st.sectionLbl, { color: sub }]}>ORDER NOTE (OPTIONAL)</Text>
+          {/* ── Order Note ── */}
+          <Text style={[st.sectionLbl, { color: sub }, isAr && { textAlign: "right" }]}>
+            {isAr ? "ملاحظة الطلب (اختياري)" : "ORDER NOTE (OPTIONAL)"}
+          </Text>
           <View style={[st.group, { backgroundColor: card }]}>
             <TextInput
               value={form.note}
               onChangeText={set("note")}
-              placeholder="Any notes for your order..."
+              placeholder={isAr ? "أي ملاحظات على طلبك..." : "Any notes for your order..."}
               placeholderTextColor={sub}
               multiline
               numberOfLines={3}
+              textAlign={isAr ? "right" : "left"}
               style={[st.noteInput, { color: textCol }]}
             />
           </View>
 
-          {/* Discount Code */}
-          <Text style={[st.sectionLbl, { color: sub }]}>DISCOUNT CODE</Text>
+          {/* ── Discount Code ── */}
+          <Text style={[st.sectionLbl, { color: sub }, isAr && { textAlign: "right" }]}>
+            {isAr ? "رمز الخصم" : "DISCOUNT CODE"}
+          </Text>
           <View style={[st.group, { backgroundColor: card, padding: 14, gap: 10 }]}>
             {discount ? (
-              <View style={st.discountApplied}>
+              <View style={[st.discountApplied, isAr && { flexDirection: "row-reverse" }]}>
                 <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(34,197,94,0.16)", alignItems: "center", justifyContent: "center" }}>
                   <Feather name="check" size={16} color="#22C55E" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: textCol }}>{discount.code}</Text>
-                  <Text style={{ fontSize: 11, color: "#22C55E", marginTop: 1 }}>−{formatIQD(discount.amount)} applied</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: textCol, textAlign: isAr ? "right" : "left" }}>{discount.code}</Text>
+                  <Text style={{ fontSize: 11, color: "#22C55E", marginTop: 1, textAlign: isAr ? "right" : "left" }}>
+                    {isAr ? `−${formatIQD(discount.amount)} مطبّق` : `−${formatIQD(discount.amount)} applied`}
+                  </Text>
                 </View>
                 <Pressable onPress={removeDiscount} hitSlop={10} style={{ padding: 4 }}>
                   <Feather name="x" size={18} color={sub} />
                 </Pressable>
               </View>
             ) : (
-              <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+              <View style={{ flexDirection: isAr ? "row-reverse" : "row", gap: 10, alignItems: "center" }}>
                 <TextInput
                   value={discountInput}
                   onChangeText={(t) => { setDiscountInput(t.toUpperCase()); if (discountError) setDiscountError(null); }}
-                  placeholder="Enter code"
+                  placeholder={isAr ? "أدخل الرمز" : "Enter code"}
                   placeholderTextColor={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)"}
                   autoCapitalize="characters"
                   autoCorrect={false}
+                  textAlign={isAr ? "right" : "left"}
                   style={[st.discountInput, { color: textCol, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}
                 />
                 <Pressable
@@ -565,51 +605,78 @@ export default function CheckoutScreen() {
                   disabled={applyingDiscount || !discountInput.trim()}
                   style={({ pressed }) => [st.discountBtn, { backgroundColor: PRIMARY }, (pressed || applyingDiscount || !discountInput.trim()) && { opacity: 0.6 }]}
                 >
-                  {applyingDiscount ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>APPLY</Text>}
+                  {applyingDiscount
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>{isAr ? "تطبيق" : "APPLY"}</Text>
+                  }
                 </Pressable>
               </View>
             )}
             {discountError && (
-              <Text style={{ fontSize: 12, color: "#EF4444" }}>{discountError}</Text>
+              <Text style={{ fontSize: 12, color: "#EF4444", textAlign: isAr ? "right" : "left" }}>{discountError}</Text>
             )}
           </View>
 
-          {/* Order Summary */}
-          <Text style={[st.sectionLbl, { color: sub }]}>ORDER SUMMARY</Text>
+          {/* ── Order Summary ── */}
+          <Text style={[st.sectionLbl, { color: sub }, isAr && { textAlign: "right" }]}>
+            {isAr ? "ملخص الطلب" : "ORDER SUMMARY"}
+          </Text>
           <View style={[st.group, { backgroundColor: card }]}>
             {items.map((item) => (
-              <View key={`${item.productId}-${item.variantId}`} style={st.summaryRow}>
+              <View key={`${item.productId}-${item.variantId}`} style={[st.summaryRow, isAr && { flexDirection: "row-reverse" }]}>
                 {item.image && <Image source={{ uri: item.image }} style={st.summaryImg} contentFit="cover" />}
                 <View style={{ flex: 1 }}>
-                  <Text style={[st.summaryTitle, { color: textCol }]} numberOfLines={1}>{item.title}</Text>
-                  {(item.size || item.color) && <Text style={[{ fontSize: 11, marginTop: 2 }, { color: sub }]}>{[item.size, item.color].filter(Boolean).join(" · ")}</Text>}
+                  <Text style={[st.summaryTitle, { color: textCol }, isAr && { textAlign: "right" }]} numberOfLines={1}>{item.title}</Text>
+                  {(item.size || item.color) && (
+                    <Text style={[{ fontSize: 11, marginTop: 2 }, { color: sub }, isAr && { textAlign: "right" }]}>
+                      {[item.size, item.color].filter(Boolean).join(" · ")}
+                    </Text>
+                  )}
                 </View>
                 <Text style={[{ fontSize: 12, fontWeight: "600" }, { color: sub }]}>×{item.quantity}</Text>
-                <Text style={[{ fontSize: 13, fontWeight: "700", minWidth: 80, textAlign: "right" }, { color: textCol }]}>{formatIQD(item.price * item.quantity)}</Text>
+                <Text style={[{ fontSize: 13, fontWeight: "700", minWidth: 80, textAlign: isAr ? "left" : "right" }, { color: textCol }]}>
+                  {formatIQD(item.price * item.quantity)}
+                </Text>
               </View>
             ))}
             <View style={[st.divider, { backgroundColor: divClr }]} />
-            <View style={st.totalRow}><Text style={[st.totalLbl, { color: sub }]}>Subtotal</Text><Text style={{ fontSize: 13, fontWeight: "600", color: textCol }}>{formatIQD(subtotal)}</Text></View>
+
+            {/* Subtotal */}
+            <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }]}>
+              <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "المجموع الفرعي" : "Subtotal"}</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: textCol }}>{formatIQD(subtotal)}</Text>
+            </View>
+
+            {/* Discount line */}
             {discount && (
-              <View style={st.totalRow}>
-                <Text style={[st.totalLbl, { color: sub }]}>Discount ({discount.code})</Text>
+              <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }]}>
+                <Text style={[st.totalLbl, { color: sub }]}>
+                  {isAr ? `الخصم (${discount.code})` : `Discount (${discount.code})`}
+                </Text>
                 <Text style={{ fontSize: 13, fontWeight: "700", color: "#22C55E" }}>−{formatIQD(discountAmount)}</Text>
               </View>
             )}
-            <View style={st.totalRow}>
-              <Text style={[st.totalLbl, { color: sub }]}>{lang === "ar" ? "الشحن" : "Shipping"}</Text>
+
+            {/* Shipping */}
+            <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }]}>
+              <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "الشحن" : "Shipping"}</Text>
               <Text style={{ fontSize: 13, fontWeight: "600", color: shipping === 0 ? "#22C55E" : textCol }}>
-                {shipping === 0 ? (lang === "ar" ? "مجاني" : "Free") : formatIQD(shipping)}
+                {shipping === 0 ? (isAr ? "مجاني" : "Free") : formatIQD(shipping)}
               </Text>
             </View>
-            <View style={st.totalRow}><Text style={[st.totalLbl, { color: textCol }]}>Total</Text><Text style={[st.totalAmt, { color: PRIMARY }]}>{formatIQD(grandTotal)}</Text></View>
+
+            {/* Total */}
+            <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }]}>
+              <Text style={[st.totalLbl, { color: textCol }]}>{isAr ? "المجموع" : "Total"}</Text>
+              <Text style={[st.totalAmt, { color: PRIMARY }]}>{formatIQD(grandTotal)}</Text>
+            </View>
           </View>
 
         </ScrollView>
 
         <CompactPicker
           visible={showGovPicker}
-          title={lang === "ar" ? "اختر المحافظة" : "Select Governorate"}
+          title={isAr ? "اختر المحافظة" : "Select Governorate"}
           options={zones.map((z) => ({ label: z.governorateAr || z.governorate, value: z.governorate }))}
           selectedValue={selectedZone?.governorate}
           onSelect={(val) => {
@@ -642,8 +709,18 @@ export default function CheckoutScreen() {
             {submitting
               ? <ActivityIndicator color="#fff" />
               : payMethod === "online"
-                ? <><Feather name="credit-card" size={16} color="#fff" /><Text style={st.placeTxt}>{pendingOnline ? "TRY PAYMENT AGAIN" : "PROCEED TO PAYMENT"}</Text></>
-                : <><Feather name="check-circle" size={16} color="#fff" /><Text style={st.placeTxt}>PLACE ORDER</Text></>
+                ? <>
+                    <Feather name="credit-card" size={16} color="#fff" />
+                    <Text style={st.placeTxt}>
+                      {isAr
+                        ? (pendingOnline ? "حاول مجدداً" : "متابعة الدفع")
+                        : (pendingOnline ? "TRY PAYMENT AGAIN" : "PROCEED TO PAYMENT")}
+                    </Text>
+                  </>
+                : <>
+                    <Feather name="check-circle" size={16} color="#fff" />
+                    <Text style={st.placeTxt}>{isAr ? "تثبيت الطلب" : "PLACE ORDER"}</Text>
+                  </>
             }
           </Pressable>
         </View>
@@ -651,21 +728,28 @@ export default function CheckoutScreen() {
   );
 }
 
-function Divider({ color }: { color: string }) {
-  return <View style={{ height: 1, backgroundColor: color, marginLeft: 16 }} />;
+function Divider({ color, isAr }: { color: string; isAr?: boolean }) {
+  return <View style={{ height: 1, backgroundColor: color, marginLeft: isAr ? 0 : 16, marginRight: isAr ? 16 : 0 }} />;
 }
 
-function FieldRow({ label, value, onChangeText, placeholder, keyboardType, textCol, sub, isDark }: {
+function FieldRow({ label, value, onChangeText, placeholder, keyboardType, textCol, sub, isDark, isAr }: {
   label: string; value: string; onChangeText: (t: string) => void;
   placeholder?: string; keyboardType?: any;
-  textCol: string; sub: string; isDark: boolean;
+  textCol: string; sub: string; isDark: boolean; isAr?: boolean;
 }) {
   return (
-    <View style={st.fieldRow}>
-      <Text style={[st.fieldLbl, { color: sub }]}>{label}</Text>
-      <TextInput value={value} onChangeText={onChangeText} placeholder={placeholder}
+    <View style={[st.fieldRow, isAr && { flexDirection: "row-reverse" }]}>
+      <Text style={[st.fieldLbl, { color: sub }, isAr && { textAlign: "right" }]}>{label}</Text>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
         placeholderTextColor={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)"}
-        keyboardType={keyboardType} style={[st.fieldInput, { color: textCol }]} autoCapitalize="words" />
+        keyboardType={keyboardType}
+        textAlign={isAr ? "right" : "left"}
+        style={[st.fieldInput, { color: textCol }]}
+        autoCapitalize="words"
+      />
     </View>
   );
 }
