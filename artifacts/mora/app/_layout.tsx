@@ -16,7 +16,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LiveActivityBanner } from "@/components/LiveActivityBanner";
 import { useAuth, AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
-import { LanguageProvider } from "@/context/LanguageContext";
+import { useLanguage, LanguageProvider } from "@/context/LanguageContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { WishlistProvider } from "@/context/WishlistContext";
@@ -51,6 +51,27 @@ function useNoInputZoom() {
     `;
     document.head.appendChild(style);
   }, []);
+}
+
+// ─── Zero letter-spacing for Arabic (prevents disconnected letters) ───────────
+function ArabicLetterSpacingEffect() {
+  const { lang } = useLanguage();
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    const id = "mora-ar-letter-spacing";
+    if (!document.getElementById(id)) {
+      const style = document.createElement("style");
+      style.id = id;
+      style.textContent = `.lang-ar * { letter-spacing: 0 !important; }`;
+      document.head.appendChild(style);
+    }
+    if (lang === "ar") {
+      document.body.classList.add("lang-ar");
+    } else {
+      document.body.classList.remove("lang-ar");
+    }
+  }, [lang]);
+  return null;
 }
 
 // ─── Chatwoot SDK (web only) ──────────────────────────────────────────────
@@ -192,6 +213,7 @@ export default function RootLayout() {
       <ErrorBoundary>
         <ThemeProvider>
           <LanguageProvider>
+            <ArabicLetterSpacingEffect />
             <QueryClientProvider client={queryClient}>
               <AuthProvider>
                 <ChatwootIdentity />
