@@ -3,7 +3,6 @@ import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -421,8 +420,7 @@ export default function CheckoutScreen() {
   if (!user) return null;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-      <View style={[{ flex: 1 }, { backgroundColor: bg }]}>
+    <View style={[{ flex: 1 }, { backgroundColor: bg }]}>
 
         <View style={[st.header, { paddingTop: insets.top + 6, paddingHorizontal: 16 }]}>
           <GlassBackButton
@@ -437,7 +435,13 @@ export default function CheckoutScreen() {
 
         <StepIndicator isDark={isDark} />
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 120 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+        >
 
           {/* Delivery */}
           <Text style={[st.sectionLbl, { color: sub }]}>DELIVERY INFO</Text>
@@ -643,8 +647,7 @@ export default function CheckoutScreen() {
             }
           </Pressable>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
