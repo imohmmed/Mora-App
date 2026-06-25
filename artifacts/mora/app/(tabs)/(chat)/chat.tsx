@@ -157,16 +157,25 @@ export default function ChatScreen() {
 
   // ── Web (srcdoc so CSS injection works cross-origin) ──────────────────────
   if (Platform.OS === "web") {
-    // FloatingTabBar is position:fixed at bottom ~84px. Iframes capture ALL
-    // pointer events within their bounds regardless of z-index, so we must
-    // physically shrink the iframe to not overlap the tab bar area.
+    // FloatingTabBar portals to <body> with position:fixed at bottom ~84px.
+    // Iframes intercept ALL pointer events inside their bounds regardless of
+    // z-index. We use position:absolute with explicit bottom:"84px" so the
+    // iframe never covers the tab bar — no height:100% percentage ambiguity.
     return (
       <View style={[styles.container, { backgroundColor: bg }]}>
         {/* @ts-ignore */}
         <iframe
           key={isDark ? "dark" : "light"}
           srcDoc={buildChatHtml(isDark)}
-          style={{ width: "100%", height: "calc(100% - 84px)", border: "none", display: "block" }}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: "84px",
+            width: "100%",
+            border: "none",
+          }}
           title="Mora Support"
           allow="microphone; camera"
         />

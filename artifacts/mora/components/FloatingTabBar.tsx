@@ -396,9 +396,7 @@ function FloatingTabBarInner() {
 
   const handlePress = (tab: typeof TABS[0]) => {
     if (tab.name === "chat") {
-      if (typeof window !== "undefined") {
-        (window as any).$chatwoot?.toggle?.();
-      }
+      router.push("/chat" as any);
       return;
     }
     if (tab.name === "index") {
