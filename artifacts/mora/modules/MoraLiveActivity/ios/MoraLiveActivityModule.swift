@@ -7,11 +7,11 @@ struct MoraOrderActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         var stage: String
         var message: String
+        var isPaid: Bool
     }
     var orderNumber: String
     var customerName: String
     var priceText: String
-    var isPaid: Bool
 }
 
 // ── Module ─────────────────────────────────────────────────────────────────────
@@ -71,10 +71,11 @@ public class MoraLiveActivityModule: Module {
                 Task { await activity.end(dismissalPolicy: .immediate) }
             }
             do {
-                let attrs = MoraOrderActivityAttributes(orderNumber: "#TEST", customerName: "Diagnostic", priceText: "75,000 IQD", isPaid: false)
+                let attrs = MoraOrderActivityAttributes(orderNumber: "#TEST", customerName: "Diagnostic", priceText: "75,000 IQD")
                 let state = MoraOrderActivityAttributes.ContentState(
                     stage: "confirmed",
-                    message: "Test Live Activity — if you see this, it works."
+                    message: "Test Live Activity — if you see this, it works.",
+                    isPaid: false
                 )
                 let activity = try Activity<MoraOrderActivityAttributes>.request(
                     attributes: attrs,
@@ -104,12 +105,12 @@ public class MoraLiveActivityModule: Module {
                 let attrs = MoraOrderActivityAttributes(
                     orderNumber: orderNumber,
                     customerName: customerName,
-                    priceText: priceText,
-                    isPaid: isPaid
+                    priceText: priceText
                 )
                 let state = MoraOrderActivityAttributes.ContentState(
                     stage: stage,
-                    message: message
+                    message: message,
+                    isPaid: isPaid
                 )
                 let activity = try Activity<MoraOrderActivityAttributes>.request(
                     attributes: attrs,
@@ -124,19 +125,19 @@ public class MoraLiveActivityModule: Module {
         }
 
         // Update an existing Live Activity
-        Function("updateActivity") { (activityId: String, stage: String, message: String) in
+        Function("updateActivity") { (activityId: String, stage: String, message: String, isPaid: Bool) in
             guard #available(iOS 16.1, *) else { return }
             if let activity = self.activities[activityId] as? Activity<MoraOrderActivityAttributes> {
-                let state = MoraOrderActivityAttributes.ContentState(stage: stage, message: message)
+                let state = MoraOrderActivityAttributes.ContentState(stage: stage, message: message, isPaid: isPaid)
                 Task { await activity.update(using: state) }
             }
         }
 
         // End a Live Activity
-        Function("endActivity") { (activityId: String, stage: String, message: String) in
+        Function("endActivity") { (activityId: String, stage: String, message: String, isPaid: Bool) in
             guard #available(iOS 16.1, *) else { return }
             if let activity = self.activities[activityId] as? Activity<MoraOrderActivityAttributes> {
-                let state = MoraOrderActivityAttributes.ContentState(stage: stage, message: message)
+                let state = MoraOrderActivityAttributes.ContentState(stage: stage, message: message, isPaid: isPaid)
                 Task { await activity.end(using: state, dismissalPolicy: .default) }
                 self.activities.removeValue(forKey: activityId)
             }

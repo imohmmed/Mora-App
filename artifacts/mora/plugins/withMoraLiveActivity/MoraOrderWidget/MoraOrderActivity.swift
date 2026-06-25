@@ -7,11 +7,11 @@ public struct MoraOrderActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
         var stage: String
         var message: String
+        var isPaid: Bool    // true when payment confirmed → shows "تم دفع الطلب"
     }
     var orderNumber: String
     var customerName: String
     var priceText: String   // formatted total, e.g. "75,000 IQD"
-    var isPaid: Bool        // fully paid online → show "تم دفع الطلب"
 }
 
 // ── Brand palette (background black, text white, accent = site blue) ───────────
@@ -241,7 +241,7 @@ struct OrderBannerView: View {
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(.white.opacity(0.92))
                     PricePill(priceText: context.attributes.priceText,
-                              isPaid: context.attributes.isPaid)
+                              isPaid: context.state.isPaid)
                 }
 
                 Spacer(minLength: 8)
@@ -302,7 +302,7 @@ struct MoraOrderActivityWidget: Widget {
                             .font(.system(size: 12, weight: .bold))
                             .foregroundColor(.white)
                         PricePill(priceText: context.attributes.priceText,
-                                  isPaid: context.attributes.isPaid)
+                                  isPaid: context.state.isPaid)
                     }
                     .padding(.leading, 4)
                 }

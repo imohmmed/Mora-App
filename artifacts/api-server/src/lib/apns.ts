@@ -64,6 +64,7 @@ function getJWT(): string {
 export interface LiveActivityPayload {
   stage: LiveActivityStage;
   message?: string;
+  isPaid?: boolean;
   /** Dismiss after delivery (ISO string or seconds from now) */
   dismissAt?: Date;
 }
@@ -94,6 +95,7 @@ export async function sendLiveActivityPush(
       "content-state": {
         stage:   payload.stage,
         message: payload.message ?? "",
+        isPaid:  payload.isPaid ?? false,
       },
       ...(isEnd ? { "dismissal-date": ts + dismissSecs } : {}),
     },
@@ -178,13 +180,13 @@ export async function sendLiveActivityStartPush(
       "content-state": {
         stage:   payload.stage,
         message: payload.message ?? "",
+        isPaid:  payload.isPaid ?? false,
       },
       "attributes-type": "MoraOrderActivityAttributes",
       attributes: {
         orderNumber:  payload.orderNumber,
         customerName: payload.customerName,
         priceText:    payload.priceText ?? "",
-        isPaid:       payload.isPaid ?? false,
       },
       alert: {
         title: payload.alertTitle ?? "Mora",

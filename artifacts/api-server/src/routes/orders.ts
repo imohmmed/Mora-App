@@ -300,7 +300,7 @@ router.post("/admin/orders", (req, res) => {
 
 router.put("/admin/orders/:id", async (req, res) => {
   const id = req.params["id"];
-  const existing = db.prepare(`SELECT order_number, customer_id, status, financial_status, fulfillment_status FROM orders WHERE id=?`).get(id) as Row | undefined;
+  const existing = db.prepare(`SELECT order_number, customer_id, status, financial_status, fulfillment_status, delivery_stage, live_activity_push_token FROM orders WHERE id=?`).get(id) as Row | undefined;
   if (!existing) { res.status(404).json({ data: null, meta: {}, error: "Order not found" }); return; }
   const b = req.body as Record<string, unknown>;
   const now = new Date().toISOString();
@@ -362,6 +362,22 @@ router.put("/admin/orders/:id", async (req, res) => {
     } catch { /* non-fatal: notification failure must not block the update */ }
   }
 
+  // ── If payment just confirmed → update Live Activity isPaid flag via APNs ───
+  // This flips the price pill to "تم دفع الطلب" on the Dynamic Island immediately.
+  if (financialChanged && newFinancial === "paid") {
+    const laPushToken = existing["live_activity_push_token"] as string | null;
+    const currentStage = (existing["delivery_stage"] as string | null) ?? "confirmed";
+    if (laPushToken && VALID_STAGES.includes(currentStage)) {
+      try {
+        await sendLiveActivityPush(laPushToken, {
+          stage: currentStage as any,
+          message: "",
+          isPaid: true,
+        });
+      } catch { /* non-fatal */ }
+    }
+  }
+
   const order = parseOne(db.prepare(`SELECT * FROM orders WHERE id=?`).get(id) as Row | undefined);
   res.json({ data: order, meta: {}, error: null });
 });
@@ -374,7 +390,7 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
   if (!stage) { res.status(400).json({ data: null, error: "stage required" }); return; }
   if (!VALID_STAGES.includes(stage)) { res.status(400).json({ data: null, error: "invalid stage" }); return; }
 
-  const existing = db.prepare(`SELECT order_number, customer_id, live_activity_push_token FROM orders WHERE id=?`).get(id) as Row | undefined;
+  const existing = db.prepare(`SELECT order_number, customer_id, live_activity_push_token, financial_status FROM orders WHERE id=?`).get(id) as Row | undefined;
   if (!existing) { res.status(404).json({ data: null, meta: {}, error: "Order not found" }); return; }
 
   const now = new Date().toISOString();
@@ -395,12 +411,15 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
 
   // 1) Update the iOS Live Activity directly via APNs (if a token is registered)
   const laPushToken = existing["live_activity_push_token"] as string | null;
+  const financialStatus = existing["financial_status"] as string | null;
+  const isPaid = financialStatus === "paid";
   let apnsResult: { ok: boolean; error?: string } = { ok: true };
   if (laPushToken) {
     try {
       apnsResult = await sendLiveActivityPush(laPushToken, {
         stage: stage as any,
         message: laMessage,
+        isPaid,
       });
     } catch (e: unknown) {
       apnsResult = { ok: false, error: String(e) };

@@ -163,7 +163,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         );
         // Also update the native Live Activity if running
         if (liveActivityIdRef.current) {
-          MoraLiveActivity.updateActivity(liveActivityIdRef.current, stage, msg);
+          MoraLiveActivity.updateActivity(liveActivityIdRef.current, stage, msg, false);
         }
       }
     });
@@ -303,19 +303,19 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   }, []);
 
-  const updateOrderStage = useCallback((stage: OrderStage, message?: string) => {
+  const updateOrderStage = useCallback((stage: OrderStage, message?: string, isPaid?: boolean) => {
     setOrderActivity((prev) =>
       prev ? { ...prev, stage, message } : null
     );
     if (liveActivityIdRef.current) {
-      MoraLiveActivity.updateActivity(liveActivityIdRef.current, stage, message);
+      MoraLiveActivity.updateActivity(liveActivityIdRef.current, stage, message, isPaid ?? false);
     }
   }, []);
 
-  const endOrderActivity = useCallback(() => {
+  const endOrderActivity = useCallback((isPaid?: boolean) => {
     setOrderActivity((prev) => prev ? { ...prev, active: false } : null);
     if (liveActivityIdRef.current) {
-      MoraLiveActivity.endActivity(liveActivityIdRef.current, "delivered", "Order delivered!");
+      MoraLiveActivity.endActivity(liveActivityIdRef.current, "delivered", "Order delivered!", isPaid ?? false);
       liveActivityIdRef.current = null;
     }
     orderIdRef.current = null;

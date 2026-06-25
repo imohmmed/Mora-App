@@ -37,8 +37,8 @@ interface MoraLiveActivityNative {
     priceText: string,
     isPaid: boolean
   ): string | null;
-  updateActivity(activityId: string, stage: string, message: string): void;
-  endActivity(activityId: string, stage: string, message: string): void;
+  updateActivity(activityId: string, stage: string, message: string, isPaid: boolean): void;
+  endActivity(activityId: string, stage: string, message: string, isPaid: boolean): void;
   getPushToken(activityId: string): Promise<string | null>;
   getPushToStartToken(): Promise<string | null>;
   getActiveActivityIds(): string[];
@@ -122,13 +122,13 @@ export const MoraLiveActivity = {
   },
 
   /** Update the stage and message of an active Live Activity */
-  updateActivity(activityId: string, stage: OrderStage, message?: string): void {
-    native?.updateActivity(activityId, stage, message ?? "");
+  updateActivity(activityId: string, stage: OrderStage, message?: string, isPaid?: boolean): void {
+    native?.updateActivity(activityId, stage, message ?? "", isPaid ?? false);
   },
 
   /** End a Live Activity (shows final state then dismisses) */
-  endActivity(activityId: string, stage: OrderStage, message?: string): void {
-    native?.endActivity(activityId, stage, message ?? "");
+  endActivity(activityId: string, stage: OrderStage, message?: string, isPaid?: boolean): void {
+    native?.endActivity(activityId, stage, message ?? "", isPaid ?? false);
   },
 
   /** Get APNs push token for server-side updates. Call after startActivity. */
