@@ -1,0 +1,29 @@
+~/.../artifacts/mora$ pnpm dlx eas-cli login
+ WARN  10 deprecated subdependencies found: @xmldom/xmldom@0.7.13, glob@10.5.0, glob@6.0.4, inflight@1.0.6, lodash.get@4.4.2, rimraf@2.4.5, tar@7.5.7, uuid@7.0.3, uuid@8.3.2, uuid@9.0.1
+Packages: +464
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 464, reused 461, downloaded 3, added 464, done
+ WARN  Issues with peer dependencies found
+.
+└─┬ eas-cli 20.3.0
+  ├─┬ @expo/config 55.0.10
+  │ └─┬ @expo/require-utils 55.0.5
+  │   └── ✕ missing peer typescript@"^5.0.0 || ^5.0.0-0"
+  ├─┬ @expo/plugin-warn-if-update-available 2.5.1
+  │ └─┬ @oclif/core 2.16.0
+  │   └─┬ ts-node 10.9.2
+  │     └── ✕ missing peer typescript@>=2.7
+  └─┬ @expo/plugin-help 5.1.23
+    └─┬ @oclif/core 2.16.0
+      └── ✕ missing peer typescript@>=2.7
+Peer dependencies that should be installed:
+  typescript@">=5.0.0-0 <6.0.0"
+╭ Warning ───────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                            │
+│   Ignored build scripts: dtrace-provider@0.8.8.                                            │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.   │
+│                                                                                            │
+╰────────────────────────────────────────────────────────────────────────────────────────────╯
+Waiting for browser login...
+If your browser doesn't automatically open, visit this link to log in: https://expo.dev/login?client_id=eas-cli&redirect_uri=http://localhost:40385/auth/callback&response_type=code&code_challenge=GBWcevCe1JrsHuDP7tCxRlJK36ecU2O_3DBSM1IWw10&code_challenge_method=S256&state=7ES8IxZ7vFrUFAvUqXsKUt5wXl--TI2xNTijpi1qSDA&confirm_account=true
+
