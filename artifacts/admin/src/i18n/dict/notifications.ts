@@ -56,6 +56,7 @@ export const notifications = {
     "notifications.group.orderStatus": "حالة الطلب",
     "notifications.group.shipping": "الشحن",
     "notifications.group.payment": "الدفع",
+    "notifications.group.engagement": "تنبيهات وتذكير الزبائن",
 
     "notifications.tmpl.customized": "مخصص",
     "notifications.tmpl.unsaved": "غير محفوظ",
@@ -140,6 +141,7 @@ export const notifications = {
     "notifications.group.orderStatus": "Order status",
     "notifications.group.shipping": "Shipping",
     "notifications.group.payment": "Payment",
+    "notifications.group.engagement": "Customer alerts & reminders",
 
     "notifications.tmpl.customized": "Customized",
     "notifications.tmpl.unsaved": "Unsaved",

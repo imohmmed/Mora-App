@@ -20,6 +20,15 @@ const ALL_VARS: TemplateVar[] = [
   { name: "customerName",  label: "اسم الزبون" },
 ];
 
+const RESTOCK_VARS: TemplateVar[] = [
+  { name: "productName",   label: "اسم المنتج" },
+];
+
+const CART_VARS: TemplateVar[] = [
+  { name: "customerName",  label: "اسم الزبون" },
+  { name: "itemCount",     label: "عدد المنتجات" },
+];
+
 export const TEMPLATE_DEFAULTS: TemplateDefault[] = [
   // ── مرحلة التوصيل ──────────────────────────────────────────────────────────
   {
@@ -109,6 +118,22 @@ export const TEMPLATE_DEFAULTS: TemplateDefault[] = [
     body: "تم استرجاع مبلغ طلبك {orderNum}",
     vars: ALL_VARS,
   },
+  // ── توفر منتج (Notify me) ───────────────────────────────────────────────────
+  {
+    key: "restock:available",
+    label: "رجع متوفر (تنبيهي عند التوفر)",
+    title: "{productName} رجع متوفر 🎉",
+    body: "المنتج اللي تنتظره \"{productName}\" صار متوفر، اطلبه قبل ما يخلص",
+    vars: RESTOCK_VARS,
+  },
+  // ── السلة المتروكة ──────────────────────────────────────────────────────────
+  {
+    key: "cart:abandoned",
+    label: "نسيت شيء في السلة",
+    title: "نسيت شي بالسلة 🛒",
+    body: "{customerName} عدك {itemCount} منتج بالسلة ينتظرك، كمّل طلبك قبل لا يخلص",
+    vars: CART_VARS,
+  },
 ];
 
 const DEFAULTS_MAP = Object.fromEntries(TEMPLATE_DEFAULTS.map((d) => [d.key, d]));
@@ -119,7 +144,8 @@ function replaceVars(s: string, vars: Record<string, string>): string {
     .replace(/\{n\}/g, vars.orderNum ?? "")
     .replace(/\{price\}/g, vars.price ?? "")
     .replace(/\{itemCount\}/g, vars.itemCount ?? "")
-    .replace(/\{customerName\}/g, vars.customerName ?? "");
+    .replace(/\{customerName\}/g, vars.customerName ?? "")
+    .replace(/\{productName\}/g, vars.productName ?? "");
 }
 
 export function getTemplate(

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
-import { TEMPLATE_DEFAULTS } from "../lib/templates.js";
+import { TEMPLATE_DEFAULTS, getTemplate } from "../lib/templates.js";
 
 const router = Router();
 
@@ -130,6 +130,90 @@ router.post("/store/notifications/read-all", (req, res) => {
   db.prepare(`UPDATE customer_notifications SET read = 1 WHERE customer_id = ?`).run(customerId);
   return res.json({ data: { ok: true }, error: null });
 });
+
+// ── STORE: request a restock notification ("Notify me") ───────────────────────
+router.post("/store/restock-requests", (req, res) => {
+  const customerId = getCustomerId(req);
+  if (!customerId) return res.status(401).json({ data: null, error: "Unauthorized" });
+
+  const { productId, variantId } = req.body as { productId?: string; variantId?: string };
+  if (!productId || !variantId) {
+    return res.status(400).json({ data: null, error: "productId and variantId required" });
+  }
+
+  // Validate the variant exists and actually belongs to the given product, so a
+  // bad row can't poison the deep-link/content for other waiters on that variant.
+  const variant = db
+    .prepare("SELECT product_id FROM variants WHERE id = ?")
+    .get(variantId) as { product_id: string } | undefined;
+  if (!variant || variant.product_id !== productId) {
+    return res.status(400).json({ data: null, error: "Invalid product or variant" });
+  }
+
+  const customer = db.prepare("SELECT email FROM customers WHERE id = ?").get(customerId) as
+    | { email: string }
+    | undefined;
+  // Snapshot the customer's current push token (send-time still reads push_tokens
+  // for the freshest token; this is a record of what we had at request time).
+  const tokenRow = db
+    .prepare("SELECT token FROM push_tokens WHERE customer_id = ? ORDER BY created_at DESC LIMIT 1")
+    .get(customerId) as { token: string } | undefined;
+
+  db.prepare(`
+    INSERT INTO restock_requests (id, customer_id, product_id, variant_id, email, push_token, notified, created_at, notified_at)
+    VALUES (?, ?, ?, ?, ?, ?, 0, ?, NULL)
+    ON CONFLICT(customer_id, variant_id)
+      DO UPDATE SET notified = 0, notified_at = NULL, product_id = excluded.product_id,
+                    email = excluded.email, push_token = excluded.push_token
+  `).run(uid(), customerId, productId, variantId, customer?.email ?? "", tokenRow?.token ?? "", now());
+
+  return res.json({ data: { ok: true }, error: null });
+});
+
+// ── STORE: list the variants this customer is waiting on (pending only) ────────
+router.get("/store/restock-requests", (req, res) => {
+  const customerId = getCustomerId(req);
+  if (!customerId) return res.json({ data: { variantIds: [] }, error: null });
+
+  const rows = db
+    .prepare("SELECT variant_id FROM restock_requests WHERE customer_id = ? AND notified = 0")
+    .all(customerId) as { variant_id: string }[];
+
+  return res.json({ data: { variantIds: rows.map((r) => r.variant_id) }, error: null });
+});
+
+// ── Send restock alerts for a variant that just came back in stock ────────────
+// Called from the admin inventory/variant routes when inventory goes 0 → >0.
+export async function notifyRestock(variantId: string): Promise<void> {
+  const pending = db
+    .prepare("SELECT id, customer_id, product_id FROM restock_requests WHERE variant_id = ? AND notified = 0")
+    .all(variantId) as { id: string; customer_id: string; product_id: string }[];
+  if (pending.length === 0) return;
+
+  const productId = pending[0]!.product_id;
+  const product = db.prepare("SELECT title FROM products WHERE id = ?").get(productId) as
+    | { title: string }
+    | undefined;
+  const productName = product?.title ?? "المنتج";
+
+  const tmpl = getTemplate("restock:available", { productName });
+  const title = tmpl?.title ?? `${productName} رجع متوفر 🎉`;
+  const body = tmpl?.body ?? `المنتج "${productName}" صار متوفر، اطلبه قبل ما يخلص`;
+
+  const customerIds = [...new Set(pending.map((p) => p.customer_id))];
+
+  await doSendNotification({
+    title,
+    body,
+    url: `/product/${productId}`,
+    targetAll: false,
+    customerIds,
+  });
+
+  const mark = db.prepare("UPDATE restock_requests SET notified = 1, notified_at = ? WHERE id = ?");
+  const ts = now();
+  for (const p of pending) mark.run(ts, p.id);
+}
 
 // ── ADMIN: list tokens & stats ─────────────────────────────────────────────────
 router.get("/admin/notifications/stats", requireAdmin, (_req, res) => {

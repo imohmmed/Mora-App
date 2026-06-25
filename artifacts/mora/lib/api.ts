@@ -211,3 +211,23 @@ export async function fetchShippingZones(): Promise<ShippingZone[]> {
 export async function fetchShippingRules(): Promise<ShippingRule[]> {
   return apiFetch<ShippingRule[]>("/store/shipping-rules");
 }
+
+// ── Restock ("Notify me") ─────────────────────────────────────────────────────
+export async function requestRestockNotify(
+  authToken: string,
+  productId: string,
+  variantId: string,
+): Promise<void> {
+  await apiFetch<{ ok: boolean }>("/store/restock-requests", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${authToken}` },
+    body: JSON.stringify({ productId, variantId }),
+  });
+}
+
+export async function fetchRestockRequests(authToken: string): Promise<string[]> {
+  const data = await apiFetch<{ variantIds: string[] }>("/store/restock-requests", {
+    headers: { Authorization: `Bearer ${authToken}` },
+  });
+  return data.variantIds ?? [];
+}

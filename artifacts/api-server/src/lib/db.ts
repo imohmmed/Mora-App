@@ -57,6 +57,20 @@ db.exec(`
     option2       TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS restock_requests (
+    id          TEXT PRIMARY KEY,
+    customer_id TEXT NOT NULL,
+    product_id  TEXT NOT NULL,
+    variant_id  TEXT NOT NULL,
+    email       TEXT NOT NULL DEFAULT '',
+    push_token  TEXT NOT NULL DEFAULT '',
+    notified    INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL,
+    notified_at TEXT
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_restock_unique  ON restock_requests(customer_id, variant_id);
+  CREATE INDEX IF NOT EXISTS        idx_restock_pending ON restock_requests(variant_id, notified);
+
   CREATE TABLE IF NOT EXISTS collections (
     id             TEXT PRIMARY KEY,
     title          TEXT NOT NULL,

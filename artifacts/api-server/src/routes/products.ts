@@ -1,6 +1,7 @@
 import { Router } from "express";
 import db, { parseRows, parseOne, logActivity } from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
+import { notifyRestock } from "./notifications.js";
 import type { Row } from "../lib/types.js";
 
 const router = Router();
@@ -201,6 +202,9 @@ router.post("/admin/products/:id/variants/sync", requireAdmin, (req, res) => {
     const key = [v["option1"], v["option2"]].filter(Boolean).join(" / ") || "Default Title";
     existingByKey.set(key, v);
   }
+  // Sync replaces variant rows (new ids), so we must carry pending restock
+  // requests over to the new id and fire alerts for anything that went 0 → >0.
+  const restocked: { oldId: string; newId: string }[] = [];
   db.prepare(`DELETE FROM variants WHERE product_id=?`).run(productId);
   const insertMany = db.transaction(() => {
     for (let i = 0; i < incoming.length; i++) {
@@ -214,9 +218,16 @@ router.post("/admin/products/:id/variants/sync", requireAdmin, (req, res) => {
       const inventory = (v["inventory"] as number | undefined) ?? (prev?.["inventory"] as number | undefined) ?? 0;
       db.prepare(`INSERT INTO variants (id,product_id,title,sku,price,compare_price,cost,inventory,option1,option2) VALUES (?,?,?,?,?,?,?,?,?,?)`)
         .run(vid, productId, title, v["sku"] ?? "", v["price"] ?? 0, v["comparePrice"] ?? null, v["cost"] ?? null, inventory, o1, o2);
+      if (prev) {
+        // Move any waiting-list rows from the old variant id to the new one.
+        db.prepare(`UPDATE restock_requests SET variant_id=? WHERE variant_id=?`).run(vid, prev["id"]);
+        const prevInv = (prev["inventory"] as number | undefined) ?? 0;
+        if (prevInv <= 0 && inventory > 0) restocked.push({ oldId: prev["id"] as string, newId: vid });
+      }
     }
   });
   insertMany();
+  for (const r of restocked) void notifyRestock(r.newId).catch(() => {});
   const variants = parseRows(db.prepare(`SELECT * FROM variants WHERE product_id=?`).all(productId) as Row[]);
   res.json({ data: variants, meta: { total: variants.length }, error: null });
 });
@@ -380,10 +391,16 @@ router.post("/admin/variants", (req, res) => {
 
 router.put("/admin/variants/:id/update", (req, res) => {
   const id = req.params["id"];
-  if (!db.prepare(`SELECT id FROM variants WHERE id=?`).get(id)) { res.status(404).json({ data: null, meta: {}, error: "Variant not found" }); return; }
+  const prev = db.prepare(`SELECT inventory FROM variants WHERE id=?`).get(id) as { inventory: number } | undefined;
+  if (!prev) { res.status(404).json({ data: null, meta: {}, error: "Variant not found" }); return; }
   const b = req.body as Record<string, unknown>;
   db.prepare(`UPDATE variants SET inventory=COALESCE(?,inventory), price=COALESCE(?,price), sku=COALESCE(?,sku), title=COALESCE(?,title), compare_price=COALESCE(?,compare_price), cost=COALESCE(?,cost) WHERE id=?`).run(b["inventory"] ?? null, b["price"] ?? null, b["sku"] ?? null, b["title"] ?? null, b["comparePrice"] ?? null, b["cost"] ?? null, id);
   const variant = parseOne(db.prepare(`SELECT * FROM variants WHERE id=?`).get(id) as Row | undefined);
+  // Restock trigger: inventory went from 0 (or less) to a positive number → notify waiters.
+  const newInv = (variant as { inventory?: number } | null)?.inventory ?? 0;
+  if ((prev.inventory ?? 0) <= 0 && newInv > 0) {
+    void notifyRestock(id).catch(() => {});
+  }
   res.json({ data: variant, meta: {}, error: null });
 });
 

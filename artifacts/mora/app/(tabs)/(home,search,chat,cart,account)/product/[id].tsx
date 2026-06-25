@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Platform,
   Pressable,
@@ -26,6 +27,9 @@ import { fetchProduct, fetchRelatedProducts, fetchContentSections } from "@/lib/
 import { formatIQD } from "@/lib/format";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
+import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { requestRestockNotify, fetchRestockRequests } from "@/lib/api";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import { BlurView } from "expo-blur";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
@@ -200,9 +204,13 @@ export default function ProductDetailScreen() {
   const isWeb = Platform.OS === "web";
   const { addItem, totalItems } = useCart();
   const { isWishlisted, toggle } = useWishlist();
+  const { token } = useAuth();
+  const { lang } = useLanguage();
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
   const [added, setAdded] = useState(false);
   const [quickAddRelated, setQuickAddRelated] = useState<Product | null>(null);
+  const [notifyingVariant, setNotifyingVariant] = useState<string | null>(null);
+  const [locallyNotified, setLocallyNotified] = useState<string[]>([]);
 
   const topPadding = isWeb ? 0 : insets.top;
   const bottomPadding = isWeb ? 0 : insets.bottom;
@@ -264,8 +272,19 @@ export default function ProductDetailScreen() {
     }).catch(() => {});
   }, [product?.id]);
 
+  const { data: subscribedVariantIds = [], refetch: refetchSubs } = useQuery({
+    queryKey: ["restock-subs"],
+    queryFn: () => fetchRestockRequests(token!),
+    enabled: !!token,
+    staleTime: 60_000,
+  });
+
   const liked = product ? isWishlisted(product.id) : false;
   const activeVariant = selectedVariant ?? (product?.variants?.[0] ?? null);
+  const activeOOS = !!activeVariant && (activeVariant.inventory ?? 0) <= 0;
+  const isSubscribed =
+    !!activeVariant &&
+    (subscribedVariantIds.includes(activeVariant.id) || locallyNotified.includes(activeVariant.id));
   const price = activeVariant?.price ?? product?.price ?? 0;
   const comparePrice = product?.comparePrice;
   const hasDiscount = comparePrice != null && comparePrice > price;
@@ -296,6 +315,37 @@ export default function ProductDetailScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
+  };
+
+  const handleNotifyRestock = async () => {
+    if (!product || !activeVariant) return;
+    if (!token) {
+      Alert.alert(
+        lang === "ar" ? "تحتاج تسجيل دخول" : "Sign in required",
+        lang === "ar"
+          ? "سجّل دخولك حتى نبلغك عند توفر المنتج"
+          : "Sign in so we can notify you when it's back in stock",
+        [
+          { text: lang === "ar" ? "إلغاء" : "Cancel", style: "cancel" },
+          { text: lang === "ar" ? "تسجيل الدخول" : "Sign in", onPress: () => router.push("/auth") },
+        ],
+      );
+      return;
+    }
+    try {
+      setNotifyingVariant(activeVariant.id);
+      await requestRestockNotify(token, product.id, activeVariant.id);
+      setLocallyNotified((p) => [...p, activeVariant.id]);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      refetchSubs();
+    } catch {
+      Alert.alert(
+        lang === "ar" ? "خطأ" : "Error",
+        lang === "ar" ? "صار خطأ، حاول مرة ثانية" : "Something went wrong, please try again",
+      );
+    } finally {
+      setNotifyingVariant(null);
+    }
   };
 
   return (
@@ -548,46 +598,52 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
-          {/* ── Add to Bag ── */}
+          {/* ── Add to Bag / Notify me ── */}
           <View style={[styles.addBagSection, { borderTopColor: colors.border }]}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.addBtn,
-                {
-                  backgroundColor: isIOS26Plus
-                    ? (added ? "rgba(67,160,71,0.55)" : "rgba(2,116,193,0.5)")
-                    : (!isIOS26Plus && Platform.OS !== "web"
-                        ? "transparent"
-                        : (added ? "#43A047" : PRIMARY)),
-                  overflow: "hidden",
-                  opacity: pressed ? 0.88 : 1,
-                },
-              ]}
-              onPress={handleAddToCart}
-              testID="add-to-bag-btn"
-            >
-              {isIOS26Plus && <LiquidGlassBg />}
-              {!isIOS26Plus && Platform.OS !== "web" && (
-                <>
-                  <BlurView
-                    style={StyleSheet.absoluteFill}
-                    intensity={50}
-                    tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
-                  />
-                  <View
-                    pointerEvents="none"
-                    style={[
-                      StyleSheet.absoluteFill,
-                      { backgroundColor: added ? "rgba(67,160,71,0.78)" : "rgba(2,116,193,0.78)" },
-                    ]}
-                  />
-                </>
-              )}
-              <Feather name={added ? "check" : "shopping-bag"} size={18} color="#FFFFFF" />
-              <Text style={styles.addBtnText}>
-                {added ? "ADDED TO BAG" : "ADD TO BAG"}
-              </Text>
-            </Pressable>
+            {activeOOS ? (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.addBtn,
+                  {
+                    backgroundColor: isSubscribed ? "#43A047" : "#3A3A3C",
+                    opacity: pressed && !isSubscribed ? 0.88 : 1,
+                  },
+                ]}
+                onPress={isSubscribed ? undefined : handleNotifyRestock}
+                disabled={isSubscribed || notifyingVariant === activeVariant?.id}
+                testID="notify-restock-btn"
+              >
+                {notifyingVariant === activeVariant?.id ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Feather name={isSubscribed ? "check" : "bell"} size={18} color="#FFFFFF" />
+                    <Text style={styles.addBtnText}>
+                      {isSubscribed
+                        ? (lang === "ar" ? "راح نبلغك عند توفره" : "We'll notify you")
+                        : (lang === "ar" ? "ابلغني عند توفره" : "Notify me")}
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            ) : (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.addBtn,
+                  {
+                    backgroundColor: added ? "#43A047" : PRIMARY,
+                    opacity: pressed ? 0.88 : 1,
+                  },
+                ]}
+                onPress={handleAddToCart}
+                testID="add-to-bag-btn"
+              >
+                <Feather name={added ? "check" : "shopping-bag"} size={18} color="#FFFFFF" />
+                <Text style={styles.addBtnText}>
+                  {added ? "ADDED TO BAG" : "ADD TO BAG"}
+                </Text>
+              </Pressable>
+            )}
 
             {/* Shipping rules */}
             <ShippingRulesNote style={[styles.deliveryRow, { borderTopColor: colors.border }]} />

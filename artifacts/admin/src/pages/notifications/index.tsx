@@ -102,6 +102,7 @@ const TEMPLATE_GROUPS = [
   { labelKey: "notifications.group.orderStatus",   keys: ["status:processing","status:completed","status:cancelled"] },
   { labelKey: "notifications.group.shipping",      keys: ["fulfill:fulfilled"] },
   { labelKey: "notifications.group.payment",       keys: ["financial:paid","financial:refunded"] },
+  { labelKey: "notifications.group.engagement",    keys: ["restock:available","cart:abandoned"] },
 ] as const;
 
 const LINK_OPTIONS = [
@@ -114,8 +115,8 @@ const LINK_OPTIONS = [
 // ── Notification phone preview ─────────────────────────────────────────────────
 function PhonePreview({ title, body }: { title: string; body: string }) {
   const { t } = useT();
-  const previewTitle = title.replace(/\{orderNum\}/g,"#AB3K").replace(/\{n\}/g,"#AB3K").replace(/\{price\}/g,"117,000 IQD").replace(/\{itemCount\}/g,"3").replace(/\{customerName\}/g,"أحمد");
-  const previewBody  = body.replace(/\{orderNum\}/g,"#AB3K").replace(/\{n\}/g,"#AB3K").replace(/\{price\}/g,"117,000 IQD").replace(/\{itemCount\}/g,"3").replace(/\{customerName\}/g,"أحمد");
+  const previewTitle = title.replace(/\{orderNum\}/g,"#AB3K").replace(/\{n\}/g,"#AB3K").replace(/\{price\}/g,"117,000 IQD").replace(/\{itemCount\}/g,"3").replace(/\{customerName\}/g,"أحمد").replace(/\{productName\}/g,"فستان كلاسيك");
+  const previewBody  = body.replace(/\{orderNum\}/g,"#AB3K").replace(/\{n\}/g,"#AB3K").replace(/\{price\}/g,"117,000 IQD").replace(/\{itemCount\}/g,"3").replace(/\{customerName\}/g,"أحمد").replace(/\{productName\}/g,"فستان كلاسيك");
   return (
     <div className="relative mx-auto" style={{ width: 240 }} dir="ltr">
       <div className="rounded-[28px] border-[3px] border-zinc-700 bg-black overflow-hidden shadow-2xl">
