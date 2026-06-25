@@ -72,9 +72,17 @@ router.post("/store/notifications/live-activity-pts-token", (req, res) => {
 });
 
 // ── STORE: remove push token (logout) ─────────────────────────────────────────
+// Also clears live_activity_pts_token so the logged-out device can't receive
+// a new Live Activity start for the next user's orders.
 router.delete("/store/notifications/token", (req, res) => {
+  const customerId = getCustomerId(req);
   const { token } = req.body as { token?: string };
   if (token) db.prepare("DELETE FROM push_tokens WHERE token = ?").run(token);
+  // Clear the push-to-start token on logout so it can't be reused for a different account
+  if (customerId) {
+    db.prepare("UPDATE customers SET live_activity_pts_token = NULL, updated_at = ? WHERE id = ?")
+      .run(now(), customerId);
+  }
   return res.json({ data: { ok: true }, error: null });
 });
 

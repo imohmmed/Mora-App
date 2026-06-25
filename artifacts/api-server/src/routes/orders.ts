@@ -6,6 +6,21 @@ import { sendLiveActivityPush, sendLiveActivityStartPush } from "../lib/apns.js"
 import { doSendNotification } from "./notifications.js";
 import { validateDiscount, redeemDiscount } from "../lib/discounts.js";
 
+// ── Unique order number generator: #XXXX (4 uppercase alphanumeric chars) ─────
+// 36^4 = 1,679,616 combinations. Retries on the rare collision.
+const ORDER_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+function generateOrderNumber(): string {
+  while (true) {
+    let code = "";
+    for (let i = 0; i < 4; i++) {
+      code += ORDER_CHARS[Math.floor(Math.random() * ORDER_CHARS.length)];
+    }
+    const candidate = `#${code}`;
+    const exists = db.prepare("SELECT id FROM orders WHERE order_number=?").get(candidate);
+    if (!exists) return candidate;
+  }
+}
+
 // Arabic push + in-app notification copy per delivery stage.
 // {n} is replaced with the order number.
 const STAGE_NOTIF: Record<string, { title: string; body: string }> = {
@@ -85,8 +100,7 @@ router.post("/store/orders", (req, res) => {
   const id = `ord_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const now = new Date().toISOString();
   const b = req.body as Record<string, unknown>;
-  const count = (db.prepare(`SELECT COUNT(*) AS n FROM orders`).get() as Row)["n"] as number;
-  const orderNum = `#${1000 + count + 1}`;
+  const orderNum = generateOrderNumber();
 
   const subtotal = Number(b["subtotal"]) || 0;
 
@@ -274,9 +288,8 @@ router.get("/admin/orders/:id", (req, res) => {
 router.post("/admin/orders", (req, res) => {
   const id = `ord_${Date.now()}`;
   const now = new Date().toISOString();
-  const count = (db.prepare(`SELECT COUNT(*) AS n FROM orders`).get() as Row)["n"] as number;
   const b = req.body as Record<string, unknown>;
-  const orderNum = `#${1000 + count}`;
+  const orderNum = generateOrderNumber();
   db.prepare(`INSERT INTO orders (id,order_number,customer_id,email,status,financial_status,fulfillment_status,subtotal,shipping,tax,total,currency,shipping_address,line_items,note,tags,is_draft,is_abandoned,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(id, orderNum, null, b["email"] ?? "", "pending", "pending", "unfulfilled", 0, 5.99, 0, 0, "USD", JSON.stringify(b["shippingAddress"] ?? {}), JSON.stringify(b["lineItems"] ?? []), b["note"] ?? "", "[]", 1, 0, now, now);
   logActivity("order.created", "Orders", "order", id, `Order ${orderNum}`, "Admin",
