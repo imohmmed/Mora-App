@@ -155,18 +155,18 @@ export default function ChatScreen() {
   const [loading,  setLoading]  = useState(true);
   const [hasError, setHasError] = useState(false);
 
-  // ── Web (srcdoc so CSS injection works cross-origin) ──────────────────────
+  // ── Web ──────────────────────────────────────────────────────────────────
   if (Platform.OS === "web") {
-    // FloatingTabBar portals to <body> with position:fixed at bottom ~84px.
-    // Iframes intercept ALL pointer events inside their bounds regardless of
-    // z-index. We use position:absolute with explicit bottom:"84px" so the
-    // iframe never covers the tab bar — no height:100% percentage ambiguity.
+    // Load the widget URL directly (same-origin iframe gives CORS-safe API
+    // calls to chat.moramoda.tech). Using position:absolute with bottom:"84px"
+    // ensures the iframe never overlaps the FloatingTabBar area.
+    const widgetUrl = `${WIDGET_BASE}&darkMode=${isDark ? "dark" : "light"}`;
     return (
       <View style={[styles.container, { backgroundColor: bg }]}>
         {/* @ts-ignore */}
         <iframe
           key={isDark ? "dark" : "light"}
-          srcDoc={buildChatHtml(isDark)}
+          src={widgetUrl}
           style={{
             position: "absolute",
             top: 0,
