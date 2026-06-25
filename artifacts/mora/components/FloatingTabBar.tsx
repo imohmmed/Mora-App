@@ -24,6 +24,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useNativeReady } from "@/hooks/useNativeReady";
 import { isIOS26Plus } from "@/components/LiquidGlassBg";
 import { TabEvents, TAB_HOME_SCROLL_TOP, TAB_SEARCH_FOCUS } from "@/lib/tabEvents";
+import { useLanguage } from "@/context/LanguageContext";
 
 // ── @expo/ui — Liquid Glass for iOS 26+ ───────────────────────────────────────
 // SwiftUI views MUST be wrapped in <Host> or Fabric crashes on mount via
@@ -204,6 +205,11 @@ function StandaloneIOSTabBar() {
   const pathname    = usePathname();
   const { totalItems } = useCart();
   const nativeReady = useNativeReady();
+  const { lang } = useLanguage();
+  const isAr = lang === "ar";
+
+  // Reverse tab order for Arabic (native only — web keeps original order)
+  const displayTabs = isAr ? [...TABS].reverse() : TABS;
 
   const activeRoute = getActiveRoute(pathname);
   const useGlass    = nativeReady && isIOS26Plus && !!Host && !!ExpoHStack && !!ExpoImage
@@ -230,8 +236,9 @@ function StandaloneIOSTabBar() {
     router.push(tab.path as any);
   };
 
-  const cartIdx   = TABS.findIndex((t) => t.name === "cart");
-  const badgeLeft = PAD_H + cartIdx * (ITEM_W + ITEM_GAP) + ITEM_W - 16;
+  // Badge position depends on the visual (display) index of the cart tab
+  const cartVisualIdx = displayTabs.findIndex((t) => t.name === "cart");
+  const badgeLeft = PAD_H + cartVisualIdx * (ITEM_W + ITEM_GAP) + ITEM_W - 16;
 
   // ── Liquid Glass (iOS 26+) — ONE capsule: Host > HStack(glassEffect) > Image[] ──
   if (useGlass) {
@@ -255,7 +262,7 @@ function StandaloneIOSTabBar() {
                 }),
               ]}
             >
-              {TABS.map((tab) => {
+              {displayTabs.map((tab) => {
                 const focused = tab.name === activeRoute;
                 return (
                   <ExpoImage
@@ -292,7 +299,7 @@ function StandaloneIOSTabBar() {
         style={StyleSheet.absoluteFill}
       />
       <View style={[ios.blurRow, { paddingBottom: insets.bottom }]}>
-        {TABS.map((tab) => {
+        {displayTabs.map((tab) => {
           const focused = tab.name === activeRoute;
           const color   = focused ? active : inactive;
           return (
