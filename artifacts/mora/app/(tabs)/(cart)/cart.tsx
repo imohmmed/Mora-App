@@ -34,14 +34,15 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
 
 const PRIMARY = "#0274C1";
 
-function StepIndicator({ current, isDark }: { current: 1 | 2 | 3; isDark: boolean }) {
-  const steps = ["Cart", "Checkout", "Done"];
+function StepIndicator({ current, isDark, lang }: { current: 1 | 2 | 3; isDark: boolean; lang: string }) {
+  const isAr = lang === "ar";
+  const steps = isAr ? ["سلتي", "الدفع", "تم التثبيت"] : ["Cart", "Checkout", "Done"];
   const inactiveCircle = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
   const inactiveText   = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)";
   const inactiveLine   = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
 
   return (
-    <View style={si.container}>
+    <View style={[si.container, isAr && { flexDirection: "row-reverse" }]}>
       {steps.map((label, i) => {
         const step   = i + 1;
         const done   = step < current;
@@ -58,7 +59,7 @@ function StepIndicator({ current, isDark }: { current: 1 | 2 | 3; isDark: boolea
                   : <Text style={{ fontSize: 11, fontWeight: "700", color: active ? "#fff" : inactiveText }}>{step}</Text>
                 }
               </View>
-              <Text style={{ fontSize: 9, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase",
+              <Text style={{ fontSize: 9, fontWeight: "700", letterSpacing: isAr ? 0 : 0.5,
                 color: active ? PRIMARY : inactiveText, marginTop: 5 }}>
                 {label}
               </Text>
@@ -84,13 +85,16 @@ function CartItemRow({
   onRemove,
   onInc,
   onDec,
+  lang,
 }: {
   item: CartItem;
   isDark: boolean;
   onRemove: () => void;
   onInc: () => void;
   onDec: () => void;
+  lang: string;
 }) {
+  const isAr = lang === "ar";
   const swipeRef = useRef<SwipeableMethods>(null);
   const card    = isDark ? "#1C1C1E" : "#FFFFFF";
   const textCol = isDark ? "#FFFFFF" : "#1A1A1A";
@@ -121,11 +125,14 @@ function CartItemRow({
   return (
     <ReanimatedSwipeable
       ref={swipeRef}
-      renderRightActions={renderRightActions}
+      renderRightActions={isAr ? undefined : renderRightActions}
+      renderLeftActions={isAr ? renderRightActions : undefined}
       rightThreshold={40}
+      leftThreshold={40}
       overshootRight={false}
+      overshootLeft={false}
     >
-      <View style={[cs.card, { backgroundColor: card }]}>
+      <View style={[cs.card, { backgroundColor: card }, isAr && { flexDirection: "row-reverse" }]}>
         <View style={cs.imgWrap}>
           {item.image ? (
             <Image source={{ uri: item.image }} style={cs.img} contentFit="cover" />
@@ -136,10 +143,10 @@ function CartItemRow({
           )}
         </View>
 
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text style={[cs.titleTxt, { color: textCol }]} numberOfLines={2}>{item.title}</Text>
+        <View style={{ flex: 1, gap: 3, alignItems: isAr ? "flex-end" : "flex-start" }}>
+          <Text style={[cs.titleTxt, { color: textCol, textAlign: isAr ? "right" : "left" }]} numberOfLines={2}>{item.title}</Text>
           {(item.size || item.color) && (
-            <Text style={{ fontSize: 11, color: sub }}>
+            <Text style={{ fontSize: 11, color: sub, textAlign: isAr ? "right" : "left" }}>
               {[item.size, item.color].filter(Boolean).join("  ·  ")}
             </Text>
           )}
@@ -215,13 +222,15 @@ function GiftWrapSection({ lang, isDark }: { lang: string; isDark: boolean }) {
     });
   };
 
+  const isAr = lang === "ar";
+
   return (
     <View style={[gw.wrap, { backgroundColor: sectionBg }]}>
-      <View style={gw.headerRow}>
+      <View style={[gw.headerRow, isAr && { flexDirection: "row-reverse" }]}>
         <View style={gw.iconCircle}>
           <Feather name="gift" size={16} color="#fff" />
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, alignItems: isAr ? "flex-end" : "flex-start" }}>
           <Text style={[gw.title, { color: textCol }]}>{titleTxt}</Text>
           <Text style={[gw.subtitle, { color: sub }]}>{subtitleTxt}</Text>
         </View>
@@ -233,11 +242,12 @@ function GiftWrapSection({ lang, isDark }: { lang: string; isDark: boolean }) {
         contentContainerStyle={gw.scroll}
         decelerationRate="fast"
         snapToInterval={GIFT_CARD_W + 12}
+        style={isAr ? { transform: [{ scaleX: -1 }] } : undefined}
       >
         {products.map((product) => {
           const inCart = items.some((i) => i.productId === product.id);
           return (
-            <View key={product.id} style={[gw.card, { backgroundColor: cardBg }]}>
+            <View key={product.id} style={[gw.card, { backgroundColor: cardBg }, isAr && { transform: [{ scaleX: -1 }] }]}>
               <Pressable
                 style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
                 onPress={() => router.push(`/product/${product.id}` as any)}
@@ -391,14 +401,14 @@ export default function CartScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      <View style={[s.header, { paddingTop: insets.top + 6 }]}>
+      <View style={[s.header, { paddingTop: insets.top + 6 }, lang === "ar" && { flexDirection: "row-reverse" }]}>
         <Text style={[s.pageTitle, { color: textCol }]}>{lang === "ar" ? "سلتي" : "MY CART"}</Text>
         <View style={s.badge}>
           <Text style={s.badgeTxt}>{totalQty}</Text>
         </View>
       </View>
 
-      <StepIndicator current={1} isDark={isDark} />
+      <StepIndicator current={1} isDark={isDark} lang={lang} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -409,6 +419,7 @@ export default function CartScreen() {
             key={`${item.productId}-${item.variantId}`}
             item={item}
             isDark={isDark}
+            lang={lang}
             onRemove={() => handleRemove(item.productId, item.variantId)}
             onInc={() => handleInc(item.productId, item.variantId)}
             onDec={() => handleDec(item.productId, item.variantId, item.quantity)}
@@ -428,17 +439,27 @@ export default function CartScreen() {
           paddingBottom: isWeb ? 14 : 10,
           bottom: barBottom,
         },
+        lang === "ar" && { flexDirection: "row-reverse" },
       ]}>
-        <View style={{ flex: 1 }}>
-          <Text style={[s.barLabel, { color: sub }]}>Subtotal</Text>
+        <View style={{ flex: 1, alignItems: lang === "ar" ? "flex-end" : "flex-start" }}>
+          <Text style={[s.barLabel, { color: sub }]}>{lang === "ar" ? "اجمالي السعر" : "Subtotal"}</Text>
           <Text style={[s.barTotal, { color: textCol }]}>{formatIQD(subtotal)}</Text>
         </View>
         <Pressable
           onPress={handleCheckout}
           style={({ pressed }) => [s.checkBtn, pressed && { opacity: 0.82 }]}
         >
-          <Text style={s.checkTxt}>CHECKOUT</Text>
-          <Feather name="arrow-right" size={15} color="#fff" />
+          {lang === "ar" ? (
+            <>
+              <Feather name="arrow-left" size={15} color="#fff" />
+              <Text style={s.checkTxt}>الدفع</Text>
+            </>
+          ) : (
+            <>
+              <Text style={s.checkTxt}>CHECKOUT</Text>
+              <Feather name="arrow-right" size={15} color="#fff" />
+            </>
+          )}
         </Pressable>
       </View>
     </View>
