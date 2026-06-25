@@ -246,7 +246,12 @@ export default function ShippingSettings() {
                 ) : (
                   zones.map((z) => (
                     <TableRow key={z.id}>
-                      <TableCell className="font-medium">{z.governorate}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col">
+                          <span dir="rtl">{z.governorateAr || z.governorate}</span>
+                          <span className="text-xs text-muted-foreground">{z.governorate}</span>
+                        </div>
+                      </TableCell>
                       <TableCell dir="rtl" className="text-muted-foreground">
                         <Input
                           value={z.governorateAr}

@@ -594,12 +594,12 @@ export default function CheckoutScreen() {
         <CompactPicker
           visible={showGovPicker}
           title={lang === "ar" ? "اختر المحافظة" : "Select Governorate"}
-          options={zones.map((z) => ({ label: lang === "ar" ? (z.governorateAr || z.governorate) : z.governorate, value: z.governorate }))}
+          options={zones.map((z) => ({ label: z.governorateAr || z.governorate, value: z.governorate }))}
           selectedValue={selectedZone?.governorate}
           onSelect={(val) => {
             const z = zones.find((zo) => zo.governorate === val) ?? null;
             setSelectedZone(z);
-            if (z) set("city")(lang === "ar" ? (z.governorateAr || z.governorate) : z.governorate);
+            if (z) set("city")(z.governorateAr || z.governorate);
             setShowGovPicker(false);
           }}
           onCancel={() => setShowGovPicker(false)}
