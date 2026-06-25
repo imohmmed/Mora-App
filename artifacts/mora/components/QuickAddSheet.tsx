@@ -29,6 +29,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/context/ThemeContext";
 import { useWishlist } from "@/context/WishlistContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { formatIQD } from "@/lib/format";
 import type { Product, Variant } from "@/lib/types";
 
@@ -65,6 +66,7 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   const { resolvedScheme } = useTheme();
   const isDark = resolvedScheme === "dark";
   const { isWishlisted, toggle } = useWishlist();
+  const { lang } = useLanguage();
 
   const slideAnim = useRef(new Animated.Value(600)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
@@ -105,8 +107,16 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
 
   const hasOpt1 = opt1Values.length > 0;
   const hasOpt2 = opt2Values.length > 0;
-  const label1 = useMemo(() => inferLabel(opt1Values), [opt1Values]);
-  const label2 = useMemo(() => inferLabel(opt2Values), [opt2Values]);
+  const definedName = (idx: number): string | null => {
+    const def = product?.optionDefinitions?.[idx];
+    if (!def) return null;
+    const n = lang === "ar"
+      ? (def.nameAr || def.nameEn || def.name)
+      : (def.nameEn || def.nameAr || def.name);
+    return n && n.trim() ? n.trim() : null;
+  };
+  const label1 = useMemo(() => definedName(0) ?? inferLabel(opt1Values), [opt1Values, product?.optionDefinitions, lang]);
+  const label2 = useMemo(() => definedName(1) ?? inferLabel(opt2Values), [opt2Values, product?.optionDefinitions, lang]);
 
   const selectedVariant: Variant | null = useMemo(() => {
     if (hasOpt1 && !selectedOpt1) return null;

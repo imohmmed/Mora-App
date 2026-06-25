@@ -548,7 +548,18 @@ export default function ProductDetailScreen() {
           {product.variants && product.variants.some((v) => v.option1 && v.option1 !== "Default Title") && (
             <View style={[styles.variantsSection, { borderTopColor: colors.border }]}>
               <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
-                {product.variants[0]?.option1 ? "SIZE" : "OPTIONS"}
+                {(() => {
+                  const def = product.optionDefinitions?.[0];
+                  const named = def
+                    ? (lang === "ar"
+                        ? (def.nameAr || def.nameEn || def.name)
+                        : (def.nameEn || def.nameAr || def.name))
+                    : null;
+                  if (named && named.trim()) return named.trim();
+                  return product.variants[0]?.option1
+                    ? (lang === "ar" ? "القياس" : "SIZE")
+                    : (lang === "ar" ? "الخيارات" : "OPTIONS");
+                })()}
               </Text>
               <View style={styles.variantsRow}>
                 {product.variants.map((v) => {

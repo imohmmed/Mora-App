@@ -6,7 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Plus, X, Trash2, PencilLine, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type OptionGroup = { name: string; values: string[] };
+export type OptionGroup = { name?: string; nameEn?: string; nameAr?: string; values: string[] };
+
+export function optionGroupName(g: OptionGroup): string {
+  return (g.nameEn || g.nameAr || g.name || "").trim();
+}
 
 export type VariantRow = {
   option1: string | null;
@@ -19,7 +23,7 @@ export type VariantRow = {
 };
 
 function cartesian(groups: OptionGroup[]): Array<[string | null, string | null]> {
-  const active = groups.filter((g) => g.name.trim() && g.values.length > 0);
+  const active = groups.filter((g) => optionGroupName(g) && g.values.length > 0);
   if (active.length === 0) return [];
   if (active.length === 1) return active[0].values.map((v) => [v, null]);
   if (active[1]) {
@@ -90,7 +94,7 @@ export function VariantBuilder({
 
   const addGroup = () => {
     if (optionGroups.length >= 3) return;
-    const next = [...optionGroups, { name: "", values: [] }];
+    const next = [...optionGroups, { nameEn: "", nameAr: "", values: [] }];
     onOptionGroupsChange(next);
     setValueInputs([...valueInputs, ""]);
     syncVariants(next);
@@ -104,8 +108,8 @@ export function VariantBuilder({
     syncVariants(next);
   };
 
-  const setGroupName = (i: number, name: string) => {
-    const next = optionGroups.map((g, idx) => (idx === i ? { ...g, name } : g));
+  const setGroupField = (i: number, field: "nameEn" | "nameAr", value: string) => {
+    const next = optionGroups.map((g, idx) => (idx === i ? { ...g, [field]: value } : g));
     onOptionGroupsChange(next);
     syncVariants(next);
   };
@@ -180,14 +184,26 @@ export function VariantBuilder({
           <div className="space-y-3">
             {optionGroups.map((group, gi) => (
               <div key={gi} className="border rounded-lg p-4 space-y-3 bg-muted/10">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <Label className="text-xs mb-1 block">Option name</Label>
-                    <Input
-                      placeholder="e.g. Size, Color, Material"
-                      value={group.name}
-                      onChange={(e) => setGroupName(gi, e.target.value)}
-                    />
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs mb-1 block">Name (English)</Label>
+                      <Input
+                        dir="ltr"
+                        placeholder="e.g. Size, Color"
+                        value={group.nameEn ?? ""}
+                        onChange={(e) => setGroupField(gi, "nameEn", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1 block">الاسم (عربي)</Label>
+                      <Input
+                        dir="rtl"
+                        placeholder="مثال: القياس، اللون"
+                        value={group.nameAr ?? ""}
+                        onChange={(e) => setGroupField(gi, "nameAr", e.target.value)}
+                      />
+                    </div>
                   </div>
                   <Button
                     type="button"

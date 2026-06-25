@@ -46,9 +46,20 @@ function deriveOptionGroups(apiVariants: ApiVariant[]): OptionGroup[] {
   const o1Values = [...new Set(apiVariants.map((v) => v.option1).filter(Boolean) as string[])];
   const o2Values = [...new Set(apiVariants.map((v) => v.option2).filter(Boolean) as string[])];
   const groups: OptionGroup[] = [];
-  if (o1Values.length) groups.push({ name: "Option 1", values: o1Values });
-  if (o2Values.length) groups.push({ name: "Option 2", values: o2Values });
+  if (o1Values.length) groups.push({ nameEn: "Option 1", values: o1Values });
+  if (o2Values.length) groups.push({ nameEn: "Option 2", values: o2Values });
   return groups;
+}
+
+// Migrate legacy single-name option groups into bilingual nameEn/nameAr fields.
+function normalizeOptionGroups(groups: OptionGroup[]): OptionGroup[] {
+  return groups.map((g) => {
+    if (g.nameEn || g.nameAr) return g;
+    const nm = (g.name || "").trim();
+    if (!nm) return g;
+    const isArabic = /[\u0600-\u06FF]/.test(nm);
+    return { ...g, nameEn: isArabic ? "" : nm, nameAr: isArabic ? nm : "" };
+  });
 }
 
 export default function ProductDetail() {
@@ -111,7 +122,7 @@ export default function ProductDetail() {
     const rawOpts = (product as unknown as Record<string, unknown>).optionDefinitions;
     const parsedOpts: OptionGroup[] = Array.isArray(rawOpts) ? rawOpts as OptionGroup[] : [];
     if (parsedOpts.length > 0) {
-      setOptionGroups(parsedOpts);
+      setOptionGroups(normalizeOptionGroups(parsedOpts));
     } else if (apiVariants.length > 0) {
       setOptionGroups(deriveOptionGroups(apiVariants));
     }

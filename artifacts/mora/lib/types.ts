@@ -1,3 +1,10 @@
+export type OptionDefinition = {
+  name?: string;
+  nameEn?: string;
+  nameAr?: string;
+  values: string[];
+};
+
 export type Product = {
   id: string;
   title: string;
@@ -10,6 +17,7 @@ export type Product = {
   images: string[];
   tags: string[];
   variants: Variant[];
+  optionDefinitions?: OptionDefinition[];
   videoUrl?: string;
 };
 
