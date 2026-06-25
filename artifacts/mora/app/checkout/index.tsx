@@ -405,8 +405,8 @@ export default function CheckoutScreen() {
   return (
     <View style={[{ flex: 1 }, { backgroundColor: bg }]}>
 
-        {/* ── Header ── */}
-        <View style={[st.header, { paddingTop: insets.top + 6, paddingHorizontal: 16 }, isAr && { flexDirection: "row-reverse" }]}>
+        {/* ── Header ── زر الرجوع دائماً على اليسار */}
+        <View style={[st.header, { paddingTop: insets.top + 6, paddingHorizontal: 16 }]}>
           <GlassBackButton
             onPress={() => {
               if (router.canGoBack()) router.back();
@@ -453,11 +453,13 @@ export default function CheckoutScreen() {
             >
               {isAr ? (
                 <>
-                  <Feather name="chevron-down" size={15} color={sub} />
+                  {/* row-reverse: first=rightmost → المحافظة on RIGHT */}
+                  <Text style={[st.fieldLbl, { color: sub, textAlign: "right" }]}>المحافظة</Text>
                   <Text style={[st.fieldInput, { color: form.city ? textCol : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)"), textAlign: "right" }]}>
                     {form.city || "اختر المحافظة..."}
                   </Text>
-                  <Text style={[st.fieldLbl, { color: sub, textAlign: "right" }]}>المحافظة</Text>
+                  {/* last=leftmost → chevron on LEFT */}
+                  <Feather name="chevron-down" size={15} color={sub} />
                 </>
               ) : (
                 <>
@@ -564,7 +566,7 @@ export default function CheckoutScreen() {
               multiline
               numberOfLines={3}
               textAlign={isAr ? "right" : "left"}
-              style={[st.noteInput, { color: textCol }]}
+              style={[st.noteInput, { color: textCol, textAlign: isAr ? "right" : "left" }]}
             />
           </View>
 
@@ -598,7 +600,7 @@ export default function CheckoutScreen() {
                   autoCapitalize="characters"
                   autoCorrect={false}
                   textAlign={isAr ? "right" : "left"}
-                  style={[st.discountInput, { color: textCol, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}
+                  style={[st.discountInput, { color: textCol, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)", textAlign: isAr ? "right" : "left" }]}
                 />
                 <Pressable
                   onPress={applyDiscount}
@@ -692,7 +694,7 @@ export default function CheckoutScreen() {
           st.footer,
           {
             backgroundColor: isIOS26Plus ? "transparent" : bg,
-            paddingBottom: insets.bottom + 12,
+            paddingBottom: Platform.OS === "web" ? 88 : insets.bottom + 12,
           },
         ]}>
           <LiquidGlassBg />
