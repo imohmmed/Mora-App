@@ -14,7 +14,6 @@ import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 
 // react-native-webview requires a custom dev build — not available in Expo Go.
-// We try to load it at module level so the fallback UI shows immediately.
 let WebView: any = null;
 try {
   WebView = require("react-native-webview").WebView;
@@ -25,10 +24,8 @@ const CHAT_DOMAIN = "https://chat.moramoda.tech";
 const WEBSITE_TOKEN = "WPeCyRzhWzff2TuFHRe27SaQ";
 const WIDGET_BASE = `${CHAT_DOMAIN}/widget?website_token=${WEBSITE_TOKEN}`;
 
-// Bootstraps the Chatwoot SDK inside the WebView and auto-opens the chat.
-// Loading the bare /widget URL renders blank because the standalone widget
-// waits for the SDK's postMessage config handshake from a parent window that
-// never arrives. Running the SDK here provides that handshake — same as web.
+// Bootstraps the Chatwoot SDK. We load the SDK ourselves so we have full
+// control over CSS (to hide the X close button) and JS injection.
 function buildChatHtml(isDark: boolean): string {
   const scheme = isDark ? "dark" : "light";
   const bg = isDark ? "#0D0D0F" : "#FFFFFF";
@@ -38,10 +35,42 @@ function buildChatHtml(isDark: boolean): string {
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
     <style>
       html, body { margin: 0; padding: 0; height: 100%; background: ${bg}; overflow: hidden; }
+
+      /* ── Hide Chatwoot's X / close / back button ── */
+      .woot--close-button,
+      .chatwoot-widget-button--close,
+      button[aria-label="Close Widget"],
+      button[aria-label="close"],
+      button[aria-label="Close"],
+      button[aria-label="Go back"],
+      .back-button,
+      .close-button { display: none !important; opacity: 0 !important; pointer-events: none !important; }
     </style>
   </head>
   <body>
     <script>
+      /* Extra safety: MutationObserver to hide close button whenever it appears */
+      (function () {
+        function hideCloseBtn() {
+          var btns = document.querySelectorAll('button');
+          btns.forEach(function(btn) {
+            var label = (btn.getAttribute('aria-label') || '').toLowerCase();
+            var cls   = btn.className || '';
+            if (
+              label.indexOf('close') !== -1 ||
+              label.indexOf('back')  !== -1 ||
+              cls.indexOf('close')   !== -1 ||
+              cls.indexOf('back')    !== -1
+            ) {
+              btn.style.display = 'none';
+            }
+          });
+        }
+        var observer = new MutationObserver(hideCloseBtn);
+        observer.observe(document.body, { childList: true, subtree: true });
+        setInterval(hideCloseBtn, 1000);
+      })();
+
       window.chatwootSettings = {
         hideMessageBubble: true,
         position: "right",
@@ -90,21 +119,18 @@ true;
 `;
 }
 
-// ── Fallback when WebView is not available (Expo Go / web) ───────────────────
+// ── Fallback when WebView is not available (Expo Go) ─────────────────────────
 function ChatFallback({ bg, fg, muted }: { bg: string; fg: string; muted: string }) {
   const insets = useSafeAreaInsets();
-
   return (
     <View style={[styles.fallback, { backgroundColor: bg, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
       <View style={[styles.fallbackIcon, { backgroundColor: `${PRIMARY}18` }]}>
         <Feather name="message-circle" size={48} color={PRIMARY} />
       </View>
-
       <Text style={[styles.fallbackTitle, { color: fg }]}>Mora Support</Text>
       <Text style={[styles.fallbackBody, { color: muted }]}>
         Chat with us for help with your orders, products, and anything else.
       </Text>
-
       <Pressable
         style={({ pressed }) => [styles.openBtn, { opacity: pressed ? 0.8 : 1 }]}
         onPress={() => Linking.openURL(WIDGET_BASE)}
@@ -112,10 +138,7 @@ function ChatFallback({ bg, fg, muted }: { bg: string; fg: string; muted: string
         <Feather name="external-link" size={17} color="#FFFFFF" />
         <Text style={styles.openBtnText}>Open Chat</Text>
       </Pressable>
-
-      <Text style={[styles.fallbackNote, { color: muted }]}>
-        Opens in your browser
-      </Text>
+      <Text style={[styles.fallbackNote, { color: muted }]}>Opens in your browser</Text>
     </View>
   );
 }
@@ -129,19 +152,19 @@ export default function ChatScreen() {
   const fg         = isDark ? "#FFFFFF" : "#000000";
   const muted      = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.44)";
 
-  const widgetUrl  = `${WIDGET_BASE}&darkMode=${isDark ? "dark" : "light"}`;
-
   const [loading,  setLoading]  = useState(true);
   const [hasError, setHasError] = useState(false);
 
-  // ── Web (iframe) ─────────────────────────────────────────────────────────
+  // ── Web (srcdoc so CSS injection works cross-origin) ──────────────────────
   if (Platform.OS === "web") {
+    // FloatingTabBar is ~80px tall; leave space so iframe doesn't block it
+    const tabBarH = 90;
     return (
-      <View style={[styles.container, { backgroundColor: bg }]}>
+      <View style={[styles.container, { backgroundColor: bg, paddingBottom: tabBarH }]}>
         {/* @ts-ignore */}
         <iframe
           key={isDark ? "dark" : "light"}
-          src={widgetUrl}
+          srcDoc={buildChatHtml(isDark)}
           style={{ width: "100%", height: "100%", border: "none" }}
           title="Mora Support"
           allow="microphone; camera"
@@ -169,8 +192,8 @@ export default function ChatScreen() {
   }
 
   // ── Native (iOS / Android) with WebView ───────────────────────────────────
+  // NativeTabs handles safe area automatically; no manual contentInset needed.
   const identityScript = buildIdentityScript(user);
-  const tabBarHeight   = 83 + insets.bottom;
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
@@ -188,16 +211,12 @@ export default function ChatScreen() {
         domStorageEnabled
         allowsInlineMediaPlayback
         mediaPlaybackRequiresUserAction={false}
-        contentInset={{ bottom: tabBarHeight }}
-        scrollIndicatorInsets={{ bottom: tabBarHeight }}
       />
 
       {loading && (
         <View style={[styles.loader, { backgroundColor: bg }]}>
           <ActivityIndicator size="large" color={PRIMARY} />
-          <Text style={[styles.loaderText, { color: muted }]}>
-            Loading chat…
-          </Text>
+          <Text style={[styles.loaderText, { color: muted }]}>Loading chat…</Text>
         </View>
       )}
     </View>
