@@ -289,7 +289,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
                           <Text style={styles.badgePillTxt}>{item.badge}</Text>
                         </View>
                       )}
-                      {item.arrow && (
+                      {item.arrow && !(isAr && item.badge) && (
                         <Feather
                           name={isAr ? "chevron-left" : "chevron-right"}
                           size={16}
