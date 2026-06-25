@@ -40,8 +40,8 @@ export const TEMPLATE_DEFAULTS: TemplateDefault[] = [
   },
   {
     key: "stage:preparing",
-    label: "يتم تجهيز الطلب",
-    title: "يتم تجهيز طلبك 📦",
+    label: "تم تجهيز الطلب",
+    title: "تم تجهيز طلبك 📦",
     body: "نجهز طلبك {orderNum} ونحضّره للشحن",
     vars: ALL_VARS,
   },

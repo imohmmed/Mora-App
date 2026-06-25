@@ -54,7 +54,7 @@ extension String {
     var stageHeadline: String {
         switch self {
         case "confirmed": return "تم تثبيت طلبك"
-        case "preparing": return "يتم تجهيز طلبك"
+        case "preparing": return "تم تجهيز طلبك"
         case "shipping":  return "طلبك في الطريق"
         case "delivered": return "تم توصيل طلبك"
         case "issue":     return "صارت مشكلة بطلبك"

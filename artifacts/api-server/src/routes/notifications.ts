@@ -410,7 +410,7 @@ router.post("/admin/notifications/live-activity", requireAdmin, async (req, res)
 
   const stageLabels: Record<string, string> = {
     confirmed: "تم تثبيت طلبك بنجاح",
-    preparing: "يتم تجهيز طلبك",
+    preparing: "تم تجهيز طلبك",
     shipping: "طلبك في الطريق إليك",
     delivered: "تم توصيل طلبك",
     issue: message ?? "طلبك يحتاج مراجعة",

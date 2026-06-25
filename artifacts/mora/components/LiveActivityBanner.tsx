@@ -38,7 +38,7 @@ const STAGE_CONFIG = {
   preparing: {
     icon: "package" as const,
     color: PRIMARY,
-    text: "يتم تجهيز طلبك",
+    text: "تم تجهيز طلبك",
   },
   shipping: {
     icon: "truck" as const,
