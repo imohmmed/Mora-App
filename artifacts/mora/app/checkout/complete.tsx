@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { formatIQD } from "@/lib/format";
 
 const PRIMARY   = "#0274C1";
@@ -29,8 +30,10 @@ function getBaseUrl() {
 type PayStatus = "pending" | "paid" | "failed";
 type ItemSnap = { title: string; quantity: number; price: number; image?: string; size?: string; color?: string };
 
-function StepIndicator({ isDark }: { isDark: boolean }) {
-  const steps = ["Cart", "Checkout", "Done"];
+function StepIndicator({ isDark, lang }: { isDark: boolean; lang: string }) {
+  const steps = lang === "ar"
+    ? ["السلة", "الدفع", "تم"]
+    : ["Cart", "Checkout", "Done"];
   return (
     <View style={si.container}>
       {steps.map((label, i) => {
@@ -41,7 +44,7 @@ function StepIndicator({ isDark }: { isDark: boolean }) {
               <View style={[si.circle, { backgroundColor: PRIMARY, borderColor: PRIMARY }]}>
                 <Feather name="check" size={11} color="#fff" />
               </View>
-              <Text style={{ fontSize: 9, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase",
+              <Text style={{ fontSize: 9, fontWeight: "700", letterSpacing: 0.5,
                 color: step === 3 ? PRIMARY : isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.4)", marginTop: 5 }}>
                 {label}
               </Text>
@@ -65,10 +68,11 @@ export default function OrderCompleteScreen() {
   const isDark = resolvedScheme === "dark";
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { lang } = useLanguage();
+  const isAr = lang === "ar";
 
   const params = useLocalSearchParams<{ orderNumber: string; total: string; name: string; city: string; district: string; phone: string; items: string; paymentMethod?: string; waylUrl?: string; fromWayl?: string; paid?: string }>();
 
-  // Web: load snapshot from sessionStorage when returning from Wayl
   const [snapData, setSnapData] = useState<{ orderNumber: string; total: string; name: string; city: string; district: string; phone: string; snapshot: string } | null>(null);
 
   const orderNumber = params.orderNumber || snapData?.orderNumber || "";
@@ -125,7 +129,6 @@ export default function OrderCompleteScreen() {
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Web: load snapshot from sessionStorage when returning from Wayl redirect
   useEffect(() => {
     if (Platform.OS === "web" && params.fromWayl === "1" && typeof sessionStorage !== "undefined") {
       const stored = sessionStorage.getItem("mora_wayl_snap");
@@ -172,8 +175,6 @@ export default function OrderCompleteScreen() {
     setVerifying(false);
   };
 
-  // Auto-confirm online (Wayl) payment without manual tapping. The webhook marks
-  // the order paid server-side; we poll a few times so the screen reflects it fast.
   useEffect(() => {
     if (!isWayl || payStatus !== "pending" || !orderNumber) return;
     let active = true;
@@ -192,19 +193,48 @@ export default function OrderCompleteScreen() {
 
   const heroColor  = payStatus === "paid" ? PRIMARY : payStatus === "failed" ? "#EF4444" : WAYL_BLUE;
   const heroIcon   = payStatus === "paid" ? "check" : payStatus === "failed" ? "x" : "clock";
-  const heroTitle  = payStatus === "paid" ? (isCOD ? "Order Placed!" : "Payment Confirmed!") : payStatus === "failed" ? "Payment Failed" : "Awaiting Payment";
-  const heroSubtitle = payStatus === "paid"
-    ? `Thank you${name ? `, ${name.split(" ")[0]}` : ""}! Your order is being prepared.`
-    : payStatus === "failed"
-    ? "Your payment was not completed. Please try again."
-    : "Complete your payment in the browser, then tap Verify below.";
+
+  const heroTitle = (() => {
+    if (isAr) {
+      if (payStatus === "paid") return isCOD ? "تم تثبيت الطلب!" : "تم تأكيد الدفع!";
+      if (payStatus === "failed") return "فشل الدفع";
+      return "بانتظار الدفع";
+    }
+    if (payStatus === "paid") return isCOD ? "Order Placed!" : "Payment Confirmed!";
+    if (payStatus === "failed") return "Payment Failed";
+    return "Awaiting Payment";
+  })();
+
+  const heroSubtitle = (() => {
+    if (isAr) {
+      const firstName = name ? name.split(" ")[0] : "";
+      if (payStatus === "paid") return `شكراً${firstName ? `، ${firstName}` : ""}! طلبك قيد التحضير.`;
+      if (payStatus === "failed") return "لم يكتمل دفعك. يرجى المحاولة مرة أخرى.";
+      return "أكمل دفعك في المتصفح، ثم اضغط تحقق.";
+    }
+    if (payStatus === "paid") return `Thank you${name ? `, ${name.split(" ")[0]}` : ""}! Your order is being prepared.`;
+    if (payStatus === "failed") return "Your payment was not completed. Please try again.";
+    return "Complete your payment in the browser, then tap Verify below.";
+  })();
+
+  const detailRows = [
+    { icon: "map-pin", label: isAr ? "العنوان" : "Address", value: [district, city].filter(Boolean).join(", ") || "—" },
+    { icon: "phone",   label: isAr ? "الهاتف"  : "Phone",   value: phone || "—" },
+    { icon: isOnline ? "credit-card" : "dollar-sign",
+      label: isAr ? "طريقة الدفع" : "Payment",
+      value: isOnline
+        ? (payMethodLabel[paymentMethod || ""] || (isAr ? "دفع إلكتروني" : "Online Payment"))
+        : (isAr ? "الدفع عند الاستلام" : "Cash on Delivery") },
+  ];
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
       <View style={[s.header, { paddingTop: insets.top + 6 }]}>
-        <Text style={[s.headTitle, { color: textCol }]}>Order Confirmed</Text>
+        <Text style={[s.headTitle, { color: textCol }]}>
+          {isAr ? "تم تأكيد الطلب" : "Order Confirmed"}
+        </Text>
       </View>
-      <StepIndicator isDark={isDark} />
+      <StepIndicator isDark={isDark} lang={lang} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 110 }}>
 
@@ -222,14 +252,14 @@ export default function OrderCompleteScreen() {
           </Animated.View>
         </View>
 
-        {/* PAY NOW button — primary CTA for online payments */}
+        {/* PAY NOW button */}
         {isOnline && payStatus === "pending" && !!waylUrl && (
           <View style={s.verifyWrap}>
             <Pressable onPress={openWayl} disabled={openingPayment}
               style={({ pressed }) => [s.payNowBtn, pressed && { opacity: 0.85 }, openingPayment && { opacity: 0.7 }]}>
               {openingPayment
                 ? <ActivityIndicator color="#fff" size="small" />
-                : <><Feather name="credit-card" size={16} color="#fff" /><Text style={s.payNowTxt}>PAY NOW</Text></>
+                : <><Feather name="credit-card" size={16} color="#fff" /><Text style={s.payNowTxt}>{isAr ? "ادفع الآن" : "PAY NOW"}</Text></>
               }
             </Pressable>
           </View>
@@ -242,10 +272,12 @@ export default function OrderCompleteScreen() {
               style={({ pressed }) => [s.verifyBtn, pressed && { opacity: 0.85 }, verifying && { opacity: 0.7 }]}>
               {verifying
                 ? <ActivityIndicator color="#fff" size="small" />
-                : <><Feather name="refresh-cw" size={15} color="#fff" /><Text style={s.verifyTxt}>VERIFY PAYMENT</Text></>
+                : <><Feather name="refresh-cw" size={15} color="#fff" /><Text style={s.verifyTxt}>{isAr ? "تحقق من الدفع" : "VERIFY PAYMENT"}</Text></>
               }
             </Pressable>
-            <Text style={[s.verifyHint, { color: sub }]}>Paid already? Tap to confirm your payment status.</Text>
+            <Text style={[s.verifyHint, { color: sub }]}>
+              {isAr ? "دفعت مسبقاً؟ اضغط للتحقق من حالة دفعك." : "Paid already? Tap to confirm your payment status."}
+            </Text>
           </View>
         )}
 
@@ -254,24 +286,32 @@ export default function OrderCompleteScreen() {
           <View style={[s.payBadgeWrap, { backgroundColor: card }]}>
             <Feather name={payStatus === "paid" ? "check-circle" : "x-circle"} size={16} color={payStatus === "paid" ? "#22C55E" : "#EF4444"} />
             <Text style={[s.payBadgeTxt, { color: payStatus === "paid" ? "#22C55E" : "#EF4444" }]}>
-              {payStatus === "paid" ? "Payment Confirmed · Wayl" : "Payment Not Completed"}
+              {payStatus === "paid"
+                ? (isAr ? "تم تأكيد الدفع · Wayl" : "Payment Confirmed · Wayl")
+                : (isAr ? "لم يكتمل الدفع" : "Payment Not Completed")}
             </Text>
           </View>
         )}
 
         {/* Items */}
-        <Text style={[s.sectionLbl, { color: sub }]}>ORDER ITEMS</Text>
+        <Text style={[s.sectionLbl, { color: sub }, isAr && { textAlign: "right" }]}>
+          {isAr ? "طلباتك" : "ORDER ITEMS"}
+        </Text>
         <View style={[s.card, { backgroundColor: card }]}>
           {parsedItems.map((item, idx) => (
             <React.Fragment key={idx}>
               {idx > 0 && <View style={[s.divider, { backgroundColor: divClr }]} />}
-              <View style={s.itemRow}>
+              <View style={[s.itemRow, isAr && { flexDirection: "row-reverse" }]}>
                 {item.image && <Image source={{ uri: item.image }} style={s.itemImg} contentFit="cover" />}
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.itemTitle, { color: textCol }]} numberOfLines={1}>{item.title}</Text>
-                  {(item.size || item.color) && <Text style={[s.itemSub, { color: sub }]}>{[item.size, item.color].filter(Boolean).join(" · ")}</Text>}
+                  <Text style={[s.itemTitle, { color: textCol }, isAr && { textAlign: "right" }]} numberOfLines={1}>{item.title}</Text>
+                  {(item.size || item.color) && (
+                    <Text style={[s.itemSub, { color: sub }, isAr && { textAlign: "right" }]}>
+                      {[item.size, item.color].filter(Boolean).join(" · ")}
+                    </Text>
+                  )}
                 </View>
-                <View style={{ alignItems: "flex-end", gap: 2 }}>
+                <View style={{ alignItems: isAr ? "flex-start" : "flex-end", gap: 2 }}>
                   <Text style={[s.itemQty, { color: sub }]}>×{item.quantity}</Text>
                   <Text style={[s.itemPrice, { color: textCol }]}>{formatIQD(item.price * item.quantity)}</Text>
                 </View>
@@ -279,25 +319,29 @@ export default function OrderCompleteScreen() {
             </React.Fragment>
           ))}
           <View style={[s.divider, { backgroundColor: divClr }]} />
-          <View style={s.rowSpc}><Text style={[s.rowLbl, { color: sub }]}>Shipping</Text><Text style={{ fontSize: 13, fontWeight: "600", color: "#22C55E" }}>Free</Text></View>
-          <View style={s.rowSpc}><Text style={[s.rowLbl, { color: textCol, fontWeight: "700" }]}>Total</Text><Text style={[s.rowVal, { color: PRIMARY }]}>{formatIQD(totalNum)}</Text></View>
+          <View style={[s.rowSpc, isAr && { flexDirection: "row-reverse" }]}>
+            <Text style={[s.rowLbl, { color: sub }]}>{isAr ? "الشحن" : "Shipping"}</Text>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: "#22C55E" }}>{isAr ? "مجاني" : "Free"}</Text>
+          </View>
+          <View style={[s.rowSpc, isAr && { flexDirection: "row-reverse" }]}>
+            <Text style={[s.rowLbl, { color: textCol, fontWeight: "700" }]}>{isAr ? "المجموع" : "Total"}</Text>
+            <Text style={[s.rowVal, { color: PRIMARY }]}>{formatIQD(totalNum)}</Text>
+          </View>
         </View>
 
         {/* Delivery Details */}
-        <Text style={[s.sectionLbl, { color: sub }]}>DELIVERY DETAILS</Text>
+        <Text style={[s.sectionLbl, { color: sub }, isAr && { textAlign: "right" }]}>
+          {isAr ? "تفاصيل التوصيل" : "DELIVERY DETAILS"}
+        </Text>
         <View style={[s.card, { backgroundColor: card }]}>
-          {[
-            { icon: "map-pin", label: "Address",  value: [district, city].filter(Boolean).join(", ") || "—" },
-            { icon: "phone",   label: "Phone",    value: phone || "—" },
-            { icon: isOnline ? "credit-card" : "dollar-sign", label: "Payment", value: isOnline ? (payMethodLabel[paymentMethod || ""] || "Online Payment") : "Cash on Delivery" },
-          ].map((row, idx) => (
+          {detailRows.map((row, idx) => (
             <React.Fragment key={row.label}>
               {idx > 0 && <View style={[s.divider, { backgroundColor: divClr }]} />}
-              <View style={s.detailRow}>
+              <View style={[s.detailRow, isAr && { flexDirection: "row-reverse" }]}>
                 <Feather name={row.icon as any} size={15} color={PRIMARY} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.detailTitle, { color: textCol }]}>{row.label}</Text>
-                  <Text style={[s.detailSub, { color: sub }]}>{row.value}</Text>
+                  <Text style={[s.detailTitle, { color: textCol }, isAr && { textAlign: "right" }]}>{row.label}</Text>
+                  <Text style={[s.detailSub, { color: sub }, isAr && { textAlign: "right" }]}>{row.value}</Text>
                 </View>
               </View>
             </React.Fragment>
@@ -315,9 +359,9 @@ export default function OrderCompleteScreen() {
       ]}>
         <LiquidGlassBg />
         <Pressable onPress={() => router.replace("/" as any)}
-          style={({ pressed }) => [s.contBtn, pressed && { opacity: 0.82 }]}>
-          <Text style={s.contTxt}>CONTINUE SHOPPING</Text>
-          <Feather name="arrow-right" size={15} color="#fff" />
+          style={({ pressed }) => [s.contBtn, isAr && { flexDirection: "row-reverse" }, pressed && { opacity: 0.82 }]}>
+          <Text style={s.contTxt}>{isAr ? "تابع التسوق" : "CONTINUE SHOPPING"}</Text>
+          <Feather name={isAr ? "arrow-left" : "arrow-right"} size={15} color="#fff" />
         </Pressable>
       </View>
     </View>
