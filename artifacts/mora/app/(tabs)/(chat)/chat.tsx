@@ -157,16 +157,17 @@ export default function ChatScreen() {
 
   // ── Web ──────────────────────────────────────────────────────────────────
   if (Platform.OS === "web") {
-    // Load the widget URL directly (same-origin iframe gives CORS-safe API
-    // calls to chat.moramoda.tech). Using position:absolute with bottom:"84px"
-    // ensures the iframe never overlaps the FloatingTabBar area.
-    const widgetUrl = `${WIDGET_BASE}&darkMode=${isDark ? "dark" : "light"}`;
+    // /chat-widget.html is a static file in public/ (copied to dist/ at build
+    // time). It bootstraps the Chatwoot SDK from the same moramoda.tech origin
+    // so the SDK's API calls to chat.moramoda.tech succeed (CORS is allowed by
+    // Chatwoot for any origin). srcDoc would create a null-origin that fails.
+    const chatPage = `/chat-widget.html?dark=${isDark ? "1" : "0"}`;
     return (
       <View style={[styles.container, { backgroundColor: bg }]}>
         {/* @ts-ignore */}
         <iframe
           key={isDark ? "dark" : "light"}
-          src={widgetUrl}
+          src={chatPage}
           style={{
             position: "absolute",
             top: 0,

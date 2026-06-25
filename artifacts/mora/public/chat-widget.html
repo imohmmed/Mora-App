@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+    <script>
+      // Read dark mode from ?dark=1 query param
+      var isDark = new URLSearchParams(window.location.search).get("dark") === "1";
+      var bg = isDark ? "#0D0D0F" : "#FFFFFF";
+      document.documentElement.style.background = bg;
+      document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+    </script>
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+      /* Hide Chatwoot close / back button */
+      .woot--close-button,
+      .chatwoot-widget-button--close,
+      button[aria-label="Close Widget"],
+      button[aria-label="close"],
+      button[aria-label="Close"],
+      button[aria-label="Go back"],
+      .back-button,
+      .close-button { display: none !important; opacity: 0 !important; pointer-events: none !important; }
+    </style>
+  </head>
+  <body>
+    <script>
+      var isDark = new URLSearchParams(window.location.search).get("dark") === "1";
+
+      /* Hide close/back buttons via MutationObserver for late-rendered elements */
+      (function () {
+        function hideCloseBtns() {
+          document.querySelectorAll("button").forEach(function (btn) {
+            var label = (btn.getAttribute("aria-label") || "").toLowerCase();
+            var cls = btn.className || "";
+            if (
+              label.indexOf("close") !== -1 ||
+              label.indexOf("back") !== -1 ||
+              cls.indexOf("close") !== -1 ||
+              cls.indexOf("back") !== -1
+            ) {
+              btn.style.display = "none";
+            }
+          });
+        }
+        var obs = new MutationObserver(hideCloseBtns);
+        obs.observe(document.body || document.documentElement, { childList: true, subtree: true });
+        setInterval(hideCloseBtns, 800);
+      })();
+
+      window.chatwootSettings = {
+        hideMessageBubble: true,
+        position: "right",
+        locale: "ar",
+        type: "standard",
+        darkMode: isDark ? "dark" : "light",
+        showPopoutButton: false,
+      };
+
+      (function (d, t) {
+        var BASE = "https://chat.moramoda.tech";
+        var TOKEN = "WPeCyRzhWzff2TuFHRe27SaQ";
+        var g = d.createElement(t), s = d.getElementsByTagName(t)[0];
+        g.src = BASE + "/packs/js/sdk.js";
+        g.async = true;
+        g.defer = true;
+        g.onload = function () {
+          window.chatwootSDK.run({ websiteToken: TOKEN, baseUrl: BASE });
+        };
+        s.parentNode.insertBefore(g, s);
+      })(document, "script");
+
+      window.addEventListener("chatwoot:ready", function () {
+        try { window.$chatwoot.toggle("open"); } catch (e) {}
+      });
+    </script>
+  </body>
+</html>
