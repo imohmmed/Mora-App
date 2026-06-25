@@ -54,6 +54,18 @@ double-renders. Remove the root `Stack.Screen` entries for the moved detail rout
 `/cart`, `/account`, `/chat`, `/` — groups are URL-invisible, so the `(tabs)` segment
 no longer resolves after grouping.
 
+## Absolutely-positioned bottom bars: anchor just above insets.bottom, don't add bar height
+A `position:absolute` footer (e.g. cart Subtotal/Checkout bar) inside a NativeTabs
+screen rests just above the system tab bar with only a tiny offset above
+`insets.bottom` — because `insets.bottom` ALREADY marks the top edge of the native
+tab bar (content extends under the translucent bar). Adding a tab-bar height on top
+(the old `insets.bottom + 54`) double-counts and floats the footer with a big gap.
+**Why:** native safe-area bottom inset == native tab bar top here; FloatingTabBar
+constants do NOT apply on native (FloatingTabBar is web-only via `_layout.web.tsx`).
+**How to apply:** keep the native offset small; gate EVERY layout value (bottom, bg,
+scroll paddingBottom, internal padding) behind `Platform.OS === "web"` so an
+"app-only" tweak never shifts the web build.
+
 ## Watch for double bottom padding (cosmetic, not fixed here)
 Screens that hardcoded bottom padding for the OLD floating/overlay tab bar
 (e.g. `paddingBottom: ~100`, `account` web `90`, `chat` WebView inset `83`)

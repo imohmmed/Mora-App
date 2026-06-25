@@ -1,5 +1,4 @@
 import React, { useCallback, useRef } from "react";
-import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import {
   ActivityIndicator,
   LayoutAnimation,
@@ -313,6 +312,12 @@ export default function CartScreen() {
   const sub     = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.42)";
   const barBg   = isDark ? "rgba(14,14,14,0.97)" : "rgba(255,255,255,0.97)";
   const barBdr  = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)";
+  // App-only: opaque bar that sits just above the native tab bar (web keeps its own layout).
+  // On native, insets.bottom already accounts for the system NativeTabs bar, so a small
+  // offset places the bar just above it — the old insets.bottom + 54 left a large gap.
+  const isWeb       = Platform.OS === "web";
+  const barBottom   = isWeb ? 84 : insets.bottom + 8;
+  const barBgSolid  = isDark ? "#0E0E0E" : "#FFFFFF";
 
   const totalQty = items.reduce((s, i) => s + i.quantity, 0);
 
@@ -397,7 +402,7 @@ export default function CartScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 10, paddingBottom: insets.bottom + 54 + 96 }}
+        contentContainerStyle={{ paddingTop: 10, paddingBottom: isWeb ? 150 : insets.bottom + 80 }}
       >
         {items.map((item) => (
           <CartItemRow
@@ -416,16 +421,14 @@ export default function CartScreen() {
       <View style={[
         s.bar,
         {
-          backgroundColor: isIOS26Plus ? "transparent" : barBg,
-          borderTopColor: isIOS26Plus ? "transparent" : barBdr,
-          borderTopWidth: isIOS26Plus ? 0 : 1,
-          paddingBottom: 14,
-          bottom: Platform.OS === "web" ? 84 : insets.bottom + 54,
+          backgroundColor: isWeb ? barBg : barBgSolid,
+          borderTopColor: barBdr,
+          borderTopWidth: 1,
+          paddingTop: isWeb ? 16 : 12,
+          paddingBottom: isWeb ? 14 : 10,
+          bottom: barBottom,
         },
       ]}>
-        {/* iOS 26 Liquid Glass background */}
-        <LiquidGlassBg />
-
         <View style={{ flex: 1 }}>
           <Text style={[s.barLabel, { color: sub }]}>Subtotal</Text>
           <Text style={[s.barTotal, { color: textCol }]}>{formatIQD(subtotal)}</Text>
