@@ -273,7 +273,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
                     }}
                     testID={`menu-${item.id}`}
                   >
-                    {/* Icon + label — on right in Arabic */}
+                    {/* Icon + label (+ badge in Arabic next to label) — on right in Arabic */}
                     <View style={[styles.menuLeft, isAr && { flexDirection: "row-reverse" }]}>
                       <View style={[styles.iconBox, { backgroundColor: isDark ? "#1C1C1E" : "#EBF5FF" }]}>
                         <Feather name={item.icon as any} size={16} color={PRIMARY} />
@@ -281,15 +281,20 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
                       <Text style={[styles.menuLabel, { color: colors.foreground }]}>
                         {isAr ? item.labelAr : item.labelEn}
                       </Text>
-                    </View>
-                    {/* Badge + arrow — on left in Arabic */}
-                    <View style={styles.menuRight}>
-                      {item.badge && (
+                      {isAr && item.badge && (
                         <View style={[styles.badgePill, { backgroundColor: PRIMARY }]}>
                           <Text style={styles.badgePillTxt}>{item.badge}</Text>
                         </View>
                       )}
-                      {item.arrow && !(isAr && item.badge) && (
+                    </View>
+                    {/* Badge (EN) + arrow — on left in Arabic */}
+                    <View style={styles.menuRight}>
+                      {!isAr && item.badge && (
+                        <View style={[styles.badgePill, { backgroundColor: PRIMARY }]}>
+                          <Text style={styles.badgePillTxt}>{item.badge}</Text>
+                        </View>
+                      )}
+                      {item.arrow && (
                         <Feather
                           name={isAr ? "chevron-left" : "chevron-right"}
                           size={16}
