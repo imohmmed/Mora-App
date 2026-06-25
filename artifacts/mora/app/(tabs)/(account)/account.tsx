@@ -272,7 +272,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
                     testID={`menu-${item.id}`}
                   >
                     <View style={styles.menuLeft}>
-                      <View style={[styles.iconBox, { backgroundColor: colors.secondary }]}>
+                      <View style={[styles.iconBox, { backgroundColor: isDark ? "#1C1C1E" : "#EBF5FF" }]}>
                         <Feather name={item.icon as any} size={16} color={PRIMARY} />
                       </View>
                       <Text style={[styles.menuLabel, { color: colors.foreground }]}>{item.label}</Text>

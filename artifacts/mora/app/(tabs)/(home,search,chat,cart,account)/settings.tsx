@@ -169,7 +169,7 @@ export default function SettingsScreen() {
               accessibilityLabel="Select language"
             >
               <View style={styles.settingsLeft}>
-                <View style={[styles.settingsIcon, { backgroundColor: colors.secondary }]}>
+                <View style={[styles.settingsIcon, { backgroundColor: isDark ? "#1C1C1E" : "#EBF5FF" }]}>
                   <Feather name="globe" size={16} color={PRIMARY} />
                 </View>
                 <Text style={[styles.settingsLabel, { color: colors.foreground }]}>Language</Text>
@@ -217,7 +217,7 @@ export default function SettingsScreen() {
                 accessibilityLabel="Live Activity diagnostic"
               >
                 <View style={styles.settingsLeft}>
-                  <View style={[styles.settingsIcon, { backgroundColor: colors.secondary }]}>
+                  <View style={[styles.settingsIcon, { backgroundColor: isDark ? "#1C1C1E" : "#EBF5FF" }]}>
                     <Feather name="activity" size={16} color={PRIMARY} />
                   </View>
                   <Text style={[styles.settingsLabel, { color: colors.foreground }]}>Test Live Activity</Text>
@@ -234,7 +234,7 @@ export default function SettingsScreen() {
               ]}
             >
               <View style={styles.settingsLeft}>
-                <View style={[styles.settingsIcon, { backgroundColor: colors.secondary }]}>
+                <View style={[styles.settingsIcon, { backgroundColor: isDark ? "#1C1C1E" : "#EBF5FF" }]}>
                   <Feather name="info" size={16} color={PRIMARY} />
                 </View>
                 <Text style={[styles.settingsLabel, { color: colors.foreground }]}>About Mora</Text>
@@ -251,7 +251,7 @@ export default function SettingsScreen() {
               ]}
             >
               <View style={styles.settingsLeft}>
-                <View style={[styles.settingsIcon, { backgroundColor: colors.secondary }]}>
+                <View style={[styles.settingsIcon, { backgroundColor: isDark ? "#1C1C1E" : "#EBF5FF" }]}>
                   <Feather name="shield" size={16} color={PRIMARY} />
                 </View>
                 <Text style={[styles.settingsLabel, { color: colors.foreground }]}>Privacy Policy</Text>
