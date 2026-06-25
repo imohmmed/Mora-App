@@ -15,10 +15,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, User, Mail, MapPin, ShoppingBag, Pencil } from "lucide-react";
 import { useState } from "react";
-import { format } from "date-fns";
 import { fmt } from "@/lib/date";
+import { formatIQD } from "@/lib/format";
+import { PageContainer } from "@/components/ui/page-primitives";
+import { useT } from "@/i18n/LanguageContext";
 
 export default function CustomerDetail() {
+  const { t } = useT();
   const { id } = useParams();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -58,83 +61,83 @@ export default function CustomerDetail() {
       { id, data: form },
       {
         onSuccess: () => {
-          toast({ title: "Customer updated" });
+          toast({ title: t("customers.detail.updated") });
           queryClient.invalidateQueries({ queryKey: getAdminGetCustomerQueryKey(id) });
           queryClient.invalidateQueries({ queryKey: ["/api/admin/customers"] });
           setEditOpen(false);
         },
         onError: () => {
-          toast({ title: "Error updating customer", variant: "destructive" });
+          toast({ title: t("customers.detail.updateError"), variant: "destructive" });
         },
       }
     );
   };
 
   if (isLoading) {
-    return <div className="p-6 md:p-8">Loading customer...</div>;
+    return <div className="p-6 md:p-8">{t("customers.detail.loading")}</div>;
   }
 
   if (!customer) {
-    return <div className="p-6 md:p-8">Customer not found.</div>;
+    return <div className="p-6 md:p-8">{t("customers.detail.notFound")}</div>;
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6">
+    <PageContainer className="max-w-5xl">
       <div className="flex items-center gap-4">
         <Link href="/customers" className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5 rtl:rotate-180" />
         </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight truncate">
             {customer.firstName} {customer.lastName}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Customer since {customer.createdAt ? fmt(customer.createdAt, "MMMM yyyy") : "Unknown"}
+            {t("customers.detail.since", { date: customer.createdAt ? fmt(customer.createdAt, "MMMM yyyy") : t("customers.detail.unknown") })}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={openEdit} data-testid="btn-edit-customer">
-          <Pencil className="w-4 h-4 mr-2" />
-          Edit
+        <Button variant="outline" size="sm" onClick={openEdit} data-testid="btn-edit-customer" className="gap-2 flex-shrink-0">
+          <Pencil className="w-4 h-4" />
+          {t("action.edit")}
         </Button>
       </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Customer</DialogTitle>
+            <DialogTitle>{t("customers.detail.editTitle")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label>First Name</Label>
+                <Label>{t("customers.field.firstName")}</Label>
                 <Input value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} />
               </div>
               <div className="grid gap-1.5">
-                <Label>Last Name</Label>
+                <Label>{t("customers.field.lastName")}</Label>
                 <Input value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} />
               </div>
             </div>
             <div className="grid gap-1.5">
-              <Label>Email</Label>
+              <Label>{t("common.email")}</Label>
               <Input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
             </div>
             <div className="grid gap-1.5">
-              <Label>Phone</Label>
+              <Label>{t("common.phone")}</Label>
               <Input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} />
             </div>
             <div className="grid gap-1.5">
-              <Label>Segment</Label>
-              <Input value={form.segment} onChange={e => setForm(p => ({ ...p, segment: e.target.value }))} placeholder="e.g. VIP, Wholesale" />
+              <Label>{t("customers.field.segment")}</Label>
+              <Input value={form.segment} onChange={e => setForm(p => ({ ...p, segment: e.target.value }))} placeholder={t("customers.field.segmentPlaceholder")} />
             </div>
             <div className="grid gap-1.5">
-              <Label>Company</Label>
+              <Label>{t("customers.field.company")}</Label>
               <Input value={form.company} onChange={e => setForm(p => ({ ...p, company: e.target.value }))} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={updateCustomer.isPending}>Cancel</Button>
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={updateCustomer.isPending}>{t("action.cancel")}</Button>
             <Button onClick={handleSave} disabled={updateCustomer.isPending}>
-              {updateCustomer.isPending ? "Saving…" : "Save Changes"}
+              {updateCustomer.isPending ? t("action.saving") : t("action.saveChanges")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -144,7 +147,7 @@ export default function CustomerDetail() {
         <div className="md:col-span-1 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Overview</CardTitle>
+              <CardTitle>{t("customers.detail.overview")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-3">
@@ -153,7 +156,7 @@ export default function CustomerDetail() {
                 </div>
                 <div>
                   <div className="font-medium">{customer.firstName} {customer.lastName}</div>
-                  <div className="text-sm text-muted-foreground">{customer.ordersCount ?? 0} orders</div>
+                  <div className="text-sm text-muted-foreground">{t("customers.ordersLabel", { n: customer.ordersCount ?? 0 })}</div>
                 </div>
               </div>
               
@@ -163,7 +166,7 @@ export default function CustomerDetail() {
                   <div className="text-sm">
                     <div>{customer.email}</div>
                     {customer.acceptsMarketing && (
-                      <Badge variant="secondary" className="mt-1 font-normal text-xs">Subscribed</Badge>
+                      <Badge variant="secondary" className="mt-1 font-normal text-xs">{t("customers.detail.subscribed")}</Badge>
                     )}
                   </div>
                 </div>
@@ -193,18 +196,18 @@ export default function CustomerDetail() {
           
           <Card>
             <CardHeader>
-              <CardTitle>Tags & Segments</CardTitle>
+              <CardTitle>{t("customers.detail.tagsSegments")}</CardTitle>
             </CardHeader>
             <CardContent>
               {customer.segment && (
                 <div className="mb-4">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Segment</span>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("customers.field.segment")}</span>
                   <Badge variant="outline">{customer.segment}</Badge>
                 </div>
               )}
               
               <div>
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Tags</span>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("customers.detail.tags")}</span>
                 {customer.tags && customer.tags.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {customer.tags.map(tag => (
@@ -212,7 +215,7 @@ export default function CustomerDetail() {
                     ))}
                   </div>
                 ) : (
-                  <span className="text-sm text-muted-foreground">No tags</span>
+                  <span className="text-sm text-muted-foreground">{t("customers.detail.noTags")}</span>
                 )}
               </div>
             </CardContent>
@@ -223,18 +226,18 @@ export default function CustomerDetail() {
           <div className="grid grid-cols-2 gap-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardDescription>Total Spent</CardDescription>
+                <CardDescription>{t("customers.detail.totalSpent")}</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{(customer.totalSpent ?? 0).toLocaleString("en-US")} IQD</div>
+                <div className="text-2xl font-bold tracking-tight tabular-nums">{formatIQD(customer.totalSpent ?? 0)}</div>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardDescription>Orders</CardDescription>
+                <CardDescription>{t("customers.detail.orders")}</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{customer.ordersCount ?? 0}</div>
+                <div className="text-2xl font-bold tracking-tight tabular-nums">{customer.ordersCount ?? 0}</div>
               </CardContent>
             </Card>
           </div>
@@ -243,54 +246,56 @@ export default function CustomerDetail() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5" />
-                Order History
+                {t("customers.detail.orderHistory")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {/* @ts-ignore - The detail endpoint includes orders but it might not be in the typings fully based on API usage */}
               {customer.orders && customer.orders.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Order</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {/* @ts-ignore */}
-                    {customer.orders.map((order: any) => (
-                      <TableRow key={order.id}>
-                        <TableCell>
-                          <Link href={`/orders/${order.id}`} className="font-medium hover:underline text-primary">
-                            {order.orderNumber}
-                          </Link>
-                        </TableCell>
-                        <TableCell>
-                          {order.createdAt ? fmt(order.createdAt, "MMM d, yyyy") : "-"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={order.financialStatus === "paid" ? "default" : "secondary"}>
-                            {order.financialStatus}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {(order.total ?? 0).toLocaleString("en-US")} IQD
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("customers.detail.order")}</TableHead>
+                        <TableHead>{t("common.date")}</TableHead>
+                        <TableHead>{t("common.status")}</TableHead>
+                        <TableHead className="text-end">{t("common.total")}</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {/* @ts-ignore */}
+                      {customer.orders.map((order: any) => (
+                        <TableRow key={order.id}>
+                          <TableCell>
+                            <Link href={`/orders/${order.id}`} className="font-medium hover:underline text-primary">
+                              {order.orderNumber}
+                            </Link>
+                          </TableCell>
+                          <TableCell>
+                            {order.createdAt ? fmt(order.createdAt, "MMM d, yyyy") : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={order.financialStatus === "paid" ? "default" : "secondary"}>
+                              {order.financialStatus === "paid" ? t("status.paid") : t("status.pending")}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-end font-medium tabular-nums">
+                            {formatIQD(order.total ?? 0)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground border rounded-md">
-                  This customer hasn't placed any orders yet.
+                  {t("customers.detail.noOrders")}
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }

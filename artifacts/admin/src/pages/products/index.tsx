@@ -11,8 +11,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Plus, PackageOpen } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
+import { PageContainer, PageHeader } from "@/components/ui/page-primitives";
+import { formatIQD } from "@/lib/format";
+import { useT } from "@/i18n/LanguageContext";
 
 export default function Products() {
+  const { t } = useT();
   const [, navigate] = useLocation();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("all");
@@ -28,25 +32,32 @@ export default function Products() {
 
   const products = response?.data ?? [];
 
+  const statusLabel = (s: string) => {
+    if (s === "active") return t("products.status.active");
+    if (s === "draft") return t("products.status.draft");
+    if (s === "archived") return t("products.status.archived");
+    return s;
+  };
+
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Products</h1>
-          <p className="text-muted-foreground mt-1">Manage your product catalog and inventory.</p>
-        </div>
-        <Button data-testid="btn-add-product" onClick={() => navigate("/products/new")}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Product
-        </Button>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title={t("products.title")}
+        subtitle={t("products.subtitle")}
+        actions={
+          <Button data-testid="btn-add-product" onClick={() => navigate("/products/new")}>
+            <Plus className="w-4 h-4 me-2" />
+            {t("products.add")}
+          </Button>
+        }
+      />
 
       <div className="flex flex-col sm:flex-row gap-3 items-center bg-card p-4 rounded-lg border">
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search products..."
-            className="pl-9 w-full"
+            placeholder={t("products.search.placeholder")}
+            className="ps-9 w-full"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -54,24 +65,24 @@ export default function Products() {
         <div className="flex gap-3 w-full sm:w-auto">
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger className="w-full sm:w-[140px]">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t("common.status")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
+              <SelectItem value="all">{t("products.filter.allStatus")}</SelectItem>
+              <SelectItem value="active">{t("products.status.active")}</SelectItem>
+              <SelectItem value="draft">{t("products.status.draft")}</SelectItem>
+              <SelectItem value="archived">{t("products.status.archived")}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger className="w-full sm:w-[140px]">
-              <SelectValue placeholder="Category" />
+              <SelectValue placeholder={t("products.category")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="clothing">Clothing</SelectItem>
-              <SelectItem value="accessories">Accessories</SelectItem>
-              <SelectItem value="shoes">Shoes</SelectItem>
+              <SelectItem value="all">{t("products.filter.allCategories")}</SelectItem>
+              <SelectItem value="clothing">{t("products.category.clothing")}</SelectItem>
+              <SelectItem value="accessories">{t("products.category.accessories")}</SelectItem>
+              <SelectItem value="shoes">{t("products.category.shoes")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -82,25 +93,25 @@ export default function Products() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[72px]">Image</TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Inventory</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Price</TableHead>
+              <TableHead className="w-[72px]">{t("products.col.image")}</TableHead>
+              <TableHead>{t("products.col.product")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
+              <TableHead>{t("products.col.inventory")}</TableHead>
+              <TableHead>{t("products.category")}</TableHead>
+              <TableHead className="text-end">{t("common.price")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">Loading...</TableCell>
+                <TableCell colSpan={6} className="h-24 text-center">{t("common.loading")}</TableCell>
               </TableRow>
             ) : products.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="h-48 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <PackageOpen className="h-8 w-8 mb-2 opacity-50" />
-                    <p>No products found.</p>
+                    <p>{t("products.empty")}</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -118,23 +129,23 @@ export default function Products() {
                   </TableCell>
                   <TableCell className="font-medium">
                     <Link href={`/products/${product.id}`} className="absolute inset-0">
-                      <span className="sr-only">View {product.title}</span>
+                      <span className="sr-only">{t("products.viewProduct", { title: product.title })}</span>
                     </Link>
                     {product.title}
                   </TableCell>
                   <TableCell>
                     <Badge variant={product.status === "active" ? "default" : "secondary"}>
-                      {product.status}
+                      {statusLabel(product.status)}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <span className={product.totalInventory === 0 ? "text-destructive font-medium" : ""}>
-                      {product.totalInventory ?? 0} in stock
+                      {t("products.inStock", { n: product.totalInventory ?? 0 })}
                     </span>
-                    <div className="text-xs text-muted-foreground">{product.variantsCount} variants</div>
+                    <div className="text-xs text-muted-foreground">{t("products.variantsCount", { n: product.variantsCount })}</div>
                   </TableCell>
                   <TableCell className="capitalize">{product.category}</TableCell>
-                  <TableCell className="text-right font-medium">{product.price.toLocaleString("en-US")} IQD</TableCell>
+                  <TableCell className="text-end font-medium tabular-nums">{formatIQD(product.price)}</TableCell>
                 </TableRow>
               ))
             )}
@@ -145,11 +156,11 @@ export default function Products() {
       {/* Mobile card list */}
       <div className="md:hidden space-y-3">
         {isLoading ? (
-          <p className="text-center text-muted-foreground py-8">Loading...</p>
+          <p className="text-center text-muted-foreground py-8">{t("common.loading")}</p>
         ) : products.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <PackageOpen className="h-10 w-10 mx-auto mb-3 opacity-40" />
-            <p>No products found.</p>
+            <p>{t("products.empty")}</p>
           </div>
         ) : (
           products.map((product) => (
@@ -168,10 +179,10 @@ export default function Products() {
                       <p className="font-medium truncate">{product.title}</p>
                       <p className="text-sm text-muted-foreground capitalize">{product.category}</p>
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="font-semibold">{product.price.toLocaleString("en-US")} IQD</p>
+                    <div className="text-end flex-shrink-0">
+                      <p className="font-semibold tabular-nums">{formatIQD(product.price)}</p>
                       <Badge variant={product.status === "active" ? "default" : "secondary"} className="text-xs">
-                        {product.status}
+                        {statusLabel(product.status)}
                       </Badge>
                     </div>
                   </div>
@@ -181,6 +192,6 @@ export default function Products() {
           ))
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 }

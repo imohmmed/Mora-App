@@ -1,21 +1,23 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
+import { FileQuestion } from "lucide-react";
+import { useT } from "@/i18n/LanguageContext";
 
 export default function NotFound() {
+  const { t } = useT();
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
-          </div>
-
-          <p className="mt-4 text-sm text-gray-600">
-            Did you forget to add the page to the router?
-          </p>
-        </CardContent>
-      </Card>
+    <div className="min-h-[70vh] w-full flex items-center justify-center p-6">
+      <div className="flex flex-col items-center text-center max-w-md">
+        <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-5">
+          <FileQuestion className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <h1 className="text-3xl font-bold tracking-tight">404</h1>
+        <h2 className="text-lg font-semibold mt-1">{t("notFound.title")}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{t("notFound.desc")}</p>
+        <Button asChild className="mt-6">
+          <Link href="/">{t("notFound.back")}</Link>
+        </Button>
+      </div>
     </div>
   );
 }

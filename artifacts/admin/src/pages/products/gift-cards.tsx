@@ -1,38 +1,36 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Gift } from "lucide-react";
+import { PageContainer, PageHeader, SectionCard, EmptyState } from "@/components/ui/page-primitives";
+import { useT } from "@/i18n/LanguageContext";
 
 export default function GiftCards() {
+  const { t } = useT();
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gift Cards</h1>
-          <p className="text-muted-foreground mt-1">
-            Create and manage gift cards for your store.
-          </p>
-        </div>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Issue Gift Card
-        </Button>
-      </div>
-
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center justify-center py-20 text-center gap-3">
-          <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center">
-            <Gift className="h-7 w-7 text-muted-foreground" />
-          </div>
-          <h3 className="font-semibold text-lg">No gift cards issued</h3>
-          <p className="text-muted-foreground max-w-sm text-sm">
-            Gift cards let your customers give the gift of shopping. Issue gift cards manually or let customers purchase them from your store.
-          </p>
-          <Button className="mt-2">
-            <Plus className="w-4 h-4 mr-2" />
-            Issue Gift Card
+    <PageContainer>
+      <PageHeader
+        title={t("products.giftCards.title")}
+        subtitle={t("products.giftCards.subtitle")}
+        actions={
+          <Button>
+            <Plus className="w-4 h-4 me-2" />
+            {t("products.giftCards.issue")}
           </Button>
-        </CardContent>
-      </Card>
-    </div>
+        }
+      />
+
+      <SectionCard className="border-dashed" bodyClassName="p-0">
+        <EmptyState
+          icon={Gift}
+          title={t("products.giftCards.emptyTitle")}
+          description={t("products.giftCards.emptyDesc")}
+          action={
+            <Button>
+              <Plus className="w-4 h-4 me-2" />
+              {t("products.giftCards.issue")}
+            </Button>
+          }
+        />
+      </SectionCard>
+    </PageContainer>
   );
 }

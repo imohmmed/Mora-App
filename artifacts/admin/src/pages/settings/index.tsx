@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
 import { useAdminGetSettings, useAdminUpdateSettings } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageContainer, PageHeader, SectionCard } from "@/components/ui/page-primitives";
 import { useToast } from "@/hooks/use-toast";
 import { Settings as SettingsIcon, Users as UsersIcon } from "lucide-react";
 import { useAdminAuth } from "@/context/AdminAuthContext";
+import { useT } from "@/i18n/LanguageContext";
 import { TeamTab } from "./TeamTab";
 
 type SettingsForm = {
@@ -29,6 +30,7 @@ type ExtendedSettings = {
 };
 
 export default function Settings() {
+  const { t } = useT();
   const { isOwner } = useAdminAuth();
   const { data: response, isLoading } = useAdminGetSettings();
   const updateSettings = useAdminUpdateSettings();
@@ -62,51 +64,48 @@ export default function Settings() {
       { data: formData },
       {
         onSuccess: () => {
-          toast({ title: "تم الحفظ", description: "تم تحديث إعدادات المتجر." });
+          toast({ title: t("toast.saved"), description: t("settings.toast.saved.desc") });
           queryClient.invalidateQueries({ queryKey: ["/api/admin/settings"] });
         },
         onError: () => {
-          toast({ title: "خطأ", description: "فشل حفظ الإعدادات.", variant: "destructive" });
+          toast({ title: t("toast.error"), description: t("settings.toast.error.desc"), variant: "destructive" });
         },
       }
     );
   };
 
   if (isLoading) {
-    return <div className="p-6 md:p-8">جاري التحميل...</div>;
+    return (
+      <PageContainer className="max-w-3xl">
+        <p className="text-muted-foreground">{t("common.loading")}</p>
+      </PageContainer>
+    );
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">الإعدادات</h1>
-        <p className="text-muted-foreground mt-1">إدارة إعدادات المتجر.</p>
-      </div>
+    <PageContainer className="max-w-3xl">
+      <PageHeader title={t("nav.settings")} subtitle={t("settings.subtitle")} />
 
       <Tabs defaultValue="general">
         <TabsList className="mb-6">
           <TabsTrigger value="general" className="gap-2">
             <SettingsIcon className="w-4 h-4" />
-            عام
+            {t("settings.tab.general")}
           </TabsTrigger>
           {isOwner && (
             <TabsTrigger value="team" className="gap-2">
               <UsersIcon className="w-4 h-4" />
-              الفريق
+              {t("settings.tab.team")}
             </TabsTrigger>
           )}
         </TabsList>
 
         {/* GENERAL */}
         <TabsContent value="general" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>بيانات المتجر</CardTitle>
-              <CardDescription>المعلومات الأساسية وبيانات التواصل.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
+          <SectionCard title={t("settings.storeInfo.title")} description={t("settings.storeInfo.desc")}>
+            <div className="space-y-6">
               <div className="grid gap-2">
-                <Label htmlFor="storeName">اسم المتجر</Label>
+                <Label htmlFor="storeName">{t("settings.field.storeName")}</Label>
                 <Input
                   id="storeName"
                   value={formData.storeName}
@@ -115,7 +114,7 @@ export default function Settings() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="grid gap-2">
-                  <Label htmlFor="storeEmail">البريد الإلكتروني</Label>
+                  <Label htmlFor="storeEmail">{t("common.email")}</Label>
                   <Input
                     id="storeEmail"
                     type="email"
@@ -124,7 +123,7 @@ export default function Settings() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="storePhone">رقم الهاتف</Label>
+                  <Label htmlFor="storePhone">{t("common.phone")}</Label>
                   <Input
                     id="storePhone"
                     value={formData.storePhone}
@@ -132,43 +131,37 @@ export default function Settings() {
                   />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </SectionCard>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>الإقليم</CardTitle>
-              <CardDescription>العملة والمنطقة الزمنية للمتجر.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="grid gap-2">
-                  <Label>العملة</Label>
-                  <Select value={formData.currency} onValueChange={(v) => setFormData((p) => ({ ...p, currency: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="IQD">IQD — الدينار العراقي</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label>المنطقة الزمنية</Label>
-                  <Select value={formData.timezone} onValueChange={(v) => setFormData((p) => ({ ...p, timezone: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Asia/Baghdad">Asia/Baghdad (توقيت العراق)</SelectItem>
-                      <SelectItem value="Asia/Dubai">Asia/Dubai (GST+4)</SelectItem>
-                      <SelectItem value="UTC">UTC</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          <SectionCard title={t("settings.region.title")} description={t("settings.region.desc")}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid gap-2">
+                <Label>{t("settings.field.currency")}</Label>
+                <Select value={formData.currency} onValueChange={(v) => setFormData((p) => ({ ...p, currency: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="IQD">{t("settings.currency.iqd")}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
-          </Card>
+              <div className="grid gap-2">
+                <Label>{t("settings.field.timezone")}</Label>
+                <Select value={formData.timezone} onValueChange={(v) => setFormData((p) => ({ ...p, timezone: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Asia/Baghdad">{t("settings.tz.baghdad")}</SelectItem>
+                    <SelectItem value="Asia/Dubai">{t("settings.tz.dubai")}</SelectItem>
+                    <SelectItem value="UTC">{t("settings.tz.utc")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </SectionCard>
 
           <div className="flex justify-end">
             <Button onClick={handleSave} disabled={updateSettings.isPending} data-testid="btn-save-settings">
-              {updateSettings.isPending ? "جاري الحفظ..." : "حفظ التغييرات"}
+              {updateSettings.isPending ? t("action.saving") : t("action.saveChanges")}
             </Button>
           </div>
         </TabsContent>
@@ -180,6 +173,6 @@ export default function Settings() {
           </TabsContent>
         )}
       </Tabs>
-    </div>
+    </PageContainer>
   );
 }

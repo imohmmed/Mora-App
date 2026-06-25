@@ -21,6 +21,8 @@ import { FileText, List as ListIcon, Plus, Boxes, File, ChevronRight, HardDrive,
 import { format } from "date-fns";
 import { useSearch, useLocation } from "wouter";
 import { useState, useRef } from "react";
+import { PageContainer, PageHeader, EmptyState } from "@/components/ui/page-primitives";
+import { useT } from "@/i18n/LanguageContext";
 
 const adminToken = () => { try { return localStorage.getItem("mora_admin_token") || ""; } catch { return ""; } };
 const AUTH_HEADER = () => ({ Authorization: `Bearer ${adminToken()}`, "Content-Type": "application/json" });
@@ -73,6 +75,7 @@ function formatBytes(bytes: number) {
 function BannerForm({
   open, initial, onClose, onSaved,
 }: { open: boolean; initial?: Banner | null; onClose: () => void; onSaved: () => void }) {
+  const { t } = useT();
   const isEdit = !!initial;
   const [form, setForm] = useState<typeof EMPTY_BANNER>(initial
     ? { title: initial.title, subtitle: initial.subtitle, imageUrl: initial.imageUrl, bgColor: initial.bgColor, linkUrl: initial.linkUrl, hasButton: initial.hasButton, buttonText: initial.buttonText, buttonAlign: initial.buttonAlign, status: initial.status }
@@ -83,14 +86,14 @@ function BannerForm({
   const set = (k: keyof typeof EMPTY_BANNER, v: unknown) => setForm(p => ({ ...p, [k]: v }));
 
   const handleSave = async () => {
-    if (!form.title.trim()) { setError("Title is required"); return; }
+    if (!form.title.trim()) { setError(t("content.err.titleRequired")); return; }
     setSaving(true);
     setError("");
     try {
       const url = isEdit ? `/api/admin/banners/${initial!.id}` : "/api/admin/banners";
       const method = isEdit ? "PUT" : "POST";
       const res = await fetch(url, { method, headers: AUTH_HEADER(), body: JSON.stringify(form) });
-      if (!res.ok) throw new Error("Failed to save");
+      if (!res.ok) throw new Error(t("content.err.saveFailed"));
       onSaved();
       onClose();
     } catch (e) {
@@ -104,21 +107,21 @@ function BannerForm({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Banner" : "New Banner"}</DialogTitle>
+          <DialogTitle>{isEdit ? t("content.banners.editTitle") : t("content.banners.newTitle")}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="grid gap-1.5">
-            <Label>Title *</Label>
-            <Input value={form.title} onChange={e => set("title", e.target.value)} placeholder="New Season Arrived" />
-            <p className="text-xs text-muted-foreground">Use \n for a line break</p>
+            <Label>{t("content.banners.f.title")} *</Label>
+            <Input value={form.title} onChange={e => set("title", e.target.value)} placeholder={t("content.banners.titlePh")} />
+            <p className="text-xs text-muted-foreground">{t("content.banners.titleHint")}</p>
           </div>
           <div className="grid gap-1.5">
-            <Label>Subtitle</Label>
-            <Input value={form.subtitle} onChange={e => set("subtitle", e.target.value)} placeholder="Up to 40% off selected styles" />
+            <Label>{t("content.banners.f.subtitle")}</Label>
+            <Input value={form.subtitle} onChange={e => set("subtitle", e.target.value)} placeholder={t("content.banners.subtitlePh")} />
           </div>
           <div className="grid gap-1.5">
-            <Label>Image URL</Label>
+            <Label>{t("content.banners.f.imageUrl")}</Label>
             <Input value={form.imageUrl} onChange={e => set("imageUrl", e.target.value)} placeholder="https://images.unsplash.com/..." />
             {form.imageUrl && (
               <div className="relative h-28 rounded-md overflow-hidden border bg-muted">
@@ -127,14 +130,14 @@ function BannerForm({
             )}
           </div>
           <div className="grid gap-1.5">
-            <Label>Background Color</Label>
+            <Label>{t("content.banners.f.bgColor")}</Label>
             <div className="flex items-center gap-2">
               <input type="color" value={form.bgColor} onChange={e => set("bgColor", e.target.value)} className="w-10 h-10 rounded cursor-pointer border" />
               <Input value={form.bgColor} onChange={e => set("bgColor", e.target.value)} className="font-mono" />
             </div>
           </div>
           <div className="grid gap-1.5">
-            <Label>Link URL</Label>
+            <Label>{t("content.banners.f.linkUrl")}</Label>
             <Input value={form.linkUrl} onChange={e => set("linkUrl", e.target.value)} placeholder="/products?category=women" />
           </div>
 
@@ -144,26 +147,26 @@ function BannerForm({
               onCheckedChange={v => set("hasButton", v)}
               id="has-button"
             />
-            <Label htmlFor="has-button">Show Button</Label>
+            <Label htmlFor="has-button">{t("content.banners.showButton")}</Label>
             {!form.hasButton && (
-              <span className="text-xs text-muted-foreground ml-1">(click anywhere links)</span>
+              <span className="text-xs text-muted-foreground ms-1">{t("content.banners.clickAnywhereHint")}</span>
             )}
           </div>
 
           {form.hasButton && (
             <>
               <div className="grid gap-1.5">
-                <Label>Button Text</Label>
-                <Input value={form.buttonText} onChange={e => set("buttonText", e.target.value)} placeholder="SHOP NOW" />
+                <Label>{t("content.banners.f.buttonText")}</Label>
+                <Input value={form.buttonText} onChange={e => set("buttonText", e.target.value)} placeholder={t("content.banners.buttonTextPh")} />
               </div>
               <div className="grid gap-1.5">
-                <Label>Button Alignment</Label>
+                <Label>{t("content.banners.f.buttonAlign")}</Label>
                 <Select value={form.buttonAlign} onValueChange={v => set("buttonAlign", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="left">Left</SelectItem>
-                    <SelectItem value="center">Center</SelectItem>
-                    <SelectItem value="right">Right</SelectItem>
+                    <SelectItem value="left">{t("content.align.left")}</SelectItem>
+                    <SelectItem value="center">{t("content.align.center")}</SelectItem>
+                    <SelectItem value="right">{t("content.align.right")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -171,12 +174,12 @@ function BannerForm({
           )}
 
           <div className="grid gap-1.5">
-            <Label>Status</Label>
+            <Label>{t("common.status")}</Label>
             <Select value={form.status} onValueChange={v => set("status", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="active">{t("common.active")}</SelectItem>
+                <SelectItem value="inactive">{t("common.inactive")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -187,9 +190,9 @@ function BannerForm({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button variant="outline" onClick={onClose} disabled={saving}>{t("action.cancel")}</Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Saving…" : isEdit ? "Save Changes" : "Create Banner"}
+            {saving ? t("action.saving") : isEdit ? t("action.saveChanges") : t("content.banners.createBtn")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -198,6 +201,7 @@ function BannerForm({
 }
 
 function BannersTab() {
+  const { t } = useT();
   const qc = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Banner | null>(null);
@@ -212,6 +216,9 @@ function BannersTab() {
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["/api/admin/banners"] });
 
+  const alignLabel = (a: string) =>
+    a === "left" ? t("content.align.left") : a === "center" ? t("content.align.center") : t("content.align.right");
+
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     try {
@@ -224,13 +231,13 @@ function BannersTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          Hero banners shown in the mobile app and store front.
+          {t("content.banners.desc")}
         </p>
         <Button data-testid="btn-add-banner" onClick={() => { setEditing(null); setFormOpen(true); }}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Banner
+          <Plus className="w-4 h-4 me-2" />
+          {t("content.banners.add")}
         </Button>
       </div>
 
@@ -238,10 +245,7 @@ function BannersTab() {
         <div className="space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
       ) : banners.length === 0 ? (
         <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-            <ImageIcon className="h-8 w-8 text-muted-foreground opacity-50" />
-            <p className="text-muted-foreground text-sm">No banners yet. Add one to get started.</p>
-          </CardContent>
+          <EmptyState icon={ImageIcon} title={t("content.banners.empty")} />
         </Card>
       ) : (
         <div className="space-y-3">
@@ -260,26 +264,26 @@ function BannersTab() {
                       {banner.title.replace(/\\n/g, "\n")}
                     </span>
                   </div>
-                  <div className="flex-1 px-4 py-3 flex flex-col justify-center gap-1">
+                  <div className="flex-1 px-4 py-3 flex flex-col justify-center gap-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-sm">{banner.title.replace(/\\n/g, " ")}</p>
                       <Badge variant={banner.status === "active" ? "default" : "secondary"} className="text-xs">
-                        {banner.status}
+                        {banner.status === "active" ? t("common.active") : t("common.inactive")}
                       </Badge>
                     </div>
                     {banner.subtitle && (
                       <p className="text-xs text-muted-foreground">{banner.subtitle}</p>
                     )}
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
                       {banner.hasButton
-                        ? <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400" />Button: {banner.buttonText} ({banner.buttonAlign})</span>
-                        : <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400" />Click-anywhere link</span>
+                        ? <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400" />{t("content.banners.buttonInfo", { text: banner.buttonText, align: alignLabel(banner.buttonAlign) })}</span>
+                        : <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400" />{t("content.banners.clickAnywhere")}</span>
                       }
                       {banner.linkUrl && <span className="truncate max-w-32 font-mono opacity-70">{banner.linkUrl}</span>}
                       <span>#{banner.sortOrder + 1}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 pr-3">
+                  <div className="flex items-center gap-1 pe-3">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -327,6 +331,7 @@ type Collection = { id: string; title: string };
 function StoryItemForm({
   open, rowId, initial, rows, onClose, onSaved,
 }: { open: boolean; rowId: string; initial?: StoryItem | null; rows: StoryRow[]; onClose: () => void; onSaved: () => void }) {
+  const { t } = useT();
   const isEdit = !!initial;
   const [form, setForm] = useState({
     ...EMPTY_STORY_ITEM, rowId,
@@ -352,7 +357,7 @@ function StoryItemForm({
       fd.append("image", file);
       const res = await fetch("/api/admin/uploads", { method: "POST", headers: { Authorization: AUTH_HEADER().Authorization }, body: fd });
       const json = await res.json();
-      if (!res.ok || !json.data?.url) throw new Error(json.error ?? "Upload failed");
+      if (!res.ok || !json.data?.url) throw new Error(json.error ?? t("content.err.uploadFailed"));
       set("imageUrl", json.data.url);
     } catch (e) { setErr((e as Error).message); }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
@@ -366,7 +371,7 @@ function StoryItemForm({
   const collections = collectionsRes?.data ?? [];
 
   const handleSave = async () => {
-    if (!form.title.trim()) { setErr("Title is required"); return; }
+    if (!form.title.trim()) { setErr(t("content.err.titleRequired")); return; }
     setSaving(true); setErr("");
     try {
       const url  = isEdit ? `/api/admin/story-items/${initial!.id}` : "/api/admin/story-items";
@@ -377,7 +382,7 @@ function StoryItemForm({
         collectionId: form.collectionId || null,
       };
       const res  = await fetch(url, { method: isEdit ? "PUT" : "POST", headers: AUTH_HEADER(), body: JSON.stringify(body) });
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) throw new Error(t("content.err.saveFailed"));
       onSaved(); onClose();
     } catch (e) { setErr((e as Error).message); }
     finally { setSaving(false); }
@@ -386,23 +391,23 @@ function StoryItemForm({
   return (
     <Dialog open={open} onOpenChange={o => !o && onClose()}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>{isEdit ? "Edit Item" : "Add Story Item"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{isEdit ? t("content.stories.item.editTitle") : t("content.stories.item.newTitle")}</DialogTitle></DialogHeader>
         <div className="space-y-4 py-2">
           <div className="grid gap-1.5">
-            <Label>Row</Label>
+            <Label>{t("content.stories.f.row")}</Label>
             <Select value={form.rowId} onValueChange={v => set("rowId", v)}>
-              <SelectTrigger><SelectValue placeholder="Select row" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t("content.stories.selectRow")} /></SelectTrigger>
               <SelectContent>
-                {rows.map(r => <SelectItem key={r.id} value={r.id}>{r.title || `Row ${r.sortOrder + 1}`}</SelectItem>)}
+                {rows.map(r => <SelectItem key={r.id} value={r.id}>{r.title || t("content.stories.rowN", { n: r.sortOrder + 1 })}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-1.5">
-            <Label>Title *</Label>
-            <Input value={form.title} onChange={e => set("title", e.target.value)} placeholder="Tops, T-shirts…" />
+            <Label>{t("content.stories.f.title")} *</Label>
+            <Input value={form.title} onChange={e => set("title", e.target.value)} placeholder={t("content.stories.titlePh")} />
           </div>
           <div className="grid gap-1.5">
-            <Label>صورة الستوري</Label>
+            <Label>{t("content.stories.f.image")}</Label>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageFile} />
             <div className="flex items-center gap-3">
               {form.imageUrl ? (
@@ -418,57 +423,57 @@ function StoryItemForm({
                 </div>
               )}
               <Button type="button" variant="outline" className="flex-1" onClick={() => fileRef.current?.click()} disabled={uploading}>
-                {uploading ? "جاري الرفع…" : form.imageUrl ? "تغيير الصورة" : "رفع صورة"}
+                {uploading ? t("content.stories.uploading") : form.imageUrl ? t("content.stories.changeImage") : t("content.stories.uploadImage")}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">يمكنك اختيار صورة من الملفات أو الكاميرا</p>
+            <p className="text-xs text-muted-foreground">{t("content.stories.imageHint")}</p>
           </div>
           <div className="grid gap-1.5">
-            <Label>Collection <span className="text-muted-foreground font-normal text-xs">(for showing products below row)</span></Label>
+            <Label>{t("content.stories.f.collection")} <span className="text-muted-foreground font-normal text-xs">{t("content.stories.collectionHelp")}</span></Label>
             <Select value={form.collectionId || "__none__"} onValueChange={v => set("collectionId", v === "__none__" ? "" : v)}>
-              <SelectTrigger><SelectValue placeholder="Auto-create from title" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t("content.stories.autoCreate")} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">Auto-create from title</SelectItem>
+                <SelectItem value="__none__">{t("content.stories.autoCreate")}</SelectItem>
                 {collections.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
               </SelectContent>
             </Select>
             {!form.collectionId && !isEdit && form.title.trim() && (
               <p className="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-md">
-                ✦ سيتم إنشاء كولكشن باسم "<strong>{form.title}</strong>" تلقائياً
+                {t("content.stories.willCreatePre")} "<strong>{form.title}</strong>" {t("content.stories.willCreatePost")}
               </p>
             )}
             {form.collectionId && (
               <p className="text-xs text-green-700 bg-green-50 px-3 py-1.5 rounded-md">
-                ✓ مرتبط بكولكشن موجود
+                {t("content.stories.linkedExisting")}
               </p>
             )}
           </div>
           <div className="grid gap-1.5">
-            <Label>Gender <span className="text-muted-foreground font-normal text-xs">(filters products shown below row)</span></Label>
+            <Label>{t("content.stories.f.gender")} <span className="text-muted-foreground font-normal text-xs">{t("content.stories.genderHelp")}</span></Label>
             <Select value={form.gender} onValueChange={v => set("gender", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="women">Women</SelectItem>
-                <SelectItem value="men">Men</SelectItem>
+                <SelectItem value="all">{t("common.all")}</SelectItem>
+                <SelectItem value="women">{t("content.gender.women")}</SelectItem>
+                <SelectItem value="men">{t("content.gender.men")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-1.5">
-            <Label>Status</Label>
+            <Label>{t("common.status")}</Label>
             <Select value={form.status} onValueChange={v => set("status", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="active">{t("common.active")}</SelectItem>
+                <SelectItem value="inactive">{t("common.inactive")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           {err && <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded">{err}</p>}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving}>{saving ? "Saving…" : isEdit ? "Save" : "Add Item"}</Button>
+          <Button variant="outline" onClick={onClose} disabled={saving}>{t("action.cancel")}</Button>
+          <Button onClick={handleSave} disabled={saving}>{saving ? t("action.saving") : isEdit ? t("action.save") : t("content.stories.addItem")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -476,6 +481,7 @@ function StoryItemForm({
 }
 
 function StoriesTab() {
+  const { t } = useT();
   const qc = useQueryClient();
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [addRowOpen, setAddRowOpen] = useState(false);
@@ -495,6 +501,8 @@ function StoriesTab() {
 
   const rows = rowsRes?.data ?? [];
   const refresh = () => qc.invalidateQueries({ queryKey: ["/api/admin/story-rows"] });
+
+  const genderLabel = (g: string) => g === "women" ? t("content.gender.women") : g === "men" ? t("content.gender.men") : t("common.all");
 
   const handleAddRow = async () => {
     if (!newRowTitle.trim()) return;
@@ -529,35 +537,35 @@ function StoriesTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          Manage story rows shown below the banner. Each row is a horizontal scroll of circles.
+          {t("content.stories.desc")}
         </p>
         <Button onClick={() => setAddRowOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Row
+          <Plus className="w-4 h-4 me-2" />
+          {t("content.stories.addRow")}
         </Button>
       </div>
 
       {/* Add Row Dialog */}
       <Dialog open={addRowOpen} onOpenChange={o => !o && setAddRowOpen(false)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>New Story Row</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("content.stories.newRowTitle")}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid gap-1.5">
-              <Label>Row Title</Label>
+              <Label>{t("content.stories.f.rowTitle")}</Label>
               <Input
                 value={newRowTitle}
                 onChange={e => setNewRowTitle(e.target.value)}
-                placeholder="e.g. Shop by Category"
+                placeholder={t("content.stories.rowTitlePh")}
                 onKeyDown={e => e.key === "Enter" && handleAddRow()}
               />
-              <p className="text-xs text-muted-foreground">Optional — shown as a small heading above the row.</p>
+              <p className="text-xs text-muted-foreground">{t("content.stories.rowTitleHint")}</p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddRowOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddRow} disabled={savingRow || !newRowTitle.trim()}>{savingRow ? "Adding…" : "Add Row"}</Button>
+            <Button variant="outline" onClick={() => setAddRowOpen(false)}>{t("action.cancel")}</Button>
+            <Button onClick={handleAddRow} disabled={savingRow || !newRowTitle.trim()}>{savingRow ? t("content.stories.adding") : t("content.stories.addRow")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -578,10 +586,7 @@ function StoriesTab() {
         <div className="space-y-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
       ) : rows.length === 0 ? (
         <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-            <Layers className="h-8 w-8 text-muted-foreground opacity-50" />
-            <p className="text-muted-foreground text-sm">No story rows yet. Add a row to get started.</p>
-          </CardContent>
+          <EmptyState icon={Layers} title={t("content.stories.empty")} />
         </Card>
       ) : (
         <div className="space-y-3">
@@ -603,16 +608,16 @@ function StoriesTab() {
                             onKeyDown={e => { if (e.key === "Enter") handleSaveRowTitle(row.id); if (e.key === "Escape") setEditRowId(null); }}
                             autoFocus
                           />
-                          <Button size="sm" className="h-7 px-2 text-xs" onClick={() => handleSaveRowTitle(row.id)}>Save</Button>
+                          <Button size="sm" className="h-7 px-2 text-xs" onClick={() => handleSaveRowTitle(row.id)}>{t("action.save")}</Button>
                           <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditRowId(null)}><X className="w-3 h-3" /></Button>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm truncate">{row.title || `Row ${rowIdx + 1}`}</span>
+                          <span className="font-medium text-sm truncate">{row.title || t("content.stories.rowN", { n: rowIdx + 1 })}</span>
                           <Badge variant={row.status === "active" ? "default" : "secondary"} className="text-xs cursor-pointer" onClick={() => handleToggleRowStatus(row)}>
-                            {row.status}
+                            {row.status === "active" ? t("common.active") : t("common.inactive")}
                           </Badge>
-                          <span className="text-xs text-muted-foreground">{row.items.length} items</span>
+                          <span className="text-xs text-muted-foreground">{t("content.stories.itemsCount", { n: row.items.length })}</span>
                         </div>
                       )}
                     </div>
@@ -647,15 +652,15 @@ function StoriesTab() {
                   {isExpanded && (
                     <div className="border-t">
                       <div className="flex items-center justify-between px-4 py-2 bg-muted/30">
-                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Items in this row</span>
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("content.stories.itemsInRow")}</span>
                         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setItemFormRowId(row.id); setEditItem(null); setItemFormOpen(true); }}>
-                          <Plus className="w-3 h-3 mr-1" /> Add Item
+                          <Plus className="w-3 h-3 me-1" /> {t("content.stories.addItem")}
                         </Button>
                       </div>
                       {row.items.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2">
                           <ImageIcon className="w-6 h-6 opacity-40" />
-                          <p className="text-sm">No items yet.</p>
+                          <p className="text-sm">{t("content.stories.noItems")}</p>
                         </div>
                       ) : (
                         <div className="divide-y">
@@ -666,12 +671,12 @@ function StoriesTab() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">{item.title}</p>
-                                {item.collectionId && <p className="text-xs text-muted-foreground truncate">🔗 كولكشن</p>}
+                                {item.collectionId && <p className="text-xs text-muted-foreground truncate">{t("content.stories.linkedCollection")}</p>}
                               </div>
                               {item.gender && item.gender !== "all" && (
-                                <Badge variant="outline" className="text-xs flex-shrink-0 capitalize">{item.gender}</Badge>
+                                <Badge variant="outline" className="text-xs flex-shrink-0">{genderLabel(item.gender)}</Badge>
                               )}
-                              <Badge variant={item.status === "active" ? "outline" : "secondary"} className="text-xs flex-shrink-0">{item.status}</Badge>
+                              <Badge variant={item.status === "active" ? "outline" : "secondary"} className="text-xs flex-shrink-0">{item.status === "active" ? t("common.active") : t("common.inactive")}</Badge>
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditItem(item); setItemFormRowId(item.rowId); setItemFormOpen(true); }}><Pencil className="w-3 h-3" /></Button>
                               <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeleteItem(item.id)} disabled={deletingId === item.id}><Trash2 className="w-3 h-3" /></Button>
                             </div>
@@ -691,6 +696,7 @@ function StoriesTab() {
 }
 
 export default function ContentHub() {
+  const { t } = useT();
   const search = useSearch();
   const [, navigate] = useLocation();
   const params = new URLSearchParams(search);
@@ -715,41 +721,38 @@ export default function ContentHub() {
   const menus = menusRes?.data ?? [];
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Content</h1>
-        <p className="text-muted-foreground mt-1">Manage blog posts, banners, menus, custom objects, and files.</p>
-      </div>
+    <PageContainer className="max-w-7xl">
+      <PageHeader title={t("content.title")} subtitle={t("content.subtitle")} />
 
       <Tabs defaultValue={defaultTab}>
         <TabsList className="mb-4 flex-wrap h-auto gap-1">
           <TabsTrigger value="blog" className="gap-2">
             <FileText className="w-4 h-4" />
-            Blog Posts
+            {t("content.tab.blog")}
           </TabsTrigger>
           <TabsTrigger value="banners" className="gap-2" data-testid="tab-banners">
             <ImageIcon className="w-4 h-4" />
-            Banners
+            {t("content.tab.banners")}
           </TabsTrigger>
           <TabsTrigger value="menus" className="gap-2">
             <ListIcon className="w-4 h-4" />
-            Menus
+            {t("content.tab.menus")}
           </TabsTrigger>
           <TabsTrigger value="metaobjects" className="gap-2">
             <Boxes className="w-4 h-4" />
-            Metaobjects
+            {t("content.tab.metaobjects")}
           </TabsTrigger>
           <TabsTrigger value="stories" className="gap-2">
             <Layers className="w-4 h-4" />
-            Stories
+            {t("content.tab.stories")}
           </TabsTrigger>
           <TabsTrigger value="files" className="gap-2">
             <File className="w-4 h-4" />
-            Files
+            {t("content.tab.files")}
           </TabsTrigger>
           <TabsTrigger value="sections" className="gap-2">
             <Settings2 className="w-4 h-4" />
-            Sections
+            {t("content.tab.sections")}
           </TabsTrigger>
         </TabsList>
 
@@ -757,8 +760,8 @@ export default function ContentHub() {
         <TabsContent value="blog" className="space-y-4">
           <div className="flex justify-end">
             <Button data-testid="btn-add-post" onClick={() => navigate("/content/blog/new")}>
-              <Plus className="w-4 h-4 mr-2" />
-              Write Post
+              <Plus className="w-4 h-4 me-2" />
+              {t("content.blog.write")}
             </Button>
           </div>
 
@@ -766,21 +769,21 @@ export default function ContentHub() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Author</TableHead>
-                  <TableHead>Published</TableHead>
+                  <TableHead>{t("content.blog.col.title")}</TableHead>
+                  <TableHead>{t("common.status")}</TableHead>
+                  <TableHead>{t("content.blog.col.author")}</TableHead>
+                  <TableHead>{t("content.blog.col.published")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loadingPosts ? (
-                  <TableRow><TableCell colSpan={4} className="h-24 text-center">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={4} className="h-24 text-center">{t("common.loading")}</TableCell></TableRow>
                 ) : posts.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="h-48 text-center">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <FileText className="h-8 w-8 mb-2 opacity-50" />
-                        <p>No blog posts yet.</p>
+                        <p>{t("content.blog.empty")}</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -788,7 +791,7 @@ export default function ContentHub() {
                   <TableRow key={post.id} className="cursor-pointer">
                     <TableCell className="font-medium">{post.title}</TableCell>
                     <TableCell>
-                      <Badge variant={post.status === "published" ? "default" : "secondary"}>{post.status}</Badge>
+                      <Badge variant={post.status === "published" ? "default" : "secondary"}>{post.status === "published" ? t("common.published") : t("common.draft")}</Badge>
                     </TableCell>
                     <TableCell>{post.author}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
@@ -802,16 +805,16 @@ export default function ContentHub() {
 
           <div className="md:hidden space-y-3">
             {loadingPosts ? (
-              <p className="text-center text-muted-foreground py-8">Loading...</p>
+              <p className="text-center text-muted-foreground py-8">{t("common.loading")}</p>
             ) : posts.map((post) => (
               <Card key={post.id}>
                 <CardContent className="pt-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium">{post.title}</p>
-                    <Badge variant={post.status === "published" ? "default" : "secondary"}>{post.status}</Badge>
+                    <Badge variant={post.status === "published" ? "default" : "secondary"}>{post.status === "published" ? t("common.published") : t("common.draft")}</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {post.author} · {post.publishedAt ? safeFormat(post.publishedAt, "MMM d, yyyy") : "Draft"}
+                    {post.author} · {post.publishedAt ? safeFormat(post.publishedAt, "MMM d, yyyy") : t("common.draft")}
                   </p>
                 </CardContent>
               </Card>
@@ -833,19 +836,16 @@ export default function ContentHub() {
         <TabsContent value="menus" className="space-y-4">
           <div className="flex justify-end">
             <Button data-testid="btn-add-menu" onClick={() => navigate("/content/menus/new")}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Menu
+              <Plus className="w-4 h-4 me-2" />
+              {t("content.menus.create")}
             </Button>
           </div>
           <div className="space-y-3">
             {loadingMenus ? (
-              <p className="text-center text-muted-foreground py-8">Loading...</p>
+              <p className="text-center text-muted-foreground py-8">{t("common.loading")}</p>
             ) : menus.length === 0 ? (
               <Card className="border-dashed">
-                <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
-                  <ListIcon className="h-8 w-8 opacity-50" />
-                  <p>No menus yet.</p>
-                </CardContent>
+                <EmptyState icon={ListIcon} title={t("content.menus.empty")} />
               </Card>
             ) : menus.map((menu) => (
               <Card
@@ -860,12 +860,12 @@ export default function ContentHub() {
                       <p className="text-sm font-mono text-muted-foreground">{menu.handle}</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-muted-foreground">{menu.items?.length ?? 0} links</span>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">{t("content.menus.links", { n: menu.items?.length ?? 0 })}</span>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground rtl:rotate-180" />
                     </div>
                   </div>
                   {menu.items && menu.items.length > 0 && (
-                    <div className="mt-3 pl-3 border-l space-y-1">
+                    <div className="mt-3 ps-3 border-s space-y-1">
                       {(menu.items as { title: string; url: string }[]).slice(0, 3).map((item, i) => (
                         <div key={i} className="text-sm text-muted-foreground flex items-center gap-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 flex-shrink-0" />
@@ -874,7 +874,7 @@ export default function ContentHub() {
                         </div>
                       ))}
                       {menu.items.length > 3 && (
-                        <p className="text-xs text-muted-foreground/60">+{menu.items.length - 3} more</p>
+                        <p className="text-xs text-muted-foreground/60">{t("content.menus.more", { n: menu.items.length - 3 })}</p>
                       )}
                     </div>
                   )}
@@ -886,13 +886,13 @@ export default function ContentHub() {
 
         {/* METAOBJECTS */}
         <TabsContent value="metaobjects" className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              Custom content types like FAQs, size guides, and testimonials.
+              {t("content.meta.desc")}
             </p>
             <Button size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              Create Definition
+              <Plus className="w-4 h-4 me-2" />
+              {t("content.meta.create")}
             </Button>
           </div>
 
@@ -902,19 +902,16 @@ export default function ContentHub() {
             </div>
           ) : metaobjects.length === 0 ? (
             <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-                <Boxes className="h-8 w-8 text-muted-foreground opacity-50" />
-                <p className="text-muted-foreground text-sm">No metaobject definitions yet.</p>
-              </CardContent>
+              <EmptyState icon={Boxes} title={t("content.meta.empty")} />
             </Card>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-x-auto">
               <Table>
                 <thead>
                   <tr className="border-b bg-muted/40">
-                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Type</th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">ID</th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Fields</th>
+                    <th className="text-start px-4 py-3 text-sm font-medium text-muted-foreground">{t("content.meta.col.type")}</th>
+                    <th className="text-start px-4 py-3 text-sm font-medium text-muted-foreground">{t("content.meta.col.id")}</th>
+                    <th className="text-start px-4 py-3 text-sm font-medium text-muted-foreground">{t("content.meta.col.fields")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -944,13 +941,13 @@ export default function ContentHub() {
 
         {/* FILES */}
         <TabsContent value="files" className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              Images, PDFs, and documents used across your store.
+              {t("content.files.desc")}
             </p>
             <Button size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              Upload Files
+              <Plus className="w-4 h-4 me-2" />
+              {t("content.files.upload")}
             </Button>
           </div>
 
@@ -960,20 +957,17 @@ export default function ContentHub() {
             </div>
           ) : files.length === 0 ? (
             <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-                <File className="h-8 w-8 text-muted-foreground opacity-50" />
-                <p className="text-muted-foreground text-sm">No files uploaded yet.</p>
-              </CardContent>
+              <EmptyState icon={File} title={t("content.files.empty")} />
             </Card>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-x-auto">
               <Table>
                 <thead>
                   <tr className="border-b bg-muted/40">
-                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Filename</th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Type</th>
-                    <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">Size</th>
-                    <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">Uploaded</th>
+                    <th className="text-start px-4 py-3 text-sm font-medium text-muted-foreground">{t("content.files.col.filename")}</th>
+                    <th className="text-start px-4 py-3 text-sm font-medium text-muted-foreground">{t("content.files.col.type")}</th>
+                    <th className="text-end px-4 py-3 text-sm font-medium text-muted-foreground">{t("content.files.col.size")}</th>
+                    <th className="text-end px-4 py-3 text-sm font-medium text-muted-foreground">{t("content.files.col.uploaded")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -990,10 +984,10 @@ export default function ContentHub() {
                       <td className="px-4 py-3">
                         <Badge variant="outline" className="text-xs font-mono">{f.mimeType}</Badge>
                       </td>
-                      <td className="px-4 py-3 text-right text-sm text-muted-foreground">
+                      <td className="px-4 py-3 text-end text-sm text-muted-foreground">
                         {formatBytes(f.size)}
                       </td>
-                      <td className="px-4 py-3 text-right text-sm text-muted-foreground">
+                      <td className="px-4 py-3 text-end text-sm text-muted-foreground">
                         {safeFormat(f.createdAt, "MMM d, yyyy")}
                       </td>
                     </tr>
@@ -1008,7 +1002,7 @@ export default function ContentHub() {
           <ContentSectionsTab />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -1018,6 +1012,7 @@ type CSItem = { id: string; name: string; description?: string; text?: string; t
 type CSRow  = { id: string; key: string; title: string; items: CSItem[]; status: string };
 
 function ContentSectionsTab() {
+  const { t } = useT();
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["admin-content-sections"],
@@ -1052,7 +1047,7 @@ function ContentSectionsTab() {
   };
 
   const handleCreate = async () => {
-    if (!newKey.trim()) { setCreateErr("Key is required"); return; }
+    if (!newKey.trim()) { setCreateErr(t("content.sections.keyRequired")); return; }
     setCreating(true);
     setCreateErr("");
     try {
@@ -1063,7 +1058,7 @@ function ContentSectionsTab() {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => null) as { error?: string } | null;
-        throw new Error(j?.error || "Failed to create section");
+        throw new Error(j?.error || t("content.sections.createFailed"));
       }
       await qc.invalidateQueries({ queryKey: ["admin-content-sections"] });
       setNewKey(""); setNewTitle(""); setNewStatus("active");
@@ -1076,7 +1071,7 @@ function ContentSectionsTab() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this section? This cannot be undone.")) return;
+    if (!window.confirm(t("content.sections.confirmDelete"))) return;
     setDeletingId(id);
     try {
       await fetch(`/api/admin/content-sections/${id}`, { method: "DELETE", headers: AUTH_HEADER() });
@@ -1101,17 +1096,17 @@ function ContentSectionsTab() {
   const removeItem = (idx: number) =>
     setEditing(prev => prev ? { ...prev, items: prev.items.filter((_, i) => i !== idx) } : prev);
 
-  if (isLoading) return <div className="py-8 text-center text-muted-foreground">Loading…</div>;
+  if (isLoading) return <div className="py-8 text-center text-muted-foreground">{t("content.sections.loading")}</div>;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          Custom content sections rendered on the store and mobile app.
+          {t("content.sections.desc")}
         </p>
         <Button data-testid="btn-add-section" onClick={() => { setCreateErr(""); setAddOpen(true); }}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Section
+          <Plus className="w-4 h-4 me-2" />
+          {t("content.sections.add")}
         </Button>
       </div>
 
@@ -1123,12 +1118,12 @@ function ContentSectionsTab() {
                 {section.key === "testimonials" ? <Star className="w-5 h-5 text-yellow-500" /> : <Settings2 className="w-5 h-5 text-blue-500" />}
                 <div>
                   <p className="font-semibold">{section.title || section.key}</p>
-                  <p className="text-xs text-muted-foreground font-mono">{section.key} · {section.items.length} items</p>
+                  <p className="text-xs text-muted-foreground font-mono">{section.key} · {t("content.sections.itemsCount", { n: section.items.length })}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="outline" onClick={() => setEditing({ ...section, items: section.items.map(i => ({ ...i })) })}>
-                  <Pencil className="w-3 h-3 mr-1" /> Edit
+                  <Pencil className="w-3 h-3 me-1" /> {t("action.edit")}
                 </Button>
                 <Button
                   size="icon"
@@ -1165,19 +1160,19 @@ function ContentSectionsTab() {
         <Dialog open onOpenChange={() => setEditing(null)}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Edit Section — {editing.key}</DialogTitle>
+              <DialogTitle>{t("content.sections.editTitle", { key: editing.key })}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Section Title</Label>
+                <Label>{t("content.sections.f.title")}</Label>
                 <Input
                   value={editing.title}
                   onChange={e => setEditing(p => p ? { ...p, title: e.target.value } : p)}
-                  placeholder="Section title"
+                  placeholder={t("content.sections.titlePh")}
                 />
               </div>
               <div className="flex items-center gap-3">
-                <Label htmlFor="cs-status">Active</Label>
+                <Label htmlFor="cs-status">{t("content.sections.active")}</Label>
                 <Switch
                   id="cs-status"
                   checked={editing.status === "active"}
@@ -1187,40 +1182,40 @@ function ContentSectionsTab() {
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label>Items</Label>
+                  <Label>{t("content.sections.items")}</Label>
                   <Button size="sm" variant="outline" onClick={addItem}>
-                    <Plus className="w-3 h-3 mr-1" /> Add Item
+                    <Plus className="w-3 h-3 me-1" /> {t("content.sections.addItem")}
                   </Button>
                 </div>
 
                 {editing.items.map((item, idx) => (
                   <div key={item.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-muted-foreground">Item {idx + 1}</span>
+                      <span className="text-sm font-medium text-muted-foreground">{t("content.sections.itemN", { n: idx + 1 })}</span>
                       <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeItem(idx)}>
                         <X className="w-3 h-3" />
                       </Button>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label className="text-xs">Name</Label>
-                        <Input value={item.name} onChange={e => updItem(idx, "name", e.target.value)} placeholder="Name" />
+                        <Label className="text-xs">{t("content.sections.f.name")}</Label>
+                        <Input value={item.name} onChange={e => updItem(idx, "name", e.target.value)} placeholder={t("content.sections.namePh")} />
                       </div>
                       {editing.key === "warranty" && (
                         <div>
-                          <Label className="text-xs">Type</Label>
+                          <Label className="text-xs">{t("content.sections.f.type")}</Label>
                           <Select value={item.type ?? "silver"} onValueChange={v => updItem(idx, "type", v)}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="gold">Gold</SelectItem>
-                              <SelectItem value="silver">Silver</SelectItem>
+                              <SelectItem value="gold">{t("content.sections.type.gold")}</SelectItem>
+                              <SelectItem value="silver">{t("content.sections.type.silver")}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                       )}
                       {editing.key === "testimonials" && (
                         <div>
-                          <Label className="text-xs">Rating (1–5)</Label>
+                          <Label className="text-xs">{t("content.sections.f.rating")}</Label>
                           <Input
                             type="number" min={1} max={5}
                             value={item.rating ?? 5}
@@ -1231,13 +1226,13 @@ function ContentSectionsTab() {
                     </div>
                     {editing.key === "warranty" ? (
                       <div>
-                        <Label className="text-xs">Description</Label>
-                        <Input value={item.description ?? ""} onChange={e => updItem(idx, "description", e.target.value)} placeholder="Warranty description…" />
+                        <Label className="text-xs">{t("content.sections.f.description")}</Label>
+                        <Input value={item.description ?? ""} onChange={e => updItem(idx, "description", e.target.value)} placeholder={t("content.sections.descriptionPh")} />
                       </div>
                     ) : (
                       <div>
-                        <Label className="text-xs">Review Text</Label>
-                        <Input value={item.text ?? ""} onChange={e => updItem(idx, "text", e.target.value)} placeholder="Customer review…" />
+                        <Label className="text-xs">{t("content.sections.f.review")}</Label>
+                        <Input value={item.text ?? ""} onChange={e => updItem(idx, "text", e.target.value)} placeholder={t("content.sections.reviewPh")} />
                       </div>
                     )}
                   </div>
@@ -1245,8 +1240,8 @@ function ContentSectionsTab() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
-              <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save Changes"}</Button>
+              <Button variant="outline" onClick={() => setEditing(null)}>{t("action.cancel")}</Button>
+              <Button onClick={save} disabled={saving}>{saving ? t("action.saving") : t("action.saveChanges")}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1256,30 +1251,30 @@ function ContentSectionsTab() {
       <Dialog open={addOpen} onOpenChange={o => !o && setAddOpen(false)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>New Content Section</DialogTitle>
+            <DialogTitle>{t("content.sections.newTitle")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid gap-1.5">
-              <Label>Key *</Label>
+              <Label>{t("content.sections.f.key")} *</Label>
               <Input
                 value={newKey}
                 onChange={e => setNewKey(e.target.value)}
-                placeholder="e.g. testimonials"
+                placeholder={t("content.sections.keyPh")}
                 className="font-mono"
               />
-              <p className="text-xs text-muted-foreground">Unique identifier used by the store/app to render this section.</p>
+              <p className="text-xs text-muted-foreground">{t("content.sections.keyHint")}</p>
             </div>
             <div className="grid gap-1.5">
-              <Label>Title</Label>
-              <Input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Section title" />
+              <Label>{t("content.menus.f.title")}</Label>
+              <Input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder={t("content.sections.titlePh")} />
             </div>
             <div className="grid gap-1.5">
-              <Label>Status</Label>
+              <Label>{t("common.status")}</Label>
               <Select value={newStatus} onValueChange={setNewStatus}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="active">{t("common.active")}</SelectItem>
+                  <SelectItem value="inactive">{t("common.inactive")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1288,9 +1283,9 @@ function ContentSectionsTab() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)} disabled={creating}>Cancel</Button>
+            <Button variant="outline" onClick={() => setAddOpen(false)} disabled={creating}>{t("action.cancel")}</Button>
             <Button onClick={handleCreate} disabled={creating || !newKey.trim()}>
-              {creating ? "Creating…" : "Create Section"}
+              {creating ? t("content.sections.creating") : t("content.sections.createBtn")}
             </Button>
           </DialogFooter>
         </DialogContent>

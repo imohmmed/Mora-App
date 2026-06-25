@@ -10,8 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Package, Save } from "lucide-react";
+import { PageContainer, PageHeader } from "@/components/ui/page-primitives";
+import { formatIQD } from "@/lib/format";
+import { useT } from "@/i18n/LanguageContext";
 
 export default function Inventory() {
+  const { t } = useT();
   const [editingQty, setEditingQty] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const { toast } = useToast();
@@ -36,7 +40,7 @@ export default function Inventory() {
       { id: variantId, data: { inventory: qty } },
       {
         onSuccess: () => {
-          toast({ title: "Inventory updated" });
+          toast({ title: t("products.toast.inventoryUpdated") });
           setEditingQty((prev) => {
             const next = { ...prev };
             delete next[variantId];
@@ -45,21 +49,21 @@ export default function Inventory() {
           queryClient.invalidateQueries({ queryKey: ["/api/admin/variants"] });
         },
         onError: () =>
-          toast({ title: "Error", description: "Failed to update inventory.", variant: "destructive" }),
+          toast({ title: t("toast.error"), description: t("products.toast.inventoryError"), variant: "destructive" }),
       }
     );
   };
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
-        <p className="text-muted-foreground mt-1">Adjust stock levels for all product variants.</p>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title={t("products.inventory.title")}
+        subtitle={t("products.inventory.subtitle")}
+      />
 
       <div className="flex items-center gap-3">
         <Input
-          placeholder="Search by variant title or SKU..."
+          placeholder={t("products.inventory.search")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
@@ -71,26 +75,26 @@ export default function Inventory() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Variant</TableHead>
-              <TableHead>SKU</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Price</TableHead>
-              <TableHead className="text-right">Current Stock</TableHead>
-              <TableHead className="text-right w-40">Adjust Qty</TableHead>
+              <TableHead>{t("products.col.variant")}</TableHead>
+              <TableHead>{t("products.col.sku")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
+              <TableHead className="text-end">{t("common.price")}</TableHead>
+              <TableHead className="text-end">{t("products.col.currentStock")}</TableHead>
+              <TableHead className="text-end w-40">{t("products.col.adjustQty")}</TableHead>
               <TableHead className="w-16" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">Loading...</TableCell>
+                <TableCell colSpan={7} className="h-24 text-center">{t("common.loading")}</TableCell>
               </TableRow>
             ) : variants.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-48 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <Package className="h-8 w-8 mb-2 opacity-50" />
-                    <p>No variants found.</p>
+                    <p>{t("products.inventory.empty")}</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -113,18 +117,18 @@ export default function Inventory() {
                         }
                       >
                         {v.inventory === 0
-                          ? "Out of stock"
+                          ? t("products.stock.out")
                           : v.inventory < 5
-                          ? "Low stock"
-                          : "In stock"}
+                          ? t("products.stock.low")
+                          : t("products.stock.in")}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">{v.price.toLocaleString("en-US")} IQD</TableCell>
-                    <TableCell className="text-right font-semibold">{v.inventory}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-end tabular-nums">{formatIQD(v.price)}</TableCell>
+                    <TableCell className="text-end font-semibold tabular-nums">{v.inventory}</TableCell>
+                    <TableCell className="text-end">
                       <Input
                         type="number"
-                        className="h-8 w-24 ml-auto text-right"
+                        className="h-8 w-24 ms-auto text-end"
                         value={isEditing ? editingQty[v.id] : v.inventory.toString()}
                         onChange={(e) =>
                           setEditingQty((prev) => ({ ...prev, [v.id]: e.target.value }))
@@ -154,7 +158,7 @@ export default function Inventory() {
       {/* Mobile card list */}
       <div className="md:hidden space-y-3">
         {isLoading ? (
-          <p className="text-center text-muted-foreground py-8">Loading...</p>
+          <p className="text-center text-muted-foreground py-8">{t("common.loading")}</p>
         ) : (
           variants.map((v) => {
             const isEditing = editingQty[v.id] !== undefined;
@@ -176,7 +180,7 @@ export default function Inventory() {
                         v.inventory === 0 ? "destructive" : v.inventory < 5 ? "secondary" : "default"
                       }
                     >
-                      {v.inventory === 0 ? "Out of stock" : v.inventory < 5 ? "Low" : "In stock"}
+                      {v.inventory === 0 ? t("products.stock.out") : v.inventory < 5 ? t("products.stock.lowShort") : t("products.stock.in")}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2">
@@ -190,7 +194,7 @@ export default function Inventory() {
                     />
                     {isEditing && (
                       <Button size="sm" onClick={() => handleSave(v.id)}>
-                        <Save className="h-3.5 w-3.5 mr-1" /> Save
+                        <Save className="h-3.5 w-3.5 me-1" /> {t("action.save")}
                       </Button>
                     )}
                   </div>
@@ -200,6 +204,6 @@ export default function Inventory() {
           })
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 }

@@ -20,6 +20,10 @@ import {
   Tag, Layers, BookOpen, Settings, User, Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/i18n/LanguageContext";
+import { PageContainer, PageHeader, EmptyState } from "@/components/ui/page-primitives";
+
+type TFunc = (key: string, vars?: Record<string, string | number>) => string;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,17 +65,17 @@ function fmtDateLabel(d: string) {
 
 type Preset = { label: string; from: string; to: string };
 
-function buildPresets(): Preset[] {
-  const t  = new Date();
-  const td = toDateStr(t);
-  const yd = toDateStr(new Date(t.getTime() - 86_400_000));
-  const d7 = toDateStr(new Date(t.getTime() - 6 * 86_400_000));
-  const d30 = toDateStr(new Date(t.getTime() - 29 * 86_400_000));
+function buildPresets(_t: TFunc): Preset[] {
+  const now = new Date();
+  const td = toDateStr(now);
+  const yd = toDateStr(new Date(now.getTime() - 86_400_000));
+  const d7 = toDateStr(new Date(now.getTime() - 6 * 86_400_000));
+  const d30 = toDateStr(new Date(now.getTime() - 29 * 86_400_000));
   return [
-    { label: "Today",       from: td,  to: td  },
-    { label: "Yesterday",   from: yd,  to: yd  },
-    { label: "Last 7 days", from: d7,  to: td  },
-    { label: "Last 30 days",from: d30, to: td  },
+    { label: "analytics.preset.today",     from: td,  to: td  },
+    { label: "analytics.preset.yesterday", from: yd,  to: yd  },
+    { label: "analytics.preset.last7",     from: d7,  to: td  },
+    { label: "analytics.preset.last30",    from: d30, to: td  },
   ];
 }
 
@@ -80,7 +84,7 @@ function buildPresets(): Preset[] {
 function MiniSparkline({ data, color = "#2196F3" }: { data: number[]; color?: string }) {
   const chartData = data.map((v, i) => ({ i, v }));
   return (
-    <div className="w-20 h-8">
+    <div className="w-20 h-8" dir="ltr">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData}>
           <Line type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} dot={false} />
@@ -118,13 +122,14 @@ function KpiRow({
 // ─── "No tracking data" placeholder ──────────────────────────────────────────
 
 function NoTracking({ label }: { label: string }) {
+  const { t } = useT();
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">{label}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-xs text-muted-foreground text-center py-8">No tracking data for this date range</p>
+        <p className="text-xs text-muted-foreground text-center py-8">{t("analytics.noTrackingData")}</p>
       </CardContent>
     </Card>
   );
@@ -133,6 +138,7 @@ function NoTracking({ label }: { label: string }) {
 // ─── Total sales over time chart ──────────────────────────────────────────────
 
 function SalesOverTimeChart({ data, isSingleDay }: { data: OverviewData; isSingleDay: boolean }) {
+  const { t } = useT();
   const chartData = isSingleDay
     ? data.hourlyBreakdown
     : data.salesOverTime.map(d => ({ time: fmtDateLabel(d.date).replace(/,\s*\d{4}/, ""), revenue: d.revenue }));
@@ -142,20 +148,20 @@ function SalesOverTimeChart({ data, isSingleDay }: { data: OverviewData; isSingl
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Total sales over time</CardTitle>
+        <CardTitle className="text-sm font-medium">{t("analytics.chart.salesOverTime")}</CardTitle>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-semibold">{fmtIQD(data.grossSales)}</span>
+          <span className="text-2xl font-semibold tabular-nums">{fmtIQD(data.grossSales)}</span>
           <span className="text-xs text-muted-foreground">—</span>
         </div>
         <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-1">
           <span className="flex items-center gap-1">
             <span className="inline-block w-3 h-0.5 bg-blue-500" />
-            Current period
+            {t("analytics.chart.currentPeriod")}
           </span>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="h-40">
+        <div className="h-40" dir="ltr">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
               <defs>
@@ -180,7 +186,7 @@ function SalesOverTimeChart({ data, isSingleDay }: { data: OverviewData; isSingl
                 domain={[0, Math.ceil(maxVal * 1.2)]}
               />
               <Tooltip
-                formatter={(v: number) => [fmtIQDShort(v), "Revenue"]}
+                formatter={(v: number) => [fmtIQDShort(v), t("analytics.chart.revenue")]}
                 contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", fontSize: 12 }}
               />
               <Area type="monotone" dataKey="revenue" stroke="#2196F3" strokeWidth={2} fill="url(#salesGrad)" dot={false} />
@@ -195,6 +201,7 @@ function SalesOverTimeChart({ data, isSingleDay }: { data: OverviewData; isSingl
 // ─── Average order value chart ─────────────────────────────────────────────────
 
 function AvgOrderValueChart({ data, isSingleDay }: { data: OverviewData; isSingleDay: boolean }) {
+  const { t } = useT();
   const chartData = isSingleDay
     ? data.hourlyBreakdown.map(d => ({ time: d.time, value: d.revenue > 0 ? data.avgOrderValue : 0 }))
     : data.salesOverTime.map(d => ({
@@ -205,14 +212,14 @@ function AvgOrderValueChart({ data, isSingleDay }: { data: OverviewData; isSingl
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Average order value over time</CardTitle>
+        <CardTitle className="text-sm font-medium">{t("analytics.chart.avgOrderValue")}</CardTitle>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-semibold">{fmtIQD(data.avgOrderValue)}</span>
+          <span className="text-2xl font-semibold tabular-nums">{fmtIQD(data.avgOrderValue)}</span>
           <span className="text-xs text-muted-foreground">—</span>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="h-40">
+        <div className="h-40" dir="ltr">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
               <defs>
@@ -224,7 +231,7 @@ function AvgOrderValueChart({ data, isSingleDay }: { data: OverviewData; isSingl
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
               <XAxis dataKey="time" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} interval={isSingleDay ? 3 : "preserveStartEnd"} />
               <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={v => v === 0 ? "IQD 0" : `IQD ${Math.round(v / 1000)}k`} />
-              <Tooltip formatter={(v: number) => [fmtIQDShort(v), "Avg Order Value"]} contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
+              <Tooltip formatter={(v: number) => [fmtIQDShort(v), t("analytics.tooltip.avgOrderValue")]} contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", fontSize: 12 }} />
               <Area type="monotone" dataKey="value" stroke="#2196F3" strokeWidth={2} fill="url(#avgGrad)" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
@@ -237,19 +244,20 @@ function AvgOrderValueChart({ data, isSingleDay }: { data: OverviewData; isSingl
 // ─── Conversion rate (0% — no tracking) ──────────────────────────────────────
 
 function ConversionRateChart({ isSingleDay }: { isSingleDay: boolean }) {
+  const { t } = useT();
   const n = isSingleDay ? 24 : 30;
   const flat = Array.from({ length: n }, (_, i) => ({ time: String(i), value: 0 }));
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Conversion rate over time</CardTitle>
+        <CardTitle className="text-sm font-medium">{t("analytics.chart.conversionRate")}</CardTitle>
         <div className="flex items-baseline gap-2">
           <span className="text-2xl font-semibold">0%</span>
           <span className="text-xs text-muted-foreground">—</span>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="h-40">
+        <div className="h-40" dir="ltr">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={flat} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -261,7 +269,7 @@ function ConversionRateChart({ isSingleDay }: { isSingleDay: boolean }) {
         </div>
         <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
           <Info className="h-3 w-3" />
-          Requires session tracking integration
+          {t("analytics.requiresTracking")}
         </p>
       </CardContent>
     </Card>
@@ -271,30 +279,31 @@ function ConversionRateChart({ isSingleDay }: { isSingleDay: boolean }) {
 // ─── Sales breakdown table ─────────────────────────────────────────────────────
 
 function SalesBreakdownTable({ bd }: { bd: OverviewData["totalSalesBreakdown"] }) {
-  const rows: { label: string; value: number; indent?: boolean; bold?: boolean }[] = [
-    { label: "Gross sales",      value: bd.grossSales },
-    { label: "Discounts",        value: bd.discounts,  indent: true },
-    { label: "Returns",          value: bd.returns,    indent: true },
-    { label: "Net sales",        value: bd.netSales,   bold: true },
-    { label: "Shipping charges", value: bd.shippingCharges },
-    { label: "Return fees",      value: bd.returnFees, indent: true },
-    { label: "Taxes",            value: bd.taxes },
-    { label: "Total sales",      value: bd.totalSales, bold: true },
+  const { t } = useT();
+  const rows: { key: string; label: string; value: number; indent?: boolean; bold?: boolean }[] = [
+    { key: "grossSales",      label: t("analytics.breakdown.grossSales"),      value: bd.grossSales },
+    { key: "discounts",       label: t("analytics.breakdown.discounts"),       value: bd.discounts,  indent: true },
+    { key: "returns",         label: t("analytics.breakdown.returns"),         value: bd.returns,    indent: true },
+    { key: "netSales",        label: t("analytics.breakdown.netSales"),        value: bd.netSales,   bold: true },
+    { key: "shippingCharges", label: t("analytics.breakdown.shippingCharges"), value: bd.shippingCharges },
+    { key: "returnFees",      label: t("analytics.breakdown.returnFees"),      value: bd.returnFees, indent: true },
+    { key: "taxes",           label: t("analytics.breakdown.taxes"),           value: bd.taxes },
+    { key: "totalSales",      label: t("analytics.breakdown.totalSales"),      value: bd.totalSales, bold: true },
   ];
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Total sales breakdown</CardTitle>
+        <CardTitle className="text-sm font-medium">{t("analytics.breakdown.title")}</CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="divide-y">
           {rows.map(row => (
-            <div key={row.label} className={cn("flex justify-between items-center py-2.5", row.indent && "pl-4")}>
+            <div key={row.key} className={cn("flex justify-between items-center py-2.5", row.indent && "ps-4")}>
               <span className={cn("text-sm text-blue-600 hover:underline cursor-pointer", row.bold && "font-semibold text-foreground")}>
                 {row.label}
               </span>
               <div className="flex items-center gap-3">
-                <span className={cn("text-sm font-medium", row.bold && "font-semibold")}>
+                <span className={cn("text-sm font-medium tabular-nums", row.bold && "font-semibold")}>
                   {fmtIQD(row.value)}
                 </span>
                 <span className="text-xs text-muted-foreground">—</span>
@@ -310,23 +319,24 @@ function SalesBreakdownTable({ bd }: { bd: OverviewData["totalSalesBreakdown"] }
 // ─── Sales by product table ────────────────────────────────────────────────────
 
 function SalesByProductTable({ products }: { products: OverviewData["salesByProduct"] }) {
+  const { t } = useT();
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Total sales by product</CardTitle>
+        <CardTitle className="text-sm font-medium">{t("analytics.salesByProduct")}</CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
         {products.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-8">No data for this date range</p>
+          <p className="text-xs text-muted-foreground text-center py-8">{t("analytics.noDataRange")}</p>
         ) : (
           <div className="divide-y">
             {products.map((p, i) => (
               <div key={i} className="flex items-center justify-between py-2.5">
                 <div>
                   <p className="text-sm text-blue-600 hover:underline cursor-pointer">{p.title}</p>
-                  <p className="text-xs text-muted-foreground">{p.units} unit{p.units !== 1 ? "s" : ""}</p>
+                  <p className="text-xs text-muted-foreground">{t("analytics.units", { n: p.units })}</p>
                 </div>
-                <span className="text-sm font-medium">{fmtIQDShort(p.revenue)}</span>
+                <span className="text-sm font-medium tabular-nums">{fmtIQDShort(p.revenue)}</span>
               </div>
             ))}
           </div>
@@ -339,30 +349,31 @@ function SalesByProductTable({ products }: { products: OverviewData["salesByProd
 // ─── Sell-through rate table ───────────────────────────────────────────────────
 
 function SellThroughTable({ products }: { products: OverviewData["sellThrough"] }) {
+  const { t } = useT();
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Products by sell-through rate</CardTitle>
+        <CardTitle className="text-sm font-medium">{t("analytics.sellThrough.title")}</CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
         {products.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-8">No data for this date range</p>
+          <p className="text-xs text-muted-foreground text-center py-8">{t("analytics.noDataRange")}</p>
         ) : (
-          <div className="overflow-auto">
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-2 font-medium text-muted-foreground text-xs">Product</th>
-                  <th className="text-right py-2 font-medium text-muted-foreground text-xs">Units sold</th>
-                  <th className="text-right py-2 font-medium text-muted-foreground text-xs">Revenue</th>
+                  <th className="text-start py-2 font-medium text-muted-foreground text-xs">{t("analytics.col.product")}</th>
+                  <th className="text-end py-2 font-medium text-muted-foreground text-xs">{t("analytics.col.unitsSold")}</th>
+                  <th className="text-end py-2 font-medium text-muted-foreground text-xs">{t("analytics.col.revenue")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {products.map((p, i) => (
                   <tr key={i}>
                     <td className="py-2 text-blue-600 hover:underline cursor-pointer">{p.title}</td>
-                    <td className="py-2 text-right">{p.soldCount.toLocaleString()}</td>
-                    <td className="py-2 text-right font-medium">{fmtIQDShort(p.revenue)}</td>
+                    <td className="py-2 text-end tabular-nums">{p.soldCount.toLocaleString()}</td>
+                    <td className="py-2 text-end font-medium tabular-nums">{fmtIQDShort(p.revenue)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -377,33 +388,34 @@ function SellThroughTable({ products }: { products: OverviewData["sellThrough"] 
 // ─── Customer cohort table ─────────────────────────────────────────────────────
 
 function CustomerCohortTable({ cohort }: { cohort: OverviewData["cohort"] }) {
+  const { t } = useT();
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Customer cohort analysis</CardTitle>
-        <p className="text-xs text-muted-foreground">Retention rate by signup month</p>
+        <CardTitle className="text-sm font-medium">{t("analytics.cohort.title")}</CardTitle>
+        <p className="text-xs text-muted-foreground">{t("analytics.cohort.subtitle")}</p>
       </CardHeader>
       <CardContent className="pt-0">
         {cohort.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-8">No data available</p>
+          <p className="text-xs text-muted-foreground text-center py-8">{t("common.noData")}</p>
         ) : (
-          <div className="overflow-auto">
+          <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-2 font-medium text-muted-foreground">Cohort</th>
-                  <th className="text-right py-2 font-medium text-muted-foreground">Customers</th>
-                  <th className="text-right py-2 font-medium text-muted-foreground">Returned</th>
-                  <th className="text-right py-2 font-medium text-muted-foreground">Retention</th>
+                  <th className="text-start py-2 font-medium text-muted-foreground">{t("analytics.cohort.col.cohort")}</th>
+                  <th className="text-end py-2 font-medium text-muted-foreground">{t("analytics.cohort.col.customers")}</th>
+                  <th className="text-end py-2 font-medium text-muted-foreground">{t("analytics.cohort.col.returned")}</th>
+                  <th className="text-end py-2 font-medium text-muted-foreground">{t("analytics.cohort.col.retention")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {cohort.map((c, i) => (
                   <tr key={i}>
                     <td className="py-2 font-medium">{c.month}</td>
-                    <td className="py-2 text-right">{c.total}</td>
-                    <td className="py-2 text-right">{c.returned}</td>
-                    <td className="py-2 text-right">
+                    <td className="py-2 text-end tabular-nums">{c.total}</td>
+                    <td className="py-2 text-end tabular-nums">{c.returned}</td>
+                    <td className="py-2 text-end tabular-nums">
                       <span className={cn(
                         "font-semibold",
                         c.rate >= 50 ? "text-green-600" : c.rate >= 25 ? "text-amber-600" : "text-muted-foreground"
@@ -425,25 +437,26 @@ function CustomerCohortTable({ cohort }: { cohort: OverviewData["cohort"] }) {
 // ─── Conversion rate breakdown ─────────────────────────────────────────────────
 
 function ConversionBreakdown() {
+  const { t } = useT();
   const cols = [
-    { label: "Sessions",           note: "Tracking required" },
-    { label: "Added to cart",      note: "Tracking required" },
-    { label: "Reached checkout",   note: "Tracking required" },
-    { label: "Completed purchase", note: "Tracking required" },
+    { key: "sessions",          label: t("analytics.conv.sessions") },
+    { key: "addedToCart",       label: t("analytics.conv.addedToCart") },
+    { key: "reachedCheckout",   label: t("analytics.conv.reachedCheckout") },
+    { key: "completedPurchase", label: t("analytics.conv.completedPurchase") },
   ];
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Conversion rate breakdown</CardTitle>
+        <CardTitle className="text-sm font-medium">{t("analytics.conversionBreakdown.title")}</CardTitle>
         <div className="flex items-baseline gap-2">
           <span className="text-2xl font-semibold">0%</span>
           <span className="text-xs text-muted-foreground">—</span>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {cols.map(c => (
-            <div key={c.label} className="border rounded-lg p-3 text-center">
+            <div key={c.key} className="border rounded-lg p-3 text-center">
               <p className="text-xs text-muted-foreground mb-1">{c.label}</p>
               <p className="text-lg font-semibold">0%</p>
               <p className="text-[10px] text-muted-foreground mt-1">0 ↗ 0%</p>
@@ -452,7 +465,7 @@ function ConversionBreakdown() {
         </div>
         <p className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1">
           <Info className="h-3 w-3 flex-shrink-0" />
-          Requires session tracking integration to populate
+          {t("analytics.requiresTrackingPopulate")}
         </p>
       </CardContent>
     </Card>
@@ -640,6 +653,7 @@ function LiveStatCard({ label, value, accent }: { label: string; value: string; 
 // ─── Live View ─────────────────────────────────────────────────────────────────
 
 function LiveView() {
+  const { t } = useT();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: liveRes, isLoading, dataUpdatedAt } = useAdminGetLiveOrders({ query: { refetchInterval: 30_000 } as any });
   const orders = (liveRes?.data ?? []) as Array<{
@@ -669,17 +683,17 @@ function LiveView() {
         <div>
           <h2 className="text-base font-semibold flex items-center gap-2">
             <Activity className="h-4 w-4 text-muted-foreground" />
-            Live View
+            {t("analytics.live.title")}
           </h2>
           {/* Legend */}
           <div className="flex items-center gap-4 mt-1">
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span className="w-2 h-2 rounded-full bg-purple-500" />
-              Orders
+              {t("analytics.live.orders")}
             </span>
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span className="w-2 h-2 rounded-full bg-blue-400" />
-              Visitors right now
+              {t("analytics.live.visitorsNow")}
             </span>
           </div>
         </div>
@@ -688,16 +702,16 @@ function LiveView() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
           </span>
-          {dataUpdatedAt > 0 ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Live"}
+          {dataUpdatedAt > 0 ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : t("analytics.live.live")}
         </div>
       </div>
 
       {/* ── Search bar ────────────────────────────────────── */}
       <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+        <div className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </div>
-        <Input className="pl-8 h-9 text-sm bg-muted/30 border-muted" placeholder="Search location" readOnly />
+        <Input className="ps-8 h-9 text-sm bg-muted/30 border-muted" placeholder={t("analytics.live.searchLocation")} readOnly />
       </div>
 
       {/* ── Animated Globe ────────────────────────────────── */}
@@ -711,20 +725,20 @@ function LiveView() {
 
       {/* ── Stats 2×2 ─────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3">
-        <LiveStatCard label="Visitors right now" value="0" />
-        <LiveStatCard label="Total sales" value={fmtIQD(totalSales)} accent />
-        <LiveStatCard label="Sessions" value="0" />
-        <LiveStatCard label="Orders" value={String(orders.length)} accent />
+        <LiveStatCard label={t("analytics.live.visitorsNow")} value="0" />
+        <LiveStatCard label={t("analytics.live.totalSales")} value={fmtIQD(totalSales)} accent />
+        <LiveStatCard label={t("analytics.live.sessions")} value="0" />
+        <LiveStatCard label={t("analytics.live.orders")} value={String(orders.length)} accent />
       </div>
 
       {/* ── Customer behavior ─────────────────────────────── */}
       <div className="bg-background rounded-xl border p-4 shadow-sm">
-        <p className="text-sm font-semibold mb-4">Customer behavior</p>
+        <p className="text-sm font-semibold mb-4">{t("analytics.live.customerBehavior")}</p>
         <div className="grid grid-cols-3 divide-x">
           {[
-            { label: "Active carts",  value: pending },
-            { label: "Checking out",  value: 0 },
-            { label: "Purchased",     value: fulfilled },
+            { label: t("analytics.live.activeCarts"), value: pending },
+            { label: t("analytics.live.checkingOut"), value: 0 },
+            { label: t("analytics.live.purchased"),   value: fulfilled },
           ].map(({ label, value }) => (
             <div key={label} className="text-center px-3">
               <p className="text-xs text-muted-foreground mb-1">{label}</p>
@@ -735,16 +749,16 @@ function LiveView() {
         {/* Mini funnel bar */}
         <div className="mt-4 space-y-2">
           {[
-            { label: "Active carts",  pct: 100, color: "#e0f2fe" },
-            { label: "Checking out",  pct: 0,   color: "#bae6fd" },
-            { label: "Purchased",     pct: orders.length > 0 ? Math.round((fulfilled / orders.length) * 100) : 0, color: "#38bdf8" },
+            { label: t("analytics.live.activeCarts"), pct: 100, color: "#e0f2fe" },
+            { label: t("analytics.live.checkingOut"), pct: 0,   color: "#bae6fd" },
+            { label: t("analytics.live.purchased"),   pct: orders.length > 0 ? Math.round((fulfilled / orders.length) * 100) : 0, color: "#38bdf8" },
           ].map(bar => (
             <div key={bar.label} className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="w-24 shrink-0">{bar.label}</span>
               <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                 <div style={{ width: `${bar.pct}%`, backgroundColor: bar.color, height: "100%", borderRadius: "inherit", transition: "width 0.6s ease" }} />
               </div>
-              <span className="w-8 text-right">{bar.pct}%</span>
+              <span className="w-8 text-end">{bar.pct}%</span>
             </div>
           ))}
         </div>
@@ -752,20 +766,20 @@ function LiveView() {
 
       {/* ── Sessions by location ─────────────────────────── */}
       <div className="bg-background rounded-xl border p-4 shadow-sm">
-        <p className="text-sm font-semibold mb-3">Sessions by location</p>
-        <p className="text-xs text-muted-foreground text-center py-6">No data for this date range</p>
+        <p className="text-sm font-semibold mb-3">{t("analytics.live.sessionsByLocation")}</p>
+        <p className="text-xs text-muted-foreground text-center py-6">{t("analytics.noDataRange")}</p>
       </div>
 
       {/* ── New vs returning customers ────────────────────── */}
       <div className="bg-background rounded-xl border p-4 shadow-sm">
-        <p className="text-sm font-semibold mb-3">New vs returning customers</p>
+        <p className="text-sm font-semibold mb-3">{t("analytics.live.newVsReturning")}</p>
         {orders.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-6">No data for this date range</p>
+          <p className="text-xs text-muted-foreground text-center py-6">{t("analytics.noDataRange")}</p>
         ) : (
           <div className="grid grid-cols-2 gap-4">
             {[
-              { label: "New",       value: orders.length - Math.min(2, orders.length), color: "#38bdf8" },
-              { label: "Returning", value: Math.min(2, orders.length),                 color: "#818cf8" },
+              { label: t("analytics.live.new"),       value: orders.length - Math.min(2, orders.length), color: "#38bdf8" },
+              { label: t("analytics.live.returning"), value: Math.min(2, orders.length),                 color: "#818cf8" },
             ].map(({ label, value, color }) => (
               <div key={label} className="text-center">
                 <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-2" style={{ background: `${color}30`, border: `2px solid ${color}` }}>
@@ -780,19 +794,19 @@ function LiveView() {
 
       {/* ── Total sales by product ────────────────────────── */}
       <div className="bg-background rounded-xl border p-4 shadow-sm">
-        <p className="text-sm font-semibold mb-3">Total sales by product</p>
+        <p className="text-sm font-semibold mb-3">{t("analytics.live.salesByProduct")}</p>
         {orders.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-6">No data for this date range</p>
+          <p className="text-xs text-muted-foreground text-center py-6">{t("analytics.noDataRange")}</p>
         ) : (
-          <p className="text-xs text-muted-foreground text-center py-6">No session tracking — see Analytics tab for product breakdown</p>
+          <p className="text-xs text-muted-foreground text-center py-6">{t("analytics.live.noSessionTracking")}</p>
         )}
       </div>
 
       {/* ── Recent orders feed ───────────────────────────── */}
       <div className="bg-background rounded-xl border shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b">
-          <p className="text-sm font-semibold">Recent orders</p>
-          <span className="text-[10px] text-muted-foreground">Auto-refresh 30s</span>
+          <p className="text-sm font-semibold">{t("analytics.live.recentOrders")}</p>
+          <span className="text-[10px] text-muted-foreground">{t("analytics.live.autoRefresh")}</span>
         </div>
         {isLoading ? (
           <div className="p-4 space-y-3">
@@ -801,14 +815,19 @@ function LiveView() {
         ) : orders.length === 0 ? (
           <div className="text-center py-10 text-muted-foreground">
             <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-25" />
-            <p className="text-sm">No orders yet</p>
+            <p className="text-sm">{t("analytics.live.noOrders")}</p>
           </div>
         ) : (
           <div className="divide-y">
             {orders.map(order => {
               const diffMs  = now.getTime() - new Date(order.createdAt).getTime();
               const diffMin = Math.round(diffMs / 60_000);
-              const age     = diffMin < 60 ? `${diffMin}m ago` : diffMin < 1440 ? `${Math.round(diffMin / 60)}h ago` : `${Math.round(diffMin / 1440)}d ago`;
+              const age     = diffMin < 60
+                ? t("analytics.time.minutesAgo", { n: diffMin })
+                : diffMin < 1440
+                  ? t("analytics.time.hoursAgo", { n: Math.round(diffMin / 60) })
+                  : t("analytics.time.daysAgo", { n: Math.round(diffMin / 1440) });
+              const statusLabel = ORDER_STATUS_LABEL[order.status] ? t(ORDER_STATUS_LABEL[order.status]) : order.status;
               return (
                 <div key={order.id} className="flex items-center justify-between px-4 py-3">
                   <div className="flex items-center gap-3 min-w-0">
@@ -822,9 +841,9 @@ function LiveView() {
                       <p className="text-[11px] text-muted-foreground truncate">{order.email}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-right shrink-0 ml-2">
-                    <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium capitalize", statusColor[order.status] ?? "bg-muted text-muted-foreground")}>
-                      {order.status}
+                  <div className="flex items-center gap-2 text-end shrink-0 ms-2">
+                    <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", statusColor[order.status] ?? "bg-muted text-muted-foreground")}>
+                      {statusLabel}
                     </span>
                     <div>
                       <p className="text-xs font-semibold">{fmtIQDShort(order.total)}</p>
@@ -857,25 +876,47 @@ type ActivityItem = {
 
 // ─── Activity helpers ─────────────────────────────────────────────────────────
 
-const ACTION_META: Record<string, { label: string; color: string; bg: string }> = {
-  "order.created":          { label: "Order created",          color: "text-blue-700",   bg: "bg-blue-50"   },
-  "order.payment_received": { label: "Payment received",       color: "text-green-700",  bg: "bg-green-50"  },
-  "order.fulfilled":        { label: "Order fulfilled",        color: "text-teal-700",   bg: "bg-teal-50"   },
-  "order.cancelled":        { label: "Order cancelled",        color: "text-red-700",    bg: "bg-red-50"    },
-  "order.refunded":         { label: "Order refunded",         color: "text-orange-700", bg: "bg-orange-50" },
-  "order.processing":       { label: "Order processing",       color: "text-indigo-700", bg: "bg-indigo-50" },
-  "order.completed":        { label: "Order completed",        color: "text-green-700",  bg: "bg-green-50"  },
-  "order.deleted":          { label: "Order deleted",          color: "text-red-700",    bg: "bg-red-50"    },
-  "order.updated":          { label: "Order updated",          color: "text-slate-700",  bg: "bg-slate-50"  },
-  "product.created":        { label: "Product added",          color: "text-violet-700", bg: "bg-violet-50" },
-  "product.published":      { label: "Product published",      color: "text-green-700",  bg: "bg-green-50"  },
-  "product.updated":        { label: "Product updated",        color: "text-slate-700",  bg: "bg-slate-50"  },
-  "product.archived":       { label: "Product archived",       color: "text-gray-700",   bg: "bg-gray-50"   },
-  "customer.registered":    { label: "Customer registered",    color: "text-pink-700",   bg: "bg-pink-50"   },
-  "discount.created":       { label: "Discount created",       color: "text-amber-700",  bg: "bg-amber-50"  },
-  "collection.created":     { label: "Collection created",     color: "text-cyan-700",   bg: "bg-cyan-50"   },
-  "blog.published":         { label: "Blog post published",    color: "text-lime-700",   bg: "bg-lime-50"   },
-  "blog.drafted":           { label: "Blog post drafted",      color: "text-gray-700",   bg: "bg-gray-50"   },
+const ACTION_META: Record<string, { labelKey: string; color: string; bg: string }> = {
+  "order.created":          { labelKey: "analytics.action.order.created",          color: "text-blue-700",   bg: "bg-blue-50"   },
+  "order.payment_received": { labelKey: "analytics.action.order.payment_received", color: "text-green-700",  bg: "bg-green-50"  },
+  "order.fulfilled":        { labelKey: "analytics.action.order.fulfilled",        color: "text-teal-700",   bg: "bg-teal-50"   },
+  "order.cancelled":        { labelKey: "analytics.action.order.cancelled",        color: "text-red-700",    bg: "bg-red-50"    },
+  "order.refunded":         { labelKey: "analytics.action.order.refunded",         color: "text-orange-700", bg: "bg-orange-50" },
+  "order.processing":       { labelKey: "analytics.action.order.processing",       color: "text-indigo-700", bg: "bg-indigo-50" },
+  "order.completed":        { labelKey: "analytics.action.order.completed",        color: "text-green-700",  bg: "bg-green-50"  },
+  "order.deleted":          { labelKey: "analytics.action.order.deleted",          color: "text-red-700",    bg: "bg-red-50"    },
+  "order.updated":          { labelKey: "analytics.action.order.updated",          color: "text-slate-700",  bg: "bg-slate-50"  },
+  "product.created":        { labelKey: "analytics.action.product.created",        color: "text-violet-700", bg: "bg-violet-50" },
+  "product.published":      { labelKey: "analytics.action.product.published",      color: "text-green-700",  bg: "bg-green-50"  },
+  "product.updated":        { labelKey: "analytics.action.product.updated",        color: "text-slate-700",  bg: "bg-slate-50"  },
+  "product.archived":       { labelKey: "analytics.action.product.archived",       color: "text-gray-700",   bg: "bg-gray-50"   },
+  "customer.registered":    { labelKey: "analytics.action.customer.registered",    color: "text-pink-700",   bg: "bg-pink-50"   },
+  "discount.created":       { labelKey: "analytics.action.discount.created",       color: "text-amber-700",  bg: "bg-amber-50"  },
+  "collection.created":     { labelKey: "analytics.action.collection.created",     color: "text-cyan-700",   bg: "bg-cyan-50"   },
+  "blog.published":         { labelKey: "analytics.action.blog.published",         color: "text-lime-700",   bg: "bg-lime-50"   },
+  "blog.drafted":           { labelKey: "analytics.action.blog.drafted",           color: "text-gray-700",   bg: "bg-gray-50"   },
+};
+
+const CATEGORY_LABEL: Record<string, string> = {
+  Orders:      "analytics.category.Orders",
+  Products:    "analytics.category.Products",
+  Customers:   "analytics.category.Customers",
+  Discounts:   "analytics.category.Discounts",
+  Collections: "analytics.category.Collections",
+  Blog:        "analytics.category.Blog",
+  Settings:    "analytics.category.Settings",
+};
+
+function catLabel(cat: string, t: TFunc) {
+  return cat === "All" ? t("common.all") : (CATEGORY_LABEL[cat] ? t(CATEGORY_LABEL[cat]) : cat);
+}
+
+const ORDER_STATUS_LABEL: Record<string, string> = {
+  pending:    "analytics.orderStatus.pending",
+  processing: "analytics.orderStatus.processing",
+  fulfilled:  "analytics.orderStatus.fulfilled",
+  cancelled:  "analytics.orderStatus.cancelled",
+  refunded:   "analytics.orderStatus.refunded",
 };
 
 const CATEGORY_ICON: Record<string, React.ReactNode> = {
@@ -898,45 +939,49 @@ const CATEGORY_BADGE: Record<string, string> = {
   Settings:    "bg-gray-100 text-gray-800",
 };
 
-function fmtTs(iso: string) {
+function fmtTs(iso: string, t: TFunc) {
   const d = new Date(iso);
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) +
-    " at " + d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    ` ${t("analytics.time.at")} ` + d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
-function fmtRelative(iso: string) {
+function fmtRelative(iso: string, t: TFunc) {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1)  return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1)  return t("analytics.time.justNow");
+  if (mins < 60) return t("analytics.time.minutesAgo", { n: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24)  return `${hrs}h ago`;
+  if (hrs < 24)  return t("analytics.time.hoursAgo", { n: hrs });
   const days = Math.floor(hrs / 24);
-  if (days < 30) return `${days}d ago`;
+  if (days < 30) return t("analytics.time.daysAgo", { n: days });
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 // ─── Activity Detail Panel ────────────────────────────────────────────────────
 
 function ActivityDetailPanel({ item, onClose }: { item: ActivityItem; onClose: () => void }) {
-  const meta = ACTION_META[item.action] ?? { label: item.action, color: "text-slate-700", bg: "bg-slate-50" };
+  const { t } = useT();
+  const meta = ACTION_META[item.action];
+  const metaLabel = meta ? t(meta.labelKey) : item.action;
+  const metaColor = meta?.color ?? "text-slate-700";
+  const metaBg = meta?.bg ?? "bg-slate-50";
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
       <div
-        className="w-full max-w-md h-full bg-background border-l shadow-2xl flex flex-col"
+        className="w-full max-w-md h-full bg-background border-s shadow-2xl flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div className="flex items-center gap-3">
-            <div className={cn("w-9 h-9 rounded-full flex items-center justify-center", meta.bg)}>
-              <span className={cn("text-lg", meta.color)}>
+            <div className={cn("w-9 h-9 rounded-full flex items-center justify-center", metaBg)}>
+              <span className={cn("text-lg", metaColor)}>
                 {CATEGORY_ICON[item.category] ?? <Activity className="h-4 w-4" />}
               </span>
             </div>
             <div>
-              <p className="font-semibold text-sm leading-tight">{meta.label}</p>
+              <p className="font-semibold text-sm leading-tight">{metaLabel}</p>
               <p className="text-xs text-muted-foreground">{item.entityTitle}</p>
             </div>
           </div>
@@ -950,11 +995,11 @@ function ActivityDetailPanel({ item, onClose }: { item: ActivityItem; onClose: (
           {/* Info grid */}
           <div className="grid grid-cols-2 gap-4">
             {[
-              { label: "Category",   value: item.category },
-              { label: "Done by",    value: item.actor },
-              { label: "Date & time",value: fmtTs(item.createdAt), full: true },
-              { label: "Action",     value: item.action },
-              ...(item.entityId ? [{ label: "Entity ID", value: item.entityId }] : []),
+              { label: t("analytics.reports.col.category"), value: catLabel(item.category, t) },
+              { label: t("analytics.detail.doneBy"),        value: item.actor },
+              { label: t("analytics.detail.dateTime"),      value: fmtTs(item.createdAt, t), full: true },
+              { label: t("analytics.detail.action"),        value: item.action },
+              ...(item.entityId ? [{ label: t("analytics.detail.entityId"), value: item.entityId }] : []),
             ].map(({ label, value, full }) => (
               <div key={label} className={cn("space-y-1", full && "col-span-2")}>
                 <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -968,14 +1013,14 @@ function ActivityDetailPanel({ item, onClose }: { item: ActivityItem; onClose: (
           {/* Metadata */}
           {Object.keys(item.metadata).length > 0 && (
             <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Details</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("analytics.detail.details")}</p>
               <div className="rounded-lg border divide-y">
                 {Object.entries(item.metadata).map(([k, v]) => (
                   <div key={k} className="flex justify-between items-start px-4 py-2.5 gap-4">
                     <span className="text-xs text-muted-foreground capitalize shrink-0">
                       {k.replace(/([A-Z])/g, " $1").replace(/_/g, " ")}
                     </span>
-                    <span className="text-xs font-medium text-right break-all">
+                    <span className="text-xs font-medium text-end break-all">
                       {typeof v === "object" ? JSON.stringify(v) : String(v ?? "—")}
                     </span>
                   </div>
@@ -994,6 +1039,7 @@ function ActivityDetailPanel({ item, onClose }: { item: ActivityItem; onClose: (
 const ALL_CATEGORIES = ["All", "Orders", "Products", "Customers", "Discounts", "Collections", "Blog"];
 
 function ReportsTab() {
+  const { t } = useT();
   const [search, setSearch]       = useState("");
   const [category, setCategory]   = useState("All");
   const [selected, setSelected]   = useState<ActivityItem | null>(null);
@@ -1021,28 +1067,28 @@ function ReportsTab() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-lg font-semibold">Activity Log</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Every store event — who did it and when</p>
+          <h2 className="text-lg font-semibold">{t("analytics.reports.activityLog")}</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">{t("analytics.reports.subtitle")}</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          <RefreshCw className="h-3.5 w-3.5" /> {t("analytics.refresh")}
         </Button>
       </div>
 
       {/* Search + filters */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
           <Input
-            placeholder="Search activities…"
+            placeholder={t("analytics.reports.searchPlaceholder")}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="pl-9 h-9 text-sm"
+            className="ps-9 h-9 text-sm"
           />
           {search && (
-            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <button onClick={() => setSearch("")} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
               <X className="h-3.5 w-3.5" />
             </button>
           )}
@@ -1060,7 +1106,7 @@ function ReportsTab() {
               )}
             >
               {cat !== "All" && CATEGORY_ICON[cat]}
-              {cat}
+              {catLabel(cat, t)}
             </button>
           ))}
         </div>
@@ -1070,10 +1116,10 @@ function ReportsTab() {
       <div className="border rounded-xl overflow-hidden">
         {/* Column headers */}
         <div className="grid grid-cols-[1fr_auto_auto_auto] gap-0 border-b bg-muted/30 px-4 py-2.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Activity</span>
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-28 text-center">Category</span>
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-24 text-center">By</span>
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-28 text-right">When</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("analytics.reports.col.activity")}</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-28 text-center">{t("analytics.reports.col.category")}</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-24 text-center">{t("analytics.reports.col.by")}</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-28 text-end">{t("analytics.reports.col.when")}</span>
         </div>
 
         {isLoading ? (
@@ -1096,31 +1142,34 @@ function ReportsTab() {
               <Activity className="h-5 w-5 text-muted-foreground" />
             </div>
             <div>
-              <p className="font-medium text-sm">No activity found</p>
+              <p className="font-medium text-sm">{t("analytics.reports.noActivity")}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                {search ? `No results for "${search}"` : "No events in this category yet"}
+                {search ? t("analytics.reports.noResultsFor", { q: search }) : t("analytics.reports.noEventsCategory")}
               </p>
             </div>
           </div>
         ) : (
           <div className="divide-y">
             {items.map(item => {
-              const meta = ACTION_META[item.action] ?? { label: item.action, color: "text-slate-700", bg: "bg-slate-50" };
+              const meta = ACTION_META[item.action];
+              const metaLabel = meta ? t(meta.labelKey) : item.action;
+              const metaColor = meta?.color ?? "text-slate-700";
+              const metaBg = meta?.bg ?? "bg-slate-50";
               return (
                 <button
                   key={item.id}
                   onClick={() => setSelected(item)}
-                  className="w-full grid grid-cols-[1fr_auto_auto_auto] gap-0 items-center px-4 py-3.5 hover:bg-muted/30 transition-colors text-left group"
+                  className="w-full grid grid-cols-[1fr_auto_auto_auto] gap-0 items-center px-4 py-3.5 hover:bg-muted/30 transition-colors text-start group"
                 >
                   {/* Activity */}
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", meta.bg)}>
-                      <span className={meta.color}>
+                    <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-transform group-hover:scale-105", metaBg)}>
+                      <span className={metaColor}>
                         {CATEGORY_ICON[item.category] ?? <Activity className="h-3.5 w-3.5" />}
                       </span>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{meta.label}</p>
+                      <p className="text-sm font-medium truncate">{metaLabel}</p>
                       <p className="text-xs text-muted-foreground truncate">{item.entityTitle}</p>
                     </div>
                   </div>
@@ -1128,7 +1177,7 @@ function ReportsTab() {
                   {/* Category */}
                   <div className="w-28 flex justify-center">
                     <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium", CATEGORY_BADGE[item.category] ?? "bg-gray-100 text-gray-800")}>
-                      {item.category}
+                      {catLabel(item.category, t)}
                     </span>
                   </div>
 
@@ -1139,8 +1188,8 @@ function ReportsTab() {
 
                   {/* Time */}
                   <div className="w-28 flex items-center justify-end gap-1">
-                    <span className="text-xs text-muted-foreground">{fmtRelative(item.createdAt)}</span>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
+                    <span className="text-xs text-muted-foreground">{fmtRelative(item.createdAt, t)}</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors rtl:rotate-180" />
                   </div>
                 </button>
               );
@@ -1150,9 +1199,9 @@ function ReportsTab() {
 
         {/* Footer count */}
         {!isLoading && items.length > 0 && (
-          <div className="px-4 py-2.5 border-t bg-muted/20 text-xs text-muted-foreground text-right">
-            {items.length} event{items.length !== 1 ? "s" : ""}
-            {(search || category !== "All") ? " (filtered)" : ""}
+          <div className="px-4 py-2.5 border-t bg-muted/20 text-xs text-muted-foreground text-end">
+            {t("analytics.reports.eventCount", { n: items.length })}
+            {(search || category !== "All") ? ` ${t("analytics.reports.filtered")}` : ""}
           </div>
         )}
       </div>
@@ -1166,7 +1215,8 @@ function ReportsTab() {
 // ─── Main Analytics Page ──────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
-  const PRESETS = useMemo(() => buildPresets(), []);
+  const { t } = useT();
+  const PRESETS = useMemo(() => buildPresets(t), [t]);
   const [activeTab, setActiveTab] = useState<"analytics" | "reports" | "live">("analytics");
   const [selectedPreset, setSelectedPreset] = useState(0); // "Today"
   const [showPresets, setShowPresets] = useState(false);
@@ -1190,21 +1240,26 @@ export default function AnalyticsPage() {
     : Array(24).fill(0);
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-0">
+    <PageContainer className="max-w-4xl space-y-0">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-muted-foreground" />
-          <h1 className="text-lg font-semibold">Analytics</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">···</span>
-          <Button size="sm" variant="default" className="text-xs h-8">
-            <ExternalLink className="h-3 w-3 mr-1" />
-            New exploration
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        className="mb-4"
+        title={
+          <span className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-muted-foreground" />
+            {t("analytics.title")}
+          </span>
+        }
+        actions={
+          <>
+            <span className="text-xs text-muted-foreground">···</span>
+            <Button size="sm" variant="default" className="text-xs h-8">
+              <ExternalLink className="h-3 w-3 me-1" />
+              {t("analytics.newExploration")}
+            </Button>
+          </>
+        }
+      />
 
       {/* Date selector + currency */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
@@ -1217,21 +1272,21 @@ export default function AnalyticsPage() {
             onClick={() => setShowPresets(p => !p)}
           >
             <Calendar className="h-3 w-3" />
-            {PRESETS[selectedPreset].label}
+            {t(PRESETS[selectedPreset].label)}
             <ChevronDown className="h-3 w-3" />
           </Button>
           {showPresets && (
-            <div className="absolute top-9 left-0 z-20 bg-background border rounded-lg shadow-lg py-1 w-40">
+            <div className="absolute top-9 start-0 z-20 bg-background border rounded-lg shadow-lg py-1 w-40">
               {PRESETS.map((p, i) => (
                 <button
                   key={i}
                   onClick={() => { setSelectedPreset(i); setShowPresets(false); }}
                   className={cn(
-                    "w-full text-left px-3 py-2 text-xs hover:bg-muted transition-colors",
+                    "w-full text-start px-3 py-2 text-xs hover:bg-muted transition-colors",
                     i === selectedPreset && "font-medium text-primary"
                   )}
                 >
-                  {p.label}
+                  {t(p.label)}
                 </button>
               ))}
             </div>
@@ -1269,9 +1324,9 @@ export default function AnalyticsPage() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
                 </span>
-                Live View
+                {t("analytics.tab.live")}
               </span>
-            ) : tab === "analytics" ? "Analytics" : "Reports"}
+            ) : tab === "analytics" ? t("analytics.tab.analytics") : t("analytics.tab.reports")}
           </button>
         ))}
       </div>
@@ -1283,25 +1338,25 @@ export default function AnalyticsPage() {
           <Card>
             <CardContent className="pt-4 pb-0">
               <KpiRow
-                label="Gross sales"
+                label={t("analytics.kpi.grossSales")}
                 value={fmtIQD(ov?.grossSales ?? 0)}
                 spark={grossSpark}
                 isLoading={isLoading}
               />
               <KpiRow
-                label="Returning customer rate"
+                label={t("analytics.kpi.returningRate")}
                 value={`${ov?.returningCustomerRate ?? 0}%`}
                 spark={Array(isSingleDay ? 24 : 30).fill(ov?.returningCustomerRate ?? 0)}
                 isLoading={isLoading}
               />
               <KpiRow
-                label="Orders fulfilled"
+                label={t("analytics.kpi.ordersFulfilled")}
                 value={String(ov?.ordersFulfilled ?? 0)}
                 spark={ordSpark}
                 isLoading={isLoading}
               />
               <KpiRow
-                label="Orders"
+                label={t("analytics.kpi.orders")}
                 value={String(ov?.orders ?? 0)}
                 spark={ordSpark}
                 isLoading={isLoading}
@@ -1324,10 +1379,10 @@ export default function AnalyticsPage() {
           ) : null}
 
           {/* Sessions over time — no tracking */}
-          <NoTracking label="Sessions over time" />
+          <NoTracking label={t("analytics.section.sessionsOverTime")} />
 
           {/* Total sales by sales channel — no tracking */}
-          <NoTracking label="Total sales by sales channel" />
+          <NoTracking label={t("analytics.section.salesByChannel")} />
 
           {/* Average order value */}
           {isLoading ? (
@@ -1347,12 +1402,12 @@ export default function AnalyticsPage() {
           ) : null}
 
           {/* Sessions by device / location / social — no tracking */}
-          <NoTracking label="Sessions by device type" />
-          <NoTracking label="Sessions by location" />
-          <NoTracking label="Total sales by social referrer" />
-          <NoTracking label="Sessions by social referrer" />
-          <NoTracking label="Sessions by landing page" />
-          <NoTracking label="Performance by referring channel" />
+          <NoTracking label={t("analytics.section.sessionsByDevice")} />
+          <NoTracking label={t("analytics.section.sessionsByLocation")} />
+          <NoTracking label={t("analytics.section.salesBySocial")} />
+          <NoTracking label={t("analytics.section.sessionsBySocial")} />
+          <NoTracking label={t("analytics.section.sessionsByLanding")} />
+          <NoTracking label={t("analytics.section.perfByChannel")} />
 
           {/* Customer cohort */}
           {isLoading ? (
@@ -1362,9 +1417,9 @@ export default function AnalyticsPage() {
           ) : null}
 
           {/* More no-tracking sections */}
-          <NoTracking label="Sessions by referrer" />
-          <NoTracking label="Total sales by POS location" />
-          <NoTracking label="Total sales by referrer" />
+          <NoTracking label={t("analytics.section.sessionsByReferrer")} />
+          <NoTracking label={t("analytics.section.salesByPos")} />
+          <NoTracking label={t("analytics.section.salesByReferrer")} />
 
           {/* Products by sell-through rate */}
           {isLoading ? (
@@ -1383,6 +1438,6 @@ export default function AnalyticsPage() {
 
       {/* ─── Live View Tab ─────────────────────────────────── */}
       {activeTab === "live" && <LiveView />}
-    </div>
+    </PageContainer>
   );
 }

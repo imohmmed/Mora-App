@@ -23,6 +23,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { formatIQD } from "@/lib/format";
+import { PageContainer, PageHeader } from "@/components/ui/page-primitives";
+import { useT } from "@/i18n/LanguageContext";
 
 const API = import.meta.env.BASE_URL.replace(/\/$/, "") + "/api";
 
@@ -84,6 +87,7 @@ const DEFAULT_MENU_TABS: TabConfig[] = [
 ];
 
 function MenuTabBarSection() {
+  const { t } = useT();
   const [sectionOpen, setSectionOpen] = useState(true);
   const [tabs, setTabs] = useState<TabConfig[]>(DEFAULT_MENU_TABS);
   const [sectionId, setSectionId] = useState<string | null>(null);
@@ -149,10 +153,10 @@ function MenuTabBarSection() {
         if ((result as any)?.id) setSectionId((result as any).id);
       }
       setSaved(true);
-      toast({ title: "Saved ✓", description: "Menu tabs updated. Changes are live." });
+      toast({ title: t("toast.saved"), description: t("collections.menuSaved.desc") });
       setTimeout(() => setSaved(false), 3000);
     } catch (e) {
-      toast({ title: "Error", description: (e as Error).message, variant: "destructive" });
+      toast({ title: t("toast.error"), description: (e as Error).message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -162,18 +166,18 @@ function MenuTabBarSection() {
     <div className="border rounded-2xl overflow-hidden bg-card">
       <button
         type="button"
-        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-accent/20 transition-colors"
+        className="w-full flex items-center gap-3 px-5 py-4 text-start hover:bg-accent/20 transition-colors"
         onClick={() => setSectionOpen((o) => !o)}
       >
         <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-600 flex-shrink-0">
           <LayoutList className="w-5 h-5" />
         </div>
-        <div className="flex-1">
-          <p className="font-bold text-base">Menu Tab Bar</p>
-          <p className="text-xs text-muted-foreground">التابات أعلى الهوم سكرين — top of app home screen</p>
+        <div className="flex-1 min-w-0 text-start">
+          <p className="font-bold text-base">{t("collections.menuTabBar.title")}</p>
+          <p className="text-xs text-muted-foreground">{t("collections.menuTabBar.hint")}</p>
         </div>
-        <Badge variant="outline">{tabs.length} tabs</Badge>
-        {sectionOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+        <Badge variant="outline">{t("collections.tabsCount", { n: tabs.length })}</Badge>
+        {sectionOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground rtl:rotate-180" />}
       </button>
 
       {sectionOpen && (
@@ -182,11 +186,11 @@ function MenuTabBarSection() {
           <div className="bg-white rounded-2xl border-2 border-border overflow-hidden shadow-sm">
             <div className="bg-muted/40 px-3 py-2 flex items-center gap-2 border-b">
               <Eye className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-xs font-medium text-muted-foreground">Live preview — home tab bar</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("collections.preview.homeTabBar")}</span>
             </div>
             <div className="px-4 py-3 flex gap-4 overflow-x-auto">
               {tabs.map((tab, i) => (
-                <div key={tab.id} className={cn("flex flex-col items-center gap-0.5 pb-1.5 flex-shrink-0 relative", i === 0 && "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-foreground after:rounded-full")}>
+                <div key={tab.id} className={cn("flex flex-col items-center gap-0.5 pb-1.5 flex-shrink-0 relative", i === 0 && "after:absolute after:bottom-0 after:start-0 after:end-0 after:h-0.5 after:bg-foreground after:rounded-full")}>
                   {tab.arabicLabel && <span className="text-[11px] font-bold leading-tight">{tab.arabicLabel}</span>}
                   <span className={cn("text-[9px] leading-tight", tab.arabicLabel ? "text-muted-foreground" : "text-[11px] font-bold text-foreground")}>{tab.label}</span>
                 </div>
@@ -196,15 +200,15 @@ function MenuTabBarSection() {
 
           {isLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-              <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+              <Loader2 className="w-4 h-4 animate-spin" /> {t("common.loading")}
             </div>
           ) : (
             <div className="space-y-2">
               <div className="grid grid-cols-[auto_1fr_1fr_10rem_auto] gap-2 px-1 pb-1">
                 <div />
-                <span className="text-xs font-medium text-muted-foreground">اسم عربي</span>
-                <span className="text-xs font-medium text-muted-foreground">English</span>
-                <span className="text-xs font-medium text-muted-foreground">Filter</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("collections.field.arabicName")}</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("collections.field.english")}</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("collections.field.filter")}</span>
                 <div />
               </div>
               {tabs.map((tab, i) => (
@@ -214,8 +218,8 @@ function MenuTabBarSection() {
                   <Input
                     value={tab.arabicLabel ?? ""}
                     onChange={(e) => update(i, "arabicLabel", e.target.value)}
-                    className="h-8 text-sm text-right font-medium"
-                    placeholder="مثال: نساء"
+                    className="h-8 text-sm text-start font-medium"
+                    placeholder={t("collections.placeholder.womenExample")}
                     dir="rtl"
                   />
 
@@ -223,7 +227,7 @@ function MenuTabBarSection() {
                     value={tab.label}
                     onChange={(e) => update(i, "label", e.target.value.toUpperCase())}
                     className="h-8 text-sm font-mono font-semibold"
-                    placeholder="WOMEN"
+                    placeholder={t("collections.placeholder.womenEnExample")}
                   />
 
                   <Select value={tab.filterType} onValueChange={(v) => {
@@ -234,11 +238,11 @@ function MenuTabBarSection() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Products</SelectItem>
-                      <SelectItem value="gender">Gender ♀♂</SelectItem>
-                      <SelectItem value="category">Category</SelectItem>
-                      <SelectItem value="sale">Sale / Deals</SelectItem>
-                      <SelectItem value="foryou">For You ✦</SelectItem>
+                      <SelectItem value="all">{t("collections.filter.allProducts")}</SelectItem>
+                      <SelectItem value="gender">{t("collections.filter.gender")}</SelectItem>
+                      <SelectItem value="category">{t("collections.filter.category")}</SelectItem>
+                      <SelectItem value="sale">{t("collections.filter.saleDeals")}</SelectItem>
+                      <SelectItem value="foryou">{t("collections.filter.forYou")}</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -250,8 +254,8 @@ function MenuTabBarSection() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="women">Women</SelectItem>
-                            <SelectItem value="men">Men</SelectItem>
+                            <SelectItem value="women">{t("collections.gender.women")}</SelectItem>
+                            <SelectItem value="men">{t("collections.gender.men")}</SelectItem>
                           </SelectContent>
                         </Select>
                       ) : (
@@ -259,7 +263,7 @@ function MenuTabBarSection() {
                           value={tab.filterValue ?? ""}
                           onChange={(e) => update(i, "filterValue", e.target.value)}
                           className="h-8 w-20 text-xs"
-                          placeholder="beauty"
+                          placeholder={t("collections.category.placeholder")}
                         />
                       )
                     )}
@@ -284,7 +288,7 @@ function MenuTabBarSection() {
           <div className="flex items-center justify-between pt-1">
             <button type="button" onClick={addTab}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground border rounded-lg px-3 py-1.5 hover:bg-muted/50 transition-colors">
-              <Plus className="w-4 h-4" /> Add Tab
+              <Plus className="w-4 h-4" /> {t("collections.addTab")}
             </button>
             <button type="button" onClick={saveAll} disabled={saving}
               className={cn(
@@ -293,9 +297,9 @@ function MenuTabBarSection() {
                 saved  ? "bg-green-500/10 text-green-700 border border-green-200" :
                          "bg-primary text-primary-foreground hover:bg-primary/90"
               )}>
-              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> :
-               saved  ? <><CheckCircle2 className="w-4 h-4" /> Saved!</> :
-                        "Save Changes"}
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> {t("action.saving")}</> :
+               saved  ? <><CheckCircle2 className="w-4 h-4" /> {t("toast.saved")}</> :
+                        t("action.saveChanges")}
             </button>
           </div>
         </div>
@@ -307,17 +311,18 @@ function MenuTabBarSection() {
 // ─── Live Preview — Stories ─────────────────────────────────────────────────
 
 function StoriesPreview({ rows }: { rows: StoryRow[] }) {
+  const { t } = useT();
   const activeRows = rows.filter((r) => r.status === "active");
   return (
     <div className="bg-white rounded-2xl border-2 border-border overflow-hidden shadow-sm">
       <div className="bg-muted/40 px-3 py-2 flex items-center gap-2 border-b">
         <Eye className="w-3.5 h-3.5 text-muted-foreground" />
-        <span className="text-xs font-medium text-muted-foreground">Live preview — Stories</span>
+        <span className="text-xs font-medium text-muted-foreground">{t("collections.preview.stories")}</span>
       </div>
       <div className="p-3">
         {activeRows.length === 0 ? (
           <div className="text-center py-6 text-xs text-muted-foreground">
-            No active stories to preview
+            {t("collections.stories.noActivePreview")}
           </div>
         ) : (
           <div className="space-y-3">
@@ -330,7 +335,7 @@ function StoriesPreview({ rows }: { rows: StoryRow[] }) {
                 )}
                 <div className="flex gap-3 overflow-x-auto pb-1">
                   {row.items.filter((i) => i.status === "active").length === 0 ? (
-                    <div className="text-xs text-muted-foreground italic">No items</div>
+                    <div className="text-xs text-muted-foreground italic">{t("collections.stories.noItems")}</div>
                   ) : (
                     row.items.filter((i) => i.status === "active").map((item) => (
                       <div key={item.id} className="flex flex-col items-center gap-1 flex-shrink-0">
@@ -357,20 +362,21 @@ function StoriesPreview({ rows }: { rows: StoryRow[] }) {
 
 // ─── Live Preview — Quick Sections ──────────────────────────────────────────
 
-const QUICK_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  "super-deals":  { label: "Super Deals",  color: "#E53935", icon: <Zap className="w-4 h-4" /> },
-  "brand-deals":  { label: "Brand Deals",  color: "#0274C1", icon: <Tag className="w-4 h-4" /> },
-  "trends":       { label: "Trends",       color: "#6A1B9A", icon: <TrendingUp className="w-4 h-4" /> },
-  "hot-seller":   { label: "Hot Seller",   color: "#E65100", icon: <Star className="w-4 h-4" /> },
-  "gift-wrapping":{ label: "Gift Wrapping",color: "#C2185B", icon: <Gift className="w-4 h-4" /> },
+const QUICK_META: Record<string, { labelKey: string; color: string; icon: React.ReactNode }> = {
+  "super-deals":  { labelKey: "collections.special.superDeals.title",   color: "#E53935", icon: <Zap className="w-4 h-4" /> },
+  "brand-deals":  { labelKey: "collections.special.brandDeals.title",   color: "#0274C1", icon: <Tag className="w-4 h-4" /> },
+  "trends":       { labelKey: "collections.special.trends.title",       color: "#6A1B9A", icon: <TrendingUp className="w-4 h-4" /> },
+  "hot-seller":   { labelKey: "collections.special.hotSeller.title",    color: "#E65100", icon: <Star className="w-4 h-4" /> },
+  "gift-wrapping":{ labelKey: "collections.special.giftWrapping.title", color: "#C2185B", icon: <Gift className="w-4 h-4" /> },
 };
 
 function QuickPreview({ counts }: { counts: Record<string, number> }) {
+  const { t } = useT();
   return (
     <div className="bg-white rounded-2xl border-2 border-border overflow-hidden shadow-sm">
       <div className="bg-muted/40 px-3 py-2 flex items-center gap-2 border-b">
         <Eye className="w-3.5 h-3.5 text-muted-foreground" />
-        <span className="text-xs font-medium text-muted-foreground">Live preview — Quick Sections</span>
+        <span className="text-xs font-medium text-muted-foreground">{t("collections.preview.quickSections")}</span>
       </div>
       <div className="p-3 grid grid-cols-2 gap-2">
         {Object.entries(QUICK_META).map(([slug, meta]) => (
@@ -381,9 +387,9 @@ function QuickPreview({ counts }: { counts: Record<string, number> }) {
           >
             <div className="flex items-center gap-1.5" style={{ color: meta.color }}>
               {meta.icon}
-              <span className="text-xs font-semibold">{meta.label}</span>
+              <span className="text-xs font-semibold">{t(meta.labelKey)}</span>
             </div>
-            <span className="text-[10px] text-muted-foreground">{counts[slug] ?? 0} products</span>
+            <span className="text-[10px] text-muted-foreground">{t("collections.productsCount", { n: counts[slug] ?? 0 })}</span>
           </div>
         ))}
       </div>
@@ -394,15 +400,16 @@ function QuickPreview({ counts }: { counts: Record<string, number> }) {
 // ─── Live Preview — Collections ──────────────────────────────────────────────
 
 function CollectionsPreview({ collections }: { collections: Collection[] }) {
+  const { t } = useT();
   return (
     <div className="bg-white rounded-2xl border-2 border-border overflow-hidden shadow-sm">
       <div className="bg-muted/40 px-3 py-2 flex items-center gap-2 border-b">
         <Eye className="w-3.5 h-3.5 text-muted-foreground" />
-        <span className="text-xs font-medium text-muted-foreground">Live preview — Collections</span>
+        <span className="text-xs font-medium text-muted-foreground">{t("collections.preview.collections")}</span>
       </div>
       <div className="p-3 flex gap-3 overflow-x-auto">
         {collections.length === 0 ? (
-          <div className="text-xs text-muted-foreground italic py-4 mx-auto">No collections yet</div>
+          <div className="text-xs text-muted-foreground italic py-4 mx-auto">{t("collections.preview.noCollections")}</div>
         ) : (
           collections.map((col) => (
             <div key={col.id} className="flex flex-col items-center gap-1 flex-shrink-0">
@@ -430,6 +437,7 @@ function StoryItemEditDialog({
   item: StoryItem | null; open: boolean;
   onClose: () => void; onSaved: () => void; onDeleted: () => void;
 }) {
+  const { t } = useT();
   const { toast } = useToast();
   const [title, setTitle]       = useState("");
   const [titleAr, setTitleAr]   = useState("");
@@ -468,7 +476,7 @@ function StoryItemEditDialog({
       if (field === "story") setImageUrl(json.data.url);
       else setBgImage(json.data.url);
     } catch (err) {
-      toast({ title: "Upload failed", description: (err as Error).message, variant: "destructive" });
+      toast({ title: t("collections.uploadFailed"), description: (err as Error).message, variant: "destructive" });
     } finally {
       setUploading(null);
       if (storyRef.current) storyRef.current.value = "";
@@ -493,23 +501,23 @@ function StoryItemEditDialog({
           });
         }
       }
-      toast({ title: "Saved ✓" });
+      toast({ title: t("toast.saved") });
       onSaved();
       onClose();
     } catch (err) {
-      toast({ title: "Error", description: (err as Error).message, variant: "destructive" });
+      toast({ title: t("toast.error"), description: (err as Error).message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!item || !confirm("Delete this story item?")) return;
+    if (!item || !confirm(t("collections.story.deleteConfirm"))) return;
     try {
       await apiFetch(`/admin/story-items/${item.id}`, { method: "DELETE" });
       onDeleted(); onClose();
     } catch (err) {
-      toast({ title: "Error", description: (err as Error).message, variant: "destructive" });
+      toast({ title: t("toast.error"), description: (err as Error).message, variant: "destructive" });
     }
   };
 
@@ -517,11 +525,11 @@ function StoryItemEditDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-[420px]">
-        <DialogHeader><DialogTitle>تعديل الستوري</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("collections.story.editTitle")}</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-1">
           {/* Story circle image */}
           <div className="space-y-2">
-            <Label className="text-xs font-semibold">صورة الستوري (الدائرة)</Label>
+            <Label className="text-xs font-semibold">{t("collections.story.circleImage")}</Label>
             <div className="flex items-center gap-3">
               <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-primary bg-muted flex-shrink-0 flex items-center justify-center">
                 {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" alt="" />
@@ -531,26 +539,26 @@ function StoryItemEditDialog({
                 onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0], "story")} />
               <Button type="button" variant="outline" size="sm" className="flex-1 h-8"
                 onClick={() => storyRef.current?.click()} disabled={uploading !== null}>
-                {uploading === "story" ? "جاري الرفع..." : imageUrl ? "تغيير" : "رفع صورة"}
+                {uploading === "story" ? t("collections.uploading") : imageUrl ? t("collections.change") : t("collections.uploadImage")}
               </Button>
             </div>
           </div>
           {/* Bilingual names */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <Label className="text-xs">اسم عربي</Label>
+              <Label className="text-xs">{t("collections.field.arabicName")}</Label>
               <Input value={titleAr} onChange={(e) => setTitleAr(e.target.value)}
-                className="h-8 text-sm text-right" dir="rtl" placeholder="أحذية مورا" />
+                className="h-8 text-sm text-start" dir="rtl" placeholder={t("collections.placeholder.arNameExample")} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">English Name</Label>
+              <Label className="text-xs">{t("collections.field.englishName")}</Label>
               <Input value={title} onChange={(e) => setTitle(e.target.value)}
-                className="h-8 text-sm" placeholder="Mora Shoes" />
+                className="h-8 text-sm" placeholder={t("collections.placeholder.enNameExample")} />
             </div>
           </div>
           {/* Collection background image */}
           <div className="space-y-2">
-            <Label className="text-xs font-semibold">صورة خلفية القسم</Label>
+            <Label className="text-xs font-semibold">{t("collections.story.bgImage")}</Label>
             <div className="flex items-center gap-3">
               <div className="w-24 h-14 rounded-lg overflow-hidden border bg-muted flex-shrink-0 flex items-center justify-center">
                 {bgImage ? <img src={bgImage} className="w-full h-full object-cover" alt="" />
@@ -560,19 +568,19 @@ function StoryItemEditDialog({
                 onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0], "bg")} />
               <Button type="button" variant="outline" size="sm" className="flex-1 h-8"
                 onClick={() => bgRef.current?.click()} disabled={uploading !== null}>
-                {uploading === "bg" ? "جاري الرفع..." : bgImage ? "تغيير الخلفية" : "رفع خلفية"}
+                {uploading === "bg" ? t("collections.uploading") : bgImage ? t("collections.changeBackground") : t("collections.uploadBackground")}
               </Button>
             </div>
           </div>
         </div>
         <div className="flex items-center justify-between pt-2 border-t">
           <Button type="button" variant="destructive" size="sm" onClick={handleDelete} disabled={saving}>
-            <Trash2 className="w-3.5 h-3.5 mr-1" />حذف
+            <Trash2 className="w-3.5 h-3.5 me-1" />{t("collections.delete")}
           </Button>
           <div className="flex gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={onClose}>إلغاء</Button>
+            <Button type="button" variant="outline" size="sm" onClick={onClose}>{t("action.cancel")}</Button>
             <Button type="button" size="sm" onClick={handleSave} disabled={saving || uploading !== null}>
-              {saving ? "جاري الحفظ..." : "حفظ"}
+              {saving ? t("action.saving") : t("action.save")}
             </Button>
           </div>
         </div>
@@ -593,6 +601,7 @@ function SortableStoryRow({
   onDeleteItem: (id: string) => void;
   onUpdateItem: () => void;
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(false);
   const [title, setTitle] = useState(row.title);
@@ -657,10 +666,10 @@ function SortableStoryRow({
 
         <button
           type="button"
-          className="flex-1 flex items-center gap-2 text-left"
+          className="flex-1 flex items-center gap-2 text-start"
           onClick={() => setOpen((o) => !o)}
         >
-          {open ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
+          {open ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground rtl:rotate-180" />}
           {editTitle ? (
             <div className="flex gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
               <Input
@@ -668,9 +677,9 @@ function SortableStoryRow({
                 onChange={(e) => setTitleArRow(e.target.value)}
                 onBlur={saveTitle}
                 onKeyDown={(e) => { if (e.key === "Enter") saveTitle(); }}
-                className="h-7 text-sm text-right flex-1"
+                className="h-7 text-sm text-start flex-1"
                 dir="rtl"
-                placeholder="اسم عربي"
+                placeholder={t("collections.field.arabicName")}
               />
               <Input
                 value={title}
@@ -679,7 +688,7 @@ function SortableStoryRow({
                 onKeyDown={(e) => { if (e.key === "Enter") saveTitle(); }}
                 className="h-7 text-sm flex-1"
                 autoFocus
-                placeholder="English name"
+                placeholder={t("collections.placeholder.englishName")}
               />
             </div>
           ) : (
@@ -687,11 +696,11 @@ function SortableStoryRow({
               className="font-medium text-sm flex-1 hover:underline cursor-text"
               onDoubleClick={(e) => { e.stopPropagation(); setEditTitle(true); }}
             >
-              {row.titleAr ? `${row.titleAr} / ${row.title}` : row.title || <span className="text-muted-foreground italic">Untitled row</span>}
+              {row.titleAr ? `${row.titleAr} / ${row.title}` : row.title || <span className="text-muted-foreground italic">{t("collections.story.untitledRow")}</span>}
             </span>
           )}
-          <Badge variant="secondary" className="text-xs ml-auto flex-shrink-0">
-            {row.items.length} items
+          <Badge variant="secondary" className="text-xs ms-auto flex-shrink-0">
+            {t("collections.itemsCount", { n: row.items.length })}
           </Badge>
         </button>
 
@@ -699,7 +708,7 @@ function SortableStoryRow({
           type="button"
           className="text-muted-foreground hover:text-primary flex-shrink-0"
           onClick={() => onUpdate(row.id, { status: row.status === "active" ? "hidden" : "active" })}
-          title={row.status === "active" ? "Hide" : "Show"}
+          title={row.status === "active" ? t("collections.hide") : t("collections.show")}
         >
           {row.status === "active" ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
         </button>
@@ -716,7 +725,7 @@ function SortableStoryRow({
       {open && (
         <div className="border-t px-4 py-3 space-y-3 bg-muted/5">
           {row.items.length === 0 && !showItemForm && (
-            <p className="text-xs text-muted-foreground">No items yet. Add story items below.</p>
+            <p className="text-xs text-muted-foreground">{t("collections.story.noItemsYet")}</p>
           )}
           <div className="flex flex-wrap gap-3">
             {row.items.map((item) => (
@@ -744,24 +753,24 @@ function SortableStoryRow({
 
           {showItemForm && (
             <div className="border rounded-lg p-3 space-y-2 bg-background">
-              <p className="text-xs font-semibold">New Story Item</p>
+              <p className="text-xs font-semibold">{t("collections.story.newItem")}</p>
               <div className="grid grid-cols-1 gap-2">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-xs">اسم عربي</Label>
-                    <Input className="h-8 text-sm text-right" dir="rtl" placeholder="أحذية مورا"
+                    <Label className="text-xs">{t("collections.field.arabicName")}</Label>
+                    <Input className="h-8 text-sm text-start" dir="rtl" placeholder={t("collections.placeholder.arNameExample")}
                       value={newItem.titleAr}
                       onChange={(e) => setNewItem((n) => ({ ...n, titleAr: e.target.value }))} />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">English</Label>
-                    <Input className="h-8 text-sm" placeholder="e.g. Summer"
+                    <Label className="text-xs">{t("collections.field.english")}</Label>
+                    <Input className="h-8 text-sm" placeholder={t("collections.placeholder.summerExample")}
                       value={newItem.title}
                       onChange={(e) => setNewItem((n) => ({ ...n, title: e.target.value }))} />
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">صورة الستوري</Label>
+                  <Label className="text-xs">{t("collections.story.storyImage")}</Label>
                   <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageFile} />
                   <div className="flex items-center gap-2">
                     {newItem.imageUrl ? (
@@ -779,21 +788,21 @@ function SortableStoryRow({
                     )}
                     <Button type="button" variant="outline" size="sm" className="h-7 text-xs flex-1"
                       onClick={() => fileRef.current?.click()} disabled={uploading}>
-                      {uploading ? "جاري الرفع…" : newItem.imageUrl ? "تغيير" : "رفع صورة"}
+                      {uploading ? t("collections.uploading") : newItem.imageUrl ? t("collections.change") : t("collections.uploadImage")}
                     </Button>
                   </div>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button type="button" size="sm" className="h-7 text-xs" onClick={addItem} disabled={uploading}>Add Item</Button>
-                <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setShowItemForm(false)}>Cancel</Button>
+                <Button type="button" size="sm" className="h-7 text-xs" onClick={addItem} disabled={uploading}>{t("collections.addItem")}</Button>
+                <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setShowItemForm(false)}>{t("action.cancel")}</Button>
               </div>
             </div>
           )}
 
           {!showItemForm && (
             <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowItemForm(true)}>
-              <Plus className="w-3.5 h-3.5" /> Add Item
+              <Plus className="w-3.5 h-3.5" /> {t("collections.addItem")}
             </Button>
           )}
         </div>
@@ -813,6 +822,7 @@ function SortableStoryRow({
 // ─── Stories Section ─────────────────────────────────────────────────────────
 
 function StoriesSection() {
+  const { t } = useT();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [sectionOpen, setSectionOpen] = useState(true);
@@ -831,7 +841,7 @@ function StoriesSection() {
       method: "POST", body: JSON.stringify({ title, status: "active" }),
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-story-rows"] }); setLocalRows([]); },
-    onError: (e) => toast({ title: "Error", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: t("toast.error"), description: (e as Error).message, variant: "destructive" }),
   });
 
   const updateRow = useMutation({
@@ -878,18 +888,18 @@ function StoriesSection() {
     <div className="border rounded-2xl overflow-hidden bg-card">
       <button
         type="button"
-        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-accent/20 transition-colors"
+        className="w-full flex items-center gap-3 px-5 py-4 text-start hover:bg-accent/20 transition-colors"
         onClick={() => setSectionOpen((o) => !o)}
       >
         <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
           <BookImage className="w-5 h-5" />
         </div>
-        <div className="flex-1">
-          <p className="font-bold text-base">Stories</p>
-          <p className="text-xs text-muted-foreground">الدوائر تحت البانر — Drag to reorder rows</p>
+        <div className="flex-1 text-start">
+          <p className="font-bold text-base">{t("collections.stories.title")}</p>
+          <p className="text-xs text-muted-foreground">{t("collections.stories.hint")}</p>
         </div>
-        <Badge variant="outline">{rows.length} rows</Badge>
-        {sectionOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+        <Badge variant="outline">{t("collections.rowsCount", { n: rows.length })}</Badge>
+        {sectionOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground rtl:rotate-180" />}
       </button>
 
       {sectionOpen && (
@@ -897,7 +907,7 @@ function StoriesSection() {
           <StoriesPreview rows={displayRows.length ? displayRows : rows} />
 
           {isLoading ? (
-            <div className="text-sm text-muted-foreground">Loading...</div>
+            <div className="text-sm text-muted-foreground">{t("common.loading")}</div>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={displayRows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
@@ -920,12 +930,12 @@ function StoriesSection() {
 
           {showAddRow ? (
             <div className="border rounded-xl p-4 space-y-3 bg-muted/10">
-              <p className="text-sm font-semibold">New Story Row</p>
+              <p className="text-sm font-semibold">{t("collections.story.newRow")}</p>
               <div className="space-y-1">
-                <Label className="text-xs">Row Label (e.g. "New Arrivals")</Label>
+                <Label className="text-xs">{t("collections.story.rowLabel")}</Label>
                 <Input
                   className="h-9"
-                  placeholder="Enter a title for this row..."
+                  placeholder={t("collections.story.rowTitlePlaceholder")}
                   value={newRowTitle}
                   onChange={(e) => setNewRowTitle(e.target.value)}
                   autoFocus
@@ -948,14 +958,14 @@ function StoriesSection() {
                     setShowAddRow(false);
                   }}
                 >
-                  {createRow.isPending ? "Adding..." : "Add Row"}
+                  {createRow.isPending ? t("collections.adding") : t("collections.story.addRow")}
                 </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={() => setShowAddRow(false)}>Cancel</Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setShowAddRow(false)}>{t("action.cancel")}</Button>
               </div>
             </div>
           ) : (
             <Button type="button" variant="outline" className="gap-2" onClick={() => setShowAddRow(true)}>
-              <Plus className="w-4 h-4" /> Add Story Row
+              <Plus className="w-4 h-4" /> {t("collections.story.addStoryRow")}
             </Button>
           )}
         </div>
@@ -969,6 +979,7 @@ function StoriesSection() {
 type QuickMeta = { titleEn: string; titleAr: string; image: string; backgroundImage: string };
 
 function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [showMeta, setShowMeta] = useState(false);
   const [search, setSearch] = useState("");
@@ -1009,7 +1020,7 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
       if (!res.ok || !json.data?.url) throw new Error(json.error ?? "Upload failed");
       setMetaForm((f) => field === "image" ? { ...f, image: json.data.url } : { ...f, backgroundImage: json.data.url });
     } catch (err) {
-      toast({ title: "Upload failed", description: (err as Error).message, variant: "destructive" });
+      toast({ title: t("collections.uploadFailed"), description: (err as Error).message, variant: "destructive" });
     } finally {
       setUploadingField(null);
       if (imgRef.current) imgRef.current.value = "";
@@ -1022,9 +1033,9 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
     try {
       await apiFetch(`/admin/special-collections/${slug}/meta`, { method: "PUT", body: JSON.stringify(metaForm) });
       qc.invalidateQueries({ queryKey: ["admin-quick-meta", slug] });
-      toast({ title: "Saved ✓" }); setShowMeta(false);
+      toast({ title: t("toast.saved") }); setShowMeta(false);
     } catch (err) {
-      toast({ title: "Error", description: (err as Error).message, variant: "destructive" });
+      toast({ title: t("toast.error"), description: (err as Error).message, variant: "destructive" });
     } finally { setSavingMeta(false); }
   };
 
@@ -1041,7 +1052,7 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
     mutationFn: (productId: string) =>
       apiFetch(`/admin/special-collections/${slug}/items`, { method: "POST", body: JSON.stringify({ productId }) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-special-col", slug] }),
-    onError: (e) => toast({ title: "Error", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: t("toast.error"), description: (e as Error).message, variant: "destructive" }),
   });
 
   const removeItem = useMutation({
@@ -1063,7 +1074,7 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
     <div className="border rounded-xl overflow-hidden bg-card">
       <button
         type="button"
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/20 transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 text-start hover:bg-accent/20 transition-colors"
         onClick={() => setOpen((o) => !o)}
       >
         <div
@@ -1072,15 +1083,15 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
         >
           {meta.icon}
         </div>
-        <div className="flex-1">
-          <p className="font-semibold text-sm">{meta.label}</p>
-          <p className="text-xs text-muted-foreground">{items.length} products</p>
+        <div className="flex-1 text-start">
+          <p className="font-semibold text-sm">{t(meta.labelKey)}</p>
+          <p className="text-xs text-muted-foreground">{t("collections.productsCount", { n: items.length })}</p>
         </div>
         {editable
-          ? <Badge variant="outline" className="text-xs">Manual</Badge>
-          : <Badge variant="secondary" className="text-xs">Auto</Badge>
+          ? <Badge variant="outline" className="text-xs">{t("collections.badge.manual")}</Badge>
+          : <Badge variant="secondary" className="text-xs">{t("collections.badge.auto")}</Badge>
         }
-        {open ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
+        {open ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground rtl:rotate-180" />}
       </button>
 
       {open && (
@@ -1088,32 +1099,32 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
           {/* ── Meta edit: AR/EN names + images ── */}
           <div className="border rounded-lg overflow-hidden bg-muted/10">
             <button type="button"
-              className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-semibold hover:bg-accent/20 transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-2 text-start text-xs font-semibold hover:bg-accent/20 transition-colors"
               onClick={() => setShowMeta((s) => !s)}
             >
               <Settings2 className="w-3.5 h-3.5 text-muted-foreground" />
-              <span>الأسماء والصور</span>
-              {showMeta ? <ChevronDown className="w-3 h-3 ml-auto text-muted-foreground" /> : <ChevronRight className="w-3 h-3 ml-auto text-muted-foreground" />}
+              <span>{t("collections.quick.namesImages")}</span>
+              {showMeta ? <ChevronDown className="w-3 h-3 ms-auto text-muted-foreground" /> : <ChevronRight className="w-3 h-3 ms-auto text-muted-foreground rtl:rotate-180" />}
             </button>
             {showMeta && (
               <div className="border-t p-3 space-y-3 bg-background">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-xs">اسم عربي</Label>
-                    <Input className="h-8 text-sm text-right" dir="rtl" placeholder="أحذية مورا"
+                    <Label className="text-xs">{t("collections.field.arabicName")}</Label>
+                    <Input className="h-8 text-sm text-start" dir="rtl" placeholder={t("collections.placeholder.arNameExample")}
                       value={metaForm.titleAr}
                       onChange={(e) => setMetaForm((f) => ({ ...f, titleAr: e.target.value }))} />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">English Name</Label>
-                    <Input className="h-8 text-sm" placeholder="Brand Deals"
+                    <Label className="text-xs">{t("collections.field.englishName")}</Label>
+                    <Input className="h-8 text-sm" placeholder={t("collections.placeholder.brandDealsExample")}
                       value={metaForm.titleEn}
                       onChange={(e) => setMetaForm((f) => ({ ...f, titleEn: e.target.value }))} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-xs">صورة القسم</Label>
+                    <Label className="text-xs">{t("collections.quick.sectionImage")}</Label>
                     <div className="flex items-center gap-2">
                       {metaForm.image && (
                         <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
@@ -1124,12 +1135,12 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
                         onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0], "image")} />
                       <Button type="button" variant="outline" size="sm" className="h-7 text-xs flex-1"
                         onClick={() => imgRef.current?.click()} disabled={uploadingField !== null}>
-                        {uploadingField === "image" ? "..." : "رفع"}
+                        {uploadingField === "image" ? t("collections.uploading") : t("collections.uploadImage")}
                       </Button>
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">صورة الخلفية</Label>
+                    <Label className="text-xs">{t("collections.quick.bgImage")}</Label>
                     <div className="flex items-center gap-2">
                       {metaForm.backgroundImage && (
                         <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
@@ -1140,15 +1151,15 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
                         onChange={(e) => e.target.files?.[0] && uploadFile(e.target.files[0], "bg")} />
                       <Button type="button" variant="outline" size="sm" className="h-7 text-xs flex-1"
                         onClick={() => bgRef.current?.click()} disabled={uploadingField !== null}>
-                        {uploadingField === "bg" ? "..." : "رفع"}
+                        {uploadingField === "bg" ? t("collections.uploading") : t("collections.uploadImage")}
                       </Button>
                     </div>
                   </div>
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowMeta(false)}>إلغاء</Button>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowMeta(false)}>{t("action.cancel")}</Button>
                   <Button type="button" size="sm" className="h-7 text-xs" onClick={saveMeta} disabled={savingMeta || uploadingField !== null}>
-                    {savingMeta ? "حفظ..." : "حفظ"}
+                    {savingMeta ? t("action.saving") : t("action.save")}
                   </Button>
                 </div>
               </div>
@@ -1158,8 +1169,8 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
           {!editable && (
             <p className="text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
               {slug === "super-deals"
-                ? "Auto-computed — products with ≥25% discount, sorted by discount %."
-                : "Auto-computed — products sorted by units sold (last 15 days)."}
+                ? t("collections.auto.superDeals")
+                : t("collections.auto.unitsSold")}
             </p>
           )}
 
@@ -1187,7 +1198,7 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
           {editable && (
             <>
               <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setShowPicker((s) => !s)}>
-                <Plus className="w-3.5 h-3.5" /> Add Product
+                <Plus className="w-3.5 h-3.5" /> {t("collections.addProduct")}
               </Button>
 
               {showPicker && (
@@ -1195,7 +1206,7 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
                   <div className="flex items-center gap-2">
                     <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     <Input value={search} onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search products..." className="h-8 text-sm" autoFocus />
+                      placeholder={t("collections.searchProducts")} className="h-8 text-sm" autoFocus />
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowPicker(false)}>
                       <X className="w-4 h-4" />
                     </Button>
@@ -1204,18 +1215,18 @@ function QuickPanel({ slug, editable }: { slug: string; editable: boolean }) {
                     {filtered.slice(0, 30).map((p) => (
                       <button
                         key={p.id}
-                        className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-accent text-left transition-colors"
+                        className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-accent text-start transition-colors"
                         onClick={() => addItem.mutate(p.id)}
                       >
                         <div className="w-8 h-8 rounded overflow-hidden bg-muted flex-shrink-0">
                           {p.images?.[0] && <img src={p.images[0]} alt={p.title} className="w-full h-full object-cover" />}
                         </div>
                         <p className="text-sm font-medium truncate flex-1">{p.title}</p>
-                        <span className="text-xs text-muted-foreground flex-shrink-0">{(p.price ?? 0).toLocaleString()} IQD</span>
+                        <span className="text-xs text-muted-foreground flex-shrink-0 tabular-nums">{formatIQD(p.price ?? 0)}</span>
                       </button>
                     ))}
                     {filtered.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-3">No products found</p>
+                      <p className="text-sm text-muted-foreground text-center py-3">{t("collections.noProductsFound")}</p>
                     )}
                   </div>
                 </div>
@@ -1239,6 +1250,7 @@ const QUICK_SLOTS = [
 ];
 
 function QuickSectionsSection() {
+  const { t } = useT();
   const [sectionOpen, setSectionOpen] = useState(false);
   const { data: counts } = useQuery<Record<string, number>>({
     queryKey: ["admin-quick-counts"],
@@ -1257,18 +1269,18 @@ function QuickSectionsSection() {
     <div className="border rounded-2xl overflow-hidden bg-card">
       <button
         type="button"
-        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-accent/20 transition-colors"
+        className="w-full flex items-center gap-3 px-5 py-4 text-start hover:bg-accent/20 transition-colors"
         onClick={() => setSectionOpen((o) => !o)}
       >
         <div className="w-9 h-9 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500 flex-shrink-0">
           <Layers className="w-5 h-5" />
         </div>
-        <div className="flex-1">
-          <p className="font-bold text-base">Quick Sections</p>
-          <p className="text-xs text-muted-foreground">الأقسام السريعة الـ4 — under the stories</p>
+        <div className="flex-1 text-start">
+          <p className="font-bold text-base">{t("collections.quick.title")}</p>
+          <p className="text-xs text-muted-foreground">{t("collections.quick.hint")}</p>
         </div>
-        <Badge variant="outline">4 slots</Badge>
-        {sectionOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+        <Badge variant="outline">{t("collections.slots")}</Badge>
+        {sectionOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground rtl:rotate-180" />}
       </button>
 
       {sectionOpen && (
@@ -1288,6 +1300,7 @@ function QuickSectionsSection() {
 // ─── Regular Collections Section ─────────────────────────────────────────────
 
 function CollectionsSection() {
+  const { t } = useT();
   const [sectionOpen, setSectionOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "manual" | "smart">("all");
@@ -1303,7 +1316,7 @@ function CollectionsSection() {
   const deleteCol = useMutation({
     mutationFn: (id: string) => apiFetch(`/admin/collections/${id}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-collections-hub"] }),
-    onError: (e) => toast({ title: "Error", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: t("toast.error"), description: (e as Error).message, variant: "destructive" }),
   });
 
   const filtered = cols.filter((c) => {
@@ -1321,18 +1334,18 @@ function CollectionsSection() {
       {/* Header */}
       <button
         type="button"
-        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-accent/20 transition-colors"
+        className="w-full flex items-center gap-3 px-5 py-4 text-start hover:bg-accent/20 transition-colors"
         onClick={() => setSectionOpen((o) => !o)}
       >
         <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 flex-shrink-0">
           <FolderOpen className="w-5 h-5" />
         </div>
-        <div className="flex-1">
-          <p className="font-bold text-base">Collections</p>
-          <p className="text-xs text-muted-foreground">الكولكشنات — group products for the store & app</p>
+        <div className="flex-1 text-start">
+          <p className="font-bold text-base">{t("collections.title")}</p>
+          <p className="text-xs text-muted-foreground">{t("collections.section.hint")}</p>
         </div>
         <Badge variant="outline" className="text-xs">{cols.length}</Badge>
-        {sectionOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+        {sectionOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground rtl:rotate-180" />}
       </button>
 
       {sectionOpen && (
@@ -1343,37 +1356,37 @@ function CollectionsSection() {
               <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <input
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                placeholder="Search collections..."
+                placeholder={t("collections.searchCollections")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
             <div className="flex gap-1">
-              {(["all", "manual", "smart"] as const).map((t) => (
+              {(["all", "manual", "smart"] as const).map((tf) => (
                 <button
-                  key={t}
+                  key={tf}
                   type="button"
-                  onClick={() => setTypeFilter(t)}
+                  onClick={() => setTypeFilter(tf)}
                   className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                    typeFilter === t
+                    typeFilter === tf
                       ? "bg-primary text-primary-foreground"
                       : "bg-background border hover:bg-accent text-muted-foreground"
                   }`}
                 >
-                  {t === "all" ? "All" : t === "smart" ? "⚡ Smart" : "Manual"}
+                  {tf === "all" ? t("common.all") : tf === "smart" ? t("collections.filter.smart") : t("collections.filter.manual")}
                 </button>
               ))}
             </div>
             <Link href="/collections/new">
               <Button size="sm" className="h-7 text-xs gap-1 flex-shrink-0">
-                <Plus className="w-3.5 h-3.5" /> New
+                <Plus className="w-3.5 h-3.5" /> {t("collections.new")}
               </Button>
             </Link>
           </div>
 
           <div className="p-5 space-y-5">
             {isLoading && (
-              <p className="text-sm text-muted-foreground text-center py-4">Loading...</p>
+              <p className="text-sm text-muted-foreground text-center py-4">{t("common.loading")}</p>
             )}
 
             {/* Smart collections group */}
@@ -1381,7 +1394,7 @@ function CollectionsSection() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Wand2 className="w-3.5 h-3.5 text-violet-500" />
-                  <p className="text-xs font-semibold text-violet-600 uppercase tracking-wide">Smart Collections</p>
+                  <p className="text-xs font-semibold text-violet-600 uppercase tracking-wide">{t("collections.group.smart")}</p>
                   <div className="flex-1 h-px bg-border" />
                   <span className="text-xs text-muted-foreground">{smartCols.length}</span>
                 </div>
@@ -1398,7 +1411,7 @@ function CollectionsSection() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <FolderOpen className="w-3.5 h-3.5 text-emerald-600" />
-                  <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Manual Collections</p>
+                  <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">{t("collections.group.manual")}</p>
                   <div className="flex-1 h-px bg-border" />
                   <span className="text-xs text-muted-foreground">{manualCols.length}</span>
                 </div>
@@ -1413,7 +1426,7 @@ function CollectionsSection() {
             {filtered.length === 0 && !isLoading && (
               <div className="text-center py-8 text-muted-foreground">
                 <FolderOpen className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">{search ? "No collections match your search." : "No collections yet."}</p>
+                <p className="text-sm">{search ? t("collections.empty.noMatch") : t("collections.empty.noneYet")}</p>
               </div>
             )}
           </div>
@@ -1430,6 +1443,7 @@ function CollectionRow({
   col: Collection & { collectionType?: string; titleAr?: string; productsCount?: number };
   onDelete: () => void;
 }) {
+  const { t } = useT();
   const isSmart = col.collectionType === "smart";
   return (
     <div className="flex items-center gap-3 p-3 border rounded-xl bg-background hover:bg-accent/5 transition-colors">
@@ -1447,13 +1461,13 @@ function CollectionRow({
           <p className="font-semibold text-sm leading-tight truncate max-w-[200px]">{col.title}</p>
           {col.titleAr && <span className="text-xs text-muted-foreground dir-rtl">{col.titleAr}</span>}
           {isSmart
-            ? <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-violet-600 bg-violet-50 border border-violet-200 rounded px-1.5 py-0.5">⚡ Smart</span>
-            : <span className="inline-flex text-[10px] font-medium text-muted-foreground bg-muted border rounded px-1.5 py-0.5">Manual</span>
+            ? <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-violet-600 bg-violet-50 border border-violet-200 rounded px-1.5 py-0.5">{t("collections.badge.smart")}</span>
+            : <span className="inline-flex text-[10px] font-medium text-muted-foreground bg-muted border rounded px-1.5 py-0.5">{t("collections.badge.manual")}</span>
           }
         </div>
         <div className="flex items-center gap-3 mt-0.5">
           {col.productsCount != null && (
-            <span className="text-xs text-muted-foreground">{col.productsCount} products</span>
+            <span className="text-xs text-muted-foreground">{t("collections.productsCount", { n: col.productsCount })}</span>
           )}
           {col.description && (
             <span className="text-xs text-muted-foreground truncate max-w-[220px]">{col.description}</span>
@@ -1465,7 +1479,7 @@ function CollectionRow({
       <div className="flex items-center gap-1 flex-shrink-0">
         <Link href={`/collections/${col.id}/edit`}>
           <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
-            <Pencil className="w-3 h-3" /> Edit
+            <Pencil className="w-3 h-3" /> {t("action.edit")}
           </Button>
         </Link>
         <Button
@@ -1483,19 +1497,15 @@ function CollectionRow({
 // ─── Main Hub ────────────────────────────────────────────────────────────────
 
 export default function CollectionsHub() {
+  const { t } = useT();
   return (
-    <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-5">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Collections</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage all 3 types of content sections shown on the store and app.
-        </p>
-      </div>
+    <PageContainer className="max-w-3xl">
+      <PageHeader title={t("collections.title")} subtitle={t("collections.hub.subtitle")} />
 
       <MenuTabBarSection />
       <StoriesSection />
       <QuickSectionsSection />
       <CollectionsSection />
-    </div>
+    </PageContainer>
   );
 }

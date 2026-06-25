@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, Trash2, GripVertical } from "lucide-react";
+import { useT } from "@/i18n/LanguageContext";
 
 interface MenuLink {
   title: string;
@@ -15,6 +16,7 @@ interface MenuLink {
 }
 
 export default function MenuEditor() {
+  const { t } = useT();
   const { id } = useParams();
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
@@ -53,7 +55,7 @@ export default function MenuEditor() {
 
   const handleSave = () => {
     if (!title) {
-      toast({ title: "Title required", variant: "destructive" });
+      toast({ title: t("content.err.titleRequired"), variant: "destructive" });
       return;
     }
     if (isNew) {
@@ -61,11 +63,11 @@ export default function MenuEditor() {
         { data: { title, handle: handle || undefined, items: links as unknown as Record<string, unknown>[] } },
         {
           onSuccess: () => {
-            toast({ title: "Menu created" });
+            toast({ title: t("content.menus.createdToast") });
             queryClient.invalidateQueries({ queryKey: ["/api/admin/menus"] });
             navigate("/content?tab=menus");
           },
-          onError: () => toast({ title: "Error", description: "Failed to create menu.", variant: "destructive" }),
+          onError: () => toast({ title: t("toast.error"), description: t("content.menus.createError"), variant: "destructive" }),
         }
       );
     } else {
@@ -73,11 +75,11 @@ export default function MenuEditor() {
         { id: id!, data: { title, handle: handle || undefined, items: links as unknown as Record<string, unknown>[] } },
         {
           onSuccess: () => {
-            toast({ title: "Menu saved" });
+            toast({ title: t("content.menus.savedToast") });
             queryClient.invalidateQueries({ queryKey: ["/api/admin/menus"] });
             queryClient.invalidateQueries({ queryKey: ["/api/admin/menus", id] });
           },
-          onError: () => toast({ title: "Error", description: "Failed to update menu.", variant: "destructive" }),
+          onError: () => toast({ title: t("toast.error"), description: t("content.menus.updateError"), variant: "destructive" }),
         }
       );
     }
@@ -86,33 +88,33 @@ export default function MenuEditor() {
   const isSaving = createMenu.isPending || updateMenu.isPending;
 
   return (
-    <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Link href="/content?tab=menus" className="text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5 rtl:rotate-180" />
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight">{isNew ? "New Menu" : "Edit Menu"}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{isNew ? t("content.menus.newTitle") : t("content.menus.editTitle")}</h1>
         </div>
         <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving ? "Saving..." : "Save"}
+          {isSaving ? t("action.saving") : t("action.save")}
         </Button>
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Menu Details</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t("content.menus.details")}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-2">
-            <Label htmlFor="menu-title">Title *</Label>
+            <Label htmlFor="menu-title">{t("content.menus.f.title")} *</Label>
             <Input
               id="menu-title"
-              placeholder="e.g. Main Navigation"
+              placeholder={t("content.menus.titlePh")}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="menu-handle">Handle</Label>
+            <Label htmlFor="menu-handle">{t("content.menus.f.handle")}</Label>
             <Input
               id="menu-handle"
               placeholder="main-navigation"
@@ -120,18 +122,18 @@ export default function MenuEditor() {
               onChange={(e) => setHandle(e.target.value)}
               className="font-mono text-sm"
             />
-            <p className="text-xs text-muted-foreground">Used in theme code to reference this menu.</p>
+            <p className="text-xs text-muted-foreground">{t("content.menus.handleHint")}</p>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Navigation Links</CardTitle>
+          <CardTitle>{t("content.menus.navLinks")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {links.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">No links yet. Add the first link below.</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{t("content.menus.noLinks")}</p>
           )}
           <div className="space-y-2">
             {links.map((link, i) => (
@@ -140,13 +142,13 @@ export default function MenuEditor() {
                 <Input
                   value={link.title}
                   onChange={(e) => updateLink(i, "title", e.target.value)}
-                  placeholder="Link title"
+                  placeholder={t("content.menus.linkTitlePh")}
                   className="h-8"
                 />
                 <Input
                   value={link.url}
                   onChange={(e) => updateLink(i, "url", e.target.value)}
-                  placeholder="URL (e.g. /collections/all)"
+                  placeholder={t("content.menus.linkUrlPh")}
                   className="h-8 font-mono text-sm"
                 />
                 <Button
@@ -164,25 +166,25 @@ export default function MenuEditor() {
 
           {/* Add new link row */}
           <div className="border border-dashed rounded-lg p-3 space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Add Link</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("content.menus.addLink")}</p>
             <div className="flex gap-2">
               <Input
-                placeholder="Link title"
+                placeholder={t("content.menus.linkTitlePh")}
                 value={newLink.title}
                 onChange={(e) => setNewLink((n) => ({ ...n, title: e.target.value }))}
                 className="h-8"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLink(); } }}
               />
               <Input
-                placeholder="/path or https://..."
+                placeholder={t("content.menus.pathPh")}
                 value={newLink.url}
                 onChange={(e) => setNewLink((n) => ({ ...n, url: e.target.value }))}
                 className="h-8 font-mono text-sm"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLink(); } }}
               />
               <Button type="button" size="sm" variant="outline" onClick={addLink}>
-                <Plus className="w-4 h-4 mr-1" />
-                Add
+                <Plus className="w-4 h-4 me-1" />
+                {t("action.add")}
               </Button>
             </div>
           </div>

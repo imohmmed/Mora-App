@@ -15,17 +15,20 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageContainer, PageHeader, EmptyState } from "@/components/ui/page-primitives";
 import { Search, Inbox, ChevronLeft, ChevronRight, ArrowUpDown, Trash2 } from "lucide-react";
-import { format } from "date-fns";
 import { fmt } from "@/lib/date";
+import { formatIQD } from "@/lib/format";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useToast } from "@/hooks/use-toast";
+import { useT } from "@/i18n/LanguageContext";
 
 const PAGE_SIZE = 10;
 
 type OrderTab = "all" | "orders" | "drafts" | "abandoned";
 
 export default function Orders() {
+  const { t } = useT();
   const [tab, setTab] = useState<OrderTab>("all");
   const [status, setStatus] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -41,10 +44,10 @@ export default function Orders() {
       { id },
       {
         onSuccess: () => {
-          toast({ title: "Order deleted" });
+          toast({ title: t("orders.toast.deleted") });
           queryClient.invalidateQueries({ queryKey: ["/api/admin/orders"] });
         },
-        onError: () => toast({ title: "Error deleting order", variant: "destructive" }),
+        onError: () => toast({ title: t("orders.toast.deleteError"), variant: "destructive" }),
       }
     );
   };
@@ -85,155 +88,156 @@ export default function Orders() {
     setPage(1);
   };
 
+  const financialLabel = (financial: string | undefined) =>
+    financial === "paid" ? t("status.paid") : t("status.pending");
+  const fulfillmentLabel = (fulfillment: string | undefined | null) =>
+    fulfillment === "fulfilled" ? t("orders.status.fulfilled") : t("orders.status.unfulfilled");
+
   const statusBadge = (financial: string | undefined, fulfillment: string | undefined | null) => (
     <div className="flex flex-wrap gap-1">
       <Badge variant={financial === "paid" ? "default" : "secondary"} className="text-xs">
-        {financial ?? "pending"}
+        {financialLabel(financial)}
       </Badge>
       <Badge variant={fulfillment === "fulfilled" ? "outline" : "secondary"} className="text-xs">
-        {fulfillment || "unfulfilled"}
+        {fulfillmentLabel(fulfillment)}
       </Badge>
     </div>
   );
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Orders</h1>
-        <p className="text-muted-foreground mt-1">Manage and fulfill customer orders.</p>
-      </div>
+    <PageContainer>
+      <PageHeader title={t("orders.title")} subtitle={t("orders.subtitle")} />
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={handleTabChange}>
         <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="orders">Orders</TabsTrigger>
-          <TabsTrigger value="drafts">Drafts</TabsTrigger>
-          <TabsTrigger value="abandoned">Abandoned</TabsTrigger>
+          <TabsTrigger value="all">{t("common.all")}</TabsTrigger>
+          <TabsTrigger value="orders">{t("orders.tab.orders")}</TabsTrigger>
+          <TabsTrigger value="drafts">{t("orders.tab.drafts")}</TabsTrigger>
+          <TabsTrigger value="abandoned">{t("orders.tab.abandoned")}</TabsTrigger>
         </TabsList>
       </Tabs>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 items-center">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative flex-1 w-full sm:max-w-sm">
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search orders or email..."
-            className="pl-9"
+            placeholder={t("orders.searchPlaceholder")}
+            className="ps-9"
             value={search}
             onChange={handleSearch}
           />
         </div>
         <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
           <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t("common.status")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Any Status</SelectItem>
-            <SelectItem value="unfulfilled">Unfulfilled</SelectItem>
-            <SelectItem value="fulfilled">Fulfilled</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="all">{t("orders.status.any")}</SelectItem>
+            <SelectItem value="unfulfilled">{t("orders.status.unfulfilled")}</SelectItem>
+            <SelectItem value="fulfilled">{t("orders.status.fulfilled")}</SelectItem>
+            <SelectItem value="cancelled">{t("orders.status.cancelled")}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={sort} onValueChange={(v) => { setSort(v); setPage(1); }}>
           <SelectTrigger className="w-full sm:w-44">
-            <ArrowUpDown className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
-            <SelectValue placeholder="Sort" />
+            <ArrowUpDown className="h-3.5 w-3.5 me-1 text-muted-foreground" />
+            <SelectValue placeholder={t("action.sort")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="newest">Newest First</SelectItem>
-            <SelectItem value="oldest">Oldest First</SelectItem>
-            <SelectItem value="total_desc">Highest Total</SelectItem>
-            <SelectItem value="total_asc">Lowest Total</SelectItem>
+            <SelectItem value="newest">{t("orders.sort.newest")}</SelectItem>
+            <SelectItem value="oldest">{t("orders.sort.oldest")}</SelectItem>
+            <SelectItem value="total_desc">{t("orders.sort.totalDesc")}</SelectItem>
+            <SelectItem value="total_asc">{t("orders.sort.totalAsc")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Desktop table */}
-      <div className="hidden md:block bg-card border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Order</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead className="w-12"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+      <div className="hidden md:block bg-card border rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">Loading...</TableCell>
+                <TableHead>{t("orders.col.order")}</TableHead>
+                <TableHead>{t("common.date")}</TableHead>
+                <TableHead>{t("orders.col.customer")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead className="text-end">{t("common.total")}</TableHead>
+                <TableHead className="w-12"></TableHead>
               </TableRow>
-            ) : orders.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-48 text-center">
-                  <div className="flex flex-col items-center justify-center text-muted-foreground">
-                    <Inbox className="h-8 w-8 mb-2 opacity-50" />
-                    <p>No orders found.</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              orders.map((order) => (
-                <TableRow key={order.id} className="cursor-pointer group relative">
-                  <TableCell className="font-medium">
-                    <Link href={`/orders/${order.id}`} className="absolute inset-0">
-                      <span className="sr-only">View {order.orderNumber}</span>
-                    </Link>
-                    {order.orderNumber}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {order.createdAt ? fmt(order.createdAt, "MMM d, h:mm a") : "—"}
-                  </TableCell>
-                  <TableCell>{order.email}</TableCell>
-                  <TableCell>{statusBadge(order.financialStatus, order.fulfillmentStatus)}</TableCell>
-                  <TableCell className="text-right font-semibold">{order.total.toLocaleString("en-US")} IQD</TableCell>
-                  <TableCell className="text-right">
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="relative z-10 h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={(e) => e.stopPropagation()}
-                          data-testid={`btn-delete-order-${order.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete order {order.orderNumber}?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This action cannot be undone. The order will be permanently removed.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(order.id)}>Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center">{t("common.loading")}</TableCell>
+                </TableRow>
+              ) : orders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-48 text-center">
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                      <Inbox className="h-8 w-8 mb-2 opacity-50" />
+                      <p>{t("orders.empty")}</p>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                orders.map((order) => (
+                  <TableRow key={order.id} className="cursor-pointer group relative">
+                    <TableCell className="font-medium">
+                      <Link href={`/orders/${order.id}`} className="absolute inset-0">
+                        <span className="sr-only">{t("orders.view", { n: order.orderNumber })}</span>
+                      </Link>
+                      {order.orderNumber}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {order.createdAt ? fmt(order.createdAt, "MMM d, h:mm a") : "—"}
+                    </TableCell>
+                    <TableCell>{order.email}</TableCell>
+                    <TableCell>{statusBadge(order.financialStatus, order.fulfillmentStatus)}</TableCell>
+                    <TableCell className="text-end font-semibold tabular-nums">{formatIQD(order.total)}</TableCell>
+                    <TableCell className="text-end">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="relative z-10 h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={(e) => e.stopPropagation()}
+                            data-testid={`btn-delete-order-${order.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>{t("orders.delete.title", { n: order.orderNumber })}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {t("orders.delete.desc")}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(order.id)}>{t("action.delete")}</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Mobile card list */}
       <div className="md:hidden space-y-3">
         {isLoading ? (
-          <p className="text-center text-muted-foreground py-8">Loading...</p>
+          <p className="text-center text-muted-foreground py-8">{t("common.loading")}</p>
         ) : orders.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <Inbox className="h-10 w-10 mx-auto mb-3 opacity-40" />
-            <p>No orders found.</p>
-          </div>
+          <EmptyState icon={Inbox} title={t("orders.empty")} description={t("orders.empty.desc")} />
         ) : (
           orders.map((order) => (
             <Link key={order.id} href={`/orders/${order.id}`}>
@@ -241,16 +245,16 @@ export default function Orders() {
                 <CardContent className="pt-4 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold">{order.orderNumber}</span>
-                    <span className="font-semibold">{order.total.toLocaleString("en-US")} IQD</span>
+                    <span className="font-semibold tabular-nums">{formatIQD(order.total)}</span>
                   </div>
                   <p className="text-sm text-muted-foreground">{order.email}</p>
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex gap-1">
                       <Badge variant={order.financialStatus === "paid" ? "default" : "secondary"} className="text-xs">
-                        {order.financialStatus ?? "pending"}
+                        {financialLabel(order.financialStatus)}
                       </Badge>
                       <Badge variant={order.fulfillmentStatus === "fulfilled" ? "outline" : "secondary"} className="text-xs">
-                        {order.fulfillmentStatus || "unfulfilled"}
+                        {fulfillmentLabel(order.fulfillmentStatus)}
                       </Badge>
                     </div>
                     <span className="text-xs text-muted-foreground">
@@ -268,7 +272,11 @@ export default function Orders() {
       {pageCount > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total} orders
+            {t("orders.pagination", {
+              from: (page - 1) * PAGE_SIZE + 1,
+              to: Math.min(page * PAGE_SIZE, total),
+              total,
+            })}
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -278,9 +286,9 @@ export default function Orders() {
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
             </Button>
-            <span className="text-sm font-medium">{page} / {pageCount}</span>
+            <span className="text-sm font-medium tabular-nums">{page} / {pageCount}</span>
             <Button
               variant="outline"
               size="icon"
@@ -288,11 +296,11 @@ export default function Orders() {
               disabled={page >= pageCount}
               onClick={() => setPage((p) => p + 1)}
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4 rtl:rotate-180" />
             </Button>
           </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

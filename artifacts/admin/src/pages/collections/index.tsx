@@ -1,42 +1,25 @@
 import { useState, useEffect } from "react";
 import { useAdminListCollections } from "@workspace/api-client-react";
-import { Link } from "wouter";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { PageContainer, PageHeader, EmptyState } from "@/components/ui/page-primitives";
 import { FolderTree, Plus, Image as ImageIcon, LayoutList, ChevronUp, ChevronDown, Trash2, GripVertical, Loader2, CheckCircle2 } from "lucide-react";
 import { fmt } from "@/lib/date";
 import { adminFetch } from "@/lib/api";
+import { useT } from "@/i18n/LanguageContext";
 
 type TabConfig = {
   id: string;
   label: string;
   filterType: "all" | "gender" | "category" | "sale" | "foryou" | string;
   filterValue?: string;
-};
-
-const FILTER_TYPE_LABELS: Record<string, string> = {
-  all: "All Products",
-  gender: "Gender",
-  category: "Category",
-  sale: "Sale / Discounted",
-  foryou: "For You (Personalized)",
-};
-
-const FILTER_TYPE_COLOR: Record<string, string> = {
-  all: "secondary",
-  gender: "default",
-  category: "outline",
-  sale: "destructive",
-  foryou: "secondary",
 };
 
 const DEFAULT_TABS: TabConfig[] = [
@@ -49,6 +32,7 @@ const DEFAULT_TABS: TabConfig[] = [
 ];
 
 function MenuTabBar() {
+  const { t } = useT();
   const [tabs, setTabs] = useState<TabConfig[]>(DEFAULT_TABS);
   const [sectionId, setSectionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -122,7 +106,7 @@ function MenuTabBar() {
     return (
       <div className="flex items-center justify-center h-32 text-muted-foreground gap-2">
         <Loader2 className="w-4 h-4 animate-spin" />
-        Loading...
+        {t("common.loading")}
       </div>
     );
   }
@@ -138,7 +122,7 @@ function MenuTabBar() {
               value={tab.label}
               onChange={(e) => update(i, "label", e.target.value.toUpperCase())}
               className="font-mono text-sm font-semibold h-8"
-              placeholder="Tab label"
+              placeholder={t("collections.tab.labelPlaceholder")}
             />
           </div>
 
@@ -148,11 +132,11 @@ function MenuTabBar() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Products</SelectItem>
-                <SelectItem value="gender">Gender</SelectItem>
-                <SelectItem value="category">Category</SelectItem>
-                <SelectItem value="sale">Sale / Discounted</SelectItem>
-                <SelectItem value="foryou">For You</SelectItem>
+                <SelectItem value="all">{t("collections.filter.allProducts")}</SelectItem>
+                <SelectItem value="gender">{t("collections.filter.gender")}</SelectItem>
+                <SelectItem value="category">{t("collections.filter.category")}</SelectItem>
+                <SelectItem value="sale">{t("collections.filter.saleDiscounted")}</SelectItem>
+                <SelectItem value="foryou">{t("collections.filter.forYou")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -165,8 +149,8 @@ function MenuTabBar() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="women">Women</SelectItem>
-                    <SelectItem value="men">Men</SelectItem>
+                    <SelectItem value="women">{t("collections.gender.women")}</SelectItem>
+                    <SelectItem value="men">{t("collections.gender.men")}</SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
@@ -174,7 +158,7 @@ function MenuTabBar() {
                   value={tab.filterValue ?? ""}
                   onChange={(e) => update(i, "filterValue", e.target.value)}
                   className="h-8 text-xs"
-                  placeholder="e.g. beauty"
+                  placeholder={t("collections.category.placeholder")}
                 />
               )}
             </div>
@@ -196,16 +180,16 @@ function MenuTabBar() {
 
       <div className="flex items-center justify-between pt-1">
         <Button variant="outline" size="sm" onClick={addTab}>
-          <Plus className="w-4 h-4 mr-1" />
-          Add Tab
+          <Plus className="w-4 h-4 me-1" />
+          {t("collections.addTab")}
         </Button>
         <Button size="sm" onClick={saveTabs} disabled={saving}>
           {saving ? (
-            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
+            <><Loader2 className="w-4 h-4 me-2 animate-spin" />{t("action.saving")}</>
           ) : saved ? (
-            <><CheckCircle2 className="w-4 h-4 mr-2 text-green-500" />Saved</>
+            <><CheckCircle2 className="w-4 h-4 me-2 text-green-500" />{t("toast.saved")}</>
           ) : (
-            "Save Changes"
+            t("action.saveChanges")
           )}
         </Button>
       </div>
@@ -214,31 +198,32 @@ function MenuTabBar() {
 }
 
 export default function Collections() {
+  const { t } = useT();
   const { data: response, isLoading } = useAdminListCollections();
   const collections = response?.data ?? [];
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Collections</h1>
-          <p className="text-muted-foreground mt-1">Group your products and manage the app's home screen tabs.</p>
-        </div>
-        <Button data-testid="btn-add-collection">
-          <Plus className="w-4 h-4 mr-2" />
-          Create Collection
-        </Button>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title={t("collections.title")}
+        subtitle={t("collections.subtitle")}
+        actions={
+          <Button data-testid="btn-add-collection">
+            <Plus className="w-4 h-4 me-2" />
+            {t("collections.create")}
+          </Button>
+        }
+      />
 
       {/* ── Menu Tab Bar ─────────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <LayoutList className="w-5 h-5" />
-            Menu Tab Bar
+            {t("collections.menuTabBar.title")}
           </CardTitle>
           <CardDescription>
-            These tabs appear at the top of the home screen in the Mora app. Drag to reorder, edit labels, and choose what each tab shows.
+            {t("collections.menuTabBar.desc")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -248,62 +233,61 @@ export default function Collections() {
 
       {/* ── Collections table ─────────────────────────────────────────────── */}
       <div>
-        <h2 className="text-xl font-semibold mb-4">Product Collections</h2>
+        <h2 className="text-xl font-semibold mb-4">{t("collections.productCollections")}</h2>
         <div className="bg-card border rounded-lg overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[80px]">Image</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Products</TableHead>
-                <TableHead>Created</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">Loading...</TableCell>
+                  <TableHead className="w-[80px]">{t("collections.table.image")}</TableHead>
+                  <TableHead>{t("collections.table.title")}</TableHead>
+                  <TableHead>{t("collections.table.products")}</TableHead>
+                  <TableHead>{t("collections.table.created")}</TableHead>
                 </TableRow>
-              ) : collections.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="h-48 text-center">
-                    <div className="flex flex-col items-center justify-center text-muted-foreground">
-                      <FolderTree className="h-8 w-8 mb-2 opacity-50" />
-                      <p>No collections found.</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                collections.map((collection) => (
-                  <TableRow key={collection.id} className="cursor-pointer group relative">
-                    <TableCell>
-                      <div className="h-12 w-12 rounded-md bg-muted flex items-center justify-center overflow-hidden">
-                        {collection.image ? (
-                          <img src={collection.image} alt={collection.title} className="w-full h-full object-cover" />
-                        ) : (
-                          <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {collection.title}
-                      {collection.description && (
-                        <p className="text-xs text-muted-foreground font-normal line-clamp-1 mt-1">
-                          {collection.description}
-                        </p>
-                      )}
-                    </TableCell>
-                    <TableCell>{collection.productsCount ?? 0} products</TableCell>
-                    <TableCell>
-                      {collection.createdAt ? fmt(collection.createdAt, "MMM d, yyyy") : "-"}
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">{t("common.loading")}</TableCell>
+                  </TableRow>
+                ) : collections.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-48 text-center">
+                      <EmptyState icon={FolderTree} title={t("collections.empty.none")} className="py-6" />
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  collections.map((collection) => (
+                    <TableRow key={collection.id} className="cursor-pointer group relative">
+                      <TableCell>
+                        <div className="h-12 w-12 rounded-md bg-muted flex items-center justify-center overflow-hidden">
+                          {collection.image ? (
+                            <img src={collection.image} alt={collection.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {collection.title}
+                        {collection.description && (
+                          <p className="text-xs text-muted-foreground font-normal line-clamp-1 mt-1">
+                            {collection.description}
+                          </p>
+                        )}
+                      </TableCell>
+                      <TableCell>{t("collections.productsCount", { n: collection.productsCount ?? 0 })}</TableCell>
+                      <TableCell>
+                        {collection.createdAt ? fmt(collection.createdAt, "MMM d, yyyy") : "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }

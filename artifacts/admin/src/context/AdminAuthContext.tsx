@@ -52,6 +52,23 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // DEV-ONLY: auto-login with a pre-minted owner token so the authenticated
+    // UI can be developed locally (Google OAuth is unavailable in the iframe).
+    // Stripped entirely from production builds (import.meta.env.DEV === false).
+    if (import.meta.env.DEV) {
+      const devToken = import.meta.env.VITE_DEV_ADMIN_TOKEN as string | undefined;
+      if (devToken) {
+        setAdminToken(devToken);
+        const owner: AdminUser = {
+          email: OWNER_EMAIL, name: "Owner", role: "owner",
+          permissions: { orders: true, products: true, customers: true, analytics: true, marketing: true, content: true, settings: true },
+        };
+        localStorage.setItem(USER_KEY, JSON.stringify(owner));
+        setUser(owner);
+        setIsLoading(false);
+        return;
+      }
+    }
     const token = getAdminToken();
     if (token && isTokenValid(token)) {
       try {

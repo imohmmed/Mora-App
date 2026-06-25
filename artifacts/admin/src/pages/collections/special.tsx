@@ -4,7 +4,10 @@ import { Zap, Tag, TrendingUp, Star, Trash2, Plus, X, Search, Gift } from "lucid
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { PageContainer, PageHeader } from "@/components/ui/page-primitives";
 import { useToast } from "@/hooks/use-toast";
+import { formatIQD } from "@/lib/format";
+import { useT } from "@/i18n/LanguageContext";
 
 const API = import.meta.env.BASE_URL.replace(/\/$/, "") + "/api";
 
@@ -17,17 +20,6 @@ type Product = {
   images: string[];
   category: string;
   sold_count?: number;
-};
-
-type SpecialCollection = {
-  slug: string;
-  title: string;
-  description: string;
-  accentColor: string;
-  icon: React.ReactNode;
-  editable: boolean;
-  total: number;
-  products: Product[];
 };
 
 const ICONS: Record<string, React.ReactNode> = {
@@ -98,6 +90,7 @@ function useRemoveItem(slug: string) {
 }
 
 function EditablePanel({ slug }: { slug: string }) {
+  const { t } = useT();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [showPicker, setShowPicker] = useState(false);
@@ -118,27 +111,27 @@ function EditablePanel({ slug }: { slug: string }) {
   const handleAdd = async (productId: string) => {
     try {
       await addItem.mutateAsync(productId);
-      toast({ title: "Product added to collection" });
+      toast({ title: t("collections.special.productAdded") });
     } catch (e) {
-      toast({ title: "Error", description: (e as Error).message, variant: "destructive" });
+      toast({ title: t("toast.error"), description: (e as Error).message, variant: "destructive" });
     }
   };
 
   const handleRemove = async (productId: string) => {
     try {
       await removeItem.mutateAsync(productId);
-      toast({ title: "Product removed from collection" });
+      toast({ title: t("collections.special.productRemoved") });
     } catch (e) {
-      toast({ title: "Error", description: (e as Error).message, variant: "destructive" });
+      toast({ title: t("toast.error"), description: (e as Error).message, variant: "destructive" });
     }
   };
 
-  if (isLoading) return <div className="text-sm text-muted-foreground py-4">Loading...</div>;
+  if (isLoading) return <div className="text-sm text-muted-foreground py-4">{t("common.loading")}</div>;
 
   return (
     <div className="space-y-4">
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No products yet. Add some below.</p>
+        <p className="text-sm text-muted-foreground">{t("collections.special.noProductsYet")}</p>
       ) : (
         <div className="space-y-2">
           {items.map(p => (
@@ -148,7 +141,7 @@ function EditablePanel({ slug }: { slug: string }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{p.title}</p>
-                <p className="text-xs text-muted-foreground">{p.vendor} · {p.price.toLocaleString("en-US")} IQD</p>
+                <p className="text-xs text-muted-foreground tabular-nums">{p.vendor} · {formatIQD(p.price)}</p>
               </div>
               <Button
                 variant="ghost"
@@ -165,8 +158,8 @@ function EditablePanel({ slug }: { slug: string }) {
       )}
 
       <Button variant="outline" size="sm" onClick={() => setShowPicker(!showPicker)}>
-        <Plus className="w-4 h-4 mr-2" />
-        Add Product
+        <Plus className="w-4 h-4 me-2" />
+        {t("collections.addProduct")}
       </Button>
 
       {showPicker && (
@@ -176,7 +169,7 @@ function EditablePanel({ slug }: { slug: string }) {
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search products..."
+              placeholder={t("collections.searchProducts")}
               className="h-8 text-sm"
               autoFocus
             />
@@ -188,7 +181,7 @@ function EditablePanel({ slug }: { slug: string }) {
             {filtered.slice(0, 30).map(p => (
               <button
                 key={p.id}
-                className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-accent text-left transition-colors"
+                className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-accent text-start transition-colors"
                 onClick={() => handleAdd(p.id)}
               >
                 <div className="w-8 h-8 rounded overflow-hidden bg-muted flex-shrink-0">
@@ -198,11 +191,11 @@ function EditablePanel({ slug }: { slug: string }) {
                   <p className="text-sm font-medium truncate">{p.title}</p>
                   <p className="text-xs text-muted-foreground">{p.vendor}</p>
                 </div>
-                <span className="text-sm font-semibold">{p.price.toLocaleString("en-US")} IQD</span>
+                <span className="text-sm font-semibold tabular-nums">{formatIQD(p.price)}</span>
               </button>
             ))}
             {filtered.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">No products found</p>
+              <p className="text-sm text-muted-foreground text-center py-4">{t("collections.noProductsFound")}</p>
             )}
           </div>
         </div>
@@ -212,6 +205,7 @@ function EditablePanel({ slug }: { slug: string }) {
 }
 
 function ReadOnlyPanel({ slug }: { slug: string }) {
+  const { t } = useT();
   const { data } = useQuery({
     queryKey: ["special-col-preview", slug],
     queryFn: () =>
@@ -227,8 +221,8 @@ function ReadOnlyPanel({ slug }: { slug: string }) {
     <div className="space-y-2">
       <p className="text-sm text-muted-foreground mb-3">
         {slug === "super-deals"
-          ? "Auto-computed — products with ≥25% discount, sorted by discount percentage."
-          : "Auto-computed — products sorted by units sold (last 15 days)."}
+          ? t("collections.special.autoDiscount")
+          : t("collections.special.autoUnitsSold")}
       </p>
       {products.map(p => {
         const disc = p.compare_price && p.compare_price > p.price
@@ -244,10 +238,10 @@ function ReadOnlyPanel({ slug }: { slug: string }) {
               <p className="text-xs text-muted-foreground">{p.vendor}</p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-sm font-semibold">{p.price.toLocaleString("en-US")} IQD</span>
-              {disc && <Badge variant="destructive" className="text-xs">{disc}% off</Badge>}
+              <span className="text-sm font-semibold tabular-nums">{formatIQD(p.price)}</span>
+              {disc && <Badge variant="destructive" className="text-xs">{t("collections.special.discountOff", { n: disc })}</Badge>}
               {p.sold_count != null && (
-                <Badge variant="secondary" className="text-xs">{p.sold_count} sold</Badge>
+                <Badge variant="secondary" className="text-xs">{t("collections.special.soldCount", { n: p.sold_count })}</Badge>
               )}
             </div>
           </div>
@@ -255,32 +249,31 @@ function ReadOnlyPanel({ slug }: { slug: string }) {
       })}
       {data && (
         <p className="text-xs text-muted-foreground pt-1">
-          Showing {products.length} of {data.total} qualifying products
+          {t("collections.special.showingOf", { shown: products.length, total: data.total })}
         </p>
       )}
     </div>
   );
 }
 
-const COLLECTIONS = [
-  { slug: "super-deals",  title: "Super Deals",   description: "≥25% discount — auto-computed",              editable: false },
-  { slug: "brand-deals",  title: "Brand Deals",   description: "Manually curated brand picks",               editable: true  },
-  { slug: "trends",       title: "Trends",        description: "Best-selling this week — auto-computed",     editable: false },
-  { slug: "hot-seller",   title: "Hot Seller",    description: "Manually curated bestsellers",               editable: true  },
-  { slug: "gift-wrapping",title: "Gift Wrapping", description: "ارسال الطلب كهدية — products added to cart gift section", editable: true  },
-];
-
 export default function SpecialCollections() {
+  const { t } = useT();
   const [open, setOpen] = useState<string | null>(null);
 
+  const COLLECTIONS = [
+    { slug: "super-deals",  title: t("collections.special.superDeals.title"),   description: t("collections.special.superDeals.desc"),   editable: false },
+    { slug: "brand-deals",  title: t("collections.special.brandDeals.title"),   description: t("collections.special.brandDeals.desc"),   editable: true  },
+    { slug: "trends",       title: t("collections.special.trends.title"),       description: t("collections.special.trends.desc"),       editable: false },
+    { slug: "hot-seller",   title: t("collections.special.hotSeller.title"),    description: t("collections.special.hotSeller.desc"),    editable: true  },
+    { slug: "gift-wrapping",title: t("collections.special.giftWrapping.title"), description: t("collections.special.giftWrapping.desc"), editable: true  },
+  ];
+
   return (
-    <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Special Collections</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage the 4 featured sections shown on the home screen of the Mora app.
-        </p>
-      </div>
+    <PageContainer className="max-w-5xl">
+      <PageHeader
+        title={t("collections.special.title")}
+        subtitle={t("collections.special.subtitle")}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {COLLECTIONS.map(col => {
@@ -289,21 +282,21 @@ export default function SpecialCollections() {
           return (
             <div key={col.slug} className="border rounded-xl overflow-hidden bg-card">
               <button
-                className="w-full flex items-center gap-3 p-4 text-left hover:bg-accent/30 transition-colors"
+                className="w-full flex items-center gap-3 p-4 text-start hover:bg-accent/30 transition-colors"
                 onClick={() => setOpen(isOpen ? null : col.slug)}
               >
                 <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                   style={{ backgroundColor: `${color}18`, color }}>
                   {ICONS[col.slug]}
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0 text-start">
                   <p className="font-semibold">{col.title}</p>
                   <p className="text-xs text-muted-foreground">{col.description}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   {col.editable
-                    ? <Badge variant="outline" className="text-xs">Manual</Badge>
-                    : <Badge variant="secondary" className="text-xs">Auto</Badge>
+                    ? <Badge variant="outline" className="text-xs">{t("collections.badge.manual")}</Badge>
+                    : <Badge variant="secondary" className="text-xs">{t("collections.badge.auto")}</Badge>
                   }
                   <svg className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -323,6 +316,6 @@ export default function SpecialCollections() {
           );
         })}
       </div>
-    </div>
+    </PageContainer>
   );
 }

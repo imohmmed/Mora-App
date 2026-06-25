@@ -27,4 +27,5 @@
 - [useQueries needs memoized input](usequeries-memoize-input.md) — non-memoized queries array → infinite render loop, fatal on native only, fine on web
 - [Wayl payment flow](wayl-payment-flow.md) — online checkout gates complete-screen on verified status poll (not webhook); webhook is unauthenticated (forgeable) — harden before trusting it
 - [Favorite heart convention](favorite-heart-convention.md) — favorited = filled Ionicons heart in blue #0274C1, never red Feather outline; header nav hearts are not toggles
+- [Admin i18n + redesign](admin-i18n-redesign.md) — AR-RTL default/EN toggle via useT + per-cluster dict files; PageContainer/PageHeader primitives; ignore tsc (use vite build); DEV auth bypass; scp dist deploy
 - [React version mismatch mora web](react-version-mismatch.md) — react/expo/react-native must NOT be in mora dependencies; catalog: pins react+react-dom to 19.1.0; mismatch = error #527 blank screen

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,9 @@ import {
   ChevronDown, Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatIQD } from "@/lib/format";
+import { useT } from "@/i18n/LanguageContext";
+import { PageContainer, PageHeader } from "@/components/ui/page-primitives";
 
 const API = import.meta.env.BASE_URL.replace(/\/$/, "") + "/api";
 
@@ -37,27 +40,27 @@ type Product = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const FIELDS = [
-  { value: "title",         label: "Title",                kind: "text" },
-  { value: "category",      label: "Category",             kind: "text" },
-  { value: "vendor",        label: "Vendor",               kind: "text" },
-  { value: "tag",           label: "Tag",                  kind: "text" },
-  { value: "price",         label: "Price (IQD)",          kind: "number" },
-  { value: "compare_price", label: "Compare-at price (IQD)", kind: "number" },
+  { value: "title",         labelKey: "collections.cond.field.title",        kind: "text" },
+  { value: "category",      labelKey: "collections.cond.field.category",     kind: "text" },
+  { value: "vendor",        labelKey: "collections.cond.field.vendor",       kind: "text" },
+  { value: "tag",           labelKey: "collections.cond.field.tag",          kind: "text" },
+  { value: "price",         labelKey: "collections.cond.field.price",        kind: "number" },
+  { value: "compare_price", labelKey: "collections.cond.field.comparePrice", kind: "number" },
 ];
 
 const TEXT_OPS = [
-  { value: "is_equal_to",     label: "is equal to" },
-  { value: "is_not_equal_to", label: "is not equal to" },
-  { value: "contains",        label: "contains" },
-  { value: "not_contains",    label: "does not contain" },
-  { value: "starts_with",     label: "starts with" },
+  { value: "is_equal_to",     labelKey: "collections.cond.op.isEqualTo" },
+  { value: "is_not_equal_to", labelKey: "collections.cond.op.isNotEqualTo" },
+  { value: "contains",        labelKey: "collections.cond.op.contains" },
+  { value: "not_contains",    labelKey: "collections.cond.op.notContains" },
+  { value: "starts_with",     labelKey: "collections.cond.op.startsWith" },
 ];
 
 const NUM_OPS = [
-  { value: "is_equal_to",     label: "is equal to" },
-  { value: "is_not_equal_to", label: "is not equal to" },
-  { value: "greater_than",    label: "is greater than" },
-  { value: "less_than",       label: "is less than" },
+  { value: "is_equal_to",     labelKey: "collections.cond.op.isEqualTo" },
+  { value: "is_not_equal_to", labelKey: "collections.cond.op.isNotEqualTo" },
+  { value: "greater_than",    labelKey: "collections.cond.op.greaterThan" },
+  { value: "less_than",       labelKey: "collections.cond.op.lessThan" },
 ];
 
 // ─── API Helper ────────────────────────────────────────────────────────────────
@@ -88,6 +91,7 @@ function ConditionRow({
   onChange: (updated: Condition) => void;
   onDelete: () => void;
 }) {
+  const { t } = useT();
   const fieldMeta = FIELDS.find((f) => f.value === cond.field) ?? FIELDS[0]!;
   const ops = fieldMeta.kind === "number" ? NUM_OPS : TEXT_OPS;
 
@@ -101,33 +105,33 @@ function ConditionRow({
     <div className="flex items-center gap-2 flex-wrap">
       <div className="relative">
         <select
-          className="h-9 rounded-lg border bg-background text-sm px-3 pr-8 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="h-9 rounded-lg border bg-background text-sm px-3 pe-8 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
           value={cond.field}
           onChange={(e) => setField(e.target.value)}
         >
           {FIELDS.map((f) => (
-            <option key={f.value} value={f.value}>{f.label}</option>
+            <option key={f.value} value={f.value}>{t(f.labelKey)}</option>
           ))}
         </select>
-        <ChevronDown className="absolute right-2 top-2.5 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+        <ChevronDown className="absolute end-2 top-2.5 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
       </div>
 
       <div className="relative">
         <select
-          className="h-9 rounded-lg border bg-background text-sm px-3 pr-8 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="h-9 rounded-lg border bg-background text-sm px-3 pe-8 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
           value={cond.operator}
           onChange={(e) => onChange({ ...cond, operator: e.target.value })}
         >
           {ops.map((op) => (
-            <option key={op.value} value={op.value}>{op.label}</option>
+            <option key={op.value} value={op.value}>{t(op.labelKey)}</option>
           ))}
         </select>
-        <ChevronDown className="absolute right-2 top-2.5 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+        <ChevronDown className="absolute end-2 top-2.5 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
       </div>
 
       <Input
         className="h-9 text-sm w-36 flex-1"
-        placeholder={fieldMeta.kind === "number" ? "0" : "Enter value..."}
+        placeholder={fieldMeta.kind === "number" ? "0" : t("collections.form.valuePlaceholder")}
         type={fieldMeta.kind === "number" ? "number" : "text"}
         value={cond.value}
         onChange={(e) => onChange({ ...cond, value: e.target.value })}
@@ -147,6 +151,7 @@ function ImageField({
 }: {
   label: string; value: string; onChange: (v: string) => void; hint?: string;
 }) {
+  const { t } = useT();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const token = () => { try { return localStorage.getItem("mora_admin_token") || ""; } catch { return ""; } };
@@ -189,7 +194,7 @@ function ImageField({
                 onClick={() => onChange("")}
                 className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-xl"
               >
-                <span className="text-white text-xs font-medium">حذف</span>
+                <span className="text-white text-xs font-medium">{t("collections.delete")}</span>
               </button>
             </>
           ) : (
@@ -203,7 +208,7 @@ function ImageField({
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
         >
-          {uploading ? "جاري الرفع…" : value ? "تغيير الصورة" : "رفع صورة"}
+          {uploading ? t("collections.uploading") : value ? t("collections.change") : t("collections.uploadImage")}
         </Button>
       </div>
     </div>
@@ -217,6 +222,7 @@ function SmartPreview({
 }: {
   conditions: Condition[]; match: string;
 }) {
+  const { t } = useT();
   const validConditions = conditions.filter((c) => c.value.trim() !== "");
 
   const { data, isLoading } = useQuery<Product[]>({
@@ -233,7 +239,7 @@ function SmartPreview({
     return (
       <div className="border rounded-xl p-4 text-center text-sm text-muted-foreground bg-muted/10">
         <Package className="w-6 h-6 mx-auto mb-2 opacity-40" />
-        Add conditions to see matching products
+        {t("collections.smart.addConditions")}
       </div>
     );
   }
@@ -241,7 +247,7 @@ function SmartPreview({
   if (isLoading) {
     return (
       <div className="border rounded-xl p-4 text-center text-sm text-muted-foreground">
-        Finding matching products...
+        {t("collections.smart.finding")}
       </div>
     );
   }
@@ -251,12 +257,12 @@ function SmartPreview({
   return (
     <div className="border rounded-xl overflow-hidden">
       <div className="bg-muted/30 px-4 py-2 flex items-center justify-between border-b">
-        <span className="text-xs font-semibold text-muted-foreground">Matching Products</span>
-        <Badge variant="secondary" className="text-xs">{products.length} products</Badge>
+        <span className="text-xs font-semibold text-muted-foreground">{t("collections.smart.matching")}</span>
+        <Badge variant="secondary" className="text-xs">{t("collections.productsCount", { n: products.length })}</Badge>
       </div>
       {products.length === 0 ? (
         <div className="p-4 text-center text-sm text-muted-foreground">
-          No products match these conditions
+          {t("collections.smart.noMatch")}
         </div>
       ) : (
         <div className="divide-y max-h-64 overflow-y-auto">
@@ -269,14 +275,14 @@ function SmartPreview({
                 <p className="text-sm font-medium truncate">{p.title}</p>
                 <p className="text-xs text-muted-foreground">{p.vendor}</p>
               </div>
-              <span className="text-xs text-muted-foreground flex-shrink-0">
-                {(p.price ?? 0).toLocaleString()} IQD
+              <span className="text-xs text-muted-foreground flex-shrink-0 tabular-nums">
+                {formatIQD(p.price)}
               </span>
             </div>
           ))}
           {products.length > 20 && (
             <div className="px-4 py-2 text-xs text-muted-foreground text-center">
-              +{products.length - 20} more products
+              {t("collections.smart.moreProducts", { n: products.length - 20 })}
             </div>
           )}
         </div>
@@ -288,6 +294,7 @@ function SmartPreview({
 // ─── Main Form ─────────────────────────────────────────────────────────────────
 
 export default function CollectionForm() {
+  const { t } = useT();
   const params = useParams<{ id?: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -339,10 +346,10 @@ export default function CollectionForm() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-collections-hub"] });
       qc.invalidateQueries({ queryKey: ["admin-collection-detail", params.id] });
-      toast({ title: isEdit ? "Collection updated" : "Collection created" });
+      toast({ title: isEdit ? t("collections.form.updated") : t("collections.form.created") });
       navigate("/collections");
     },
-    onError: (e) => toast({ title: "Error", description: (e as Error).message, variant: "destructive" }),
+    onError: (e) => toast({ title: t("toast.error"), description: (e as Error).message, variant: "destructive" }),
   });
 
   const addCondition = () => {
@@ -368,47 +375,50 @@ export default function CollectionForm() {
 
   if (isEdit && loadingExisting) {
     return (
-      <div className="p-8 text-center text-muted-foreground">Loading collection...</div>
+      <div className="p-8 text-center text-muted-foreground">{t("collections.form.loading")}</div>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-6 pb-24">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Button type="button" variant="ghost" size="icon" onClick={() => navigate("/collections")}>
-            <ArrowLeft className="w-5 h-5" />
+    <PageContainer className="max-w-2xl pb-24">
+      <PageHeader
+        title={
+          <span className="flex items-center gap-3">
+            <Button type="button" variant="ghost" size="icon" onClick={() => navigate("/collections")}>
+              <ArrowLeft className="w-5 h-5 rtl:rotate-180" />
+            </Button>
+            {isEdit ? t("collections.form.edit") : t("collections.form.new")}
+          </span>
+        }
+        actions={
+          <Button
+            onClick={() => save.mutate(form)}
+            disabled={!form.title.trim() || save.isPending}
+            className="min-w-[80px]"
+          >
+            {save.isPending ? t("action.saving") : t("action.save")}
           </Button>
-          <h1 className="text-xl font-bold">{isEdit ? "Edit Collection" : "New Collection"}</h1>
-        </div>
-        <Button
-          onClick={() => save.mutate(form)}
-          disabled={!form.title.trim() || save.isPending}
-          className="min-w-[80px]"
-        >
-          {save.isPending ? "Saving..." : "Save"}
-        </Button>
-      </div>
+        }
+      />
 
       {/* Basic Info */}
       <div className="border rounded-2xl p-5 space-y-4 bg-card">
-        <h2 className="font-semibold">Basic Info</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <h2 className="font-semibold">{t("collections.form.basicInfo")}</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
-            <Label className="text-xs">اسم عربي</Label>
+            <Label className="text-xs">{t("collections.field.arabicName")}</Label>
             <Input
-              placeholder="e.g. صيف 2025"
+              placeholder={t("collections.form.titleArPlaceholder")}
               value={form.titleAr}
               onChange={(e) => setForm((f) => ({ ...f, titleAr: e.target.value }))}
-              className="h-10 text-right"
+              className="h-10 text-start"
               dir="rtl"
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">English Title *</Label>
+            <Label className="text-xs">{t("collections.form.englishTitleRequired")}</Label>
             <Input
-              placeholder="e.g. Summer Collection"
+              placeholder={t("collections.form.titleEnPlaceholder")}
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               className="h-10"
@@ -416,10 +426,10 @@ export default function CollectionForm() {
           </div>
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">Description</Label>
+          <Label className="text-xs">{t("collections.form.description")}</Label>
           <textarea
             rows={3}
-            placeholder="Optional description..."
+            placeholder={t("collections.form.descriptionPlaceholder")}
             className="w-full rounded-lg border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
             value={form.description}
             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -429,17 +439,17 @@ export default function CollectionForm() {
 
       {/* Images */}
       <div className="border rounded-2xl p-5 space-y-5 bg-card">
-        <h2 className="font-semibold">Images</h2>
+        <h2 className="font-semibold">{t("collections.form.images")}</h2>
         <ImageField
-          label="Collection Image (صورة القسم)"
-          hint="Main image shown as the collection thumbnail or icon."
+          label={t("collections.form.collectionImage")}
+          hint={t("collections.form.collectionImageHint")}
           value={form.image}
           onChange={(v) => setForm((f) => ({ ...f, image: v }))}
         />
         <div className="border-t" />
         <ImageField
-          label="Background Image (صورة خلفية القسم)"
-          hint="Full-width background shown behind the collection header."
+          label={t("collections.form.backgroundImage")}
+          hint={t("collections.form.backgroundImageHint")}
           value={form.backgroundImage}
           onChange={(v) => setForm((f) => ({ ...f, backgroundImage: v }))}
         />
@@ -447,22 +457,22 @@ export default function CollectionForm() {
 
       {/* Collection Type */}
       <div className="border rounded-2xl p-5 space-y-4 bg-card">
-        <h2 className="font-semibold">Collection Type</h2>
+        <h2 className="font-semibold">{t("collections.form.collectionType")}</h2>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button
             type="button"
             onClick={() => setForm((f) => ({ ...f, collectionType: "manual" }))}
             className={cn(
-              "border-2 rounded-xl p-4 text-left transition-all",
+              "border-2 rounded-xl p-4 text-start transition-all",
               form.collectionType === "manual"
                 ? "border-primary bg-primary/5"
                 : "border-border hover:border-primary/40"
             )}
           >
             <Users className={cn("w-5 h-5 mb-2", form.collectionType === "manual" ? "text-primary" : "text-muted-foreground")} />
-            <p className="font-semibold text-sm">Manual</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Add products one by one</p>
+            <p className="font-semibold text-sm">{t("collections.form.manual")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("collections.form.manualHint")}</p>
           </button>
 
           <button
@@ -475,21 +485,21 @@ export default function CollectionForm() {
                 : f.conditions,
             }))}
             className={cn(
-              "border-2 rounded-xl p-4 text-left transition-all",
+              "border-2 rounded-xl p-4 text-start transition-all",
               form.collectionType === "smart"
                 ? "border-primary bg-primary/5"
                 : "border-border hover:border-primary/40"
             )}
           >
             <Wand2 className={cn("w-5 h-5 mb-2", form.collectionType === "smart" ? "text-primary" : "text-muted-foreground")} />
-            <p className="font-semibold text-sm">Smart</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Auto-fill using conditions</p>
+            <p className="font-semibold text-sm">{t("collections.form.smart")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("collections.form.smartHint")}</p>
           </button>
         </div>
 
         {form.collectionType === "manual" && (
           <p className="text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
-            Products are added manually from the Collections page using the product picker.
+            {t("collections.form.manualNote")}
           </p>
         )}
       </div>
@@ -498,14 +508,14 @@ export default function CollectionForm() {
       {form.collectionType === "smart" && (
         <div className="border rounded-2xl p-5 space-y-4 bg-card">
           <div>
-            <h2 className="font-semibold">Conditions</h2>
+            <h2 className="font-semibold">{t("collections.form.conditions")}</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Products matching these conditions will be automatically included.
+              {t("collections.form.conditionsDesc")}
             </p>
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Products must match:</p>
+            <p className="text-xs font-medium text-muted-foreground">{t("collections.form.mustMatch")}</p>
             <div className="flex gap-4">
               {(["all", "any"] as const).map((m) => (
                 <label key={m} className="flex items-center gap-2 cursor-pointer">
@@ -524,7 +534,7 @@ export default function CollectionForm() {
                     checked={form.conditionsMatch === m}
                     onChange={() => setForm((f) => ({ ...f, conditionsMatch: m }))}
                   />
-                  <span className="text-sm">{m === "all" ? "all conditions" : "any condition"}</span>
+                  <span className="text-sm">{m === "all" ? t("collections.form.allConditions") : t("collections.form.anyCondition")}</span>
                 </label>
               ))}
             </div>
@@ -541,7 +551,7 @@ export default function CollectionForm() {
             ))}
             <Button type="button" variant="outline" size="sm" className="gap-1.5 text-xs" onClick={addCondition}>
               <Plus className="w-3.5 h-3.5" />
-              Add another condition
+              {t("collections.form.addCondition")}
             </Button>
           </div>
 
@@ -552,17 +562,17 @@ export default function CollectionForm() {
       )}
 
       {/* Bottom Save */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t px-4 py-3 flex justify-end gap-3">
+      <div className="fixed bottom-0 start-0 end-0 bg-background/95 backdrop-blur border-t px-4 py-3 flex justify-end gap-3">
         <Button type="button" variant="ghost" onClick={() => navigate("/collections")}>
-          Cancel
+          {t("action.cancel")}
         </Button>
         <Button
           onClick={() => save.mutate(form)}
           disabled={!form.title.trim() || save.isPending}
         >
-          {save.isPending ? "Saving..." : isEdit ? "Update Collection" : "Create Collection"}
+          {save.isPending ? t("action.saving") : isEdit ? t("collections.form.update") : t("collections.create")}
         </Button>
       </div>
-    </div>
+    </PageContainer>
   );
 }

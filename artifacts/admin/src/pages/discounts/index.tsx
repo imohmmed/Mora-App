@@ -5,131 +5,129 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageContainer, PageHeader, EmptyState } from "@/components/ui/page-primitives";
 import { Tags, Plus } from "lucide-react";
-import { format } from "date-fns";
 import { fmt } from "@/lib/date";
+import { formatIQD } from "@/lib/format";
 import { useLocation } from "wouter";
+import { useT } from "@/i18n/LanguageContext";
 
 export default function Discounts() {
   const [, navigate] = useLocation();
+  const { t } = useT();
   const { data: response, isLoading } = useAdminListDiscounts();
   const discounts = response?.data ?? [];
 
+  const statusLabel = (s: string) => {
+    const key = `discounts.status.${s}`;
+    const translated = t(key);
+    return translated === key ? s : translated;
+  };
+
+  const statusVariant = (s: string) =>
+    s === "active" ? "default" : s === "scheduled" ? "outline" : "secondary";
+
+  const valueLabel = (discount: any) =>
+    discount.type === "free_shipping"
+      ? t("discounts.freeShipping")
+      : discount.type === "percentage"
+      ? t("discounts.percentOff", { value: discount.value })
+      : t("discounts.amountOff", { value: formatIQD(discount.value) });
+
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Discounts</h1>
-          <p className="text-muted-foreground mt-1">Manage discount codes and automatic discounts.</p>
-        </div>
-        <Button data-testid="btn-add-discount" onClick={() => navigate("/discounts/new")}>
-          <Plus className="w-4 h-4 mr-2" />
-          Create Discount
-        </Button>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title={t("discounts.title")}
+        subtitle={t("discounts.subtitle")}
+        actions={
+          <Button data-testid="btn-add-discount" onClick={() => navigate("/discounts/new")}>
+            <Plus className="w-4 h-4 me-2" />
+            {t("discounts.create")}
+          </Button>
+        }
+      />
 
       {/* Desktop table */}
-      <div className="hidden md:block bg-card border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Code</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Type / Value</TableHead>
-              <TableHead>Usage</TableHead>
-              <TableHead>Active Dates</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+      <div className="hidden md:block bg-card border rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">Loading...</TableCell>
+                <TableHead>{t("discounts.col.code")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead>{t("discounts.col.typeValue")}</TableHead>
+                <TableHead>{t("discounts.col.usage")}</TableHead>
+                <TableHead>{t("discounts.col.activeDates")}</TableHead>
               </TableRow>
-            ) : discounts.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-48 text-center">
-                  <div className="flex flex-col items-center justify-center text-muted-foreground">
-                    <Tags className="h-8 w-8 mb-2 opacity-50" />
-                    <p>No discounts found.</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              discounts.map((discount) => (
-                <TableRow key={discount.id} className="cursor-pointer">
-                  <TableCell className="font-semibold font-mono">{discount.code}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        discount.status === "active"
-                          ? "default"
-                          : discount.status === "scheduled"
-                          ? "outline"
-                          : "secondary"
-                      }
-                    >
-                      {discount.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span className="capitalize">{discount.type.replace("_", " ")}</span>
-                    {" · "}
-                    <span className="font-medium">
-                      {discount.type === "free_shipping"
-                        ? "Free shipping"
-                        : discount.type === "percentage"
-                        ? `${discount.value}% off`
-                        : `${discount.value.toLocaleString("en-US")} IQD off`}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {discount.usageCount ?? 0}
-                    {discount.usageLimit ? ` / ${discount.usageLimit}` : " used"}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {discount.startsAt ? fmt(discount.startsAt, "MMM d") : "—"}
-                    {discount.endsAt ? ` – ${fmt(discount.endsAt, "MMM d, yyyy")}` : ""}
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">{t("common.loading")}</TableCell>
+                </TableRow>
+              ) : discounts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-48 text-center">
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                      <Tags className="h-8 w-8 mb-2 opacity-50" />
+                      <p>{t("discounts.empty")}</p>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                discounts.map((discount: any) => (
+                  <TableRow key={discount.id} className="cursor-pointer">
+                    <TableCell className="font-semibold font-mono">{discount.code}</TableCell>
+                    <TableCell>
+                      <Badge variant={statusVariant(discount.status)}>
+                        {statusLabel(discount.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span>{t(`discounts.type.${discount.type}`)}</span>
+                      {" · "}
+                      <span className="font-medium">{valueLabel(discount)}</span>
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {discount.usageCount ?? 0}
+                      {discount.usageLimit ? ` / ${discount.usageLimit}` : ` ${t("discounts.used")}`}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {discount.startsAt ? fmt(discount.startsAt, "MMM d") : "—"}
+                      {discount.endsAt ? ` – ${fmt(discount.endsAt, "MMM d, yyyy")}` : ""}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Mobile card list */}
       <div className="md:hidden space-y-3">
         {isLoading ? (
-          <p className="text-center text-muted-foreground py-8">Loading...</p>
+          <p className="text-center text-muted-foreground py-8">{t("common.loading")}</p>
         ) : discounts.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <Tags className="h-10 w-10 mx-auto mb-3 opacity-40" />
-            <p>No discounts yet.</p>
-          </div>
+          <EmptyState icon={Tags} title={t("discounts.emptyMobile")} />
         ) : (
-          discounts.map((discount) => (
+          discounts.map((discount: any) => (
             <Card key={discount.id}>
               <CardContent className="pt-4 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-semibold font-mono">{discount.code}</span>
-                  <Badge
-                    variant={
-                      discount.status === "active"
-                        ? "default"
-                        : discount.status === "scheduled"
-                        ? "outline"
-                        : "secondary"
-                    }
-                  >
-                    {discount.status}
+                  <Badge variant={statusVariant(discount.status)}>
+                    {statusLabel(discount.status)}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {discount.type === "percentage"
-                    ? `${discount.value}% off`
-                    : `${discount.value.toLocaleString("en-US")} IQD off`}
+                  {discount.type === "free_shipping"
+                    ? t("discounts.freeShipping")
+                    : discount.type === "percentage"
+                    ? t("discounts.percentOff", { value: discount.value })
+                    : t("discounts.amountOff", { value: formatIQD(discount.value) })}
                   {" · "}
-                  {discount.usageCount ?? 0}{discount.usageLimit ? `/${discount.usageLimit}` : ""} used
+                  {discount.usageCount ?? 0}{discount.usageLimit ? `/${discount.usageLimit}` : ""} {t("discounts.used")}
                 </p>
                 {discount.startsAt && (
                   <p className="text-xs text-muted-foreground">
@@ -142,6 +140,6 @@ export default function Discounts() {
           ))
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 }

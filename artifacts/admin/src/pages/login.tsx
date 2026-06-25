@@ -2,8 +2,10 @@ import { useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import { Loader2, ShieldCheck } from "lucide-react";
+import { useT } from "@/i18n/LanguageContext";
 
 export default function Login() {
+  const { t } = useT();
   const { login } = useAdminAuth();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -14,27 +16,27 @@ export default function Login() {
     try {
       await login(credential);
     } catch (err: unknown) {
-      setError((err as Error).message || "Login failed. Please try again.");
+      setError((err as Error).message || t("login.failed"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-sm px-8 py-10 space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-sm px-6 py-10 sm:px-8 space-y-8">
 
         {/* Branding */}
         <div className="text-center space-y-3">
           <div className="flex items-center justify-center gap-2.5 mb-4">
             <span className="text-5xl font-black tracking-tighter text-foreground">MORA</span>
             <span className="text-[11px] font-bold bg-primary/10 text-primary px-2 py-1 rounded uppercase tracking-widest self-end mb-1">
-              Admin
+              {t("app.admin")}
             </span>
           </div>
           <div className="flex items-center justify-center gap-2 text-muted-foreground">
             <ShieldCheck className="h-4 w-4" />
-            <p className="text-sm">Secure Admin Access</p>
+            <p className="text-sm">{t("login.secureAccess")}</p>
           </div>
         </div>
 
@@ -52,7 +54,7 @@ export default function Login() {
               <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground tracking-widest">Sign in with</span>
+              <span className="bg-background px-2 text-muted-foreground tracking-widest">{t("login.signInWith")}</span>
             </div>
           </div>
 
@@ -60,14 +62,14 @@ export default function Login() {
             {loading ? (
               <div className="flex items-center gap-2 text-muted-foreground text-sm py-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Verifying your account…
+                {t("login.verifying")}
               </div>
             ) : (
               <GoogleLogin
                 onSuccess={(cred) => {
                   if (cred.credential) handleSuccess(cred.credential);
                 }}
-                onError={() => setError("Google sign-in was cancelled or failed.")}
+                onError={() => setError(t("login.googleError"))}
                 shape="rectangular"
                 theme="outline"
                 text="signin_with"
@@ -80,8 +82,8 @@ export default function Login() {
         </div>
 
         <p className="text-center text-xs text-muted-foreground leading-relaxed">
-          Only authorized admin accounts can access this panel.<br />
-          Contact the store owner to request access.
+          {t("login.footer1")}<br />
+          {t("login.footer2")}
         </p>
       </div>
     </div>

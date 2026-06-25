@@ -17,10 +17,11 @@ import { SortableImageGrid } from "@/components/ui/SortableImageGrid";
 import { VariantBuilder, type OptionGroup, type VariantRow } from "@/components/ui/VariantBuilder";
 import { CollectionMultiSelect } from "@/components/ui/CollectionMultiSelect";
 import { adminFetch } from "@/lib/api";
-
-const fmtIQD = (n: number) => `${Math.round(n).toLocaleString("en-US")} IQD`;
+import { formatIQD } from "@/lib/format";
+import { useT } from "@/i18n/LanguageContext";
 
 export default function NewProduct() {
+  const { t } = useT();
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -59,14 +60,14 @@ export default function NewProduct() {
     t.toLowerCase().replace(/[^a-z0-9\u0600-\u06ff]+/g, "-").replace(/^-|-$/g, "");
 
   const addTag = () => {
-    const t = tagInput.trim();
-    if (t && !tags.includes(t)) setTags((p) => [...p, t]);
+    const tag = tagInput.trim();
+    if (tag && !tags.includes(tag)) setTags((p) => [...p, tag]);
     setTagInput("");
   };
 
   const handleSave = async () => {
     if (!title.trim()) {
-      toast({ title: "Title required", variant: "destructive" });
+      toast({ title: t("products.toast.titleRequired"), variant: "destructive" });
       return;
     }
     setIsSaving(true);
@@ -127,24 +128,24 @@ export default function NewProduct() {
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/admin/products"] });
-      toast({ title: "Product created" });
+      toast({ title: t("products.toast.created") });
       navigate(`/products/${pid}`);
     } catch {
-      toast({ title: "Error", description: "Failed to create product.", variant: "destructive" });
+      toast({ title: t("toast.error"), description: t("products.toast.createError"), variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
         <Link href="/products" className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5 rtl:rotate-180" />
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight flex-1">New Product</h1>
+        <h1 className="text-2xl font-bold tracking-tight flex-1 truncate">{t("products.new.title")}</h1>
         <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving ? "Saving..." : "Save product"}
+          {isSaving ? t("action.saving") : t("products.new.save")}
         </Button>
       </div>
 
@@ -156,20 +157,20 @@ export default function NewProduct() {
           <Card>
             <CardContent className="pt-6 space-y-4">
               <div className="grid gap-2">
-                <Label htmlFor="title">Title</Label>
+                <Label htmlFor="title">{t("products.field.title")}</Label>
                 <Input
                   id="title"
-                  placeholder="e.g. Classic Oxford Shirt"
+                  placeholder={t("products.placeholder.title")}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Description</Label>
+                <Label>{t("products.field.description")}</Label>
                 <RichTextEditor
                   value={description}
                   onChange={setDescription}
-                  placeholder="Write a product description..."
+                  placeholder={t("products.placeholder.description")}
                 />
               </div>
             </CardContent>
@@ -178,8 +179,8 @@ export default function NewProduct() {
           {/* Media */}
           <Card>
             <CardHeader>
-              <CardTitle>Media</CardTitle>
-              <CardDescription>Add image URLs. Drag to reorder — first image is the main cover.</CardDescription>
+              <CardTitle>{t("products.section.media")}</CardTitle>
+              <CardDescription>{t("products.media.descNew")}</CardDescription>
             </CardHeader>
             <CardContent>
               <SortableImageGrid images={images} onChange={setImages} />
@@ -189,8 +190,8 @@ export default function NewProduct() {
           {/* Collections */}
           <Card>
             <CardHeader>
-              <CardTitle>Collections</CardTitle>
-              <CardDescription>Add this product to one or more collections.</CardDescription>
+              <CardTitle>{t("products.section.collections")}</CardTitle>
+              <CardDescription>{t("products.collections.desc")}</CardDescription>
             </CardHeader>
             <CardContent>
               <CollectionMultiSelect
@@ -203,74 +204,74 @@ export default function NewProduct() {
           {/* Pricing */}
           <Card>
             <CardHeader>
-              <CardTitle>Pricing</CardTitle>
+              <CardTitle>{t("products.section.pricing")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="price">Selling Price (IQD)</Label>
+                  <Label htmlFor="price">{t("products.field.sellingPriceIQD")}</Label>
                   <div className="relative">
                     <Input
                       id="price"
                       type="number"
                       step="1"
                       min="0"
-                      className="pr-12"
+                      className="pe-12 tabular-nums"
                       placeholder="0"
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">IQD</span>
+                    <span className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">IQD</span>
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="compareAtPrice">Compare-at Price (IQD)</Label>
+                  <Label htmlFor="compareAtPrice">{t("products.field.comparePriceIQD")}</Label>
                   <div className="relative">
                     <Input
                       id="compareAtPrice"
                       type="number"
                       step="1"
                       min="0"
-                      className="pr-12"
+                      className="pe-12 tabular-nums"
                       placeholder="0"
                       value={compareAtPrice}
                       onChange={(e) => setCompareAtPrice(e.target.value)}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">IQD</span>
+                    <span className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">IQD</span>
                   </div>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Set Compare-at higher than the selling price to show a discount with a red strikethrough.
+                {t("products.pricing.compareHintNew")}
               </p>
 
               <Separator />
 
               <div className="grid gap-2">
-                <Label htmlFor="cost">Cost per item</Label>
+                <Label htmlFor="cost">{t("products.field.cost")}</Label>
                 <div className="relative">
                   <Input
                     id="cost"
                     type="number"
                     step="1"
                     min="0"
-                    className="pr-12"
+                    className="pe-12 tabular-nums"
                     placeholder="0"
                     value={cost}
                     onChange={(e) => setCost(e.target.value)}
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">IQD</span>
+                  <span className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">IQD</span>
                 </div>
               </div>
               {cost && (
                 <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-muted/30 border">
                   <div>
-                    <p className="text-xs text-muted-foreground">Profit per item</p>
-                    <p className="font-semibold text-sm">{fmtIQD(profit)}</p>
+                    <p className="text-xs text-muted-foreground">{t("products.field.profit")}</p>
+                    <p className="font-semibold text-sm tabular-nums">{formatIQD(profit)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Margin</p>
-                    <p className="font-semibold text-sm">{priceNum > 0 ? `${margin.toFixed(1)}%` : "—"}</p>
+                    <p className="text-xs text-muted-foreground">{t("products.field.margin")}</p>
+                    <p className="font-semibold text-sm tabular-nums">{priceNum > 0 ? `${margin.toFixed(1)}%` : "—"}</p>
                   </div>
                 </div>
               )}
@@ -280,8 +281,8 @@ export default function NewProduct() {
           {/* Variants */}
           <Card>
             <CardHeader>
-              <CardTitle>Variants</CardTitle>
-              <CardDescription>Add options like size or color. Each combination becomes a variant.</CardDescription>
+              <CardTitle>{t("products.section.variants")}</CardTitle>
+              <CardDescription>{t("products.variants.descNew")}</CardDescription>
             </CardHeader>
             <CardContent>
               <VariantBuilder
@@ -299,41 +300,41 @@ export default function NewProduct() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Search className="w-4 h-4" />
-                Search Engine Listing
+                {t("products.section.seo")}
               </CardTitle>
               <CardDescription>
-                Customize how this product appears in search results.
+                {t("products.seo.desc")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label htmlFor="seoTitle">Meta title</Label>
+                <Label htmlFor="seoTitle">{t("products.field.metaTitle")}</Label>
                 <Input
                   id="seoTitle"
-                  placeholder={title || "Product title"}
+                  placeholder={title || t("products.field.title")}
                   value={seoTitle}
                   onChange={(e) => setSeoTitle(e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">{(seoTitle || title).length} / 70 characters</p>
+                <p className="text-xs text-muted-foreground">{t("products.seo.titleChars", { n: (seoTitle || title).length })}</p>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="seoDesc">Meta description</Label>
+                <Label htmlFor="seoDesc">{t("products.field.metaDescription")}</Label>
                 <Textarea
                   id="seoDesc"
                   rows={3}
-                  placeholder="Brief product summary for search results..."
+                  placeholder={t("products.seo.descPlaceholder")}
                   value={seoDescription}
                   onChange={(e) => setSeoDescription(e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">{seoDescription.length} / 160 characters</p>
+                <p className="text-xs text-muted-foreground">{t("products.seo.descChars", { n: seoDescription.length })}</p>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="urlSlug">URL handle</Label>
+                <Label htmlFor="urlSlug">{t("products.field.urlHandle")}</Label>
                 <div className="flex gap-2 items-center">
                   <span className="text-xs text-muted-foreground whitespace-nowrap">moramoda.tech/products/</span>
                   <Input
                     id="urlSlug"
-                    placeholder={autoSlug(title) || "product-handle"}
+                    placeholder={autoSlug(title) || t("products.placeholder.urlHandle")}
                     value={urlSlug}
                     onChange={(e) => setUrlSlug(e.target.value)}
                   />
@@ -346,57 +347,57 @@ export default function NewProduct() {
         {/* ── Right sidebar ── */}
         <div className="space-y-4">
           <Card>
-            <CardHeader><CardTitle>Status</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("common.status")}</CardTitle></CardHeader>
             <CardContent>
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
+                  <SelectItem value="active">{t("products.status.active")}</SelectItem>
+                  <SelectItem value="draft">{t("products.status.draft")}</SelectItem>
+                  <SelectItem value="archived">{t("products.status.archived")}</SelectItem>
                 </SelectContent>
               </Select>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Organization</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("products.section.organization")}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label>Category</Label>
+                <Label>{t("products.category")}</Label>
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="women">Women</SelectItem>
-                    <SelectItem value="men">Men</SelectItem>
-                    <SelectItem value="beauty">Beauty</SelectItem>
-                    <SelectItem value="new_in">New In</SelectItem>
-                    <SelectItem value="sale">Sale</SelectItem>
+                    <SelectItem value="women">{t("products.cat.women")}</SelectItem>
+                    <SelectItem value="men">{t("products.cat.men")}</SelectItem>
+                    <SelectItem value="beauty">{t("products.cat.beauty")}</SelectItem>
+                    <SelectItem value="new_in">{t("products.cat.newIn")}</SelectItem>
+                    <SelectItem value="sale">{t("products.cat.sale")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label>Audience</Label>
+                <Label>{t("products.field.audience")}</Label>
                 <Select value={gender} onValueChange={setGender}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All (Men &amp; Women)</SelectItem>
-                    <SelectItem value="women">Women</SelectItem>
-                    <SelectItem value="men">Men</SelectItem>
+                    <SelectItem value="all">{t("products.audience.all")}</SelectItem>
+                    <SelectItem value="women">{t("products.cat.women")}</SelectItem>
+                    <SelectItem value="men">{t("products.cat.men")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="vendor">Vendor</Label>
+                <Label htmlFor="vendor">{t("products.field.vendor")}</Label>
                 <Input
                   id="vendor"
-                  placeholder="e.g. Mora Brand"
+                  placeholder={t("products.placeholder.vendor")}
                   value={vendor}
                   onChange={(e) => setVendor(e.target.value)}
                 />
@@ -404,7 +405,7 @@ export default function NewProduct() {
 
               {/* ── Rating ── */}
               <div className="grid gap-2">
-                <Label>Product Rating</Label>
+                <Label>{t("products.field.rating")}</Label>
                 <div className="flex items-center gap-4 flex-wrap">
                   {/* Star picker */}
                   <div className="flex items-center gap-0.5">
@@ -432,7 +433,7 @@ export default function NewProduct() {
                     <Input
                       type="number"
                       min="0" max="5" step="0.1"
-                      className="w-20 h-8 text-sm text-center"
+                      className="w-20 h-8 text-sm text-center tabular-nums"
                       value={rating === 0 ? "" : rating}
                       placeholder="4.8"
                       onChange={(e) => {
@@ -447,22 +448,22 @@ export default function NewProduct() {
                     <Input
                       type="number"
                       min="0"
-                      className="w-28 h-8 text-sm"
+                      className="w-28 h-8 text-sm tabular-nums"
                       value={ratingCount === 0 ? "" : ratingCount}
-                      placeholder="# reviews"
+                      placeholder={t("products.rating.reviewsPlaceholder")}
                       onChange={(e) => {
                         const v = parseInt(e.target.value);
                         setRatingCount(isNaN(v) ? 0 : Math.max(0, v));
                       }}
                     />
-                    <span className="text-sm text-muted-foreground">reviews</span>
+                    <span className="text-sm text-muted-foreground">{t("products.rating.reviews")}</span>
                   </div>
                 </div>
                 {rating > 0 && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                     <span className="text-amber-500">{"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}</span>
-                    {rating.toFixed(1)} out of 5
-                    {ratingCount > 0 && <> · <strong>{ratingCount.toLocaleString()}</strong> reviews</>}
+                    {rating.toFixed(1)} {t("products.rating.outOf")}
+                    {ratingCount > 0 && <> · <strong>{ratingCount.toLocaleString()}</strong> {t("products.rating.reviews")}</>}
                   </p>
                 )}
               </div>
@@ -474,10 +475,10 @@ export default function NewProduct() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <span className="text-[#E1306C] text-base leading-none">◉</span>
-                Instagram Reel
+                {t("products.section.reel")}
               </CardTitle>
               <p className="text-xs text-muted-foreground mt-1">
-                أضف رابط Reel ليظهر كفيديو مضمّن في صفحة المنتج
+                {t("products.reel.desc")}
               </p>
             </CardHeader>
             <CardContent>
@@ -498,7 +499,7 @@ export default function NewProduct() {
                 </div>
                 {reelUrl && (
                   <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                    ✓ سيظهر الفيديو في صفحة المنتج بعد الحفظ — مكتوم تلقائياً مع زر صوت وزر تكبير
+                    {t("products.reel.success")}
                   </p>
                 )}
               </div>
@@ -506,11 +507,11 @@ export default function NewProduct() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Tags</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("products.section.tags")}</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="flex gap-2">
                 <Input
-                  placeholder="Add a tag..."
+                  placeholder={t("products.tags.placeholder")}
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
@@ -521,10 +522,10 @@ export default function NewProduct() {
               </div>
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
-                  {tags.map((t) => (
-                    <Badge key={t} variant="secondary" className="gap-1 pr-1 text-xs">
-                      {t}
-                      <button type="button" onClick={() => setTags((p) => p.filter((x) => x !== t))} className="hover:text-destructive">
+                  {tags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="gap-1 pe-1 text-xs">
+                      {tag}
+                      <button type="button" onClick={() => setTags((p) => p.filter((x) => x !== tag))} className="hover:text-destructive">
                         <X className="w-3 h-3" />
                       </button>
                     </Badge>
@@ -536,10 +537,10 @@ export default function NewProduct() {
 
           <div className="space-y-2">
             <Button className="w-full" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save product"}
+              {isSaving ? t("action.saving") : t("products.new.save")}
             </Button>
             <Button variant="outline" className="w-full" onClick={() => navigate("/products")}>
-              Discard
+              {t("products.new.discard")}
             </Button>
           </div>
         </div>
