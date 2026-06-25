@@ -41,10 +41,10 @@ extension String {
 
     var stepIcon: String {
         switch self {
-        case "confirmed": return "checkmark.seal.fill"
+        case "confirmed": return "bag.fill"
         case "preparing": return "shippingbox.fill"
         case "shipping":  return "truck.box.fill"
-        case "delivered": return "bag.fill"
+        case "delivered": return "checkmark.seal.fill"
         default:          return "circle.fill"
         }
     }
@@ -78,7 +78,7 @@ extension String {
     // Expected-arrival pill text (non-terminal stages only).
     var stageEta: String? {
         switch self {
-        case "confirmed", "preparing": return "متوقع الوصول خلال 3-4 أيام"
+        case "confirmed", "preparing": return "متوقع الوصول خلال 3-5 أيام"
         case "shipping":               return "متوقع الوصول خلال 1-2 يوم"
         default:                       return nil
         }
@@ -95,20 +95,21 @@ extension String {
     }
 }
 
-// ── Brand mark (white wordmark, falls back to text) ──────────────────────────────
+// ── Brand mark (wordmark, color configurable) ─────────────────────────────────────
 struct MoraLogoMark: View {
     var height: CGFloat = 15
+    var color: Color = .white
     var body: some View {
         if let logo = moraLogoImage() {
             logo
                 .resizable()
                 .scaledToFit()
-                .foregroundColor(.white)
+                .foregroundColor(color)
                 .frame(height: height)
         } else {
             Text("Mora")
                 .font(.system(size: height, weight: .heavy, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundColor(color)
         }
     }
 }
@@ -229,45 +230,45 @@ struct OrderBannerView: View {
         let isException = stage.isExceptionStage
         let subtitle = context.state.message.isEmpty ? stage.stageSubtitle : context.state.message
 
-        VStack(spacing: 13) {
-            // Header: logo (leading) · order code + price (trailing)
-            HStack(alignment: .center) {
-                MoraLogoMark(height: 15)
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
+        VStack(spacing: 12) {
+            // Main row: LEFT = logo + order + price  |  RIGHT = icon + headline + subtitle + eta
+            HStack(alignment: .top, spacing: 12) {
+
+                // ── اليسار: لوكو أزرق · رقم الطلب · السعر ──────────────
+                VStack(alignment: .leading, spacing: 5) {
+                    MoraLogoMark(height: 15, color: kAccent)
                     Text(context.attributes.orderNumber)
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(.white.opacity(0.92))
                     PricePill(priceText: context.attributes.priceText,
                               isPaid: context.attributes.isPaid)
                 }
-            }
 
-            // Headline + subtitle (RTL — trailing aligned)
-            VStack(alignment: .trailing, spacing: 3) {
-                HStack(spacing: 8) {
-                    Spacer(minLength: 0)
-                    Text(stage.stageHeadline)
-                        .font(.system(size: 18, weight: .heavy))
-                        .foregroundColor(isException ? kDanger : .white)
-                        .lineLimit(1)
-                    Image(systemName: isException ? "exclamationmark.triangle.fill" : stage.stepIcon)
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(stage.stageAccent)
+                Spacer(minLength: 8)
+
+                // ── اليمين: أيقونة + عنوان · تفاصيل · وقت التوصيل ────────
+                VStack(alignment: .trailing, spacing: 4) {
+                    HStack(spacing: 7) {
+                        Text(stage.stageHeadline)
+                            .font(.system(size: 15, weight: .heavy))
+                            .foregroundColor(isException ? kDanger : .white)
+                            .lineLimit(1)
+                        Image(systemName: isException ? "exclamationmark.triangle.fill" : stage.stepIcon)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundColor(stage.stageAccent)
+                    }
+                    Text(subtitle)
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundColor(kDim)
+                        .multilineTextAlignment(.trailing)
+                        .lineLimit(2)
+                    if let eta = stage.stageEta {
+                        EtaPill(text: eta)
+                    }
                 }
-                Text(subtitle)
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundColor(kDim)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .lineLimit(2)
             }
 
-            // ETA (non-terminal stages)
-            if let eta = stage.stageEta {
-                HStack { Spacer(); EtaPill(text: eta) }
-            }
-
-            // Tracker / actions
+            // ── الخط السفلي: tracker المراحل / أزرار ──────────────────────
             if isException {
                 ContactButton()
             } else {
