@@ -19,6 +19,7 @@ import Products from "@/pages/products";
 import NewProduct from "@/pages/products/new";
 import ProductDetail from "@/pages/products/detail";
 import Inventory from "@/pages/products/inventory";
+import WantedProducts from "@/pages/products/wanted";
 import PurchaseOrders from "@/pages/products/purchase-orders";
 import Transfers from "@/pages/products/transfers";
 import GiftCards from "@/pages/products/gift-cards";
@@ -76,6 +77,7 @@ function Router() {
         <Route path="/orders/:id" component={OrderDetail} />
         <Route path="/products/new" component={NewProduct} />
         <Route path="/products/inventory" component={Inventory} />
+        <Route path="/products/wanted" component={WantedProducts} />
         <Route path="/products/purchase-orders" component={PurchaseOrders} />
         <Route path="/products/transfers" component={Transfers} />
         <Route path="/products/gift-cards" component={GiftCards} />

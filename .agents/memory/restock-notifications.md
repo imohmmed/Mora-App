@@ -7,6 +7,16 @@ description: How the out-of-stock "notify me" → auto-push-on-restock pipeline 
 
 OOS flow: mora product page shows a "Notify me / ابلغني عند توفره" CTA instead of ADD TO BAG when the **active variant** inventory<=0. Logged-in only (login prompt → `/auth`). Subscribing POSTs `/store/restock-requests`.
 
+## Web-safe prompts (critical)
+`react-native-web`'s `Alert.alert` is a **silent no-op** — the notify-me login prompt and error feedback did nothing on web. Always branch on `Platform.OS === "web"` → use `window.confirm`/`window.alert`; keep native `Alert.alert`. This applies anywhere a notify/login prompt must work on Expo web (product page, QuickAddSheet).
+
+## Notify surfaces (besides product page)
+- **QuickAddSheet**: when the WHOLE product is OOS (`variants.every(inventory<=0)`), CTA becomes Notify me and subscribes ALL variant ids via `Promise.all(requestRestockNotify)`.
+- **Collection list**: OOS cards show "NOTIFY ME" + bell (still open QuickAddSheet); list sorts in-stock first, sold-out last (`useMemo` sort). OOS detection = product has variants and none have inventory>0; no top-level inventory field on Product.
+
+## Admin "Wanted Products"
+`GET /admin/restock-requests` (requireAdmin) aggregates `restock_requests` by product: total/pending(notified=0)/distinct customers/last requested + joined title+first image+price. Page at `/products/wanted` (sidebar under Store, `nav.wanted`, `wanted.*` i18n in products dict). Counts are historical+pending; pending-only filter is future work.
+
 ## Data model
 - `restock_requests` table: unique on `(customer_id, variant_id)`; index on `(variant_id, notified)`. Stores email + a snapshot `push_token` (send-time still reads `push_tokens` for the freshest token — snapshot is just a record).
 - The endpoint validates the variant exists AND `variant.product_id === productId` before inserting — a bad row would poison the deep-link/content for ALL waiters on that variant because `notifyRestock` uses `pending[0].product_id` as the shared link source.

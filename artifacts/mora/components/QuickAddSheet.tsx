@@ -12,11 +12,13 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,11 +27,14 @@ import {
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/context/ThemeContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
+import { requestRestockNotify } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import type { Product, Variant } from "@/lib/types";
 
@@ -67,6 +72,9 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   const isDark = resolvedScheme === "dark";
   const { isWishlisted, toggle } = useWishlist();
   const { lang } = useLanguage();
+  const { token } = useAuth();
+  const router = useRouter();
+  const isWeb = Platform.OS === "web";
 
   const slideAnim = useRef(new Animated.Value(600)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
@@ -74,11 +82,15 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   const [selectedOpt1, setSelectedOpt1] = useState<string | null>(null);
   const [selectedOpt2, setSelectedOpt2] = useState<string | null>(null);
   const [activeImg, setActiveImg] = useState(0);
+  const [notifying, setNotifying] = useState(false);
+  const [notified, setNotified] = useState(false);
 
   useEffect(() => {
     setSelectedOpt1(null);
     setSelectedOpt2(null);
     setActiveImg(0);
+    setNotified(false);
+    setNotifying(false);
   }, [product?.id]);
 
   useEffect(() => {
@@ -143,12 +155,46 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
 
   const canAdd = (!hasOpt1 || !!selectedOpt1) && (!hasOpt2 || !!selectedOpt2);
 
+  // Whole product sold out → offer "Notify me" instead of "Add to bag".
+  const fullyOOS = variants.length > 0 && variants.every((v) => (v.inventory ?? 0) <= 0);
+
   const handleAdd = () => {
     const toAdd = selectedVariant ?? variants[0];
     if (!toAdd) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onConfirm(toAdd);
     onClose();
+  };
+
+  const handleNotify = async () => {
+    if (!product) return;
+    if (!token) {
+      if (isWeb) {
+        const ok = window.confirm(
+          lang === "ar"
+            ? "سجّل دخولك حتى نبلغك عند توفر المنتج. تسجيل الدخول الآن؟"
+            : "Sign in so we can notify you when it's back in stock. Sign in now?",
+        );
+        if (ok) { onClose(); router.push("/auth"); }
+      } else {
+        onClose();
+        router.push("/auth");
+      }
+      return;
+    }
+    // Register for every variant so any size coming back in stock alerts the user.
+    const ids = [...new Set(variants.map((v) => v.id))];
+    try {
+      setNotifying(true);
+      await Promise.all(ids.map((vid) => requestRestockNotify(token, product.id, vid)));
+      setNotified(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      const msg = lang === "ar" ? "صار خطأ، حاول مرة ثانية" : "Something went wrong, please try again";
+      if (isWeb) window.alert(msg);
+    } finally {
+      setNotifying(false);
+    }
   };
 
   const handleHeart = () => {
@@ -342,23 +388,51 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
             />
           </Pressable>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.addBtn,
-              {
-                backgroundColor: canAdd
-                  ? PRIMARY
-                  : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
-                opacity: pressed ? 0.85 : 1,
-              },
-            ]}
-            onPress={handleAdd}
-            disabled={!canAdd}
-          >
-            <Text style={[styles.addBtnText, { color: canAdd ? "#FFF" : textMuted }]}>
-              {btnLabel}
-            </Text>
-          </Pressable>
+          {fullyOOS ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.addBtn,
+                styles.notifyBtn,
+                {
+                  backgroundColor: notified ? "#43A047" : "#3A3A3C",
+                  opacity: pressed && !notified ? 0.88 : 1,
+                },
+              ]}
+              onPress={notified ? undefined : handleNotify}
+              disabled={notified || notifying}
+            >
+              {notifying ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <>
+                  <Feather name={notified ? "check" : "bell"} size={16} color="#FFF" />
+                  <Text style={[styles.addBtnText, { color: "#FFF" }]}>
+                    {notified
+                      ? (lang === "ar" ? "راح نبلغك" : "We'll notify you")
+                      : (lang === "ar" ? "ابلغني عند توفره" : "Notify me")}
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          ) : (
+            <Pressable
+              style={({ pressed }) => [
+                styles.addBtn,
+                {
+                  backgroundColor: canAdd
+                    ? PRIMARY
+                    : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+              onPress={handleAdd}
+              disabled={!canAdd}
+            >
+              <Text style={[styles.addBtnText, { color: canAdd ? "#FFF" : textMuted }]}>
+                {btnLabel}
+              </Text>
+            </Pressable>
+          )}
         </View>
       </Animated.View>
     </Modal>
@@ -500,6 +574,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 16,
     alignItems: "center",
+  },
+  notifyBtn: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
   },
   addBtnText: {
     fontFamily: "Inter_700Bold",

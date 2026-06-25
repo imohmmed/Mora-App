@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -36,6 +36,12 @@ const CARD_W = (width - 16 * 3) / 2;
 const PRIMARY = "#0274C1";
 const SCROLL_THRESHOLD = HERO_H - 70;
 
+function isProductInStock(p: Product): boolean {
+  const vs = p.variants ?? [];
+  if (vs.length === 0) return true; // no variant info → assume available
+  return vs.some((v) => (v.inventory ?? 0) > 0);
+}
+
 function ProductCard({ product, onQuickAdd }: { product: Product; onQuickAdd: (p: Product) => void }) {
   const colors = useColors();
   const router = useRouter();
@@ -43,6 +49,7 @@ function ProductCard({ product, onQuickAdd }: { product: Product; onQuickAdd: (p
   const discountPct = hasDiscount
     ? Math.round(((product.comparePrice! - product.price) / product.comparePrice!) * 100)
     : 0;
+  const soldOut = !isProductInStock(product);
 
   return (
     <View style={[styles.productCard, { backgroundColor: colors.background }]}>
@@ -81,10 +88,17 @@ function ProductCard({ product, onQuickAdd }: { product: Product; onQuickAdd: (p
         </View>
       </Pressable>
       <Pressable
-        style={styles.addToCartBtn}
+        style={[styles.addToCartBtn, soldOut && styles.notifyCartBtn]}
         onPress={() => onQuickAdd(product)}
       >
-        <Text style={styles.addToCartText}>ADD TO BAG</Text>
+        {soldOut ? (
+          <View style={styles.notifyCartInner}>
+            <Feather name="bell" size={13} color="#FFFFFF" />
+            <Text style={styles.addToCartText}>NOTIFY ME</Text>
+          </View>
+        ) : (
+          <Text style={styles.addToCartText}>ADD TO BAG</Text>
+        )}
       </Pressable>
     </View>
   );
@@ -154,9 +168,18 @@ export default function CollectionScreen() {
 
   const collection = data;
   const allProducts: Product[] = (collection?.products ?? []) as Product[];
-  const displayProducts = debouncedQ.trim().length > 0
+  const rawProducts = debouncedQ.trim().length > 0
     ? (searchResults ?? [])
     : allProducts;
+  // Keep in-stock products first; sold-out ones sink to the end (still tappable
+  // so users can subscribe to a restock notification).
+  const displayProducts = useMemo(() => {
+    return [...rawProducts].sort((a, b) => {
+      const aIn = isProductInStock(a) ? 0 : 1;
+      const bIn = isProductInStock(b) ? 0 : 1;
+      return aIn - bIn;
+    });
+  }, [rawProducts]);
 
   useEffect(() => {
     Animated.timing(headerBgAnim, {
@@ -612,6 +635,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 100,
     marginTop: 8,
+  },
+  notifyCartBtn: {
+    backgroundColor: "#3A3A3C",
+  },
+  notifyCartInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   addToCartText: {
     color: "#FFFFFF",

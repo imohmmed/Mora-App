@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, ShoppingCart, Package, Users, FolderTree, Tags, FileText,
   Settings, BarChart3, Warehouse, Bell, Truck, UserSearch, Gift, ChevronLeft,
-  PanelLeftClose, PanelLeft,
+  PanelLeftClose, PanelLeft, BellRing,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth, type AdminPermissions } from "@/context/AdminAuthContext";
@@ -27,6 +27,7 @@ const NAV: NavSection[] = [
     items: [
       { href: "/orders", labelKey: "nav.orders", icon: ShoppingCart },
       { href: "/products", labelKey: "nav.products", icon: Package },
+      { href: "/products/wanted", labelKey: "nav.wanted", icon: BellRing },
       { href: "/collections", labelKey: "nav.collections", icon: FolderTree },
       { href: "/products/inventory", labelKey: "nav.inventory", icon: Warehouse },
     ],
@@ -85,7 +86,7 @@ export function SidebarContent({
     const path = href.split("?")[0];
     if (path === "/") return location === "/";
     // Exact-ish: avoid /products matching /products/inventory both as active
-    if (path === "/products") return location === "/products" || /^\/products\/[^/]+$/.test(location) && !location.startsWith("/products/inventory");
+    if (path === "/products") return location === "/products" || (/^\/products\/[^/]+$/.test(location) && !location.startsWith("/products/inventory") && !location.startsWith("/products/wanted"));
     return location === path || location.startsWith(path + "/");
   };
 

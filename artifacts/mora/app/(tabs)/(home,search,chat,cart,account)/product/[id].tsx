@@ -320,16 +320,27 @@ export default function ProductDetailScreen() {
   const handleNotifyRestock = async () => {
     if (!product || !activeVariant) return;
     if (!token) {
-      Alert.alert(
-        lang === "ar" ? "تحتاج تسجيل دخول" : "Sign in required",
-        lang === "ar"
-          ? "سجّل دخولك حتى نبلغك عند توفر المنتج"
-          : "Sign in so we can notify you when it's back in stock",
-        [
-          { text: lang === "ar" ? "إلغاء" : "Cancel", style: "cancel" },
-          { text: lang === "ar" ? "تسجيل الدخول" : "Sign in", onPress: () => router.push("/auth") },
-        ],
-      );
+      // react-native-web's Alert.alert is a no-op, so the login prompt must use
+      // window.confirm on web; native keeps the styled Alert dialog.
+      if (isWeb) {
+        const ok = window.confirm(
+          lang === "ar"
+            ? "سجّل دخولك حتى نبلغك عند توفر المنتج. تسجيل الدخول الآن؟"
+            : "Sign in so we can notify you when it's back in stock. Sign in now?",
+        );
+        if (ok) router.push("/auth");
+      } else {
+        Alert.alert(
+          lang === "ar" ? "تحتاج تسجيل دخول" : "Sign in required",
+          lang === "ar"
+            ? "سجّل دخولك حتى نبلغك عند توفر المنتج"
+            : "Sign in so we can notify you when it's back in stock",
+          [
+            { text: lang === "ar" ? "إلغاء" : "Cancel", style: "cancel" },
+            { text: lang === "ar" ? "تسجيل الدخول" : "Sign in", onPress: () => router.push("/auth") },
+          ],
+        );
+      }
       return;
     }
     try {
@@ -339,10 +350,9 @@ export default function ProductDetailScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       refetchSubs();
     } catch {
-      Alert.alert(
-        lang === "ar" ? "خطأ" : "Error",
-        lang === "ar" ? "صار خطأ، حاول مرة ثانية" : "Something went wrong, please try again",
-      );
+      const msg = lang === "ar" ? "صار خطأ، حاول مرة ثانية" : "Something went wrong, please try again";
+      if (isWeb) window.alert(msg);
+      else Alert.alert(lang === "ar" ? "خطأ" : "Error", msg);
     } finally {
       setNotifyingVariant(null);
     }

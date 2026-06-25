@@ -15,6 +15,23 @@ export function clearAdminToken() {
   } catch {}
 }
 
+export type WantedProduct = {
+  productId: string;
+  title: string | null;
+  image: string;
+  price: number | null;
+  status: string | null;
+  totalRequests: number;
+  pendingRequests: number;
+  distinctCustomers: number;
+  lastRequestedAt: string | null;
+};
+
+export async function fetchWantedProducts(): Promise<WantedProduct[]> {
+  const res = await adminFetch<WantedProduct[]>("/admin/restock-requests");
+  return res.data ?? [];
+}
+
 export async function adminFetch<T = unknown>(
   path: string,
   options?: RequestInit

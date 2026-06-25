@@ -226,6 +226,49 @@ router.get("/admin/notifications/stats", requireAdmin, (_req, res) => {
   return res.json({ data: { tokens, customers, totalSent, totalSuccess, ios, android }, error: null });
 });
 
+// ── ADMIN: wanted products (restock requests aggregated by product) ─────────────
+router.get("/admin/restock-requests", requireAdmin, (_req, res) => {
+  const rows = db.prepare(`
+    SELECT
+      r.product_id                              AS productId,
+      p.title                                   AS title,
+      p.images                                  AS images,
+      p.price                                   AS price,
+      p.status                                  AS status,
+      COUNT(*)                                  AS totalRequests,
+      SUM(CASE WHEN r.notified = 0 THEN 1 ELSE 0 END) AS pendingRequests,
+      COUNT(DISTINCT r.customer_id)             AS distinctCustomers,
+      MAX(r.created_at)                         AS lastRequestedAt
+    FROM restock_requests r
+    LEFT JOIN products p ON p.id = r.product_id
+    GROUP BY r.product_id
+    ORDER BY pendingRequests DESC, totalRequests DESC, lastRequestedAt DESC
+  `).all() as any[];
+
+  const data = rows.map((row) => {
+    let image = "";
+    try {
+      const imgs = JSON.parse(row.images ?? "[]");
+      if (Array.isArray(imgs) && imgs.length > 0) image = imgs[0];
+    } catch {
+      // images column malformed → leave blank
+    }
+    return {
+      productId: row.productId,
+      title: row.title ?? null,
+      image,
+      price: row.price ?? null,
+      status: row.status ?? null,
+      totalRequests: Number(row.totalRequests) || 0,
+      pendingRequests: Number(row.pendingRequests) || 0,
+      distinctCustomers: Number(row.distinctCustomers) || 0,
+      lastRequestedAt: row.lastRequestedAt ?? null,
+    };
+  });
+
+  return res.json({ data, error: null });
+});
+
 // ── ADMIN: notification history ────────────────────────────────────────────────
 router.get("/admin/notifications", requireAdmin, (req, res) => {
   const limit = Math.min(Number((req.query as any).limit) || 50, 200);
