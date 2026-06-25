@@ -45,6 +45,16 @@ try {
   paddingMod     = mods.padding;
 } catch {}
 
+// ── react-dom portal (web only) ───────────────────────────────────────────────
+// On web the Chatwoot chat is a <body>-level overlay with an enormous z-index.
+// To keep the floating tab bar visible on top of the open chat (it sits in the
+// 84px strip the widget reserves at its bottom), we portal the bar straight into
+// <body> with a max z-index so no ancestor stacking context can trap it.
+let createPortal: ((node: any, container: any) => any) | null = null;
+if (Platform.OS === "web") {
+  try { createPortal = require("react-dom").createPortal; } catch {}
+}
+
 const ITEM_W   = 54;
 const ITEM_H   = 44;
 const ITEM_GAP = 2;
@@ -85,7 +95,16 @@ function useGlassCSS() {
     el.id = CSS_ID + "-floating-fallback";
     if (document.getElementById(CSS_ID + "-floating-fallback")) return;
     el.textContent = `
-      .mora-lg-wrapper { overflow: visible; }
+      .mora-lg-wrapper {
+        overflow: visible;
+        /* Portaled into <body>: pin to viewport bottom and float above the
+           Chatwoot chat overlay (z-index ~2147483000) so the bar stays visible. */
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 2147483647;
+      }
       .mora-lg-wrapper::before {
         content: ''; position: absolute; bottom: 0; left: -40px; right: -40px;
         height: 130px; pointer-events: none; z-index: 0;
@@ -388,7 +407,7 @@ function FloatingTabBarInner() {
     router.push(tab.path as any);
   };
 
-  return (
+  const content = (
     <View
       // @ts-ignore className valid on web
       className={`mora-lg-wrapper${isDark ? " mora-lg-dark" : ""}`}
@@ -431,6 +450,12 @@ function FloatingTabBarInner() {
       </View>
     </View>
   );
+
+  // Web: portal into <body> so the bar floats above the Chatwoot chat overlay.
+  if (Platform.OS === "web" && createPortal && typeof document !== "undefined") {
+    return createPortal(content, document.body);
+  }
+  return content;
 }
 
 const styles = StyleSheet.create({

@@ -21,8 +21,51 @@ try {
 } catch {}
 
 const PRIMARY = "#0274C1";
-const WIDGET_BASE =
-  "https://chat.moramoda.tech/widget?website_token=WPeCyRzhWzff2TuFHRe27SaQ";
+const CHAT_DOMAIN = "https://chat.moramoda.tech";
+const WEBSITE_TOKEN = "WPeCyRzhWzff2TuFHRe27SaQ";
+const WIDGET_BASE = `${CHAT_DOMAIN}/widget?website_token=${WEBSITE_TOKEN}`;
+
+// Bootstraps the Chatwoot SDK inside the WebView and auto-opens the chat.
+// Loading the bare /widget URL renders blank because the standalone widget
+// waits for the SDK's postMessage config handshake from a parent window that
+// never arrives. Running the SDK here provides that handshake — same as web.
+function buildChatHtml(isDark: boolean): string {
+  const scheme = isDark ? "dark" : "light";
+  const bg = isDark ? "#0D0D0F" : "#FFFFFF";
+  return `<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; background: ${bg}; overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <script>
+      window.chatwootSettings = {
+        hideMessageBubble: true,
+        position: "right",
+        locale: "ar",
+        type: "standard",
+        darkMode: "${scheme}",
+        showPopoutButton: false,
+      };
+      (function (d, t) {
+        var g = d.createElement(t), s = d.getElementsByTagName(t)[0];
+        g.src = "${CHAT_DOMAIN}/packs/js/sdk.js";
+        g.async = true; g.defer = true;
+        g.onload = function () {
+          window.chatwootSDK.run({ websiteToken: "${WEBSITE_TOKEN}", baseUrl: "${CHAT_DOMAIN}" });
+        };
+        s.parentNode.insertBefore(g, s);
+      })(document, "script");
+      window.addEventListener("chatwoot:ready", function () {
+        try { window.$chatwoot.toggle("open"); } catch (e) {}
+      });
+    </script>
+  </body>
+</html>`;
+}
 
 function buildIdentityScript(
   user: { id: string; firstName: string; lastName: string; email: string; phone?: string } | null
@@ -133,7 +176,7 @@ export default function ChatScreen() {
     <View style={[styles.container, { backgroundColor: bg }]}>
       <WebView
         key={isDark ? "dark" : "light"}
-        source={{ uri: widgetUrl }}
+        source={{ html: buildChatHtml(isDark), baseUrl: CHAT_DOMAIN }}
         injectedJavaScript={identityScript}
         onLoadEnd={() => setLoading(false)}
         onError={() => { setLoading(false); setHasError(true); }}
