@@ -76,20 +76,22 @@ export function HomeHeader({
         <RNImage source={LOGO} style={styles.logo} resizeMode="contain" />
         <View style={{ flex: 1 }} />
 
-        <Pressable
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
-          onPress={() => router.push("/notifications" as any)}
-          testID="notifications-btn"
-        >
-          {isIOS26Plus && <LiquidGlassBg />}
-          {!isIOS26Plus && Platform.OS !== "web" && (
-            <BlurView
-              style={StyleSheet.absoluteFill}
-              intensity={60}
-              tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
-            />
-          )}
-          <Feather name="bell" size={21} color={colors.foreground} />
+        <View style={styles.iconBtnWrap}>
+          <Pressable
+            style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+            onPress={() => router.push("/notifications" as any)}
+            testID="notifications-btn"
+          >
+            {isIOS26Plus && <LiquidGlassBg />}
+            {!isIOS26Plus && Platform.OS !== "web" && (
+              <BlurView
+                style={StyleSheet.absoluteFill}
+                intensity={60}
+                tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
+              />
+            )}
+            <Feather name="bell" size={21} color={colors.foreground} />
+          </Pressable>
           {notificationCount > 0 && (
             <View style={[styles.badge, { backgroundColor: colors.primary }]}>
               <Text style={styles.badgeText}>
@@ -97,22 +99,24 @@ export function HomeHeader({
               </Text>
             </View>
           )}
-        </Pressable>
+        </View>
 
-        <Pressable
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
-          onPress={() => router.push("/wishlist" as any)}
-          testID="favorites-btn"
-        >
-          {isIOS26Plus && <LiquidGlassBg />}
-          {!isIOS26Plus && Platform.OS !== "web" && (
-            <BlurView
-              style={StyleSheet.absoluteFill}
-              intensity={60}
-              tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
-            />
-          )}
-          <Feather name="heart" size={21} color={colors.foreground} />
+        <View style={styles.iconBtnWrap}>
+          <Pressable
+            style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+            onPress={() => router.push("/wishlist" as any)}
+            testID="favorites-btn"
+          >
+            {isIOS26Plus && <LiquidGlassBg />}
+            {!isIOS26Plus && Platform.OS !== "web" && (
+              <BlurView
+                style={StyleSheet.absoluteFill}
+                intensity={60}
+                tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
+              />
+            )}
+            <Feather name="heart" size={21} color={colors.foreground} />
+          </Pressable>
           {favoritesCount > 0 && (
             <View style={[styles.badge, { backgroundColor: colors.primary }]}>
               <Text style={styles.badgeText}>
@@ -120,7 +124,7 @@ export function HomeHeader({
               </Text>
             </View>
           )}
-        </Pressable>
+        </View>
 
       </View>
     </View>
@@ -142,6 +146,9 @@ const styles = StyleSheet.create({
     width: 92,
     height: 30,
   },
+  iconBtnWrap: {
+    position: "relative",
+  },
   iconBtn: {
     width: 38,
     height: 38,
@@ -149,13 +156,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-    position: "relative",
   },
   pressed: { opacity: 0.6 },
   badge: {
     position: "absolute",
-    top: 2,
-    right: 2,
+    top: -3,
+    right: -3,
     minWidth: 16,
     height: 16,
     borderRadius: 8,

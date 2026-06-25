@@ -381,41 +381,38 @@ export default function ProductDetailScreen() {
           }}
         />
         <MoraLogo size="small" />
-        {isIOS26Plus ? (
-          <Pressable
-            onPress={() => router.push("/cart")}
-            style={styles.glassIconBtn}
-            testID="cart-header-btn"
-          >
-            <LiquidGlassBg />
-            <Feather name="shopping-bag" size={20} color={colors.foreground} />
-            {totalItems > 0 && (
-              <View style={[styles.cartBadge, { backgroundColor: colors.primary }]}>
-                <Text style={styles.cartBadgeText}>{totalItems > 9 ? "9+" : totalItems}</Text>
-              </View>
-            )}
-          </Pressable>
-        ) : (
-          <Pressable
-            onPress={() => router.push("/cart")}
-            style={[styles.glassIconBtn, { backgroundColor: "transparent" }]}
-            testID="cart-header-btn"
-          >
-            {Platform.OS !== "web" && (
-              <BlurView
-                style={StyleSheet.absoluteFill}
-                intensity={60}
-                tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
-              />
-            )}
-            <Feather name="shopping-bag" size={20} color={colors.foreground} />
-            {totalItems > 0 && (
-              <View style={[styles.cartBadge, { backgroundColor: colors.primary }]}>
-                <Text style={styles.cartBadgeText}>{totalItems > 9 ? "9+" : totalItems}</Text>
-              </View>
-            )}
-          </Pressable>
-        )}
+        <View style={styles.cartBtnWrap}>
+          {isIOS26Plus ? (
+            <Pressable
+              onPress={() => router.push("/cart")}
+              style={styles.glassIconBtn}
+              testID="cart-header-btn"
+            >
+              <LiquidGlassBg />
+              <Feather name="shopping-bag" size={20} color={colors.foreground} />
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => router.push("/cart")}
+              style={[styles.glassIconBtn, { backgroundColor: "transparent" }]}
+              testID="cart-header-btn"
+            >
+              {Platform.OS !== "web" && (
+                <BlurView
+                  style={StyleSheet.absoluteFill}
+                  intensity={60}
+                  tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
+                />
+              )}
+              <Feather name="shopping-bag" size={20} color={colors.foreground} />
+            </Pressable>
+          )}
+          {totalItems > 0 && (
+            <View style={[styles.cartBadge, { backgroundColor: colors.primary }]}>
+              <Text style={styles.cartBadgeText}>{totalItems > 9 ? "9+" : totalItems}</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* ── Content ── */}
@@ -787,8 +784,11 @@ const styles = StyleSheet.create({
   },
   backBtn: { padding: 4 },
   cartHeaderBtn: { padding: 4, position: "relative" },
+  cartBtnWrap: {
+    position: "relative",
+  },
   cartBadge: {
-    position: "absolute", top: 0, right: 0,
+    position: "absolute", top: -4, right: -4,
     minWidth: 16, height: 16, borderRadius: 8,
     alignItems: "center", justifyContent: "center", paddingHorizontal: 3,
   },

@@ -313,26 +313,28 @@ export default function CollectionScreen() {
           )}
 
           {/* Cart button */}
-          <Pressable
-            style={[styles.iconBtn, { backgroundColor: isIOS26Plus ? "transparent" : (scrolled ? ICON_BG_SCROLLED : ICON_BG_TOP) }]}
-            onPress={() => router.push("/cart")}
-            testID="cart-btn"
-          >
-            {isIOS26Plus && <LiquidGlassBg />}
-            {!isIOS26Plus && Platform.OS !== "web" && (
-              <BlurView
-                style={StyleSheet.absoluteFill}
-                intensity={55}
-                tint={scrolled ? (isDark ? "systemThinMaterialDark" : "systemThinMaterial") : "systemThinMaterialDark"}
-              />
-            )}
-            <Feather name="shopping-bag" size={20} color={iconColor} />
+          <View style={styles.iconBtnWrap}>
+            <Pressable
+              style={[styles.iconBtn, { backgroundColor: isIOS26Plus ? "transparent" : (scrolled ? ICON_BG_SCROLLED : ICON_BG_TOP) }]}
+              onPress={() => router.push("/cart")}
+              testID="cart-btn"
+            >
+              {isIOS26Plus && <LiquidGlassBg />}
+              {!isIOS26Plus && Platform.OS !== "web" && (
+                <BlurView
+                  style={StyleSheet.absoluteFill}
+                  intensity={55}
+                  tint={scrolled ? (isDark ? "systemThinMaterialDark" : "systemThinMaterial") : "systemThinMaterialDark"}
+                />
+              )}
+              <Feather name="shopping-bag" size={20} color={iconColor} />
+            </Pressable>
             {totalItems > 0 && (
               <View style={styles.cartBadge}>
                 <Text style={styles.cartBadgeText}>{totalItems > 9 ? "9+" : totalItems}</Text>
               </View>
             )}
-          </Pressable>
+          </View>
         </View>
       </Animated.View>
 
@@ -490,6 +492,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
+  iconBtnWrap: {
+    position: "relative",
+  },
   iconBtn: {
     width: 36,
     height: 36,
@@ -500,14 +505,15 @@ const styles = StyleSheet.create({
   },
   cartBadge: {
     position: "absolute",
-    top: 2,
-    right: 2,
-    width: 15,
+    top: -3,
+    right: -3,
+    minWidth: 15,
     height: 15,
     borderRadius: 8,
     backgroundColor: PRIMARY,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 2,
   },
   cartBadgeText: { color: "#fff", fontSize: 8, fontFamily: "Inter_700Bold" },
 
