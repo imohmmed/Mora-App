@@ -19,7 +19,9 @@ import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
-import { searchProducts } from "@/lib/api";
+import { searchProducts, fetchContentSections } from "@/lib/api";
+import type { SearchCollection, TrendingKeyword } from "@/lib/api";
+import { useLanguage } from "@/context/LanguageContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { formatIQD } from "@/lib/format";
@@ -34,15 +36,17 @@ const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
 const IS_IOS = Platform.OS === "ios";
 const PRIMARY = "#0274C1";
 
-const TRENDING = ["Blazer", "Linen", "Dress", "Sandals", "Jeans", "Silk"];
+// Fallbacks used only if the editable content sections fail to load
+const FALLBACK_TRENDING: TrendingKeyword[] = ["Blazer", "Linen", "Dress", "Sandals", "Jeans", "Silk"]
+  .map((label, i) => ({ id: `tr_${i}`, label }));
 
-const CATEGORIES = [
-  { label: "Women", icon: "user" as const, color: "#F5EBF5" },
-  { label: "Men", icon: "user" as const, color: "#EBF0F5" },
-  { label: "Beauty", icon: "droplet" as const, color: "#F5F0EB" },
-  { label: "Shoes", icon: "box" as const, color: "#EBF5F0" },
-  { label: "Bags", icon: "shopping-bag" as const, color: "#F5EBEB" },
-  { label: "Sale", icon: "tag" as const, color: "#FFF3E0" },
+const FALLBACK_COLLECTIONS: SearchCollection[] = [
+  { id: "sc_women",  nameEn: "Women",  nameAr: "نساء",    icon: "user",         color: "#F5EBF5", linkType: "gender",   linkValue: "women" },
+  { id: "sc_men",    nameEn: "Men",    nameAr: "رجال",    icon: "user",         color: "#EBF0F5", linkType: "gender",   linkValue: "men" },
+  { id: "sc_beauty", nameEn: "Beauty", nameAr: "تجميل",   icon: "droplet",      color: "#F5F0EB", linkType: "category", linkValue: "beauty" },
+  { id: "sc_shoes",  nameEn: "Shoes",  nameAr: "أحذية",   icon: "box",          color: "#EBF5F0", linkType: "category", linkValue: "shoes" },
+  { id: "sc_bags",   nameEn: "Bags",   nameAr: "حقائب",   icon: "shopping-bag", color: "#F5EBEB", linkType: "category", linkValue: "bags" },
+  { id: "sc_sale",   nameEn: "Sale",   nameAr: "تخفيضات", icon: "tag",          color: "#FFF3E0", linkType: "sale",     linkValue: "" },
 ];
 
 const CARD_COLORS = [
@@ -189,7 +193,20 @@ export default function SearchScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { lang } = useLanguage();
   const isWeb = Platform.OS === "web";
+
+  // ── Editable trending keywords + browse collections (admin-managed) ──────────
+  const { data: contentSections } = useQuery({
+    queryKey: ["content-sections"],
+    queryFn: fetchContentSections,
+    staleTime: 5 * 60_000,
+  });
+  const trendingItems = (contentSections?.trending?.items as unknown as TrendingKeyword[]) ?? [];
+  const trending = trendingItems.length ? trendingItems : FALLBACK_TRENDING;
+  const browseItems = (contentSections?.search_collections?.items as unknown as SearchCollection[]) ?? [];
+  const browseCollections = browseItems.length ? browseItems : FALLBACK_COLLECTIONS;
+
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [focused, setFocused] = useState(false);
@@ -249,6 +266,21 @@ export default function SearchScreen() {
     setQuery(text);
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => setDebouncedQuery(text), 400);
+  };
+
+  const handleCollectionPress = (sc: SearchCollection) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const title = lang === "ar" ? (sc.nameAr || sc.nameEn) : sc.nameEn;
+    if (sc.linkType === "collection" && sc.linkValue) {
+      router.push(`/collection/${sc.linkValue}` as any);
+    } else if (sc.linkType === "category" || sc.linkType === "gender" || sc.linkType === "sale") {
+      router.push({
+        pathname: "/collection/[slug]",
+        params: { slug: "browse", bt: sc.linkType, bv: sc.linkValue, bttl: title },
+      } as any);
+    } else {
+      handleChangeText(sc.linkValue || sc.nameEn);
+    }
   };
 
   const { data: results, isLoading, isFetching, isError, refetch, isRefetching } = useQuery({
@@ -356,11 +388,11 @@ export default function SearchScreen() {
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>TRENDING</Text>
               <View style={styles.tagsWrap}>
                 {useGlassBtn
-                  ? TRENDING.map((t) => (
-                      <ExpoUIHost key={t} matchContents style={{ height: 38 }}>
+                  ? trending.map((t) => (
+                      <ExpoUIHost key={t.id} matchContents style={{ height: 38 }}>
                         <ExpoButton
-                          label={t}
-                          onPress={() => handleChangeText(t)}
+                          label={t.label}
+                          onPress={() => handleChangeText(t.label)}
                           modifiers={[
                             paddingM({ horizontal: 16, vertical: 8 }),
                             glassEffectM({ glass: { variant: "regular", interactive: true }, shape: "capsule" }),
@@ -369,13 +401,13 @@ export default function SearchScreen() {
                         />
                       </ExpoUIHost>
                     ))
-                  : TRENDING.map((t) => (
+                  : trending.map((t) => (
                       <Pressable
-                        key={t}
+                        key={t.id}
                         style={[styles.tag, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-                        onPress={() => handleChangeText(t)}
+                        onPress={() => handleChangeText(t.label)}
                       >
-                        <Text style={[styles.tagText, { color: colors.foreground }]}>{t}</Text>
+                        <Text style={[styles.tagText, { color: colors.foreground }]}>{t.label}</Text>
                       </Pressable>
                     ))
                 }
@@ -386,9 +418,11 @@ export default function SearchScreen() {
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>BROWSE</Text>
               <View style={styles.categoriesGrid}>
-                {CATEGORIES.map((cat) => (
+                {browseCollections.map((cat) => {
+                  const label = lang === "ar" ? (cat.nameAr || cat.nameEn) : cat.nameEn;
+                  return (
                   <Pressable
-                    key={cat.label}
+                    key={cat.id}
                     style={({ pressed }) => [
                       styles.categoryCard,
                       {
@@ -398,18 +432,19 @@ export default function SearchScreen() {
                         opacity: pressed ? 0.85 : 1,
                       },
                     ]}
-                    onPress={() => handleChangeText(cat.label)}
-                    testID={`category-${cat.label}`}
+                    onPress={() => handleCollectionPress(cat)}
+                    testID={`category-${cat.id}`}
                   >
                     {useGlass && <LiquidGlassBg />}
                     <View style={[styles.categoryInner, { backgroundColor: useGlass ? "transparent" : cat.color }]}>
                       <View style={[styles.categoryIconBg, { backgroundColor: useGlass ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.5)" }]}>
-                        <Feather name={cat.icon} size={22} color="#1A1A1A" />
+                        <Feather name={(cat.icon || "tag") as any} size={22} color="#1A1A1A" />
                       </View>
-                      <Text style={[styles.categoryLabel, { color: "#1A1A1A" }]}>{cat.label}</Text>
+                      <Text style={[styles.categoryLabel, { color: "#1A1A1A" }]}>{label}</Text>
                     </View>
                   </Pressable>
-                ))}
+                  );
+                })}
               </View>
             </View>
           </>

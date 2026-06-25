@@ -22,7 +22,7 @@ import { BlurView } from "expo-blur";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
-import { fetchSpecialCollection, fetchCollection, searchProducts } from "@/lib/api";
+import { fetchSpecialCollection, fetchCollection, searchProducts, fetchBrowseProducts } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import { GlassBackButton } from "@/components/GlassBackButton";
@@ -104,7 +104,7 @@ function ProductSkeleton() {
 }
 
 export default function CollectionScreen() {
-  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const { slug, bt, bv, bttl } = useLocalSearchParams<{ slug: string; bt?: string; bv?: string; bttl?: string }>();
   const router = useRouter();
   const colors = useColors();
   const { resolvedScheme } = useTheme();
@@ -130,15 +130,19 @@ export default function CollectionScreen() {
   const searchBarAnim = useRef(new Animated.Value(0)).current;
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Browse mode: a category/gender/sale listing routed in from the search page
+  const isBrowse = bt === "category" || bt === "gender" || bt === "sale";
   // Detect whether this is a regular collection (ID) or a special collection (slug)
-  const isRegularCollection = !!slug && slug.startsWith("col_");
+  const isRegularCollection = !isBrowse && !!slug && slug.startsWith("col_");
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["collection", slug, isRegularCollection],
-    queryFn: () => isRegularCollection
-      ? fetchCollection(slug ?? "")
-      : fetchSpecialCollection(slug ?? ""),
-    enabled: !!slug,
+    queryKey: ["collection", slug, isRegularCollection, bt, bv, bttl],
+    queryFn: () => isBrowse
+      ? fetchBrowseProducts({ type: bt as "category" | "gender" | "sale", value: bv, title: bttl })
+      : isRegularCollection
+        ? fetchCollection(slug ?? "")
+        : fetchSpecialCollection(slug ?? ""),
+    enabled: isBrowse ? true : !!slug,
     staleTime: 60_000,
   });
 
@@ -330,7 +334,7 @@ export default function CollectionScreen() {
         {/* Hero image — scrolls naturally */}
         <View style={styles.hero}>
           <Image
-            source={{ uri: collection?.heroImage ?? `https://picsum.photos/seed/${slug}/800/500` }}
+            source={{ uri: collection?.heroImage ? collection.heroImage : `https://picsum.photos/seed/${isBrowse ? `${bt}-${bv}` : slug}/800/500` }}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
           />

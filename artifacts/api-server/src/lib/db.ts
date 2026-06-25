@@ -1096,6 +1096,35 @@ db.exec(`
   }
 }
 
+// Seed default search_collections (the BROWSE grid on the search page)
+{
+  const existing = db.prepare(`SELECT id FROM content_sections WHERE key='search_collections'`).get();
+  if (!existing) {
+    const defaults = JSON.stringify([
+      { id: "sc_women",  nameEn: "Women",  nameAr: "نساء",    icon: "user",         color: "#F5EBF5", linkType: "gender",   linkValue: "women" },
+      { id: "sc_men",    nameEn: "Men",    nameAr: "رجال",    icon: "user",         color: "#EBF0F5", linkType: "gender",   linkValue: "men" },
+      { id: "sc_beauty", nameEn: "Beauty", nameAr: "تجميل",   icon: "droplet",      color: "#F5F0EB", linkType: "category", linkValue: "beauty" },
+      { id: "sc_shoes",  nameEn: "Shoes",  nameAr: "أحذية",   icon: "box",          color: "#EBF5F0", linkType: "category", linkValue: "shoes" },
+      { id: "sc_bags",   nameEn: "Bags",   nameAr: "حقائب",   icon: "shopping-bag", color: "#F5EBEB", linkType: "category", linkValue: "bags" },
+      { id: "sc_sale",   nameEn: "Sale",   nameAr: "تخفيضات", icon: "tag",          color: "#FFF3E0", linkType: "sale",     linkValue: "" },
+    ]);
+    db.prepare(`INSERT INTO content_sections (id,key,title,items,sort_order,status,updated_at) VALUES (?,?,?,?,?,?,?)`)
+      .run("cs_search_collections", "search_collections", "Search Collections", defaults, 1, "active", new Date().toISOString());
+  }
+}
+
+// Seed default trending keywords (search page chips)
+{
+  const existing = db.prepare(`SELECT id FROM content_sections WHERE key='trending'`).get();
+  if (!existing) {
+    const defaults = JSON.stringify(
+      ["Blazer", "Linen", "Dress", "Sandals", "Jeans", "Silk"].map((label, i) => ({ id: `tr_${i}`, label }))
+    );
+    db.prepare(`INSERT INTO content_sections (id,key,title,items,sort_order,status,updated_at) VALUES (?,?,?,?,?,?,?)`)
+      .run("cs_trending", "trending", "Trending Keywords", defaults, 2, "active", new Date().toISOString());
+  }
+}
+
 // ─── Shipping: per-governorate delivery pricing + free-delivery rules ──────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS shipping_zones (

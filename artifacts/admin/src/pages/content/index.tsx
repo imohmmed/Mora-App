@@ -17,10 +17,10 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { FileText, List as ListIcon, Plus, Boxes, File, ChevronRight, HardDrive, Image as ImageIcon, Pencil, Trash2, X, Layers, ChevronDown, ChevronUp, GripVertical, Settings2, Star } from "lucide-react";
+import { FileText, List as ListIcon, Plus, Boxes, File, ChevronRight, HardDrive, Image as ImageIcon, Pencil, Trash2, X, Layers, ChevronDown, ChevronUp, GripVertical, Settings2, Star, TrendingUp, Loader2, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { useSearch, useLocation } from "wouter";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { PageContainer, PageHeader, EmptyState } from "@/components/ui/page-primitives";
 import { useT } from "@/i18n/LanguageContext";
 
@@ -754,6 +754,10 @@ export default function ContentHub() {
             <Settings2 className="w-4 h-4" />
             {t("content.tab.sections")}
           </TabsTrigger>
+          <TabsTrigger value="trending" className="gap-2">
+            <TrendingUp className="w-4 h-4" />
+            {t("content.tab.trending")}
+          </TabsTrigger>
         </TabsList>
 
         {/* BLOG POSTS */}
@@ -1000,6 +1004,10 @@ export default function ContentHub() {
         {/* CONTENT SECTIONS */}
         <TabsContent value="sections" className="space-y-4">
           <ContentSectionsTab />
+        </TabsContent>
+
+        <TabsContent value="trending" className="space-y-4">
+          <TrendingTab />
         </TabsContent>
       </Tabs>
     </PageContainer>
@@ -1291,5 +1299,155 @@ function ContentSectionsTab() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// ─── Trending Keywords Tab ─────────────────────────────────────────────────────
+
+type TrendItem = { id: string; label: string };
+
+function TrendingTab() {
+  const { t } = useT();
+  const [items, setItems] = useState<TrendItem[]>([]);
+  const [sectionId, setSectionId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [newKw, setNewKw] = useState("");
+
+  useEffect(() => {
+    fetch("/api/admin/content-sections", { headers: AUTH_HEADER() })
+      .then((r) => r.json())
+      .then((j: { data: { id: string; key: string; items: TrendItem[] }[] }) => {
+        const section = j.data?.find((s) => s.key === "trending");
+        if (section) {
+          setSectionId(section.id);
+          if (section.items?.length) setItems(section.items);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const updateLabel = (i: number, value: string) => {
+    setItems((prev) => prev.map((it, idx) => idx === i ? { ...it, label: value } : it));
+    setSaved(false);
+  };
+  const moveUp = (i: number) => {
+    if (i === 0) return;
+    setItems((prev) => { const n = [...prev]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; return n; });
+    setSaved(false);
+  };
+  const moveDown = (i: number) => {
+    setItems((prev) => { if (i === prev.length - 1) return prev; const n = [...prev]; [n[i], n[i + 1]] = [n[i + 1], n[i]]; return n; });
+    setSaved(false);
+  };
+  const remove = (i: number) => {
+    setItems((prev) => prev.filter((_, idx) => idx !== i));
+    setSaved(false);
+  };
+  const add = () => {
+    const label = newKw.trim();
+    if (!label) return;
+    setItems((prev) => [...prev, { id: `tr_${Date.now()}`, label }]);
+    setNewKw("");
+    setSaved(false);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      if (sectionId) {
+        await fetch(`/api/admin/content-sections/${sectionId}`, {
+          method: "PUT", headers: AUTH_HEADER(), body: JSON.stringify({ items }),
+        });
+      } else {
+        const r = await fetch("/api/admin/content-sections", {
+          method: "POST", headers: AUTH_HEADER(),
+          body: JSON.stringify({ key: "trending", title: "Trending Keywords", items, status: "active" }),
+        });
+        const j = await r.json() as { data?: { id: string } };
+        if (j.data?.id) setSectionId(j.data.id);
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch {
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-32 text-muted-foreground gap-2">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        {t("common.loading")}
+      </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="pt-6 space-y-4">
+        <div>
+          <h3 className="font-semibold">{t("content.trending.title")}</h3>
+          <p className="text-sm text-muted-foreground">{t("content.trending.desc")}</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Input
+            value={newKw}
+            onChange={(e) => setNewKw(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") add(); }}
+            placeholder={t("content.trending.placeholder")}
+            className="h-9 max-w-xs"
+          />
+          <Button variant="outline" size="sm" onClick={add} disabled={!newKw.trim()}>
+            <Plus className="w-4 h-4 me-1" />
+            {t("content.trending.add")}
+          </Button>
+        </div>
+
+        {items.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">{t("content.trending.empty")}</p>
+        ) : (
+          <div className="space-y-2">
+            {items.map((it, i) => (
+              <div key={it.id} className="flex items-center gap-2 p-2 border rounded-lg bg-muted/30">
+                <GripVertical className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+                <Input
+                  value={it.label}
+                  onChange={(e) => updateLabel(i, e.target.value)}
+                  className="h-8 text-sm flex-1"
+                />
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveUp(i)} disabled={i === 0}>
+                    <ChevronUp className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => moveDown(i)} disabled={i === items.length - 1}>
+                    <ChevronDown className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => remove(i)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex justify-end">
+          <Button size="sm" onClick={save} disabled={saving}>
+            {saving ? (
+              <><Loader2 className="w-4 h-4 me-2 animate-spin" />{t("action.saving")}</>
+            ) : saved ? (
+              <><CheckCircle2 className="w-4 h-4 me-2 text-green-500" />{t("toast.saved")}</>
+            ) : (
+              t("action.saveChanges")
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

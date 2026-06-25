@@ -18,6 +18,8 @@ import {
   GripVertical, Plus, Trash2, X, Search, ChevronDown, ChevronRight, ChevronUp,
   BookImage, Layers, Zap, Tag, TrendingUp, Star, Eye, EyeOff, Image as ImageIcon,
   FolderOpen, Pencil, Wand2, LayoutList, Loader2, CheckCircle2, Gift, Settings2,
+  User, Droplet, Box, ShoppingBag, Heart, Watch, ShoppingCart, Smile, Sun,
+  Scissors, Award, Camera, Grid3x3,
 } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -289,6 +291,289 @@ function MenuTabBarSection() {
             <button type="button" onClick={addTab}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground border rounded-lg px-3 py-1.5 hover:bg-muted/50 transition-colors">
               <Plus className="w-4 h-4" /> {t("collections.addTab")}
+            </button>
+            <button type="button" onClick={saveAll} disabled={saving}
+              className={cn(
+                "flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-lg transition-colors",
+                saving ? "bg-primary/70 text-primary-foreground cursor-wait" :
+                saved  ? "bg-green-500/10 text-green-700 border border-green-200" :
+                         "bg-primary text-primary-foreground hover:bg-primary/90"
+              )}>
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> {t("action.saving")}</> :
+               saved  ? <><CheckCircle2 className="w-4 h-4" /> {t("toast.saved")}</> :
+                        t("action.saveChanges")}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Search Collections (the BROWSE grid on the app's search page) ───────────
+
+type SearchCollection = {
+  id: string;
+  nameEn: string;
+  nameAr: string;
+  icon: string;
+  color: string;
+  linkType: "category" | "gender" | "sale" | "collection" | "search";
+  linkValue: string;
+};
+
+const DEFAULT_SEARCH_COLLECTIONS: SearchCollection[] = [
+  { id: "sc_women",  nameEn: "Women",  nameAr: "نساء",    icon: "user",         color: "#F5EBF5", linkType: "gender",   linkValue: "women" },
+  { id: "sc_men",    nameEn: "Men",    nameAr: "رجال",    icon: "user",         color: "#EBF0F5", linkType: "gender",   linkValue: "men" },
+  { id: "sc_beauty", nameEn: "Beauty", nameAr: "تجميل",   icon: "droplet",      color: "#F5F0EB", linkType: "category", linkValue: "beauty" },
+  { id: "sc_shoes",  nameEn: "Shoes",  nameAr: "أحذية",   icon: "box",          color: "#EBF5F0", linkType: "category", linkValue: "shoes" },
+  { id: "sc_bags",   nameEn: "Bags",   nameAr: "حقائب",   icon: "shopping-bag", color: "#F5EBEB", linkType: "category", linkValue: "bags" },
+  { id: "sc_sale",   nameEn: "Sale",   nameAr: "تخفيضات", icon: "tag",          color: "#FFF3E0", linkType: "sale",     linkValue: "" },
+];
+
+const SC_ICON_OPTIONS: { name: string; Comp: React.ComponentType<{ className?: string }> }[] = [
+  { name: "user", Comp: User }, { name: "droplet", Comp: Droplet }, { name: "box", Comp: Box },
+  { name: "shopping-bag", Comp: ShoppingBag }, { name: "tag", Comp: Tag }, { name: "heart", Comp: Heart },
+  { name: "star", Comp: Star }, { name: "gift", Comp: Gift }, { name: "watch", Comp: Watch },
+  { name: "shopping-cart", Comp: ShoppingCart }, { name: "zap", Comp: Zap }, { name: "smile", Comp: Smile },
+  { name: "sun", Comp: Sun }, { name: "scissors", Comp: Scissors }, { name: "award", Comp: Award },
+  { name: "camera", Comp: Camera },
+];
+
+function SearchCollectionsSection() {
+  const { t } = useT();
+  const [sectionOpen, setSectionOpen] = useState(false);
+  const [cards, setCards] = useState<SearchCollection[]>(DEFAULT_SEARCH_COLLECTIONS);
+  const [sectionId, setSectionId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const { toast } = useToast();
+
+  const { data: sections, isLoading } = useQuery<{ id: string; key: string; items: SearchCollection[] }[]>({
+    queryKey: ["admin-content-sections"],
+    queryFn: () => apiFetch<{ id: string; key: string; items: SearchCollection[] }[]>("/admin/content-sections"),
+    staleTime: 10_000,
+  });
+
+  const { data: cols = [] } = useQuery<Collection[]>({
+    queryKey: ["admin-collections-hub"],
+    queryFn: () => apiFetch<Collection[]>("/admin/collections"),
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    if (!sections) return;
+    const section = sections.find((s) => s.key === "search_collections");
+    if (section) {
+      setSectionId(section.id);
+      if (section.items) setCards(section.items as SearchCollection[]);
+    }
+  }, [sections]);
+
+  const update = (index: number, field: keyof SearchCollection, value: string) => {
+    setCards((prev) => prev.map((c, i) => i === index ? { ...c, [field]: value } : c));
+    setSaved(false);
+  };
+  const moveUp = (i: number) => {
+    if (i === 0) return;
+    setCards((prev) => { const n = [...prev]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; return n; });
+    setSaved(false);
+  };
+  const moveDown = (i: number) => {
+    if (i === cards.length - 1) return;
+    setCards((prev) => { const n = [...prev]; [n[i], n[i + 1]] = [n[i + 1], n[i]]; return n; });
+    setSaved(false);
+  };
+  const removeCard = (i: number) => {
+    setCards((prev) => prev.filter((_, idx) => idx !== i));
+    setSaved(false);
+  };
+  const addCard = () => {
+    setCards((prev) => [...prev, {
+      id: `sc_${Date.now()}`, nameEn: "New", nameAr: "جديد",
+      icon: "tag", color: "#F0F0F0", linkType: "category", linkValue: "",
+    }]);
+    setSaved(false);
+  };
+
+  const saveAll = async () => {
+    setSaving(true);
+    try {
+      if (sectionId) {
+        await apiFetch(`/admin/content-sections/${sectionId}`, {
+          method: "PUT",
+          body: JSON.stringify({ items: cards }),
+        });
+      } else {
+        const result = await apiFetch<{ id: string }>("/admin/content-sections", {
+          method: "POST",
+          body: JSON.stringify({ key: "search_collections", title: "Search Collections", items: cards, status: "active" }),
+        });
+        if ((result as any)?.id) setSectionId((result as any).id);
+      }
+      setSaved(true);
+      toast({ title: t("toast.saved"), description: t("searchCol.saved.desc") });
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e) {
+      toast({ title: t("toast.error"), description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="border rounded-2xl overflow-hidden bg-card">
+      <button
+        type="button"
+        className="w-full flex items-center gap-3 px-5 py-4 text-start hover:bg-accent/20 transition-colors"
+        onClick={() => setSectionOpen((o) => !o)}
+      >
+        <div className="w-9 h-9 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-600 flex-shrink-0">
+          <Grid3x3 className="w-5 h-5" />
+        </div>
+        <div className="flex-1 min-w-0 text-start">
+          <p className="font-bold text-base">{t("searchCol.title")}</p>
+          <p className="text-xs text-muted-foreground">{t("searchCol.hint")}</p>
+        </div>
+        <Badge variant="outline">{t("collections.tabsCount", { n: cards.length })}</Badge>
+        {sectionOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground rtl:rotate-180" />}
+      </button>
+
+      {sectionOpen && (
+        <div className="border-t p-5 space-y-4">
+          {/* Live preview */}
+          <div className="bg-white rounded-2xl border-2 border-border overflow-hidden shadow-sm">
+            <div className="bg-muted/40 px-3 py-2 flex items-center gap-2 border-b">
+              <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground">{t("searchCol.preview")}</span>
+            </div>
+            <div className="px-4 py-3 grid grid-cols-3 gap-3">
+              {cards.map((card) => {
+                const Icon = SC_ICON_OPTIONS.find((o) => o.name === card.icon)?.Comp ?? Tag;
+                return (
+                  <div key={card.id} className="rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 aspect-[4/3]" style={{ backgroundColor: card.color }}>
+                    <Icon className="w-5 h-5 text-foreground/70" />
+                    <span className="text-[11px] font-bold leading-tight text-center">{card.nameAr}</span>
+                    <span className="text-[9px] text-muted-foreground leading-tight">{card.nameEn}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> {t("common.loading")}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {cards.map((card, i) => (
+                <div key={card.id} className="flex flex-wrap items-center gap-2 p-2 border rounded-xl bg-background">
+                  <GripVertical className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+
+                  <Input
+                    value={card.nameAr}
+                    onChange={(e) => update(i, "nameAr", e.target.value)}
+                    className="h-8 text-sm w-28 text-start font-medium"
+                    placeholder={t("searchCol.nameAr")}
+                    dir="rtl"
+                  />
+                  <Input
+                    value={card.nameEn}
+                    onChange={(e) => update(i, "nameEn", e.target.value)}
+                    className="h-8 text-sm w-28"
+                    placeholder={t("searchCol.nameEn")}
+                  />
+
+                  <div className="w-32 shrink-0">
+                    <Select value={card.icon} onValueChange={(v) => update(i, "icon", v)}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {SC_ICON_OPTIONS.map(({ name, Comp }) => (
+                          <SelectItem key={name} value={name}>
+                            <span className="flex items-center gap-2"><Comp className="w-4 h-4" />{name}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <input
+                    type="color"
+                    value={card.color}
+                    onChange={(e) => update(i, "color", e.target.value)}
+                    className="h-8 w-10 rounded border cursor-pointer shrink-0"
+                    title={t("searchCol.color")}
+                  />
+
+                  <div className="w-32 shrink-0">
+                    <Select value={card.linkType} onValueChange={(v) => update(i, "linkType", v)}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="category">{t("searchCol.link.category")}</SelectItem>
+                        <SelectItem value="gender">{t("searchCol.link.gender")}</SelectItem>
+                        <SelectItem value="sale">{t("searchCol.link.sale")}</SelectItem>
+                        <SelectItem value="collection">{t("searchCol.link.collection")}</SelectItem>
+                        <SelectItem value="search">{t("searchCol.link.search")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {card.linkType === "gender" && (
+                    <div className="w-28 shrink-0">
+                      <Select value={card.linkValue || "women"} onValueChange={(v) => update(i, "linkValue", v)}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="women">{t("collections.gender.women")}</SelectItem>
+                          <SelectItem value="men">{t("collections.gender.men")}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {card.linkType === "collection" && (
+                    <div className="w-44 shrink-0">
+                      <Select value={card.linkValue} onValueChange={(v) => update(i, "linkValue", v)}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t("searchCol.pickCollection")} /></SelectTrigger>
+                        <SelectContent>
+                          {cols.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {(card.linkType === "category" || card.linkType === "search") && (
+                    <Input
+                      value={card.linkValue}
+                      onChange={(e) => update(i, "linkValue", e.target.value)}
+                      className="h-8 text-xs w-32 shrink-0"
+                      placeholder={card.linkType === "category" ? t("collections.category.placeholder") : t("searchCol.keyword")}
+                    />
+                  )}
+
+                  <div className="flex items-center gap-1 shrink-0 ms-auto">
+                    <button type="button" disabled={i === 0} onClick={() => moveUp(i)}
+                      className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-30">
+                      <ChevronUp className="w-4 h-4" />
+                    </button>
+                    <button type="button" disabled={i === cards.length - 1} onClick={() => moveDown(i)}
+                      className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-30">
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                    <button type="button" onClick={() => removeCard(i)}
+                      className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-1">
+            <button type="button" onClick={addCard}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground border rounded-lg px-3 py-1.5 hover:bg-muted/50 transition-colors">
+              <Plus className="w-4 h-4" /> {t("searchCol.addCard")}
             </button>
             <button type="button" onClick={saveAll} disabled={saving}
               className={cn(
@@ -1503,6 +1788,7 @@ export default function CollectionsHub() {
       <PageHeader title={t("collections.title")} subtitle={t("collections.hub.subtitle")} />
 
       <MenuTabBarSection />
+      <SearchCollectionsSection />
       <StoriesSection />
       <QuickSectionsSection />
       <CollectionsSection />

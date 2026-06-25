@@ -139,6 +139,43 @@ export type ContentSectionItem = {
   rating?: number;
 };
 
+// Search page: editable BROWSE grid cards
+export type SearchCollection = {
+  id: string;
+  nameEn: string;
+  nameAr: string;
+  icon: string;
+  color: string;
+  linkType: "category" | "gender" | "sale" | "collection" | "search";
+  linkValue: string;
+};
+
+// Search page: editable trending keyword chip
+export type TrendingKeyword = { id: string; label: string };
+
+// Browse a category / gender / sale listing, returned in SpecialCollection shape
+export async function fetchBrowseProducts(params: {
+  type: "category" | "gender" | "sale";
+  value?: string;
+  title?: string;
+}): Promise<SpecialCollection> {
+  const qs = new URLSearchParams();
+  if (params.type === "sale") qs.set("category", "sale");
+  else if (params.type === "category") qs.set("category", params.value ?? "");
+  else if (params.type === "gender") qs.set("gender", params.value ?? "");
+  qs.set("limit", "50");
+  const products = await apiFetch<Product[]>(`/store/products?${qs.toString()}`);
+  return {
+    slug: `browse_${params.type}_${params.value ?? ""}`,
+    title: params.title || params.value || "Browse",
+    description: "",
+    heroImage: "",
+    accentColor: "#0274C1",
+    total: products.length,
+    products,
+  };
+}
+
 export type ContentSection = {
   id: string;
   key: string;

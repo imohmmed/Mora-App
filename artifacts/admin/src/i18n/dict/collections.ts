@@ -34,6 +34,24 @@ export const collections = {
     "collections.gender.men": "رجال",
     "collections.category.placeholder": "مثال: جمال",
 
+    // Search collections (BROWSE grid)
+    "searchCol.title": "مجموعات البحث",
+    "searchCol.desc": "البطاقات الستة في صفحة البحث بالتطبيق. عدّل الاسم والأيقونة واللون، واربط كل بطاقة بوجهتها. اسحب لإعادة الترتيب.",
+    "searchCol.hint": "بطاقات التصفح في صفحة البحث بالتطبيق",
+    "searchCol.preview": "معاينة — شبكة التصفح",
+    "searchCol.saved.desc": "تم تحديث بطاقات البحث في التطبيق.",
+    "searchCol.nameEn": "اسم إنجليزي",
+    "searchCol.nameAr": "اسم عربي",
+    "searchCol.color": "اللون",
+    "searchCol.keyword": "كلمة البحث",
+    "searchCol.addCard": "إضافة بطاقة",
+    "searchCol.pickCollection": "اختر مجموعة",
+    "searchCol.link.category": "فئة",
+    "searchCol.link.gender": "الجنس",
+    "searchCol.link.sale": "تخفيضات",
+    "searchCol.link.collection": "مجموعة",
+    "searchCol.link.search": "بحث",
+
     // Table headers
     "collections.table.image": "الصورة",
     "collections.table.title": "العنوان",
@@ -233,6 +251,24 @@ export const collections = {
     "collections.gender.women": "Women",
     "collections.gender.men": "Men",
     "collections.category.placeholder": "e.g. beauty",
+
+    // Search collections (BROWSE grid)
+    "searchCol.title": "Search Collections",
+    "searchCol.desc": "The six cards on the app's search page. Edit name, icon and color, and link each card to its destination. Drag to reorder.",
+    "searchCol.hint": "The BROWSE cards on the app's search page",
+    "searchCol.preview": "Preview — BROWSE grid",
+    "searchCol.saved.desc": "The app's search cards have been updated.",
+    "searchCol.nameEn": "English name",
+    "searchCol.nameAr": "Arabic name",
+    "searchCol.color": "Color",
+    "searchCol.keyword": "Search keyword",
+    "searchCol.addCard": "Add card",
+    "searchCol.pickCollection": "Pick collection",
+    "searchCol.link.category": "Category",
+    "searchCol.link.gender": "Gender",
+    "searchCol.link.sale": "Sale",
+    "searchCol.link.collection": "Collection",
+    "searchCol.link.search": "Search",
 
     // Table headers
     "collections.table.image": "Image",
