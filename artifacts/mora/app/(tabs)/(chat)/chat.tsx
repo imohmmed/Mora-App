@@ -192,11 +192,12 @@ export default function ChatScreen() {
   }
 
   // ── Native (iOS / Android) with WebView ───────────────────────────────────
-  // NativeTabs handles safe area automatically; no manual contentInset needed.
+  // NativeTabs handles bottom safe area; we add top inset so content stays
+  // below the status bar / Dynamic Island.
   const identityScript = buildIdentityScript(user);
 
   return (
-    <View style={[styles.container, { backgroundColor: bg }]}>
+    <View style={[styles.container, { backgroundColor: bg, paddingTop: insets.top }]}>
       <WebView
         key={isDark ? "dark" : "light"}
         source={{ html: buildChatHtml(isDark), baseUrl: CHAT_DOMAIN }}
