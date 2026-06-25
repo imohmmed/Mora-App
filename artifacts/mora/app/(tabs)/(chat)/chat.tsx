@@ -119,80 +119,41 @@ true;
 `;
 }
 
-// ── Web: inject SDK into main window, no iframe ───────────────────────────────
-// Iframes-inside-iframes break Chatwoot's fixed positioning / viewport math.
-// Instead we load the SDK once into the main document and toggle open/close
-// based on whether this tab is mounted.
+// ── Web: chat embedded inside the section via same-origin iframe ──────────────
+// /chat-widget.html (served from moramoda.tech) runs the Chatwoot SDK and makes
+// the widget fill itself completely. We embed THAT page as an iframe sized to
+// the chat section — it is part of the React tree, so leaving the tab unmounts
+// it (no lingering <body>-level popup).
 function WebChatScreen({ isDark, bg }: { isDark: boolean; bg: string }) {
-  useEffect(() => {
-    const win = window as any;
-    const scheme = isDark ? "dark" : "light";
+  const insets = useSafeAreaInsets();
+  // Reserve room for the floating tab bar so the embedded chat sits flush above
+  // it (no overlap → tab bar stays clickable). 84px ≈ pill + margins.
+  const reserve = 84 + (insets.bottom || 0);
 
-    // Constrain the body-level Chatwoot overlay so it stops ~84px above the
-    // bottom, leaving the floating tab bar (portaled to <body> at max z-index)
-    // visible & clickable. The widget fills the rest like a normal page.
-    const STYLE_ID = "mora-cw-style";
-    let st = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
-    if (!st) {
-      st = document.createElement("style");
-      st.id = STYLE_ID;
-      document.head.appendChild(st);
-    }
-    st.textContent = `
-      .woot-widget-holder {
-        top: 0 !important;
-        bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
-        height: auto !important;
-        max-height: none !important;
-        width: 100% !important;
-        right: 0 !important;
-        left: 0 !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
-      }
-      .woot--bubble-holder, .woot-widget-bubble { display: none !important; }
-    `;
-
-    function applyScheme() {
-      try { win.$chatwoot?.setColorScheme?.(scheme); } catch (_) {}
-    }
-    function openChat() {
-      try { win.$chatwoot?.toggle("open"); } catch (_) {}
-      // Chatwoot ignores darkMode changes after boot; force it explicitly.
-      applyScheme();
-      setTimeout(applyScheme, 400);
-    }
-
-    if (win.$chatwoot) {
-      openChat();
-    } else {
-      win.chatwootSettings = {
-        hideMessageBubble: true,
-        position: "right",
-        locale: "ar",
-        darkMode: scheme,
-        showPopoutButton: false,
-      };
-      if (!document.getElementById("mora-cw-sdk")) {
-        const s = document.createElement("script");
-        s.id = "mora-cw-sdk";
-        s.src = `${CHAT_DOMAIN}/packs/js/sdk.js`;
-        s.async = true;
-        s.onload = () => {
-          win.chatwootSDK?.run({ websiteToken: WEBSITE_TOKEN, baseUrl: CHAT_DOMAIN });
-        };
-        document.head.appendChild(s);
-      }
-      window.addEventListener("chatwoot:ready", openChat, { once: true });
-    }
-
-    return () => {
-      try { win.$chatwoot?.toggle("close"); } catch (_) {}
-    };
-  }, [isDark]);
-
-  // Blank background; the constrained widget floats above via position:fixed.
-  return <View style={{ flex: 1, backgroundColor: bg }} />;
+  // The iframe is part of the React tree: navigating away unmounts it, so the
+  // chat truly goes away (unlike a <body>-level popup). It loads
+  // /chat-widget.html which runs the SDK and fills itself completely.
+  return (
+    <View style={{ flex: 1, backgroundColor: bg }}>
+      {/* @ts-ignore web-only element */}
+      <iframe
+        key={isDark ? "dark" : "light"}
+        src={`/chat-widget.html?dark=${isDark ? "1" : "0"}`}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: reserve,
+          width: "100%",
+          border: "none",
+          background: bg,
+        }}
+        title="Mora Support"
+        allow="microphone; camera"
+      />
+    </View>
+  );
 }
 
 // ── Fallback when WebView is not available (Expo Go) ─────────────────────────

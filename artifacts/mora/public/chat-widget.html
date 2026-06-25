@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+    <script>
+      var isDark = new URLSearchParams(window.location.search).get("dark") === "1";
+      var bg = isDark ? "#0D0D0F" : "#FFFFFF";
+      document.documentElement.style.background = bg;
+      document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+    </script>
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+
+      /* Make the Chatwoot widget FILL this iframe completely — no popup box,
+         no corner positioning, no rounded corners, no shadow. It becomes the
+         whole page (embedded in the chat tab section). */
+      .woot-widget-holder {
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-height: none !important;
+        min-height: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        transform: none !important;
+      }
+      /* Hide the floating bubble and the close / back buttons */
+      .woot--bubble-holder,
+      .woot-widget-bubble,
+      button[aria-label="Close Widget"],
+      button[aria-label="Close"],
+      button[aria-label="close"],
+      button[aria-label="Go back"],
+      .close-button,
+      .back-button { display: none !important; opacity: 0 !important; pointer-events: none !important; }
+    </style>
+  </head>
+  <body>
+    <script>
+      var isDark = new URLSearchParams(window.location.search).get("dark") === "1";
+      var scheme = isDark ? "dark" : "light";
+
+      function hideCloseBtns() {
+        document.querySelectorAll("button").forEach(function (btn) {
+          var label = (btn.getAttribute("aria-label") || "").toLowerCase();
+          var cls = btn.className || "";
+          if (
+            label.indexOf("close") !== -1 || label.indexOf("back") !== -1 ||
+            cls.indexOf("close") !== -1 || cls.indexOf("back") !== -1
+          ) { btn.style.display = "none"; }
+        });
+      }
+      new MutationObserver(hideCloseBtns).observe(document.documentElement, { childList: true, subtree: true });
+      setInterval(hideCloseBtns, 800);
+
+      window.chatwootSettings = {
+        hideMessageBubble: true,
+        position: "right",
+        locale: "ar",
+        type: "standard",
+        darkMode: scheme,
+        showPopoutButton: false,
+      };
+
+      (function (d, t) {
+        var BASE = "https://chat.moramoda.tech";
+        var TOKEN = "WPeCyRzhWzff2TuFHRe27SaQ";
+        var g = d.createElement(t), s = d.getElementsByTagName(t)[0];
+        g.src = BASE + "/packs/js/sdk.js";
+        g.async = true; g.defer = true;
+        g.onload = function () {
+          window.chatwootSDK.run({ websiteToken: TOKEN, baseUrl: BASE });
+        };
+        s.parentNode.insertBefore(g, s);
+      })(document, "script");
+
+      // Open the widget + force the color scheme. Retry a few times because
+      // set-color-scheme is a postMessage that's dropped if the inner widget
+      // iframe isn't mounted yet.
+      function applyScheme() {
+        try { window.$chatwoot && window.$chatwoot.setColorScheme(scheme); } catch (e) {}
+      }
+      window.addEventListener("chatwoot:ready", function () {
+        try { window.$chatwoot.toggle("open"); } catch (e) {}
+        applyScheme();
+        [300, 800, 1500, 2500].forEach(function (ms) { setTimeout(applyScheme, ms); });
+      });
+    </script>
+  </body>
+</html>
