@@ -203,11 +203,18 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   };
 
   const onGalleryScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / GALLERY_W);
+    const rawIdx = Math.round(e.nativeEvent.contentOffset.x / GALLERY_W);
+    // For Arabic the images are rendered reversed, so reverse the dot index back
+    const idx = lang === "ar" ? Math.max(0, images.length - 1 - rawIdx) : rawIdx;
     if (idx !== activeImg) setActiveImg(idx);
   };
 
   const btnLabel = (() => {
+    if (lang === "ar") {
+      if (hasOpt1 && !selectedOpt1) return `اختر ${label1}`;
+      if (hasOpt2 && !selectedOpt2) return `اختر ${label2}`;
+      return "اضفه لسلتي";
+    }
     if (hasOpt1 && !selectedOpt1) return `SELECT ${label1}`;
     if (hasOpt2 && !selectedOpt2) return `SELECT ${label2}`;
     return "ADD TO BAG";
@@ -233,14 +240,16 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
     isOOS: (v: string) => boolean,
     label: string,
   ) => (
-    <View style={styles.axisWrap}>
-      <Text style={[styles.axisLabel, { color: textMuted }]}>
-        {selected ? `${label} — ${selected}` : `SELECT ${label}`}
+    <View style={[styles.axisWrap, lang === "ar" && { alignItems: "flex-end" }]}>
+      <Text style={[styles.axisLabel, { color: textMuted }, lang === "ar" && { textAlign: "right" }]}>
+        {lang === "ar"
+          ? (selected ? `${label} — ${selected}` : `اختر ${label}`)
+          : (selected ? `${label} — ${selected}` : `SELECT ${label}`)}
       </Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipRow}
+        contentContainerStyle={[styles.chipRow, lang === "ar" && { flexDirection: "row-reverse" }]}
       >
         {values.map((val) => {
           const active = selected === val;
@@ -309,7 +318,7 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
                 onScroll={onGalleryScroll}
                 scrollEventThrottle={16}
               >
-                {images.map((uri, i) => (
+                {(lang === "ar" ? [...images].reverse() : images).map((uri, i) => (
                   <Image
                     key={`${uri}-${i}`}
                     source={{ uri }}
@@ -344,11 +353,11 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
           </View>
 
           {/* ── Name + price ─────────────────────────────────────────────── */}
-          <View style={styles.metaBlock}>
-            <Text style={[styles.vendorText, { color: textMuted }]}>
+          <View style={[styles.metaBlock, lang === "ar" && { alignItems: "flex-end" }]}>
+            <Text style={[styles.vendorText, { color: textMuted }, lang === "ar" && { textAlign: "right" }]}>
               {product.vendor ?? "Mora"}
             </Text>
-            <Text style={[styles.titleText, { color: textPri }]} numberOfLines={2}>
+            <Text style={[styles.titleText, { color: textPri }, lang === "ar" && { textAlign: "right" }]} numberOfLines={2}>
               {product.title}
             </Text>
             <Text style={[styles.priceText, { color: PRIMARY }]}>
@@ -372,7 +381,7 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
         </ScrollView>
 
         {/* ── Action row: Add to Bag + Favorite ─────────────────────────── */}
-        <View style={styles.actionRow}>
+        <View style={[styles.actionRow, lang === "ar" && { flexDirection: "row-reverse" }]}>
           <Pressable
             style={({ pressed }) => [
               styles.heartBtn,

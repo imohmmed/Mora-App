@@ -22,6 +22,7 @@ import { BlurView } from "expo-blur";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { fetchSpecialCollection, fetchCollection, searchProducts, fetchBrowseProducts } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
@@ -45,6 +46,7 @@ function isProductInStock(p: Product): boolean {
 function ProductCard({ product, onQuickAdd }: { product: Product; onQuickAdd: (p: Product) => void }) {
   const colors = useColors();
   const router = useRouter();
+  const { lang } = useLanguage();
   const hasDiscount = product.comparePrice && product.comparePrice > product.price;
   const discountPct = hasDiscount
     ? Math.round(((product.comparePrice! - product.price) / product.comparePrice!) * 100)
@@ -94,10 +96,10 @@ function ProductCard({ product, onQuickAdd }: { product: Product; onQuickAdd: (p
         {soldOut ? (
           <View style={styles.notifyCartInner}>
             <Feather name="bell" size={13} color="#FFFFFF" />
-            <Text style={styles.addToCartText}>NOTIFY ME</Text>
+            <Text style={styles.addToCartText}>{lang === "ar" ? "أبلغني" : "NOTIFY ME"}</Text>
           </View>
         ) : (
-          <Text style={styles.addToCartText}>ADD TO BAG</Text>
+          <Text style={styles.addToCartText}>{lang === "ar" ? "اضفه لسلتي" : "ADD TO BAG"}</Text>
         )}
       </Pressable>
     </View>
@@ -126,6 +128,7 @@ export default function CollectionScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const { totalItems } = useCart();
+  const { lang } = useLanguage();
 
   const topPad = isWeb ? 0 : insets.top;
   const botPad = isWeb ? 0 : insets.bottom;
@@ -362,10 +365,10 @@ export default function CollectionScreen() {
             contentFit="cover"
           />
           <View style={styles.heroOverlay} />
-          <View style={[styles.heroContent, { paddingTop: HEADER_H + 8 }]}>
-            <Text style={styles.heroTitle}>{collection?.title ?? " "}</Text>
+          <View style={[styles.heroContent, { paddingTop: HEADER_H + 8 }, lang === "ar" && { alignItems: "flex-end" }]}>
+            <Text style={[styles.heroTitle, lang === "ar" && { textAlign: "right" }]}>{collection?.title ?? " "}</Text>
             {!!collection?.description && (
-              <Text style={styles.heroDescription}>{collection.description}</Text>
+              <Text style={[styles.heroDescription, lang === "ar" && { textAlign: "right" }]}>{collection.description}</Text>
             )}
           </View>
         </View>

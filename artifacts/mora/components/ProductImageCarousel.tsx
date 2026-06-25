@@ -9,6 +9,7 @@ import {
   View,
   ViewStyle,
 } from "react-native";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface Props {
   images: string[];
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function ProductImageCarousel({ images, style, children, placeholder }: Props) {
+  const { lang } = useLanguage();
   const [index, setIndex] = useState(0);
   const [width, setWidth] = useState(0);
 
@@ -25,6 +27,9 @@ export function ProductImageCarousel({ images, style, children, placeholder }: P
   const widthRef  = useRef(0);
   const countRef  = useRef(images.length);
   const imagesRef = useRef(images);
+  // Sync synchronously on every render so callbacks always read the live value
+  const isArRef   = useRef(lang === "ar");
+  isArRef.current = lang === "ar";
 
   // Keep refs in sync with props/state
   useEffect(() => {
@@ -33,21 +38,30 @@ export function ProductImageCarousel({ images, style, children, placeholder }: P
   }, [images]);
 
   // ── Animated values created ONCE ──────────────────────────────────────────
-  // Using useRef guarantees they are never re-created on re-render (= no glitch)
   const dragX   = useRef(new Animated.Value(0)).current;
-  const negW    = useRef(new Animated.Value(0)).current; // -width  (prev panel offset)
-  const posW    = useRef(new Animated.Value(0)).current; // +width  (next panel offset)
+  const negW    = useRef(new Animated.Value(0)).current;
+  const posW    = useRef(new Animated.Value(0)).current;
 
-  // Composed positions — also created ONCE
+  // Composed positions — created ONCE
   const prevPos = useRef(Animated.add(negW, dragX)).current;
   const nextPos = useRef(Animated.add(posW, dragX)).current;
 
-  // Update ±width offset values when layout width changes
+  // For Arabic, prev panel is on RIGHT (+w) and next panel is on LEFT (-w)
+  // Re-apply when language changes
+  useEffect(() => {
+    const w = widthRef.current;
+    if (w > 0) {
+      negW.setValue(isArRef.current ? w : -w);
+      posW.setValue(isArRef.current ? -w : w);
+    }
+  }, [lang, negW, posW]);
+
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
     widthRef.current = w;
-    negW.setValue(-w);
-    posW.setValue(w);
+    const isAr = isArRef.current;
+    negW.setValue(isAr ? w : -w);
+    posW.setValue(isAr ? -w : w);
     setWidth(w);
   }, [negW, posW]);
 
@@ -67,16 +81,19 @@ export function ProductImageCarousel({ images, style, children, placeholder }: P
     [dragX]
   );
 
+  // goNext/goPrev direction depends on RTL setting:
+  // LTR: next is on the RIGHT → animate dragX to -width
+  // RTL: next is on the LEFT  → animate dragX to +width
   const goNext = useCallback(() => {
     const n    = countRef.current;
     const next = (indexRef.current + 1) % n;
-    animateTo(-widthRef.current, next);
+    animateTo(isArRef.current ? widthRef.current : -widthRef.current, next);
   }, [animateTo]);
 
   const goPrev = useCallback(() => {
     const n    = countRef.current;
     const prev = (indexRef.current - 1 + n) % n;
-    animateTo(widthRef.current, prev);
+    animateTo(isArRef.current ? -widthRef.current : widthRef.current, prev);
   }, [animateTo]);
 
   // ── Auto-advance every 3 s ────────────────────────────────────────────────
@@ -99,7 +116,6 @@ export function ProductImageCarousel({ images, style, children, placeholder }: P
   // ── PanResponder ──────────────────────────────────────────────────────────
   const panResponder = useRef(
     PanResponder.create({
-      // Claim gesture only when horizontal movement is dominant
       onMoveShouldSetPanResponder: (_, s) =>
         Math.abs(s.dx) > 6 && Math.abs(s.dx) > Math.abs(s.dy) * 1.3,
       onMoveShouldSetPanResponderCapture: (_, s) =>
@@ -110,29 +126,46 @@ export function ProductImageCarousel({ images, style, children, placeholder }: P
       },
 
       onPanResponderMove: (_, s) => {
-        const w = widthRef.current;
-        const n = countRef.current;
-        const i = indexRef.current;
-        // Resist overscroll at edges (non-looping feel is fine here)
+        const n    = countRef.current;
+        const i    = indexRef.current;
+        const isAr = isArRef.current;
         let dx = s.dx;
-        if ((i === 0 && dx > 0) || (i === n - 1 && dx < 0)) {
-          dx = dx * 0.25; // rubber-band at boundaries
+        // Rubber-band at edges:
+        // LTR: resist when at first (dx>0=swipe-right=go-back past start) or last (dx<0=swipe-left=past end)
+        // RTL: resist when at first (dx<0=swipe-left=go-back past start) or last (dx>0=swipe-right=past end)
+        if (isAr) {
+          if ((i === 0 && dx < 0) || (i === n - 1 && dx > 0)) dx = dx * 0.25;
+        } else {
+          if ((i === 0 && dx > 0) || (i === n - 1 && dx < 0)) dx = dx * 0.25;
         }
         dragX.setValue(dx);
       },
 
       onPanResponderRelease: (_, s) => {
         isPanning.current = false;
-        const w = widthRef.current;
-        const n = countRef.current;
-        const i = indexRef.current;
+        const w    = widthRef.current;
+        const n    = countRef.current;
+        const i    = indexRef.current;
+        const isAr = isArRef.current;
 
-        if (s.dx < -40 && i < n - 1) {
-          animateTo(-w, (i + 1) % n);
-        } else if (s.dx > 40 && i > 0) {
-          animateTo(w, (i - 1 + n) % n);
+        // LTR: swipe left (dx < -40) = next;  swipe right (dx > 40) = prev
+        // RTL: swipe right (dx > 40) = next;  swipe left (dx < -40) = prev
+        if (isAr) {
+          if (s.dx > 40 && i < n - 1) {
+            animateTo(w, (i + 1) % n);
+          } else if (s.dx < -40 && i > 0) {
+            animateTo(-w, (i - 1 + n) % n);
+          } else {
+            Animated.spring(dragX, { toValue: 0, useNativeDriver: true, tension: 80, friction: 10 }).start();
+          }
         } else {
-          Animated.spring(dragX, { toValue: 0, useNativeDriver: true, tension: 80, friction: 10 }).start();
+          if (s.dx < -40 && i < n - 1) {
+            animateTo(-w, (i + 1) % n);
+          } else if (s.dx > 40 && i > 0) {
+            animateTo(w, (i - 1 + n) % n);
+          } else {
+            Animated.spring(dragX, { toValue: 0, useNativeDriver: true, tension: 80, friction: 10 }).start();
+          }
         }
       },
 
@@ -146,6 +179,8 @@ export function ProductImageCarousel({ images, style, children, placeholder }: P
   // ── Derived display indices ───────────────────────────────────────────────
   const count   = images.length;
   const safe    = (i: number) => ((i % count) + count) % count;
+  // In RTL, "prev" is to the right (+width) and "next" is to the left (-width)
+  // These swap which index gets placed in the prevPos vs nextPos slot
   const prevIdx = safe(index - 1);
   const nextIdx = safe(index + 1);
 
@@ -153,7 +188,7 @@ export function ProductImageCarousel({ images, style, children, placeholder }: P
     <View style={[styles.wrap, style]} onLayout={onLayout}>
       {width > 0 && count > 0 && (
         <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers}>
-          {/* Prev panel */}
+          {/* Prev panel — sits at negW+dragX (LTR: left side; RTL: right side) */}
           {count > 1 && (
             <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateX: prevPos }] }]}>
               <Image source={{ uri: images[prevIdx] }} style={styles.img} resizeMode="cover" />
@@ -163,7 +198,7 @@ export function ProductImageCarousel({ images, style, children, placeholder }: P
           <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateX: dragX }] }]}>
             <Image source={{ uri: images[index] }} style={styles.img} resizeMode="cover" />
           </Animated.View>
-          {/* Next panel */}
+          {/* Next panel — sits at posW+dragX (LTR: right side; RTL: left side) */}
           {count > 1 && (
             <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateX: nextPos }] }]}>
               <Image source={{ uri: images[nextIdx] }} style={styles.img} resizeMode="cover" />
