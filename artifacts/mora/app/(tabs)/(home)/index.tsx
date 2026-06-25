@@ -103,6 +103,7 @@ function ProductCard({
 }) {
   const colors = useColors();
   const router = useRouter();
+  const { lang } = useLanguage();
   const { isWishlisted, toggle } = useWishlist();
   const liked = isWishlisted(item.id);
   const tag = getTag(item);
@@ -195,7 +196,7 @@ function ProductCard({
           onAddToBag(item);
         }}
       >
-        <Text style={styles.addToCartText}>ADD TO BAG</Text>
+        <Text style={styles.addToCartText}>{lang === "ar" ? "اضف لسلتي" : "ADD TO BAG"}</Text>
       </Pressable>
     </View>
   );

@@ -75,6 +75,7 @@ function ProductMiniCard({
 }) {
   const router = useRouter();
   const colors = useColors();
+  const { lang } = useLanguage();
 
   return (
     <View style={styles.productCard}>
@@ -106,7 +107,7 @@ function ProductMiniCard({
           onAddToBag(product);
         }}
       >
-        <Text style={styles.addToCartText}>ADD TO BAG</Text>
+        <Text style={styles.addToCartText}>{lang === "ar" ? "اضف لسلتي" : "ADD TO BAG"}</Text>
       </Pressable>
     </View>
   );
