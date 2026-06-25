@@ -67,15 +67,21 @@ function formatDate(iso: string) {
   } catch { return iso; }
 }
 
-function SectionLabel({ text, sub }: { text: string; sub: string }) {
-  return <Text style={[st.sectionLbl, { color: sub }]}>{text}</Text>;
+function SectionLabel({ text, sub, isAr }: { text: string; sub: string; isAr?: boolean }) {
+  return (
+    <Text style={[st.sectionLbl, { color: sub }, isAr && { textAlign: "right" }]}>
+      {text}
+    </Text>
+  );
 }
 
-function InfoRow({ label, value, textCol, sub }: { label: string; value: string; textCol: string; sub: string }) {
+function InfoRow({
+  label, value, textCol, sub, isAr,
+}: { label: string; value: string; textCol: string; sub: string; isAr?: boolean }) {
   return (
-    <View style={st.infoRow}>
-      <Text style={[st.infoLbl, { color: sub }]}>{label}</Text>
-      <Text style={[st.infoVal, { color: textCol }]}>{value}</Text>
+    <View style={[st.infoRow, isAr && { flexDirection: "row-reverse" }]}>
+      <Text style={[st.infoLbl, { color: sub }, isAr && { textAlign: "right" }]}>{label}</Text>
+      <Text style={[st.infoVal, { color: textCol }, isAr && { textAlign: "right" }]}>{value}</Text>
     </View>
   );
 }
@@ -117,10 +123,10 @@ export default function OrderDetailScreen() {
   const divClr  = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
   const inputBg = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)";
 
-  const [starRating, setStarRating]   = useState(0);
-  const [reviewText, setReviewText]   = useState("");
-  const [submitting, setSubmitting]   = useState(false);
-  const [submitted, setSubmitted]     = useState(false);
+  const [starRating, setStarRating] = useState(0);
+  const [reviewText, setReviewText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted,  setSubmitted]  = useState(false);
 
   const { data: order, isLoading, error } = useQuery({
     queryKey: ["order", id, email],
@@ -128,15 +134,15 @@ export default function OrderDetailScreen() {
     enabled: !!id && !!email,
   });
 
-  const addr = (order?.shippingAddress ?? {}) as FullAddress;
+  const addr        = (order?.shippingAddress ?? {}) as FullAddress;
   const displayName = addr.fullName || [addr.firstName, addr.lastName].filter(Boolean).join(" ") || "—";
 
-  const isDelivered  = (order as any)?.deliveryStage === "delivered";
+  const isDelivered    = (order as any)?.deliveryStage === "delivered";
   const existingRating: number = (order as any)?.reviewRating ?? 0;
   const existingText: string   = (order as any)?.reviewText ?? "";
-  const hasReview    = submitted || existingRating > 0;
-  const displayRating = submitted ? starRating : existingRating;
-  const displayText   = submitted ? reviewText : existingText;
+  const hasReview      = submitted || existingRating > 0;
+  const displayRating  = submitted ? starRating : existingRating;
+  const displayText    = submitted ? reviewText : existingText;
 
   const handleSubmitReview = async () => {
     if (starRating === 0) {
@@ -200,6 +206,7 @@ export default function OrderDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: bg }}>
+      {/* ── Header — back button always left ── */}
       <View style={[st.header, { paddingTop: insets.top + 6, paddingHorizontal: 16 }]}>
         <GlassBackButton onPress={() => router.back()} />
         <Text style={[st.headTitle, { color: textCol }]}>
@@ -212,27 +219,35 @@ export default function OrderDetailScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 48 }}
+        contentContainerStyle={{
+          paddingBottom: Platform.OS === "web" ? 110 : 48,
+        }}
       >
-        {/* Status card */}
-        <View style={[st.statusCard, { backgroundColor: col + (isDark ? "18" : "12"), borderColor: col + "40" }]}>
+        {/* ── Status card ── */}
+        <View style={[
+          st.statusCard,
+          { backgroundColor: col + (isDark ? "18" : "12"), borderColor: col + "40" },
+          isAr && { flexDirection: "row-reverse" },
+        ]}>
           <View style={[st.statusDot, { backgroundColor: col }]} />
           <View style={{ flex: 1 }}>
-            <Text style={[st.statusLabel, { color: col }]}>
+            <Text style={[st.statusLabel, { color: col }, isAr && { textAlign: "right" }]}>
               {statusLabel((order as any).deliveryStage || order.status, isAr)}
             </Text>
-            <Text style={[st.statusDate, { color: sub }]}>{formatDate(order.createdAt)}</Text>
+            <Text style={[st.statusDate, { color: sub }, isAr && { textAlign: "right" }]}>
+              {formatDate(order.createdAt)}
+            </Text>
           </View>
           <Text style={[st.statusTotal, { color: textCol }]}>{formatIQD(order.total)}</Text>
         </View>
 
-        {/* Items */}
-        <SectionLabel text={isAr ? "الأصناف" : "ITEMS"} sub={sub} />
+        {/* ── Items ── */}
+        <SectionLabel text={isAr ? "الأصناف" : "ITEMS"} sub={sub} isAr={isAr} />
         <View style={[st.group, { backgroundColor: card }]}>
           {items.map((item, idx) => (
             <View key={(item as any).id ?? idx}>
               {idx > 0 && <View style={[st.divider, { backgroundColor: divClr }]} />}
-              <View style={st.itemRow}>
+              <View style={[st.itemRow, isAr && { flexDirection: "row-reverse" }]}>
                 {(item as any).image ? (
                   <Image source={{ uri: (item as any).image }} style={st.itemImg} contentFit="cover" />
                 ) : (
@@ -241,15 +256,22 @@ export default function OrderDetailScreen() {
                   </View>
                 )}
                 <View style={{ flex: 1, gap: 3 }}>
-                  <Text style={[st.itemTitle, { color: textCol }]} numberOfLines={2}>{(item as any).title}</Text>
+                  <Text
+                    style={[st.itemTitle, { color: textCol }, isAr && { textAlign: "right" }]}
+                    numberOfLines={2}
+                  >
+                    {(item as any).title}
+                  </Text>
                   {(item as any).variantTitle && (item as any).variantTitle !== "Default Title" && (
-                    <Text style={[st.itemVariant, { color: sub }]}>{(item as any).variantTitle}</Text>
+                    <Text style={[st.itemVariant, { color: sub }, isAr && { textAlign: "right" }]}>
+                      {(item as any).variantTitle}
+                    </Text>
                   )}
-                  <Text style={[st.itemQty, { color: sub }]}>
+                  <Text style={[st.itemQty, { color: sub }, isAr && { textAlign: "right" }]}>
                     {isAr ? `الكمية: ${(item as any).quantity}` : `Qty: ${(item as any).quantity}`}
                   </Text>
                 </View>
-                <Text style={[st.itemPrice, { color: textCol }]}>
+                <Text style={[st.itemPrice, { color: textCol }, isAr && { textAlign: "left" }]}>
                   {formatIQD((item as any).price * (item as any).quantity)}
                 </Text>
               </View>
@@ -257,18 +279,18 @@ export default function OrderDetailScreen() {
           ))}
         </View>
 
-        {/* Delivery info */}
+        {/* ── Delivery info ── */}
         {(displayName !== "—" || addr.city) && (
           <>
-            <SectionLabel text={isAr ? "معلومات التوصيل" : "DELIVERY INFO"} sub={sub} />
+            <SectionLabel text={isAr ? "معلومات التوصيل" : "DELIVERY INFO"} sub={sub} isAr={isAr} />
             <View style={[st.group, { backgroundColor: card }]}>
               {displayName !== "—" && (
-                <InfoRow label={isAr ? "الاسم" : "Name"} value={displayName} textCol={textCol} sub={sub} />
+                <InfoRow label={isAr ? "الاسم" : "Name"} value={displayName} textCol={textCol} sub={sub} isAr={isAr} />
               )}
               {addr.phone && (
                 <>
                   <View style={[st.divider, { backgroundColor: divClr }]} />
-                  <InfoRow label={isAr ? "الهاتف" : "Phone"} value={addr.phone} textCol={textCol} sub={sub} />
+                  <InfoRow label={isAr ? "الهاتف" : "Phone"} value={addr.phone} textCol={textCol} sub={sub} isAr={isAr} />
                 </>
               )}
               {addr.city && (
@@ -277,7 +299,7 @@ export default function OrderDetailScreen() {
                   <InfoRow
                     label={isAr ? "العنوان" : "Address"}
                     value={[addr.city, addr.district, addr.street].filter(Boolean).join(", ")}
-                    textCol={textCol} sub={sub}
+                    textCol={textCol} sub={sub} isAr={isAr}
                   />
                 </>
               )}
@@ -285,33 +307,32 @@ export default function OrderDetailScreen() {
           </>
         )}
 
-        {/* Order summary */}
-        <SectionLabel text={isAr ? "ملخص الطلب" : "ORDER SUMMARY"} sub={sub} />
+        {/* ── Order summary ── */}
+        <SectionLabel text={isAr ? "ملخص الطلب" : "ORDER SUMMARY"} sub={sub} isAr={isAr} />
         <View style={[st.group, { backgroundColor: card }]}>
-          <View style={st.summaryRow}>
+          <View style={[st.summaryRow, isAr && { flexDirection: "row-reverse" }]}>
             <Text style={[st.summaryLbl, { color: sub }]}>{isAr ? "المجموع الفرعي" : "Subtotal"}</Text>
             <Text style={[st.summaryVal, { color: textCol }]}>{formatIQD((order as any).subtotal ?? order.total)}</Text>
           </View>
           <View style={[st.divider, { backgroundColor: divClr }]} />
-          <View style={st.summaryRow}>
+          <View style={[st.summaryRow, isAr && { flexDirection: "row-reverse" }]}>
             <Text style={[st.summaryLbl, { color: sub }]}>{isAr ? "الشحن" : "Shipping"}</Text>
             <Text style={{ fontSize: 13, fontWeight: "600", color: "#22C55E" }}>{isAr ? "مجاني" : "Free"}</Text>
           </View>
           <View style={[st.divider, { backgroundColor: divClr }]} />
-          <View style={st.summaryRow}>
+          <View style={[st.summaryRow, isAr && { flexDirection: "row-reverse" }]}>
             <Text style={[st.summaryLbl, { color: textCol, fontWeight: "700" }]}>{isAr ? "المجموع" : "Total"}</Text>
             <Text style={[st.summaryTotal, { color: PRIMARY }]}>{formatIQD(order.total)}</Text>
           </View>
         </View>
 
-        {/* ── Review section — only after delivery ────────────────── */}
+        {/* ── Review section — only after delivery ── */}
         {isDelivered && (
           <>
-            <SectionLabel text={isAr ? "تقييم الطلب" : "ORDER REVIEW"} sub={sub} />
+            <SectionLabel text={isAr ? "تقييم الطلب" : "ORDER REVIEW"} sub={sub} isAr={isAr} />
             <View style={[st.group, { backgroundColor: card }]}>
               <View style={{ padding: 18, gap: 14 }}>
                 {hasReview ? (
-                  /* Submitted review display */
                   <View style={{ gap: 12 }}>
                     <View style={{ flexDirection: isAr ? "row-reverse" : "row", alignItems: "center", gap: 10 }}>
                       <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(245,158,11,0.15)", alignItems: "center", justifyContent: "center" }}>
@@ -338,7 +359,6 @@ export default function OrderDetailScreen() {
                     )}
                   </View>
                 ) : (
-                  /* Review form */
                   <View style={{ gap: 14 }}>
                     <Text style={{ fontSize: 15, fontWeight: "700", color: textCol, textAlign: isAr ? "right" : "left" }}>
                       {isAr ? "كيف كانت تجربتك؟" : "How was your experience?"}
@@ -357,7 +377,7 @@ export default function OrderDetailScreen() {
                       multiline
                       numberOfLines={3}
                       textAlign={isAr ? "right" : "left"}
-                      style={[st.reviewInput, { color: textCol, backgroundColor: inputBg }]}
+                      style={[st.reviewInput, { color: textCol, backgroundColor: inputBg, textAlign: isAr ? "right" : "left" }]}
                     />
                     <Pressable
                       onPress={handleSubmitReview}
@@ -388,7 +408,7 @@ export default function OrderDetailScreen() {
           </>
         )}
 
-        {/* Shop again */}
+        {/* ── Shop again ── */}
         <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
           <Pressable
             style={({ pressed }) => [st.shopBtn, { backgroundColor: PRIMARY, opacity: pressed ? 0.85 : 1 }]}
