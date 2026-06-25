@@ -148,6 +148,18 @@ export default function CheckoutScreen() {
 
   const set = (key: keyof FormState) => (val: string) => setForm((f) => ({ ...f, [key]: val }));
 
+  // Always show the governorate in Arabic: once zones load, normalize a
+  // prefilled/saved city (which may be an English governorate) to its Arabic
+  // name and restore the matching selectedZone so shipping recomputes.
+  useEffect(() => {
+    if (!zones.length || !form.city) return;
+    const z = zones.find((zo) => zo.governorate === form.city || zo.governorateAr === form.city);
+    if (!z) return;
+    if (!selectedZone) setSelectedZone(z);
+    const ar = z.governorateAr || z.governorate;
+    if (form.city !== ar) set("city")(ar);
+  }, [zones, form.city]);
+
   const buildSnapshot = () =>
     JSON.stringify(items.map((i) => ({ title: i.title, quantity: i.quantity, price: i.price, image: i.image, size: i.size, color: i.color })));
 
