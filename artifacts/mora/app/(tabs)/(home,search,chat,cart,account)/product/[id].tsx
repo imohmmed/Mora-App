@@ -59,17 +59,19 @@ function AccordionSection({
   children,
   colors,
   initialOpen = false,
+  isAr = false,
 }: {
   title: string;
   children: React.ReactNode;
   colors: ReturnType<typeof useColors>;
   initialOpen?: boolean;
+  isAr?: boolean;
 }) {
   const [open, setOpen] = useState(initialOpen);
   return (
     <View style={[styles.accordionWrap, { borderTopColor: colors.border }]}>
       <Pressable
-        style={styles.accordionHeader}
+        style={[styles.accordionHeader, isAr && { flexDirection: "row-reverse" }]}
         onPress={() => setOpen((o) => !o)}
       >
         <Text style={[styles.accordionTitle, { color: colors.foreground }]}>{title}</Text>
@@ -79,7 +81,7 @@ function AccordionSection({
           color={colors.mutedForeground}
         />
       </Pressable>
-      {open && <View style={styles.accordionBody}>{children}</View>}
+      {open && <View style={[styles.accordionBody, isAr && { alignItems: "flex-end" }]}>{children}</View>}
     </View>
   );
 }
@@ -122,6 +124,7 @@ function RelatedCard({
   onQuickAdd: (p: Product) => void;
 }) {
   const router = useRouter();
+  const { lang } = useLanguage();
   const bg = cardColor(product.id);
   const hasDiscount =
     product.comparePrice != null && product.comparePrice > product.price;
@@ -166,7 +169,7 @@ function RelatedCard({
           style={styles.relatedAddBtn}
           onPress={(e) => { e.stopPropagation?.(); onQuickAdd(product); }}
         >
-          <Text style={styles.relatedAddText}>ADD TO BAG</Text>
+          <Text style={styles.relatedAddText}>{lang === "ar" ? "اضفه لسلتي" : "ADD TO BAG"}</Text>
         </Pressable>
       </View>
     </Pressable>
@@ -661,7 +664,9 @@ export default function ProductDetailScreen() {
               >
                 <Feather name={added ? "check" : "shopping-bag"} size={18} color="#FFFFFF" />
                 <Text style={styles.addBtnText}>
-                  {added ? "ADDED TO BAG" : "ADD TO BAG"}
+                  {added
+                    ? (lang === "ar" ? "أُضيف للسلة ✓" : "ADDED TO BAG")
+                    : (lang === "ar" ? "اضفه لسلتي" : "ADD TO BAG")}
                 </Text>
               </Pressable>
             )}
@@ -677,8 +682,13 @@ export default function ProductDetailScreen() {
 
           {/* ── Description (accordion) ── */}
           {!!product.description && (
-            <AccordionSection title="DESCRIPTION" colors={colors} initialOpen={true}>
-              <Text style={[styles.descText, { color: colors.mutedForeground }]}>
+            <AccordionSection
+              title={lang === "ar" ? "الوصف" : "DESCRIPTION"}
+              colors={colors}
+              initialOpen={true}
+              isAr={lang === "ar"}
+            >
+              <Text style={[styles.descText, { color: colors.mutedForeground }, lang === "ar" && { textAlign: "right" }]}>
                 {product.description}
               </Text>
             </AccordionSection>
@@ -686,7 +696,11 @@ export default function ProductDetailScreen() {
 
           {/* ── Warranty ── */}
           {warranty && warranty.items.length > 0 && (
-            <AccordionSection title={warranty.title || "WARRANTY"} colors={colors}>
+            <AccordionSection
+              title={lang === "ar" ? "الضمان" : (warranty.title || "WARRANTY")}
+              colors={colors}
+              isAr={lang === "ar"}
+            >
               <View style={styles.textSection}>
                 {warranty.items.map((item) => (
                   <TextParagraph key={item.id} item={item} colors={colors} />
@@ -697,7 +711,11 @@ export default function ProductDetailScreen() {
 
           {/* ── Star Customers ── */}
           {testimonials && testimonials.items.length > 0 && (
-            <AccordionSection title={testimonials.title || "STAR CUSTOMERS ⭐"} colors={colors}>
+            <AccordionSection
+              title={lang === "ar" ? "زبائن النجوم ⭐" : (testimonials.title || "STAR CUSTOMERS ⭐")}
+              colors={colors}
+              isAr={lang === "ar"}
+            >
               <View style={styles.textSection}>
                 {testimonials.items.map((item, i) => (
                   <TextParagraph key={item.id} item={item} colors={colors} isBold={i === 0} />
@@ -709,8 +727,8 @@ export default function ProductDetailScreen() {
           {/* ── Related Products ── */}
           {(relatedItems.length > 0 || loadingMore) && (
             <View style={[styles.sectionWrap, { borderTopColor: colors.border }]}>
-              <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
-                RELATED PRODUCTS
+              <Text style={[styles.sectionLabel, { color: colors.foreground }, lang === "ar" && { textAlign: "right" }]}>
+                {lang === "ar" ? "منتجات ذات صلة" : "RELATED PRODUCTS"}
               </Text>
               <View style={styles.relatedGrid}>
                 {relatedItems.map((p) => (

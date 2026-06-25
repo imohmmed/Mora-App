@@ -109,6 +109,7 @@ function SearchResultCard({
   const colors = useColors();
   const router = useRouter();
   const { isWishlisted, toggle } = useWishlist();
+  const { lang } = useLanguage();
   const liked = isWishlisted(item.id);
   const nativeReady = useNativeReady();
   const useGlass = IS_IOS && !!GlassViewComp && nativeReady;
@@ -181,7 +182,7 @@ function SearchResultCard({
           onAddToBag(item);
         }}
       >
-        <Text style={styles.addToCartText}>ADD TO BAG</Text>
+        <Text style={styles.addToCartText}>{lang === "ar" ? "اضفه لسلتي" : "ADD TO BAG"}</Text>
       </Pressable>
     </View>
   );
@@ -316,7 +317,7 @@ export default function SearchScreen() {
             >
               <ExpoImage systemName="magnifyingglass" size={18} color="#8E8E93" />
               <ExpoTextField
-                placeholder="Search Mora..."
+                placeholder={lang === "ar" ? "ابحث..." : "Search Mora..."}
                 defaultValue=""
                 onChangeText={handleChangeText}
                 onSubmit={() => {}}
@@ -352,7 +353,7 @@ export default function SearchScreen() {
             <TextInput
               ref={inputRef}
               style={[styles.searchInput, { color: colors.foreground }]}
-              placeholder="Search Mora..."
+              placeholder={lang === "ar" ? "ابحث..." : "Search Mora..."}
               placeholderTextColor={colors.mutedForeground}
               value={query}
               onChangeText={handleChangeText}
@@ -385,8 +386,10 @@ export default function SearchScreen() {
           <>
             {/* ── Trending keywords ── */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>TRENDING</Text>
-              <View style={styles.tagsWrap}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }, lang === "ar" && { textAlign: "right" }]}>
+                {lang === "ar" ? "الرائج" : "TRENDING"}
+              </Text>
+              <View style={[styles.tagsWrap, lang === "ar" && { flexDirection: "row-reverse" }]}>
                 {useGlassBtn
                   ? trending.map((t) => (
                       <ExpoUIHost key={t.id} matchContents style={{ height: 38 }}>
@@ -416,7 +419,9 @@ export default function SearchScreen() {
 
             {/* ── Browse categories ── */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>BROWSE</Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }, lang === "ar" && { textAlign: "right" }]}>
+                {lang === "ar" ? "تصفح" : "BROWSE"}
+              </Text>
               <View style={styles.categoriesGrid}>
                 {browseCollections.map((cat) => {
                   const label = lang === "ar" ? (cat.nameAr || cat.nameEn) : cat.nameEn;

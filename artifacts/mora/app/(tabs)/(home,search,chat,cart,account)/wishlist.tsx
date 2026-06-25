@@ -56,7 +56,7 @@ const T = {
     saved:     (n: number) => `${n} محفوظ`,
     empty:     "قائمة المفضلة فارغة",
     emptySub:  "اضغط على القلب على أي منتج لحفظه هنا",
-    addToBag:  "أضف للحقيبة",
+    addToBag:  "اضفه لسلتي",
     error:     "تعذّر تحميل بعض العناصر",
     retry:     "إعادة المحاولة",
   },
@@ -85,6 +85,8 @@ function WishlistCard({
   const colors = useColors();
   const router = useRouter();
   const { toggle } = useWishlist();
+  const { lang } = useLanguage();
+  const t = T[lang] ?? T.en;
 
   return (
     <View style={{ width: CARD_WIDTH }}>
@@ -133,7 +135,7 @@ function WishlistCard({
           onAddToBag(product);
         }}
       >
-        <Text style={styles.addBtnText}>ADD TO BAG</Text>
+        <Text style={styles.addBtnText}>{t.addToBag}</Text>
       </Pressable>
     </View>
   );

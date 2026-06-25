@@ -27,9 +27,9 @@ export function ShippingRulesNote({ style }: { style?: StyleProp<ViewStyle> }) {
         const text = lang === "ar" && rule.textAr ? rule.textAr : rule.textEn;
         if (!text) return null;
         return (
-          <View key={rule.id} style={styles.row}>
+          <View key={rule.id} style={[styles.row, lang === "ar" && { flexDirection: "row-reverse" }]}>
             <Feather name="truck" size={13} color={PRIMARY} />
-            <Text style={[styles.text, { color: colors.mutedForeground }]}>{text}</Text>
+            <Text style={[styles.text, { color: colors.mutedForeground }, lang === "ar" && { textAlign: "right" }]}>{text}</Text>
           </View>
         );
       })}
