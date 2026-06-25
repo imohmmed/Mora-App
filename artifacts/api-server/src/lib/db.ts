@@ -1062,6 +1062,8 @@ runMigration(`ALTER TABLE discounts ADD COLUMN min_items INTEGER`);
 runMigration(`ALTER TABLE discounts ADD COLUMN max_discount REAL`);
 runMigration(`ALTER TABLE orders ADD COLUMN discount_code TEXT`);
 runMigration(`ALTER TABLE orders ADD COLUMN discount_amount REAL NOT NULL DEFAULT 0`);
+runMigration(`ALTER TABLE orders ADD COLUMN review_rating INTEGER`);
+runMigration(`ALTER TABLE orders ADD COLUMN review_text TEXT`);
 
 // ─── In-app notifications per customer ────────────────────────────────────────
 db.exec(`

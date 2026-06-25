@@ -103,6 +103,34 @@ router.get("/store/orders/:id", (req, res) => {
   res.json({ data: order, meta: {}, error: null });
 });
 
+// ─── Store: submit order review ──────────────────────────────────────────────
+router.post("/store/orders/:id/review", (req, res) => {
+  const { id } = req.params;
+  const { email } = req.query as Record<string, string>;
+  const { rating, text } = req.body as { rating?: number; text?: string };
+
+  if (!email?.trim()) {
+    res.status(400).json({ data: null, error: "email required" });
+    return;
+  }
+  const r = Math.round(Number(rating));
+  if (!r || r < 1 || r > 5) {
+    res.status(400).json({ data: null, error: "rating must be 1–5" });
+    return;
+  }
+  const exists = db.prepare(
+    `SELECT id FROM orders WHERE id=? AND lower(email)=lower(?)`
+  ).get(id, email.trim());
+  if (!exists) {
+    res.status(404).json({ data: null, error: "Order not found" });
+    return;
+  }
+  db.prepare(
+    `UPDATE orders SET review_rating=?, review_text=?, updated_at=? WHERE id=?`
+  ).run(r, ((text ?? "").trim()) || null, new Date().toISOString(), id);
+  res.json({ data: { ok: true }, error: null });
+});
+
 // ─── Store: customer place order ─────────────────────────────────────────────
 
 router.post("/store/orders", (req, res) => {

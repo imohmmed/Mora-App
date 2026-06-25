@@ -338,6 +338,33 @@ export default function OrderDetail() {
             </CardContent>
           </Card>
 
+          {/* Review */}
+          {(order as any).reviewRating ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <span className="text-amber-400 text-lg">★</span>
+                  {t("orders.review")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center gap-1 text-amber-400 text-xl">
+                  {[1,2,3,4,5].map((i) => (
+                    <span key={i} style={{ opacity: i <= (order as any).reviewRating ? 1 : 0.2 }}>★</span>
+                  ))}
+                  <span className="text-sm text-muted-foreground ms-2 font-medium">
+                    {(order as any).reviewRating} / 5
+                  </span>
+                </div>
+                {(order as any).reviewText && (
+                  <p className="text-sm text-muted-foreground leading-relaxed bg-muted rounded-lg px-3 py-2">
+                    {(order as any).reviewText}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
+
           {/* Customer */}
           <Card>
             <CardHeader>

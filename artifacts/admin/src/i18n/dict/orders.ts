@@ -77,6 +77,10 @@ export const orders = {
     "orders.toast.liveActivityError": "Live Activity: {error}",
     "orders.toast.unknownError": "خطأ غير معروف",
     "orders.toast.statusNotified": "تم تحديث حالة الطلب وإشعار العميل",
+
+    "orders.review": "تقييم العميل",
+    "orders.review.none": "لا يوجد تقييم بعد",
+    "orders.col.rating": "تقييم",
   },
   en: {
     "orders.title": "Orders",
@@ -156,5 +160,9 @@ export const orders = {
     "orders.toast.liveActivityError": "Live Activity: {error}",
     "orders.toast.unknownError": "Unknown error",
     "orders.toast.statusNotified": "Order status updated and customer notified",
+
+    "orders.review": "Customer Review",
+    "orders.review.none": "No review yet",
+    "orders.col.rating": "Rating",
   },
 } as const;

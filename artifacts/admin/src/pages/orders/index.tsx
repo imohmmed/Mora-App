@@ -164,6 +164,7 @@ export default function Orders() {
                 <TableHead>{t("common.date")}</TableHead>
                 <TableHead>{t("orders.col.customer")}</TableHead>
                 <TableHead>{t("common.status")}</TableHead>
+                <TableHead>{t("orders.col.rating")}</TableHead>
                 <TableHead className="text-end">{t("common.total")}</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
@@ -171,11 +172,11 @@ export default function Orders() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">{t("common.loading")}</TableCell>
+                  <TableCell colSpan={7} className="h-24 text-center">{t("common.loading")}</TableCell>
                 </TableRow>
               ) : orders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-48 text-center">
+                  <TableCell colSpan={7} className="h-48 text-center">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <Inbox className="h-8 w-8 mb-2 opacity-50" />
                       <p>{t("orders.empty")}</p>
@@ -196,6 +197,17 @@ export default function Orders() {
                     </TableCell>
                     <TableCell>{order.email}</TableCell>
                     <TableCell>{statusBadge(order.financialStatus, order.fulfillmentStatus)}</TableCell>
+                    <TableCell>
+                      {(order as any).reviewRating ? (
+                        <span className="flex gap-0.5 text-amber-400" title={`${(order as any).reviewRating}/5`}>
+                          {[1,2,3,4,5].map((i) => (
+                            <span key={i} style={{ opacity: i <= (order as any).reviewRating ? 1 : 0.2 }}>★</span>
+                          ))}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-end font-semibold tabular-nums">{formatIQD(order.total)}</TableCell>
                     <TableCell className="text-end">
                       <AlertDialog>
