@@ -128,16 +128,42 @@ function WebChatScreen({ isDark, bg }: { isDark: boolean; bg: string }) {
     const win = window as any;
     const scheme = isDark ? "dark" : "light";
 
+    // Constrain the body-level Chatwoot overlay so it stops ~84px above the
+    // bottom, leaving the floating tab bar (portaled to <body> at max z-index)
+    // visible & clickable. The widget fills the rest like a normal page.
+    const STYLE_ID = "mora-cw-style";
+    let st = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
+    if (!st) {
+      st = document.createElement("style");
+      st.id = STYLE_ID;
+      document.head.appendChild(st);
+    }
+    st.textContent = `
+      .woot-widget-holder {
+        top: 0 !important;
+        bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+        height: auto !important;
+        max-height: none !important;
+        width: 100% !important;
+        right: 0 !important;
+        left: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+      }
+      .woot--bubble-holder, .woot-widget-bubble { display: none !important; }
+    `;
+
+    function applyScheme() {
+      try { win.$chatwoot?.setColorScheme?.(scheme); } catch (_) {}
+    }
     function openChat() {
       try { win.$chatwoot?.toggle("open"); } catch (_) {}
+      // Chatwoot ignores darkMode changes after boot; force it explicitly.
+      applyScheme();
+      setTimeout(applyScheme, 400);
     }
 
     if (win.$chatwoot) {
-      // SDK already loaded — just open it
-      win.chatwootSettings = {
-        ...win.chatwootSettings,
-        darkMode: scheme,
-      };
       openChat();
     } else {
       win.chatwootSettings = {
@@ -165,7 +191,7 @@ function WebChatScreen({ isDark, bg }: { isDark: boolean; bg: string }) {
     };
   }, [isDark]);
 
-  // Render blank background; the widget floats above via position:fixed in main doc
+  // Blank background; the constrained widget floats above via position:fixed.
   return <View style={{ flex: 1, backgroundColor: bg }} />;
 }
 
