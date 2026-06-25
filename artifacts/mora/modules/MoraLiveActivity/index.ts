@@ -42,6 +42,7 @@ interface MoraLiveActivityNative {
   getPushToken(activityId: string): Promise<string | null>;
   getPushToStartToken(): Promise<string | null>;
   getActiveActivityIds(): string[];
+  getActiveActivities(): Array<{ id: string; orderNumber: string }>;
 }
 
 let native: MoraLiveActivityNative | null = null;
@@ -157,5 +158,14 @@ export const MoraLiveActivity = {
   /** Get all currently active activity IDs */
   getActiveActivityIds(): string[] {
     return native?.getActiveActivityIds() ?? [];
+  },
+
+  /**
+   * Returns all active system Live Activities with their IDs and order numbers.
+   * Also caches them in the native module so getPushToken() works for
+   * push-to-start activities that weren't started locally by the app.
+   */
+  getActiveActivities(): Array<{ id: string; orderNumber: string }> {
+    return native?.getActiveActivities() ?? [];
   },
 };

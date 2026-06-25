@@ -66,7 +66,14 @@ export default function OrderDetail() {
       if (res.error) {
         toast({ title: "تعذّر تحديث حالة الطلب", variant: "destructive" });
       } else {
-        toast({ title: "تم تحديث حالة الطلب وإشعار العميل" });
+        const d = res.data as { apns?: { ok: boolean; error?: string }; hasPushToken?: boolean } | null;
+        if (!d?.hasPushToken) {
+          toast({ title: "تم تحديث الحالة ✓", description: "لا يوجد Live Activity token — الإشعار العادي فقط" });
+        } else if (d?.apns && !d.apns.ok) {
+          toast({ title: "تم تحديث الحالة ✓", description: `Live Activity: ${d.apns.error ?? "خطأ غير معروف"}`, variant: "destructive" });
+        } else {
+          toast({ title: "تم تحديث حالة الطلب وإشعار العميل ✓" });
+        }
         refresh();
       }
     } catch {

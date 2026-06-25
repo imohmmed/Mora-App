@@ -195,6 +195,35 @@ router.post("/store/orders", (req, res) => {
   res.status(201).json({ data: order, meta: {}, error: null });
 });
 
+// ─── Store: sync Live Activity push token by orderNumber (for push-to-start) ──
+// Called on app launch to register tokens for activities started remotely
+// by the server (push-to-start), where no local Activity.request() was made.
+
+router.post("/store/orders/sync-live-activity-token", (req, res) => {
+  const { orderNumber, pushToken } = req.body as { orderNumber?: string; pushToken?: string };
+  if (!orderNumber || !pushToken) {
+    res.status(400).json({ data: null, error: "orderNumber and pushToken are required" });
+    return;
+  }
+
+  // Optionally verify ownership via session token
+  let where = `order_number=?`;
+  const params: unknown[] = [orderNumber];
+  const authHeader = req.headers["authorization"];
+  if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+    const sess = db.prepare(`SELECT customer_id FROM sessions WHERE token=?`).get(authHeader.slice(7)) as Row | undefined;
+    if (sess) { where += ` AND customer_id=?`; params.push(sess["customer_id"]); }
+  }
+
+  const existing = db.prepare(`SELECT id FROM orders WHERE ${where}`).get(...params) as Row | undefined;
+  if (!existing) { res.status(404).json({ data: null, error: "Order not found" }); return; }
+
+  db.prepare(`UPDATE orders SET live_activity_push_token=?, updated_at=? WHERE id=?`)
+    .run(pushToken, new Date().toISOString(), existing["id"]);
+
+  res.json({ data: { ok: true }, error: null });
+});
+
 // ─── Store: save Live Activity push token ─────────────────────────────────────
 
 router.post("/store/orders/:id/live-activity-token", (req, res) => {

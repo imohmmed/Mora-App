@@ -142,13 +142,22 @@ public class MoraLiveActivityModule: Module {
             }
         }
 
-        // Get APNs push token for a Live Activity (needed for server-side updates)
+        // Get APNs push token for a Live Activity (needed for server-side updates).
+        // Falls back to scanning Activity.activities so push-to-start activities
+        // (started remotely by the server) are also captured.
         AsyncFunction("getPushToken") { (activityId: String, promise: Promise) in
             guard #available(iOS 16.1, *) else {
                 promise.resolve(nil)
                 return
             }
-            guard let activity = self.activities[activityId] as? Activity<MoraOrderActivityAttributes> else {
+            // 1. Check local cache first
+            var activity = self.activities[activityId] as? Activity<MoraOrderActivityAttributes>
+            // 2. Fall back to system activity list (covers push-to-start)
+            if activity == nil {
+                activity = Activity<MoraOrderActivityAttributes>.activities.first(where: { $0.id == activityId })
+                if let a = activity { self.activities[activityId] = a }
+            }
+            guard let activity = activity else {
                 promise.resolve(nil)
                 return
             }
@@ -160,6 +169,19 @@ public class MoraLiveActivityModule: Module {
                 }
                 promise.resolve(nil)
             }
+        }
+
+        // Returns all currently active activities with their IDs and orderNumbers.
+        // Used on app launch to re-register push tokens for push-to-start activities.
+        Function("getActiveActivities") { () -> [[String: String]] in
+            guard #available(iOS 16.1, *) else { return [] }
+            let systemActivities = Activity<MoraOrderActivityAttributes>.activities
+            // Cache them so getPushToken() works for all of them
+            for a in systemActivities { self.activities[a.id] = a }
+            return systemActivities.map { [
+                "id": $0.id,
+                "orderNumber": $0.attributes.orderNumber
+            ] }
         }
 
         // Get the push-to-start token (iOS 17.2+). This is captured on app launch

@@ -117,6 +117,36 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     return () => { cancelled = true; };
   }, [authToken]);
 
+  // ── Re-register push tokens for any active Live Activities on launch ─────────
+  // Covers activities started via push-to-start (server-side) where startActivity()
+  // was never called locally — so live_activity_push_token was never saved in DB.
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    if (!authToken) return;
+
+    const active = MoraLiveActivity.getActiveActivities();
+    if (active.length === 0) return;
+
+    const base = getApiBase();
+    for (const { id: activityId, orderNumber } of active) {
+      // Update liveActivityIdRef if we don't already have one
+      if (!liveActivityIdRef.current) {
+        liveActivityIdRef.current = activityId;
+      }
+      MoraLiveActivity.getPushToken(activityId).then((token) => {
+        if (!token) return;
+        fetch(`${base}/store/orders/sync-live-activity-token`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          },
+          body: JSON.stringify({ orderNumber, pushToken: token }),
+        }).catch(() => {});
+      }).catch(() => {});
+    }
+  }, [authToken]);
+
   // ── Foreground push handler ─────────────────────────────────────────────────
   useEffect(() => {
     if (Platform.OS === "web") return;
