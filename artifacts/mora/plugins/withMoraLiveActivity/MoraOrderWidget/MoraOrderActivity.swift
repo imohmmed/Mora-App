@@ -294,35 +294,33 @@ struct MoraOrderActivityWidget: Widget {
             let isException = stage.isExceptionStage
             let subtitle = context.state.message.isEmpty ? stage.stageSubtitle : context.state.message
             return DynamicIsland {
+                // ── اليسار: لوكو أزرق · رقم الطلب · السعر ───────────────
                 DynamicIslandExpandedRegion(.leading) {
-                    HStack(spacing: 9) {
-                        ZStack {
-                            Circle()
-                                .fill(stage.stageAccent.opacity(0.18))
-                                .frame(width: 34, height: 34)
-                            Image(systemName: isException ? "exclamationmark.triangle.fill" : stage.stepIcon)
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(stage.stageAccent)
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(context.attributes.orderNumber)
-                                .font(.system(size: 13, weight: .bold))
-                            PricePill(priceText: context.attributes.priceText,
-                                      isPaid: context.attributes.isPaid)
-                        }
+                    VStack(alignment: .leading, spacing: 3) {
+                        MoraLogoMark(height: 12, color: kAccent)
+                        Text(context.attributes.orderNumber)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.white)
+                        PricePill(priceText: context.attributes.priceText,
+                                  isPaid: context.attributes.isPaid)
                     }
                     .padding(.leading, 4)
                 }
+                // ── اليمين: أيقونة + عنوان المرحلة ────────────────────────
                 DynamicIslandExpandedRegion(.trailing) {
-                    VStack(alignment: .trailing, spacing: 2) {
+                    HStack(spacing: 6) {
                         Text(stage.stageHeadline)
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 12, weight: .bold))
                             .foregroundColor(isException ? kDanger : .white)
-                            .lineLimit(1)
-                        MoraLogoMark(height: 11)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.trailing)
+                        Image(systemName: isException ? "exclamationmark.triangle.fill" : stage.stepIcon)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(stage.stageAccent)
                     }
                     .padding(.trailing, 4)
                 }
+                // ── الأسفل: التفاصيل + التراكر ────────────────────────────
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(spacing: 9) {
                         Text(subtitle)
