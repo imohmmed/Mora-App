@@ -545,7 +545,7 @@ export default function ProductDetailScreen() {
           </View>
 
           {/* ── Variants / SIZE ── */}
-          {product.variants && product.variants.length > 1 && (
+          {product.variants && product.variants.some((v) => v.option1 && v.option1 !== "Default Title") && (
             <View style={[styles.variantsSection, { borderTopColor: colors.border }]}>
               <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
                 {product.variants[0]?.option1 ? "SIZE" : "OPTIONS"}
