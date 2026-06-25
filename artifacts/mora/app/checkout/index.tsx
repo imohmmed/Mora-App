@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import {
   ActivityIndicator,
@@ -25,7 +25,6 @@ import { useLanguage } from "@/context/LanguageContext";
 import { formatIQD } from "@/lib/format";
 import { fetchShippingZones, fetchShippingRules, type ShippingZone, type ShippingRule } from "@/lib/api";
 import { GlassBackButton } from "@/components/GlassBackButton";
-import { GovernoratePopover } from "@/components/GovernoratePopover";
 
 const PRIMARY = "#0274C1";
 
@@ -96,7 +95,6 @@ export default function CheckoutScreen() {
   const [payMethod, setPayMethod] = useState<PayMethod>("cod");
   const [submitting, setSubmitting] = useState(false);
   const [showGovPicker, setShowGovPicker] = useState(false);
-  const govTriggerRef = useRef<View>(null);
 
   // Shipping state
   const [zones, setZones] = useState<ShippingZone[]>([]);
@@ -448,30 +446,57 @@ export default function CheckoutScreen() {
             />
             <Divider color={divClr} isAr={isAr} />
             {/* Governorate picker row */}
-            <View ref={govTriggerRef} collapsable={false}>
-              <Pressable
-                style={[st.fieldRow, isAr && { flexDirection: "row-reverse" }]}
-                onPress={() => setShowGovPicker((v) => !v)}
-              >
-                {isAr ? (
-                  <>
-                    <Text style={[st.fieldLbl, { color: sub, textAlign: "right" }]}>المحافظة</Text>
-                    <Text style={[st.fieldInput, { color: form.city ? textCol : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)"), textAlign: "right" }]}>
-                      {form.city || "اختر المحافظة..."}
-                    </Text>
-                    <Feather name={showGovPicker ? "chevron-up" : "chevron-down"} size={15} color={sub} />
-                  </>
-                ) : (
-                  <>
-                    <Text style={[st.fieldLbl, { color: sub }]}>Governorate</Text>
-                    <Text style={[st.fieldInput, { color: form.city ? textCol : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)") }]}>
-                      {form.city || "Select governorate..."}
-                    </Text>
-                    <Feather name={showGovPicker ? "chevron-up" : "chevron-down"} size={15} color={sub} />
-                  </>
-                )}
-              </Pressable>
-            </View>
+            <Pressable
+              style={[st.fieldRow, isAr && { flexDirection: "row-reverse" }]}
+              onPress={() => setShowGovPicker((v) => !v)}
+            >
+              {isAr ? (
+                <>
+                  <Text style={[st.fieldLbl, { color: sub, textAlign: "right" }]}>المحافظة</Text>
+                  <Text style={[st.fieldInput, { color: form.city ? textCol : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)"), textAlign: "right" }]}>
+                    {form.city || "اختر المحافظة..."}
+                  </Text>
+                  <Feather name={showGovPicker ? "chevron-up" : "chevron-down"} size={15} color={sub} />
+                </>
+              ) : (
+                <>
+                  <Text style={[st.fieldLbl, { color: sub }]}>Governorate</Text>
+                  <Text style={[st.fieldInput, { color: form.city ? textCol : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)") }]}>
+                    {form.city || "Select governorate..."}
+                  </Text>
+                  <Feather name={showGovPicker ? "chevron-up" : "chevron-down"} size={15} color={sub} />
+                </>
+              )}
+            </Pressable>
+            {showGovPicker && (
+              <View style={[st.dropdown, { backgroundColor: isDark ? "rgba(30,30,32,0.98)" : "rgba(248,248,252,0.98)", borderColor: divClr }]}>
+                <ScrollView style={{ maxHeight: 240 }} showsVerticalScrollIndicator={false} bounces={false} nestedScrollEnabled>
+                  {zones.map((z, idx) => {
+                    const label = isAr ? (z.governorateAr || z.governorate) : z.governorate;
+                    const isSelected = selectedZone?.governorate === z.governorate;
+                    return (
+                      <Pressable
+                        key={z.governorate}
+                        style={({ pressed }) => [
+                          st.dropdownRow,
+                          isAr && { flexDirection: "row-reverse" },
+                          idx < zones.length - 1 && { borderBottomWidth: 1, borderBottomColor: divClr },
+                          pressed && { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" },
+                        ]}
+                        onPress={() => {
+                          setSelectedZone(z);
+                          set("city")(z.governorateAr || z.governorate);
+                          setShowGovPicker(false);
+                        }}
+                      >
+                        <Text style={[st.dropdownLabel, { color: isSelected ? PRIMARY : textCol }]}>{label}</Text>
+                        {isSelected && <Feather name="check" size={15} color={PRIMARY} />}
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
             <Divider color={divClr} isAr={isAr} />
             <FieldRow
               label={isAr ? "المنطقة / الحي" : "District / Area"}
@@ -677,23 +702,6 @@ export default function CheckoutScreen() {
 
         </ScrollView>
 
-        <GovernoratePopover
-          visible={showGovPicker}
-          anchorRef={govTriggerRef}
-          options={zones.map((z) => ({
-            label: isAr ? (z.governorateAr || z.governorate) : z.governorate,
-            value: z.governorate,
-          }))}
-          selectedValue={selectedZone?.governorate}
-          onSelect={(val) => {
-            const z = zones.find((zo) => zo.governorate === val) ?? null;
-            setSelectedZone(z);
-            if (z) set("city")(z.governorateAr || z.governorate);
-          }}
-          onClose={() => setShowGovPicker(false)}
-          isAr={isAr}
-        />
-
         <View style={[
           st.footer,
           {
@@ -788,4 +796,7 @@ const st = StyleSheet.create({
   footer:      { paddingHorizontal: 16, paddingTop: 12 },
   placeBtn:    { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: PRIMARY, height: 54, borderRadius: 50 },
   placeTxt:    { color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 0.8 },
+  dropdown:    { marginHorizontal: 16, marginBottom: 4, borderRadius: 12, borderWidth: 1, overflow: "hidden" },
+  dropdownRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14 },
+  dropdownLabel: { fontSize: 15, fontWeight: "500" },
 });
