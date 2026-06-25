@@ -106,6 +106,21 @@ Live Activities for order tracking require 4 synchronized layers:
 ### 5. Required env vars for APNs push (production)
 - `APPLE_PUSH_KEY_ID` — 10-char Key ID from Apple Developer
 - `APPLE_PUSH_KEY` — contents of .p8 file (with or without PEM headers)
+- WHERE they live on the VPS (configured June 25 2026): in `/var/www/mora/artifacts/api-server/.env`
+  (the dotenv-loaded file, SAME place as `WAYL_API_KEY`) — NOT in `ecosystem.config.js`. The ecosystem
+  `env` block holds only infra (`PORT`,`NODE_ENV`,`DATABASE_PATH`,`GOOGLE_ADMIN_CLIENT_ID`,`ADMIN_JWT_SECRET`);
+  app secrets go in `.env`. Store the key as ONE-LINE base64 with NO PEM headers — `apns.ts` wraps it in
+  `-----BEGIN/END PRIVATE KEY-----\n...\n` and Node `crypto` parses single-line base64 between headers fine.
+  This sidesteps all `.env` multiline-quoting fragility. Validate before trusting: read the value, wrap it
+  the same way, `crypto.createSign("SHA256").sign({key,dsaEncoding:"ieee-p1363"})` — if it doesn't throw the
+  key is valid for ES256 APNs JWTs. After editing `.env`, restart with
+  `pm2 restart /var/www/mora/ecosystem.config.js --update-env && pm2 save` (dotenv re-reads `.env` at boot).
+- FOOTGUN: `pm2 restart mora-api --update-env` with vars exported in your ssh shell pulls env FROM the shell,
+  so it can drop infra vars the app expects — always restart from the ecosystem FILE, never the bare name+shell.
+- VERIFY GOTCHA: do NOT use `/proc/<pid>/environ` to check a pm2 CLUSTER worker's env — workers are
+  `cluster.fork()`ed from the daemon so `/proc/environ` shows only the daemon's (systemd) env and looks
+  empty even when the app's `process.env` is fully populated. It will mislead you into thinking env was
+  stripped. Check by app behavior (a 200 from a DB-backed endpoint proves DATABASE_PATH) or the key-sign test.
 
 ### Critical sync requirement
 `MoraOrderActivityAttributes` struct MUST be identical in both `MoraOrderActivity.swift` AND `MoraLiveActivityModule.swift`. As of the June 2026 redesign the attributes are FOUR fields: `orderNumber`, `customerName`, `priceText` (String), `isPaid` (Bool) — and ContentState stays `{stage, message}`. `priceText`/`isPaid` are START-ONLY (ActivityKit attributes are immutable; per-activity updates only change content-state), so they must be set at the on-device `startActivity` (checkout) AND the server `start-live-activity` push, and propagated through `index.ts` startActivity, `NotificationContext.startOrderActivity`, and `apns.ts` `sendLiveActivityStartPush` attributes. Any name/type/count drift silently breaks the whole LA decode. The widget renders price normally, or a green "تم دفع الطلب" badge when `isPaid` (set true only for online+paid).
@@ -137,7 +152,14 @@ On-device `Activity.request()` at checkout is fragile: if the per-activity push 
 
 **Known follow-ups (not yet done):** (1) after a push-to-start START, the app should observe `Activity.activityUpdates`→`pushTokenUpdates` and POST that per-activity token to the order so later `delivery-stage` updates work — currently a push-started activity has no per-activity token stored (attributes carry `orderNumber` not `orderId`, so mapping needs orderId added to attributes). (2) Duplicate-activity risk if BOTH on-device start and server push-to-start fire for the same order — pick one start authority once the on-device path is confirmed working.
 
-## Why no Dynamic Island appears — diagnostic playbook (verified June 2026)
+## Why no Dynamic Island appears — diagnostic playbook
+UPDATE (June 25 2026): RESOLVED. The post-#47 EAS build DOES capture per-activity LA tokens — prod logs
+show `POST /store/orders/:id/live-activity-token` → 200 from a live customer device, and a Live Activity
+renders on the lock screen. The ONLY remaining blocker was that the APNs key was missing on the server, so
+`delivery-stage` updates failed with "APPLE_PUSH_KEY_ID / APPLE_PUSH_KEY not configured". That key is now
+configured in `.env` (see section 5). So for an ACTIVE LA, changing order status now updates the Island.
+The pre-#47 "zero tokens" snapshot below is HISTORICAL (old IPA predated the working widget):
+
 Prod SQLite (`/var/www/mora/data/mora.db`, query via better-sqlite3 — no sqlite3 CLI on VPS): across ALL customers `COUNT(live_activity_pts_token)=0` and ALL orders `live_activity_push_token IS NULL`. ZERO LA tokens ever captured.
 - Regular Expo push works → APNs/aps-environment is fine. So a universally-null LA token means the on-device Live Activity never starts/produces a token.
 - Verified repo build config is CORRECT via `npx expo prebuild -p ios --no-install`: pbxproj contains `MoraOrderWidget` (com.apple.product-type.app-extension) AND it is embedded ("Embed Foundation Extensions" copy phase). `NSSupportsLiveActivities` is in `ios/Mora/Info.plist`, `aps-environment` in entitlements. Widget Swift has `@main MoraWidgetBundle` + `ActivityConfiguration` + full DynamicIsland. So a FRESH EAS build will work.
