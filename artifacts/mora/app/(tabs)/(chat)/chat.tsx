@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -119,6 +119,56 @@ true;
 `;
 }
 
+// ── Web: inject SDK into main window, no iframe ───────────────────────────────
+// Iframes-inside-iframes break Chatwoot's fixed positioning / viewport math.
+// Instead we load the SDK once into the main document and toggle open/close
+// based on whether this tab is mounted.
+function WebChatScreen({ isDark, bg }: { isDark: boolean; bg: string }) {
+  useEffect(() => {
+    const win = window as any;
+    const scheme = isDark ? "dark" : "light";
+
+    function openChat() {
+      try { win.$chatwoot?.toggle("open"); } catch (_) {}
+    }
+
+    if (win.$chatwoot) {
+      // SDK already loaded — just open it
+      win.chatwootSettings = {
+        ...win.chatwootSettings,
+        darkMode: scheme,
+      };
+      openChat();
+    } else {
+      win.chatwootSettings = {
+        hideMessageBubble: true,
+        position: "right",
+        locale: "ar",
+        darkMode: scheme,
+        showPopoutButton: false,
+      };
+      if (!document.getElementById("mora-cw-sdk")) {
+        const s = document.createElement("script");
+        s.id = "mora-cw-sdk";
+        s.src = `${CHAT_DOMAIN}/packs/js/sdk.js`;
+        s.async = true;
+        s.onload = () => {
+          win.chatwootSDK?.run({ websiteToken: WEBSITE_TOKEN, baseUrl: CHAT_DOMAIN });
+        };
+        document.head.appendChild(s);
+      }
+      window.addEventListener("chatwoot:ready", openChat, { once: true });
+    }
+
+    return () => {
+      try { win.$chatwoot?.toggle("close"); } catch (_) {}
+    };
+  }, [isDark]);
+
+  // Render blank background; the widget floats above via position:fixed in main doc
+  return <View style={{ flex: 1, backgroundColor: bg }} />;
+}
+
 // ── Fallback when WebView is not available (Expo Go) ─────────────────────────
 function ChatFallback({ bg, fg, muted }: { bg: string; fg: string; muted: string }) {
   const insets = useSafeAreaInsets();
@@ -157,31 +207,7 @@ export default function ChatScreen() {
 
   // ── Web ──────────────────────────────────────────────────────────────────
   if (Platform.OS === "web") {
-    // /chat-widget.html is a static file in public/ (copied to dist/ at build
-    // time). It bootstraps the Chatwoot SDK from the same moramoda.tech origin
-    // so the SDK's API calls to chat.moramoda.tech succeed (CORS is allowed by
-    // Chatwoot for any origin). srcDoc would create a null-origin that fails.
-    const chatPage = `/chat-widget.html?dark=${isDark ? "1" : "0"}`;
-    return (
-      <View style={[styles.container, { backgroundColor: bg }]}>
-        {/* @ts-ignore */}
-        <iframe
-          key={isDark ? "dark" : "light"}
-          src={chatPage}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: "84px",
-            width: "100%",
-            border: "none",
-          }}
-          title="Mora Support"
-          allow="microphone; camera"
-        />
-      </View>
-    );
+    return <WebChatScreen isDark={isDark} bg={bg} />;
   }
 
   // ── Native without WebView (Expo Go) — fallback ───────────────────────────
