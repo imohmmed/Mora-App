@@ -1,6 +1,6 @@
 - [Web Liquid Glass Tab Bar](web-liquid-glass.md) — CSS backdrop-filter approach for Expo web; className prop trick for RN Web
 - [Firebase Auth Setup](firebase-auth.md) — phone/Google/Apple auth built, waiting on Firebase credentials (6 env vars needed)
-- [VPS nginx serve path](vps-nginx-path.md) — Expo web dist must go to /var/www/mora/artifacts/mora/dist NOT /var/www/mora-web/; also covers API/admin deploy (scp dist, not git), DATABASE_PATH persistence fix + pm2 save, and admin-token security hole
+- [VPS nginx serve path](vps-nginx-path.md) — Expo web dist must go to /var/www/mora/artifacts/mora/dist NOT /var/www/mora-web/; also covers API/admin deploy (scp dist, not git), .env canonical source + `set -a && source .env && pm2 restart --update-env` pattern, and admin-token security hole
 - [IQD Pricing & Content Sections](iqd-content-sections.md) — All prices in IQD (×1300 from USD), formatIQD() in lib/format.ts, warranty+testimonials via content_sections API
 - [Shipping system](shipping-system.md) — per-governorate zones + bilingual free-delivery rules; order shipping is server-authoritative (never trust client `shipping`)
 - [Lottie on Expo (native+web)](lottie-expo-web.md) — lottie-react-native v7 needs @lottiefiles/dotlottie-react for web; unzip .lottie → inner JSON; MORA STAR tier badge+burst in account.tsx

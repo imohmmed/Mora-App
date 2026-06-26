@@ -375,6 +375,8 @@ export default function SearchScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomPadding + 80 }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         refreshControl={
           showResults ? (
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={PRIMARY} />

@@ -18,6 +18,7 @@ import webhooksRouter from "./webhooks.js";
 import uploadsRouter from "./uploads.js";
 import shippingRouter from "./shipping.js";
 import chatAdminRouter from "./chat-admin.js";
+import chatPublicRouter from "./chat-public.js";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use(notificationsRouter);
 router.use(webhooksRouter);
 router.use(shippingRouter);
 router.use(chatAdminRouter);
+router.use("/chat", chatPublicRouter);
 
 export default router;

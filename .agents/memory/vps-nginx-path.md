@@ -59,6 +59,19 @@ The mora-api process env is NOT in any ecosystem file. A plain `pm2 restart mora
 
 **Fix pattern:** before restarting, re-export EVERY needed var in one shell, capturing secrets without printing them, e.g. `WAYL_API_KEY="$(pm2 env 2 | sed -n 's/^WAYL_API_KEY: //p')"`, plus DATABASE_PATH, PORT=3001, NODE_ENV=production, GOOGLE_ADMIN_CLIENT_ID (public, recoverable from the admin JS bundle via grep `apps.googleusercontent.com`), ADMIN_JWT_SECRET (generate random; old tokens die but they're expired anyway). Then `pm2 restart mora-api --update-env && pm2 save`. Verify with `pm2 env 2`. **Why:** missing these = production admin lockout. **The real durable fix is a pm2 ecosystem file or systemd EnvironmentFile so env survives any restart.**
 
+## Canonical env source: /var/www/mora/artifacts/api-server/.env
+All app-specific env vars (PORT, NODE_ENV, DATABASE_PATH, UPLOADS_DIR, ADMIN_JWT_SECRET,
+GOOGLE_ADMIN_CLIENT_ID, WAYL_API_KEY, APPLE_PUSH_KEY_ID, APPLE_PUSH_KEY,
+CHATWOOT_WEBHOOK_SECRET, CHATWOOT_URL, CHATWOOT_ACCOUNT_ID, CHATWOOT_API_TOKEN) are stored
+in this file. **Correct restart pattern (preserves ALL vars):**
+```bash
+set -a && source /var/www/mora/artifacts/api-server/.env && set +a
+pm2 restart mora-api --update-env && pm2 save
+```
+**Why:** pm2 dump.pm2 only stores vars explicitly set; plain `pm2 restart` drops inherited vars.
+The .env file is the single source of truth — always update it before any restart and always
+source it so pm2 picks up the full set.
+
 ## API code-only redeploy (preserve env — do NOT use --update-env)
 VPS host is `159.65.55.65` (root, password in `VPS_PASSWORD` secret). pm2 process `mora-api`
 (id 2, cluster) runs `/var/www/mora/artifacts/api-server/dist/index.mjs`.
