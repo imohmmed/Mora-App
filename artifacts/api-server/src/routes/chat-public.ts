@@ -1,5 +1,7 @@
 import { Router, type Request } from "express";
 import crypto from "crypto";
+import { db } from "../lib/db.js";
+import { doSendNotification } from "./notifications.js";
 
 const router = Router();
 
@@ -135,11 +137,39 @@ router.post("/rating", async (req, res) => {
   }
 });
 
+// POST /api/chat/session-link — link a Chatwoot conversationId to a customer_id
+// Called by the app immediately after creating a chat session, using the customer's
+// auth token. Enables the webhook handler to find the push token for this customer.
+router.post("/session-link", (req, res) => {
+  const auth = (req.headers["authorization"] as string | undefined) ?? "";
+  if (!auth.startsWith("Bearer ")) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const token = auth.slice(7);
+  const row = db
+    .prepare("SELECT customer_id FROM sessions WHERE token = ?")
+    .get(token) as { customer_id: string } | undefined;
+  if (!row) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const { conversationId } = req.body as { conversationId?: number };
+  if (!conversationId) {
+    res.status(400).json({ error: "conversationId required" });
+    return;
+  }
+  db.prepare(
+    `INSERT OR REPLACE INTO chat_conversation_links (conversation_id, customer_id, created_at)
+     VALUES (?, ?, ?)`
+  ).run(conversationId, row.customer_id, new Date().toISOString());
+  res.json({ ok: true });
+});
+
 // POST /api/chat/webhook — Chatwoot outgoing webhook receiver
-// Chatwoot calls this when it sends a message. We verify the HMAC signature using
-// CHATWOOT_WEBHOOK_SECRET and return 200 so Chatwoot stops marking messages as
-// "Failed to send". (Our app polls the API directly for delivery.)
-router.post("/webhook", (req: Request & { rawBody?: Buffer }, res) => {
+// Chatwoot calls this when it sends a message. We verify the HMAC signature, then
+// send a push + in-app notification to the customer if this is an agent reply.
+router.post("/webhook", async (req: Request & { rawBody?: Buffer }, res) => {
   const secret = process.env.CHATWOOT_WEBHOOK_SECRET || "";
   const sig = req.headers["x-chatwoot-signature"] as string | undefined;
 
@@ -155,9 +185,45 @@ router.post("/webhook", (req: Request & { rawBody?: Buffer }, res) => {
     }
   }
 
-  const event = (req.body as Record<string, unknown>)?.event ?? "unknown";
-  console.log(`[chatwoot-webhook] event=${event}`);
+  // Always return 200 immediately so Chatwoot doesn't retry.
   res.status(200).json({ received: true });
+
+  try {
+    const body = req.body as Record<string, unknown>;
+    const event = body?.event as string | undefined;
+    const msgType = body?.message_type;
+    const isPrivate = Boolean(body?.private);
+    const content = body?.content as string | undefined;
+
+    // Only push for outgoing (agent) public messages with text content.
+    // message_type = 1 (number) or "outgoing" (string) depending on Chatwoot version.
+    const isAgentMsg = msgType === 1 || msgType === "outgoing";
+
+    if (event === "message_created" && isAgentMsg && !isPrivate && content?.trim()) {
+      const conv = body?.conversation as Record<string, unknown> | undefined;
+      const convId = conv?.id as number | undefined;
+
+      if (convId) {
+        const link = db
+          .prepare(
+            "SELECT customer_id FROM chat_conversation_links WHERE conversation_id = ?"
+          )
+          .get(convId) as { customer_id: string } | undefined;
+
+        if (link?.customer_id) {
+          console.log(`[chatwoot-webhook] push → customer=${link.customer_id} conv=${convId}`);
+          await doSendNotification({
+            title: "دعم مورا",
+            body: content.trim(),
+            targetAll: false,
+            customerIds: [link.customer_id],
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.error("[chatwoot-webhook] push error:", e);
+  }
 });
 
 export default router;

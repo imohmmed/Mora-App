@@ -1127,6 +1127,16 @@ db.exec(`
   }
 }
 
+// ─── Chat push notification links ────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS chat_conversation_links (
+    conversation_id INTEGER PRIMARY KEY,
+    customer_id     TEXT NOT NULL,
+    created_at      TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_ccl_customer ON chat_conversation_links(customer_id);
+`);
+
 // ─── Shipping: per-governorate delivery pricing + free-delivery rules ──────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS shipping_zones (

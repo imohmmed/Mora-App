@@ -750,7 +750,7 @@ function RatingModal({
 // ── Main screen ─────────────────────────────────────────────────────────────────
 export default function ChatScreen() {
   const { resolvedScheme } = useTheme();
-  const { user } = useAuth();
+  const { user, token: authToken } = useAuth();
   const { lang } = useLanguage();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
@@ -917,6 +917,22 @@ export default function ChatScreen() {
         });
         setSession(s);
         sessionRef.current = s;
+        // Register conversationId → customer mapping for chat push notifications.
+        // Only for logged-in users who have a push token registered.
+        if (authToken && s.conversationId) {
+          const apiBase =
+            typeof process !== "undefined" && process.env.EXPO_PUBLIC_DOMAIN
+              ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+              : "/api";
+          fetch(`${apiBase}/chat/session-link`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authToken}`,
+            },
+            body: JSON.stringify({ conversationId: s.conversationId }),
+          }).catch(() => {});
+        }
         const msgs = await listMessages(s);
         mergeMessages(msgs);
         scrollToEnd(false);
@@ -926,7 +942,7 @@ export default function ChatScreen() {
         setStarting(false);
       }
     },
-    [user, mergeMessages, scrollToEnd]
+    [user, authToken, mergeMessages, scrollToEnd]
   );
 
   // Keep the ref in sync so refresh can call the latest version.
