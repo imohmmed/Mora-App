@@ -212,26 +212,8 @@ function Header({
         { paddingTop: top + 10, backgroundColor: p.bg, borderBottomColor: p.border },
       ]}
     >
-      <View style={styles.headerAvatar}>
-        <AgentAvatar p={p} size={42} />
-        <View style={[styles.onlineDot, { borderColor: p.bg }]} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.headerTitle, { color: p.fg }]}>{t.title}</Text>
-        <View style={styles.headerSubRow}>
-          {isResolved ? (
-            <Text style={[styles.headerSub, { color: "#22C55E", fontWeight: "600" }]}>
-              {t.resolved}
-            </Text>
-          ) : (
-            <>
-              <View style={styles.onlineDotSmall} />
-              <Text style={[styles.headerSub, { color: p.muted }]}>{t.subtitle}</Text>
-            </>
-          )}
-        </View>
-      </View>
-      {hasSession && onActions && (
+      {/* Left: three-dot actions button */}
+      {hasSession && onActions ? (
         <Pressable
           onPress={onActions}
           hitSlop={10}
@@ -239,7 +221,38 @@ function Header({
         >
           <Feather name="more-horizontal" size={22} color={p.muted} />
         </Pressable>
+      ) : (
+        <View style={styles.headerActionBtn} />
       )}
+
+      <View style={{ flex: 1 }} />
+
+      {/* Right: wordmark + name + subtitle */}
+      <View style={styles.headerRight}>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={[styles.headerTitle, { color: p.fg }]}>{t.title}</Text>
+          <View style={[styles.headerSubRow, { justifyContent: "flex-end" }]}>
+            {isResolved ? (
+              <Text style={[styles.headerSub, { color: "#22C55E", fontWeight: "600" }]}>
+                {t.resolved}
+              </Text>
+            ) : (
+              <>
+                <Text style={[styles.headerSub, { color: p.muted }]}>{t.subtitle}</Text>
+                <View style={styles.onlineDotSmall} />
+              </>
+            )}
+          </View>
+        </View>
+        <View style={styles.headerAvatar}>
+          <Image
+            source={require("@/assets/images/mora-wordmark.png")}
+            style={styles.headerWordmark}
+            resizeMode="contain"
+          />
+          <View style={[styles.onlineDot, { borderColor: p.bg }]} />
+        </View>
+      </View>
     </Animated.View>
   );
 }
@@ -1260,6 +1273,8 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
+  headerWordmark: { width: 48, height: 48, borderRadius: 24 },
   headerAvatar: { position: "relative" },
   onlineDot: {
     position: "absolute",
