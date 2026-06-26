@@ -33,4 +33,5 @@
 - [Checkout keyboard avoidance](checkout-keyboard-avoidance.md) — sticky-footer forms: plain ScrollView + automaticallyAdjustKeyboardInsets(iOS)+keyboardShouldPersistTaps, NOT screen-wrapping KeyboardAvoidingView
 - [Bilingual option names](option-definitions-bilingual.md) — option_definitions JSON stores {nameEn,nameAr,values} (passthrough); display by lang w/ fallback; admin 2 inputs + legacy name migration
 - [Search collections + trending](search-collections-trending.md) — search-page BROWSE grid + trending chips driven by content_sections keys; admin-edited; browse nav via collection/[slug] bt/bv/bttl params
+- [Checkout delivery options](delivery-options.md) — standard/express/pickup; deliveryMessage rules duplicated in mora lib + api-server (keep identical); deliveryType must ride ALL 4 APNs paths or pickup shows 4-step widget; pickup=3-step flow needs EAS rebuild
 - [Chatwoot custom chat + admin mgmt](chatwoot-custom-chat.md) — in-app chat hits Chatwoot PUBLIC API directly (API-channel inbox only); admin canned/automation via api-server proxy; nginx underscores_in_headers fix for api_access_token 401

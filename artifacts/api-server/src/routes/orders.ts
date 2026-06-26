@@ -62,6 +62,23 @@ function formatIQD(amount: number): string {
 // Allowed delivery stages for Live Activity content-state.
 const VALID_STAGES = ["confirmed", "preparing", "shipping", "delivered", "issue", "cancelled"];
 
+// Allowed delivery types chosen at checkout.
+const VALID_DELIVERY_TYPES = ["standard", "express", "pickup"];
+function normalizeDeliveryType(v: unknown): string {
+  return v === "express" || v === "pickup" ? v : "standard";
+}
+
+// Arabic delivery-duration line shown in the Live Activity / Dynamic Island.
+// Returns "" for terminal/exception stages so the widget falls back to its
+// own per-stage subtitle. Mirrors lib/deliveryMessage.ts in the mora app.
+function deliveryMessage(deliveryType: string, stage: string): string {
+  if (stage === "delivered" || stage === "issue" || stage === "cancelled") return "";
+  if (deliveryType === "pickup") return "سيتم تجهيزه لك في المحل";
+  if (stage === "shipping") return "مدة التوصيل من 1-2 يوم";
+  if (deliveryType === "express") return "يتم التوصيل الطلب من 1-3 ايام";
+  return "مدة التوصيل من 1-5 ايام";
+}
+
 // Template keys for order status / fulfillment / financial changes
 const STATUS_KEYS: Record<string, string>   = { processing: "status:processing", completed: "status:completed", cancelled: "status:cancelled" };
 const FULFILL_KEYS: Record<string, string>  = { fulfilled: "fulfill:fulfilled" };
@@ -204,6 +221,7 @@ router.post("/store/orders", (req, res) => {
   }
 
   const paymentMethod = (b["paymentMethod"] as string) ?? "cod";
+  const deliveryType = normalizeDeliveryType(b["deliveryType"]);
 
   // ── Stock check + order insert + inventory decrement (atomic) ──────────────
   type OLI = { variantId?: string; quantity?: number; title?: string };
@@ -221,8 +239,8 @@ router.post("/store/orders", (req, res) => {
     }
     // 2. Insert order row
     db.prepare(
-      `INSERT INTO orders (id,order_number,customer_id,email,status,financial_status,fulfillment_status,subtotal,shipping,tax,total,currency,discount_code,discount_amount,shipping_address,line_items,note,tags,is_draft,is_abandoned,delivery_stage,payment_method,created_at,updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      `INSERT INTO orders (id,order_number,customer_id,email,status,financial_status,fulfillment_status,subtotal,shipping,tax,total,currency,discount_code,discount_amount,shipping_address,line_items,note,tags,is_draft,is_abandoned,delivery_stage,delivery_type,payment_method,created_at,updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
     ).run(
       id, orderNum, customerId, email,
       "pending", "pending", "unfulfilled",
@@ -231,7 +249,7 @@ router.post("/store/orders", (req, res) => {
       JSON.stringify(b["shippingAddress"] ?? {}),
       JSON.stringify(b["lineItems"] ?? []),
       (b["note"] as string) ?? "", "[]",
-      0, 0, "confirmed", paymentMethod, now, now
+      0, 0, "confirmed", deliveryType, paymentMethod, now, now
     );
     // 3. Decrement inventory for each variant
     for (const item of lineItems as OLI[]) {
@@ -371,7 +389,7 @@ router.post("/admin/orders", (req, res) => {
 
 router.put("/admin/orders/:id", async (req, res) => {
   const id = req.params["id"];
-  const existing = db.prepare(`SELECT order_number, customer_id, status, financial_status, fulfillment_status, delivery_stage, live_activity_push_token FROM orders WHERE id=?`).get(id) as Row | undefined;
+  const existing = db.prepare(`SELECT order_number, customer_id, status, financial_status, fulfillment_status, delivery_stage, delivery_type, live_activity_push_token FROM orders WHERE id=?`).get(id) as Row | undefined;
   if (!existing) { res.status(404).json({ data: null, meta: {}, error: "Order not found" }); return; }
   const b = req.body as Record<string, unknown>;
   const now = new Date().toISOString();
@@ -439,12 +457,13 @@ router.put("/admin/orders/:id", async (req, res) => {
   if (financialChanged && newFinancial === "paid") {
     const laToken      = existing["live_activity_push_token"] as string | null;
     const currentStage = (existing["delivery_stage"] as string | null) ?? "confirmed";
+    const payDeliveryType = normalizeDeliveryType(existing["delivery_type"]);
     if (VALID_STAGES.includes(currentStage)) {
       const GONE_PAY = new Set(["BadDeviceToken", "Gone", "Unregistered", "ExpiredToken"]);
       let payLaGone = !laToken;
       if (laToken) {
         try {
-          const r = await sendLiveActivityPush(laToken, { stage: currentStage as any, message: "", isPaid: true });
+          const r = await sendLiveActivityPush(laToken, { stage: currentStage as any, message: deliveryMessage(payDeliveryType, currentStage), isPaid: true, deliveryType: payDeliveryType });
           if (!r.ok && GONE_PAY.has(r.error ?? "")) {
             payLaGone = true;
             db.prepare(`UPDATE orders SET live_activity_push_token=NULL, updated_at=? WHERE id=?`).run(now, id);
@@ -463,9 +482,10 @@ router.put("/admin/orders/:id", async (req, res) => {
               orderNumber:  orderNum,
               customerName: cName,
               stage:        currentStage as any,
-              message:      "",
+              message:      deliveryMessage(payDeliveryType, currentStage),
               priceText:    formatIQD(Number(oRow?.["total"] ?? 0)),
               isPaid:       true,
+              deliveryType: payDeliveryType,
             });
           }
         } catch { /* non-fatal */ }
@@ -486,12 +506,18 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
   if (!VALID_STAGES.includes(stage)) { res.status(400).json({ data: null, error: "invalid stage" }); return; }
 
   const existing = db.prepare(`
-    SELECT o.order_number, o.customer_id, o.live_activity_push_token, o.financial_status, o.total,
+    SELECT o.order_number, o.customer_id, o.live_activity_push_token, o.financial_status, o.total, o.delivery_type,
            c.first_name, c.last_name, c.live_activity_pts_token
     FROM orders o LEFT JOIN customers c ON c.id = o.customer_id
     WHERE o.id = ?
   `).get(id) as Row | undefined;
   if (!existing) { res.status(404).json({ data: null, meta: {}, error: "Order not found" }); return; }
+
+  const deliveryType = normalizeDeliveryType(existing["delivery_type"]);
+  // Pickup orders skip the shipping stage entirely.
+  if (deliveryType === "pickup" && stage === "shipping") {
+    res.status(400).json({ data: null, error: "shipping stage not allowed for pickup orders" }); return;
+  }
 
   const now = new Date().toISOString();
   db.prepare(`UPDATE orders SET delivery_stage=?, updated_at=? WHERE id=?`).run(stage, now, id);
@@ -500,7 +526,8 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
   logActivity("order.stage_updated", "Orders", "order", id, `Order ${orderNum}`, "Admin",
     { orderNumber: orderNum, stage, message });
 
-  const laMessage = message && message.trim() ? message : "";
+  // Explicit message wins; otherwise derive the delivery-duration line from type + stage.
+  const laMessage = message && message.trim() ? message : deliveryMessage(deliveryType, stage);
   const toChat = stage === "delivered" || stage === "issue" || stage === "cancelled";
   const vars = buildVars(id, orderNum, existing["customer_id"] as string | null);
   const copy = getTemplate(STAGE_TO_KEY[stage] ?? `stage:${stage}`, vars);
@@ -520,7 +547,7 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
 
   if (laPushToken) {
     try {
-      apnsResult = await sendLiveActivityPush(laPushToken, { stage: stage as any, message: laMessage, isPaid });
+      apnsResult = await sendLiveActivityPush(laPushToken, { stage: stage as any, message: laMessage, isPaid, deliveryType });
     } catch (e: unknown) {
       apnsResult = { ok: false, error: String(e) };
     }
@@ -541,6 +568,7 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
         message:      laMessage,
         priceText,
         isPaid,
+        deliveryType,
         alertTitle:   copy?.title ?? "Mora",
         alertBody:    copy?.body ?? "",
       });
@@ -584,7 +612,7 @@ router.post("/admin/orders/:id/start-live-activity", async (req, res) => {
   const id = req.params["id"];
   const { stage, message } = req.body as { stage?: string; message?: string };
 
-  const order = db.prepare(`SELECT order_number, customer_id, total, payment_method, financial_status FROM orders WHERE id=?`).get(id) as Row | undefined;
+  const order = db.prepare(`SELECT order_number, customer_id, total, payment_method, financial_status, delivery_type FROM orders WHERE id=?`).get(id) as Row | undefined;
   if (!order) { res.status(404).json({ data: null, error: "Order not found" }); return; }
 
   const customerId = order["customer_id"] as string | null;
@@ -604,8 +632,8 @@ router.post("/admin/orders/:id/start-live-activity", async (req, res) => {
   const customerName = `${cust?.["first_name"] ?? ""} ${cust?.["last_name"] ?? ""}`.trim() || "Customer";
   const copy       = getTemplate(STAGE_TO_KEY[useStage] ?? `stage:${useStage}`, buildVars(id, orderNum, customerId));
   const defaultBody = copy?.body ?? "";
-  // Leave the content-state message empty so the widget shows its per-stage subtitle.
-  const laMessage  = message && message.trim() ? message : "";
+  // Derive the delivery-duration line from the order's delivery type + stage.
+  const laMessage  = message && message.trim() ? message : deliveryMessage(normalizeDeliveryType(order["delivery_type"]), useStage);
   const priceText  = formatIQD(Number(order["total"] ?? 0));
   const isPaid     = order["payment_method"] === "online" && order["financial_status"] === "paid";
 
@@ -616,6 +644,7 @@ router.post("/admin/orders/:id/start-live-activity", async (req, res) => {
     message:      laMessage,
     priceText,
     isPaid,
+    deliveryType: normalizeDeliveryType(order["delivery_type"]),
     alertTitle:   copy?.title ?? "Mora",
     alertBody:    defaultBody,
   });

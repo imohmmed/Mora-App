@@ -8,6 +8,7 @@ public struct MoraOrderActivityAttributes: ActivityAttributes {
         var stage: String
         var message: String
         var isPaid: Bool    // true when payment confirmed → shows "تم دفع الطلب"
+        var deliveryType: String?   // "standard" | "express" | "pickup" (optional for back-compat)
     }
     var orderNumber: String
     var customerName: String
@@ -35,6 +36,13 @@ func moraLogoImage() -> Image? {
 
 // ── Stage Helpers ──────────────────────────────────────────────────────────────
 let kStageFlow = ["confirmed", "preparing", "shipping", "delivered"]
+// Pickup orders skip the shipping step → 3-step tracker.
+let kPickupStageFlow = ["confirmed", "preparing", "delivered"]
+
+// Returns the ordered step flow for the given delivery type.
+func stageFlow(for deliveryType: String?) -> [String] {
+    return deliveryType == "pickup" ? kPickupStageFlow : kStageFlow
+}
 
 extension String {
     var isExceptionStage: Bool { self == "issue" || self == "cancelled" }
@@ -76,10 +84,15 @@ extension String {
         }
     }
 
-    // Expected-arrival pill text (non-terminal stages only).
-    var stageEta: String? {
+    // Expected-arrival pill text (non-terminal stages only), delivery-type aware.
+    func stageEta(for deliveryType: String?) -> String? {
+        // Pickup orders are prepared in-store — no delivery ETA.
+        if deliveryType == "pickup" { return nil }
         switch self {
-        case "confirmed", "preparing": return "متوقع الوصول خلال 3-5 أيام"
+        case "confirmed", "preparing":
+            return deliveryType == "express"
+                ? "متوقع الوصول خلال 1-3 أيام"
+                : "متوقع الوصول خلال 1-5 أيام"
         case "shipping":               return "متوقع الوصول خلال 1-2 يوم"
         default:                       return nil
         }
@@ -208,12 +221,14 @@ struct RateButton: View {
 // ── Dribbble-style 4-step tracker (icons + connecting line + checkmarks) ──────────
 struct OrderStepsBar: View {
     let stage: String
+    var deliveryType: String? = nil
     var nodeSize: CGFloat = 30
 
     var body: some View {
-        let current = stage.stageIndex
+        let flow = stageFlow(for: deliveryType)
+        let current = flow.firstIndex(of: stage) ?? 0
         HStack(spacing: 0) {
-            ForEach(Array(kStageFlow.enumerated()), id: \.offset) { idx, step in
+            ForEach(Array(flow.enumerated()), id: \.offset) { idx, step in
                 let done = idx < current
                 let active = idx == current
                 // Node
@@ -226,7 +241,7 @@ struct OrderStepsBar: View {
                         .foregroundColor(done || active ? .white : .white.opacity(0.40))
                 }
                 // Connector (not after the last node)
-                if idx < kStageFlow.count - 1 {
+                if idx < flow.count - 1 {
                     Rectangle()
                         .fill(idx < current ? kAccent : kTrack)
                         .frame(height: 3)
@@ -278,7 +293,7 @@ struct OrderBannerView: View {
                         .foregroundColor(kDim)
                         .multilineTextAlignment(.trailing)
                         .lineLimit(2)
-                    if let eta = stage.stageEta {
+                    if let eta = stage.stageEta(for: context.state.deliveryType) {
                         EtaPill(text: eta)
                     }
                 }
@@ -288,7 +303,7 @@ struct OrderBannerView: View {
             if isException {
                 ContactButton(tint: stage.stageAccent)
             } else {
-                OrderStepsBar(stage: stage)
+                OrderStepsBar(stage: stage, deliveryType: context.state.deliveryType)
                 if stage == "delivered" { RateButton() }
             }
         }
@@ -348,7 +363,7 @@ struct MoraOrderActivityWidget: Widget {
                         if isException {
                             ContactButton(tint: stage.stageAccent).padding(.horizontal, 4).padding(.bottom, 4)
                         } else {
-                            OrderStepsBar(stage: stage, nodeSize: 26)
+                            OrderStepsBar(stage: stage, deliveryType: context.state.deliveryType, nodeSize: 26)
                                 .padding(.horizontal, 4)
                             if stage == "delivered" {
                                 RateButton().padding(.horizontal, 4).padding(.bottom, 4)

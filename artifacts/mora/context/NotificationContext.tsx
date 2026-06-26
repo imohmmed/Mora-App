@@ -55,6 +55,7 @@ type NotificationCtx = {
     message?: string;
     priceText?: string;
     isPaid?: boolean;
+    deliveryType?: string;
   }) => void;
   updateOrderStage: (stage: OrderStage, message?: string) => void;
   endOrderActivity: () => void;
@@ -91,6 +92,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const cartReminderRef   = useRef<string | null>(null);
   const liveActivityIdRef = useRef<string | null>(null);   // Native iOS Live Activity ID
   const orderIdRef        = useRef<string | null>(null);   // API order ID for server calls
+  const deliveryTypeRef   = useRef<string>("standard");    // standard | express | pickup
 
   // ── Init: request permission ────────────────────────────────────────────────
   useEffect(() => {
@@ -163,7 +165,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         );
         // Also update the native Live Activity if running
         if (liveActivityIdRef.current) {
-          MoraLiveActivity.updateActivity(liveActivityIdRef.current, stage, msg, false);
+          MoraLiveActivity.updateActivity(liveActivityIdRef.current, stage, msg, false, deliveryTypeRef.current);
         }
       }
     });
@@ -255,8 +257,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     message?: string;
     priceText?: string;
     isPaid?: boolean;
+    deliveryType?: string;
   }) => {
     const stage = params.stage ?? "confirmed";
+    deliveryTypeRef.current = params.deliveryType ?? "standard";
 
     // Update React state
     setOrderActivity({
@@ -278,6 +282,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         message: params.message,
         priceText: params.priceText,
         isPaid: params.isPaid,
+        deliveryType: deliveryTypeRef.current,
       });
       if (activityId) {
         liveActivityIdRef.current = activityId;
@@ -308,14 +313,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       prev ? { ...prev, stage, message } : null
     );
     if (liveActivityIdRef.current) {
-      MoraLiveActivity.updateActivity(liveActivityIdRef.current, stage, message, isPaid ?? false);
+      MoraLiveActivity.updateActivity(liveActivityIdRef.current, stage, message, isPaid ?? false, deliveryTypeRef.current);
     }
   }, []);
 
   const endOrderActivity = useCallback((isPaid?: boolean) => {
     setOrderActivity((prev) => prev ? { ...prev, active: false } : null);
     if (liveActivityIdRef.current) {
-      MoraLiveActivity.endActivity(liveActivityIdRef.current, "delivered", "Order delivered!", isPaid ?? false);
+      MoraLiveActivity.endActivity(liveActivityIdRef.current, "delivered", "Order delivered!", isPaid ?? false, deliveryTypeRef.current);
       liveActivityIdRef.current = null;
     }
     orderIdRef.current = null;

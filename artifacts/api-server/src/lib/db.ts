@@ -141,6 +141,7 @@ db.exec(`
     is_abandoned             INTEGER NOT NULL DEFAULT 0,
     live_activity_push_token TEXT,
     delivery_stage           TEXT NOT NULL DEFAULT 'confirmed',
+    delivery_type            TEXT NOT NULL DEFAULT 'standard',
     payment_method           TEXT NOT NULL DEFAULT 'cod',
     created_at               TEXT NOT NULL,
     updated_at               TEXT NOT NULL
@@ -1052,6 +1053,7 @@ const runMigration = (sql: string) => {
 };
 runMigration(`ALTER TABLE orders ADD COLUMN live_activity_push_token TEXT`);
 runMigration(`ALTER TABLE orders ADD COLUMN delivery_stage TEXT NOT NULL DEFAULT 'confirmed'`);
+runMigration(`ALTER TABLE orders ADD COLUMN delivery_type TEXT NOT NULL DEFAULT 'standard'`);
 runMigration(`ALTER TABLE orders ADD COLUMN payment_method TEXT NOT NULL DEFAULT 'cod'`);
 runMigration(`ALTER TABLE products ADD COLUMN gender TEXT NOT NULL DEFAULT 'all'`);
 runMigration(`ALTER TABLE story_items ADD COLUMN gender TEXT NOT NULL DEFAULT 'all'`);

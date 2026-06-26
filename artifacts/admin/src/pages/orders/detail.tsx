@@ -90,7 +90,11 @@ export default function OrderDetail() {
   if (!order) return <div className="p-6 md:p-8">{t("orders.notFound")}</div>;
 
   const stage: string = order.deliveryStage || "confirmed";
-  const currentIndex = STAGES.findIndex((s) => s.key === stage);
+  const deliveryType: string = order.deliveryType || "standard";
+  const isPickup = deliveryType === "pickup";
+  // Pickup orders skip the shipping stage → 3-step flow.
+  const stages = isPickup ? STAGES.filter((s) => s.key !== "shipping") : STAGES;
+  const currentIndex = stages.findIndex((s) => s.key === stage);
   const isIssue = stage === "issue";
   const isCancelled = stage === "cancelled";
   const isException = isIssue || isCancelled;
@@ -105,7 +109,7 @@ export default function OrderDetail() {
     ? { label: t("orders.badge.cancelled"), cls: "bg-red-100 text-red-700 hover:bg-red-100" }
     : isIssue
     ? { label: t("orders.badge.issue"), cls: "bg-amber-100 text-amber-700 hover:bg-amber-100" }
-    : { label: t(STAGES[Math.max(0, currentIndex)]?.labelKey ?? "orders.stage.confirmed"), cls: "" };
+    : { label: t(stages[Math.max(0, currentIndex)]?.labelKey ?? "orders.stage.confirmed"), cls: "" };
 
   return (
     <PageContainer className="max-w-5xl">
@@ -119,6 +123,10 @@ export default function OrderDetail() {
             {order.orderNumber}
             <Badge className={stageBadge.cls} variant={stageBadge.cls ? undefined : "default"}>
               {stageBadge.label}
+            </Badge>
+            <Badge variant="outline" className="gap-1 font-normal">
+              {isPickup ? <MapPin className="w-3 h-3" /> : <Truck className="w-3 h-3" />}
+              {t(`orders.delivery.${deliveryType}`)}
             </Badge>
           </h1>
           {order.createdAt && (
@@ -144,7 +152,7 @@ export default function OrderDetail() {
               {/* Progress bar — normal flow */}
               {!isException && (
                 <div className="flex items-start">
-                  {STAGES.map((s, i) => {
+                  {stages.map((s, i) => {
                     const reached = currentIndex >= i;
                     const Icon = s.icon;
                     return (
@@ -199,7 +207,7 @@ export default function OrderDetail() {
               <div>
                 <p className="text-xs font-semibold text-muted-foreground mb-2">{t("orders.changeStageHint")}</p>
                 <div className="flex flex-wrap gap-2">
-                  {STAGES.map((s) => {
+                  {stages.map((s) => {
                     const active = stage === s.key;
                     return (
                       <Button

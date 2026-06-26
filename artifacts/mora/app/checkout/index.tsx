@@ -23,6 +23,7 @@ import { useCart } from "@/context/CartContext";
 import { useNotification } from "@/context/NotificationContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { formatIQD } from "@/lib/format";
+import { deliveryMessage } from "@/lib/deliveryMessage";
 import { fetchShippingZones, fetchShippingRules, type ShippingZone, type ShippingRule } from "@/lib/api";
 import { GlassBackButton } from "@/components/GlassBackButton";
 
@@ -79,6 +80,13 @@ const si = StyleSheet.create({
 
 type FormState = { name: string; phone: string; city: string; district: string; street: string; note: string };
 type PayMethod = "cod" | "online";
+type DeliveryType = "standard" | "express" | "pickup";
+
+const DELIVERY_OPTIONS: { key: DeliveryType; icon: string; titleAr: string; titleEn: string; subAr: string; subEn: string }[] = [
+  { key: "standard", icon: "🚚", titleAr: "توصيل عادي",   titleEn: "Standard delivery", subAr: "يتم توصيل الطلب من 1-5 ايام", subEn: "Delivered in 1-5 days" },
+  { key: "express",  icon: "⚡", titleAr: "توصيل سريع",   titleEn: "Express delivery",  subAr: "يتم توصيل الطلب من 1-3 ايام", subEn: "Delivered in 1-3 days" },
+  { key: "pickup",   icon: "🏬", titleAr: "استلام من المحل", titleEn: "Store pickup",   subAr: "يتم استلام الطلب من محلنا في بغداد", subEn: "Pick up from our store in Baghdad" },
+];
 
 export default function CheckoutScreen() {
   const { resolvedScheme } = useTheme();
@@ -93,6 +101,7 @@ export default function CheckoutScreen() {
 
   const [form, setForm] = useState<FormState>({ name: "", phone: "", city: "", district: "", street: "", note: "" });
   const [payMethod, setPayMethod] = useState<PayMethod>("cod");
+  const [deliveryType, setDeliveryType] = useState<DeliveryType>("standard");
   const [submitting, setSubmitting] = useState(false);
   const [showGovPicker, setShowGovPicker] = useState(false);
 
@@ -215,6 +224,7 @@ export default function CheckoutScreen() {
         shippingAddress: { fullName: form.name, phone: form.phone, city: form.city, district: form.district, street: form.street },
         lineItems: items.map((i) => ({ productId: i.productId, variantId: i.variantId, title: i.title, quantity: i.quantity, price: i.price, size: i.size, color: i.color, image: i.image })),
         paymentMethod: payMethod,
+        deliveryType,
         note: form.note,
       }),
     });
@@ -289,7 +299,8 @@ export default function CheckoutScreen() {
               orderNumber: info.orderNumber,
               customerName: form.name || user?.firstName || "Customer",
               stage: "confirmed",
-              message: "",
+              message: deliveryMessage(deliveryType, "confirmed"),
+              deliveryType,
               priceText: formatIQD(info.orderTotal),
               isPaid: true,
             });
@@ -349,7 +360,8 @@ export default function CheckoutScreen() {
           orderNumber: info.orderNumber,
           customerName: form.name || user?.firstName || "Customer",
           stage: "confirmed",
-          message: "",
+          message: deliveryMessage(deliveryType, "confirmed"),
+          deliveryType,
           priceText: formatIQD(info.orderTotal),
           isPaid: true,
         });
@@ -373,7 +385,8 @@ export default function CheckoutScreen() {
         orderNumber: created.orderNumber,
         customerName: form.name || user?.firstName || "Customer",
         stage: "confirmed",
-        message: "",
+        message: deliveryMessage(deliveryType, "confirmed"),
+        deliveryType,
         priceText: formatIQD(created.orderTotal),
         isPaid: false,
       });
@@ -577,6 +590,40 @@ export default function CheckoutScreen() {
               </View>
             </Pressable>
 
+          </View>
+
+          {/* ── Delivery Options ── */}
+          <Text style={[st.sectionLbl, { color: sub }, isAr && { textAlign: "right" }]}>
+            {isAr ? "خيارات التوصيل" : "DELIVERY OPTIONS"}
+          </Text>
+          <View style={[st.group, { backgroundColor: card }]}>
+            {DELIVERY_OPTIONS.map((opt, idx) => {
+              const selected = deliveryType === opt.key;
+              return (
+                <React.Fragment key={opt.key}>
+                  {idx > 0 && <Divider color={divClr} isAr={isAr} />}
+                  <Pressable
+                    onPress={() => setDeliveryType(opt.key)}
+                    style={[st.payCard, isAr && { flexDirection: "row-reverse" }, selected && { backgroundColor: isDark ? "rgba(2,116,193,0.08)" : "rgba(2,116,193,0.06)" }]}
+                  >
+                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: selected ? "rgba(2,116,193,0.18)" : (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"), alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ fontSize: 22 }}>{opt.icon}</Text>
+                    </View>
+                    <View style={{ flex: 1, gap: 3 }}>
+                      <Text style={[st.payTitle, { color: selected ? PRIMARY : textCol }, isAr && { textAlign: "right" }]}>
+                        {isAr ? opt.titleAr : opt.titleEn}
+                      </Text>
+                      <Text style={[st.paySub, { color: sub }, isAr && { textAlign: "right" }]}>
+                        {isAr ? opt.subAr : opt.subEn}
+                      </Text>
+                    </View>
+                    <View style={[st.radio, { borderColor: selected ? PRIMARY : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
+                      {selected && <View style={[st.radioDot, { backgroundColor: PRIMARY }]} />}
+                    </View>
+                  </Pressable>
+                </React.Fragment>
+              );
+            })}
           </View>
 
           {/* ── Order Note ── */}

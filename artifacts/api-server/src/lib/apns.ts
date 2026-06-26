@@ -65,6 +65,8 @@ export interface LiveActivityPayload {
   stage: LiveActivityStage;
   message?: string;
   isPaid?: boolean;
+  /** "standard" | "express" | "pickup" — drives widget step-count + ETA */
+  deliveryType?: string;
   /** Dismiss after delivery (ISO string or seconds from now) */
   dismissAt?: Date;
 }
@@ -96,6 +98,7 @@ export async function sendLiveActivityPush(
         stage:   payload.stage,
         message: payload.message ?? "",
         isPaid:  payload.isPaid ?? false,
+        deliveryType: payload.deliveryType ?? "standard",
       },
       ...(isEnd ? { "dismissal-date": ts + dismissSecs } : {}),
     },
@@ -158,6 +161,7 @@ export interface LiveActivityStartPayload {
   message?: string;
   priceText?: string;
   isPaid?: boolean;
+  deliveryType?: string;
   alertTitle?: string;
   alertBody?: string;
 }
@@ -181,6 +185,7 @@ export async function sendLiveActivityStartPush(
         stage:   payload.stage,
         message: payload.message ?? "",
         isPaid:  payload.isPaid ?? false,
+        deliveryType: payload.deliveryType ?? "standard",
       },
       "attributes-type": "MoraOrderActivityAttributes",
       attributes: {

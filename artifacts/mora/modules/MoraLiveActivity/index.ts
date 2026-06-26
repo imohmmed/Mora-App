@@ -35,10 +35,11 @@ interface MoraLiveActivityNative {
     stage: string,
     message: string,
     priceText: string,
-    isPaid: boolean
+    isPaid: boolean,
+    deliveryType: string
   ): string | null;
-  updateActivity(activityId: string, stage: string, message: string, isPaid: boolean): void;
-  endActivity(activityId: string, stage: string, message: string, isPaid: boolean): void;
+  updateActivity(activityId: string, stage: string, message: string, isPaid: boolean, deliveryType: string): void;
+  endActivity(activityId: string, stage: string, message: string, isPaid: boolean, deliveryType: string): void;
   getPushToken(activityId: string): Promise<string | null>;
   getPushToStartToken(): Promise<string | null>;
   getActiveActivityIds(): string[];
@@ -105,6 +106,7 @@ export const MoraLiveActivity = {
     message?: string;
     priceText?: string;
     isPaid?: boolean;
+    deliveryType?: string;
   }): string | null {
     if (!native) return null;
     try {
@@ -114,7 +116,8 @@ export const MoraLiveActivity = {
         params.stage ?? "confirmed",
         params.message ?? "",
         params.priceText ?? "",
-        params.isPaid ?? false
+        params.isPaid ?? false,
+        params.deliveryType ?? "standard"
       );
     } catch {
       return null;
@@ -122,13 +125,13 @@ export const MoraLiveActivity = {
   },
 
   /** Update the stage and message of an active Live Activity */
-  updateActivity(activityId: string, stage: OrderStage, message?: string, isPaid?: boolean): void {
-    native?.updateActivity(activityId, stage, message ?? "", isPaid ?? false);
+  updateActivity(activityId: string, stage: OrderStage, message?: string, isPaid?: boolean, deliveryType?: string): void {
+    native?.updateActivity(activityId, stage, message ?? "", isPaid ?? false, deliveryType ?? "standard");
   },
 
   /** End a Live Activity (shows final state then dismisses) */
-  endActivity(activityId: string, stage: OrderStage, message?: string, isPaid?: boolean): void {
-    native?.endActivity(activityId, stage, message ?? "", isPaid ?? false);
+  endActivity(activityId: string, stage: OrderStage, message?: string, isPaid?: boolean, deliveryType?: string): void {
+    native?.endActivity(activityId, stage, message ?? "", isPaid ?? false, deliveryType ?? "standard");
   },
 
   /** Get APNs push token for server-side updates. Call after startActivity. */

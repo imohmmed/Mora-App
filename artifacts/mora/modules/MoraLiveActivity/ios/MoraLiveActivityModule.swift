@@ -8,6 +8,7 @@ struct MoraOrderActivityAttributes: ActivityAttributes {
         var stage: String
         var message: String
         var isPaid: Bool
+        var deliveryType: String?   // "standard" | "express" | "pickup" (optional for back-compat)
     }
     var orderNumber: String
     var customerName: String
@@ -96,7 +97,8 @@ public class MoraLiveActivityModule: Module {
             stage: String,
             message: String,
             priceText: String,
-            isPaid: Bool
+            isPaid: Bool,
+            deliveryType: String
         ) -> String? in
             guard #available(iOS 16.1, *) else { return nil }
             guard ActivityAuthorizationInfo().areActivitiesEnabled else { return nil }
@@ -110,7 +112,8 @@ public class MoraLiveActivityModule: Module {
                 let state = MoraOrderActivityAttributes.ContentState(
                     stage: stage,
                     message: message,
-                    isPaid: isPaid
+                    isPaid: isPaid,
+                    deliveryType: deliveryType
                 )
                 let activity = try Activity<MoraOrderActivityAttributes>.request(
                     attributes: attrs,
@@ -125,19 +128,19 @@ public class MoraLiveActivityModule: Module {
         }
 
         // Update an existing Live Activity
-        Function("updateActivity") { (activityId: String, stage: String, message: String, isPaid: Bool) in
+        Function("updateActivity") { (activityId: String, stage: String, message: String, isPaid: Bool, deliveryType: String) in
             guard #available(iOS 16.1, *) else { return }
             if let activity = self.activities[activityId] as? Activity<MoraOrderActivityAttributes> {
-                let state = MoraOrderActivityAttributes.ContentState(stage: stage, message: message, isPaid: isPaid)
+                let state = MoraOrderActivityAttributes.ContentState(stage: stage, message: message, isPaid: isPaid, deliveryType: deliveryType)
                 Task { await activity.update(using: state) }
             }
         }
 
         // End a Live Activity
-        Function("endActivity") { (activityId: String, stage: String, message: String, isPaid: Bool) in
+        Function("endActivity") { (activityId: String, stage: String, message: String, isPaid: Bool, deliveryType: String) in
             guard #available(iOS 16.1, *) else { return }
             if let activity = self.activities[activityId] as? Activity<MoraOrderActivityAttributes> {
-                let state = MoraOrderActivityAttributes.ContentState(stage: stage, message: message, isPaid: isPaid)
+                let state = MoraOrderActivityAttributes.ContentState(stage: stage, message: message, isPaid: isPaid, deliveryType: deliveryType)
                 Task { await activity.end(using: state, dismissalPolicy: .default) }
                 self.activities.removeValue(forKey: activityId)
             }

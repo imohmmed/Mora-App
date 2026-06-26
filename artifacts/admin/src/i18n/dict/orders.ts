@@ -43,6 +43,9 @@ export const orders = {
     "orders.stage.cancel": "إلغاء الطلب",
 
     "orders.statusTitle": "حالة الطلب",
+    "orders.delivery.standard": "توصيل عادي",
+    "orders.delivery.express": "توصيل سريع",
+    "orders.delivery.pickup": "استلام من المحل",
     "orders.badge.cancelled": "تم الإلغاء",
     "orders.badge.issue": "مشكلة",
     "orders.cancelledTitle": "تم إلغاء الطلب",
@@ -126,6 +129,9 @@ export const orders = {
     "orders.stage.cancel": "Cancel order",
 
     "orders.statusTitle": "Order Status",
+    "orders.delivery.standard": "Standard Delivery",
+    "orders.delivery.express": "Express Delivery",
+    "orders.delivery.pickup": "Store Pickup",
     "orders.badge.cancelled": "Cancelled",
     "orders.badge.issue": "Issue",
     "orders.cancelledTitle": "Order cancelled",
