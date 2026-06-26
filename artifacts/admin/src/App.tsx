@@ -38,6 +38,8 @@ import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
 import ShippingSettings from "@/pages/settings/shipping";
 import Notifications from "@/pages/notifications";
+import CannedResponses from "@/pages/chat/canned-responses";
+import Automation from "@/pages/chat/automation";
 
 function handleApiError(error: unknown) {
   const status = (error as { status?: number } | null)?.status;
@@ -98,6 +100,8 @@ function Router() {
         <Route path="/content/menus/:id" component={MenuEditor} />
         <Route path="/content" component={ContentHub} />
         <Route path="/notifications" component={Notifications} />
+        <Route path="/chat/canned-responses" component={CannedResponses} />
+        <Route path="/chat/automation" component={Automation} />
         <Route path="/settings/shipping" component={ShippingSettings} />
         <Route path="/settings" component={Settings} />
         <Route component={NotFound} />

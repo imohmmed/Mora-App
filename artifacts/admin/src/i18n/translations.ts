@@ -15,10 +15,11 @@ import { content } from "./dict/content";
 import { notifications } from "./dict/notifications";
 import { settings } from "./dict/settings";
 import { login } from "./dict/login";
+import { chat } from "./dict/chat";
 
 const modules = [
   common, dashboard, analytics, orders, products, collections,
-  customers, discounts, content, notifications, settings, login,
+  customers, discounts, content, notifications, settings, login, chat,
 ];
 
 function merge(lang: "ar" | "en"): Record<string, string> {

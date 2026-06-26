@@ -17,6 +17,7 @@ import adminAuthRouter from "./admin-auth.js";
 import webhooksRouter from "./webhooks.js";
 import uploadsRouter from "./uploads.js";
 import shippingRouter from "./shipping.js";
+import chatAdminRouter from "./chat-admin.js";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(contentRouter);
 router.use(notificationsRouter);
 router.use(webhooksRouter);
 router.use(shippingRouter);
+router.use(chatAdminRouter);
 
 export default router;

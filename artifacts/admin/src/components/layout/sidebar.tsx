@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, ShoppingCart, Package, Users, FolderTree, Tags, FileText,
   Settings, BarChart3, Warehouse, Bell, Truck, UserSearch, Gift, ChevronLeft,
-  PanelLeftClose, PanelLeft, BellRing,
+  PanelLeftClose, PanelLeft, BellRing, MessageSquareText, Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth, type AdminPermissions } from "@/context/AdminAuthContext";
@@ -53,6 +53,14 @@ const NAV: NavSection[] = [
     permission: "content",
     items: [
       { href: "/content", labelKey: "nav.content", icon: FileText },
+    ],
+  },
+  {
+    labelKey: "nav.section.support",
+    permission: "content",
+    items: [
+      { href: "/chat/canned-responses", labelKey: "nav.cannedResponses", icon: MessageSquareText },
+      { href: "/chat/automation", labelKey: "nav.automation", icon: Zap },
     ],
   },
   {
