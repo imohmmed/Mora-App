@@ -134,4 +134,15 @@ router.post("/rating", async (req, res) => {
   }
 });
 
+// POST /api/chat/webhook — Chatwoot outgoing webhook receiver
+// Chatwoot calls this URL when it sends a message to the customer.
+// We return 200 immediately so Chatwoot stops marking messages as "Failed to send".
+// (Our app polls the API directly, so we don't need the webhook payload for delivery.)
+router.post("/webhook", (req, res) => {
+  // Log event type for debugging (no sensitive data).
+  const event = (req.body as Record<string, unknown>)?.event ?? "unknown";
+  console.log(`[chatwoot-webhook] event=${event}`);
+  res.status(200).json({ received: true });
+});
+
 export default router;
