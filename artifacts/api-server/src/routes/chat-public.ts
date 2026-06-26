@@ -1,4 +1,5 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
+import crypto from "crypto";
 
 const router = Router();
 
@@ -135,11 +136,25 @@ router.post("/rating", async (req, res) => {
 });
 
 // POST /api/chat/webhook — Chatwoot outgoing webhook receiver
-// Chatwoot calls this URL when it sends a message to the customer.
-// We return 200 immediately so Chatwoot stops marking messages as "Failed to send".
-// (Our app polls the API directly, so we don't need the webhook payload for delivery.)
-router.post("/webhook", (req, res) => {
-  // Log event type for debugging (no sensitive data).
+// Chatwoot calls this when it sends a message. We verify the HMAC signature using
+// CHATWOOT_WEBHOOK_SECRET and return 200 so Chatwoot stops marking messages as
+// "Failed to send". (Our app polls the API directly for delivery.)
+router.post("/webhook", (req: Request & { rawBody?: Buffer }, res) => {
+  const secret = process.env.CHATWOOT_WEBHOOK_SECRET || "";
+  const sig = req.headers["x-chatwoot-signature"] as string | undefined;
+
+  // Verify HMAC-SHA256 signature if the secret is configured.
+  if (secret && sig && req.rawBody) {
+    const expected = crypto
+      .createHmac("sha256", secret)
+      .update(req.rawBody)
+      .digest("hex");
+    if (sig !== expected) {
+      res.status(401).json({ error: "Invalid signature" });
+      return;
+    }
+  }
+
   const event = (req.body as Record<string, unknown>)?.event ?? "unknown";
   console.log(`[chatwoot-webhook] event=${event}`);
   res.status(200).json({ received: true });
