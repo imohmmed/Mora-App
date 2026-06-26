@@ -902,38 +902,21 @@ export default function ChatScreen() {
     });
   }, []);
 
-  const refresh = useCallback(async () => {
-    const s = sessionRef.current;
-    if (!s) return;
-    try {
-      const msgs = await listMessages(s);
-      mergeMessages(msgs);
-      setError(false);
-    } catch (e) {
-      if (isNotFound(e)) {
-        await clearSession();
-        setSession(null);
-        setMessages([]);
-        setNeedsForm(!user);
-      } else {
-        setError(true);
-      }
-    }
-  }, [mergeMessages, user]);
+  // Use a ref so refresh can call startSession without circular dep.
+  const startSessionRef = useRef<() => Promise<void>>(async () => {});
 
   const startSession = useCallback(
-    async (name?: string, email?: string) => {
+    async () => {
       setStarting(true);
       setError(false);
       try {
         const s = await ensureSession({
-          name: name || (user ? `${user.firstName} ${user.lastName}`.trim() : undefined),
-          email: email || user?.email,
-          phone: user?.phone,
+          name: user ? `${user.firstName} ${user.lastName}`.trim() || undefined : undefined,
+          email: user?.email || undefined,
+          phone: user?.phone || undefined,
         });
         setSession(s);
         sessionRef.current = s;
-        setNeedsForm(false);
         const msgs = await listMessages(s);
         mergeMessages(msgs);
         scrollToEnd(false);
@@ -946,7 +929,32 @@ export default function ChatScreen() {
     [user, mergeMessages, scrollToEnd]
   );
 
-  // Boot: restore an existing session, else auto-start (logged in) or show form.
+  // Keep the ref in sync so refresh can call the latest version.
+  useEffect(() => {
+    startSessionRef.current = startSession;
+  }, [startSession]);
+
+  const refresh = useCallback(async () => {
+    const s = sessionRef.current;
+    if (!s) return;
+    try {
+      const msgs = await listMessages(s);
+      mergeMessages(msgs);
+      setError(false);
+    } catch (e) {
+      if (isNotFound(e)) {
+        // Session gone — silently reset and restart.
+        await clearSession();
+        setSession(null);
+        setMessages([]);
+        startSessionRef.current();
+      } else {
+        setError(true);
+      }
+    }
+  }, [mergeMessages]);
+
+  // Boot: restore existing session OR auto-start immediately (no form ever).
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -964,19 +972,19 @@ export default function ChatScreen() {
           }
         } catch (e) {
           if (isNotFound(e)) {
+            // Session expired — silently create a fresh one.
             await clearSession();
             if (alive) {
               setSession(null);
-              setNeedsForm(!user);
+              setBooting(false);
+              startSession();
             }
           }
         }
-      } else if (user) {
+      } else {
+        // No saved session — always auto-start (use account info if available).
         setBooting(false);
         startSession();
-      } else {
-        setBooting(false);
-        setNeedsForm(true);
       }
     })();
     return () => {
@@ -1088,19 +1096,15 @@ export default function ChatScreen() {
     );
   }
 
-  if (needsForm) {
+  // Session is still being created — show a centered spinner.
+  if (starting && !session) {
     return (
-      <RNAnimated.View
-        style={[styles.fill, { backgroundColor: p.bg, paddingBottom: kbAnim }]}
-      >
+      <View style={[styles.fill, { backgroundColor: p.bg, paddingTop: insets.top }]}>
         <Header p={p} t={t} top={insets.top} />
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingBottom: webReserve + 24 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          <PreChatForm p={p} t={t} lang={lang} onSubmit={startSession} starting={starting} />
-        </ScrollView>
-      </RNAnimated.View>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={PRIMARY} />
+        </View>
+      </View>
     );
   }
 
