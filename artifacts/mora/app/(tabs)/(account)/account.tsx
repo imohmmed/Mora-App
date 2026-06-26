@@ -54,6 +54,8 @@ function GuestScreen({
   const { resolvedScheme } = useTheme();
   const isDark = resolvedScheme === "dark";
   const router = useRouter();
+  const { lang } = useLanguage();
+  const isAr = lang === "ar";
   const topPad = Platform.OS === "web" ? 0 : insets.top;
   const botPad = Platform.OS === "web" ? 90 : insets.bottom;
 
@@ -61,7 +63,9 @@ function GuestScreen({
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         <View style={{ width: 38 }} />
-        <Text style={[styles.acctTitle, { color: colors.foreground }]}>MY ACCOUNT</Text>
+        <Text style={[styles.acctTitle, { color: colors.foreground }]}>
+          {isAr ? "حسابي" : "MY ACCOUNT"}
+        </Text>
         <Pressable style={styles.glassIconBtn} onPress={onOpenSettings} testID="btn-settings">
           {isIOS26Plus
             ? <LiquidGlassBg />
@@ -81,9 +85,11 @@ function GuestScreen({
           </View>
         </View>
 
-        <Text style={[styles.comeOnIn, { color: colors.foreground }]}>COME ON IN</Text>
+        <Text style={[styles.comeOnIn, { color: colors.foreground }]}>
+          {isAr ? "أهلاً بك" : "COME ON IN"}
+        </Text>
         <Text style={[styles.comeOnInSub, { color: colors.mutedForeground }]}>
-          View orders and update your details
+          {isAr ? "تابع طلباتك وحدّث بياناتك" : "View orders and update your details"}
         </Text>
 
         <View style={styles.authBtns}>
@@ -95,7 +101,9 @@ function GuestScreen({
             onPress={onSignIn}
             testID="btn-sign-in"
           >
-            <Text style={[styles.signInBtnText, { color: "#FFFFFF" }]}>SIGN IN</Text>
+            <Text style={[styles.signInBtnText, { color: "#FFFFFF" }]}>
+              {isAr ? "تسجيل الدخول" : "SIGN IN"}
+            </Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [
@@ -106,12 +114,16 @@ function GuestScreen({
             testID="btn-join"
           >
             {useGlassSurface && <GlassBase isDark={isDark} intensity={45} />}
-            <Text style={[styles.joinBtnText, { color: PRIMARY }]}>JOIN</Text>
+            <Text style={[styles.joinBtnText, { color: PRIMARY }]}>
+              {isAr ? "إنشاء حساب" : "JOIN"}
+            </Text>
           </Pressable>
         </View>
 
         <Pressable style={[styles.helpRow, { bottom: botPad + 24 }]} onPress={() => router.push("/chat" as any)}>
-          <Text style={[styles.helpText, { color: colors.mutedForeground }]}>Need help?</Text>
+          <Text style={[styles.helpText, { color: colors.mutedForeground }]}>
+            {isAr ? "تحتاج مساعدة؟" : "Need help?"}
+          </Text>
           <Feather name="help-circle" size={18} color={colors.mutedForeground} />
         </Pressable>
       </View>
