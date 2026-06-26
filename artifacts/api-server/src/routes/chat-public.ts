@@ -30,6 +30,29 @@ async function cw(
   return { status: res.status, body };
 }
 
+// GET /api/chat/inbox — public, returns greeting_message from Chatwoot inbox (agent API)
+router.get("/inbox", async (_req, res) => {
+  if (!configured()) {
+    res.json({ data: { greeting_enabled: false, greeting_message: null } });
+    return;
+  }
+  try {
+    // inbox_id=2 is the "Mora App" API channel inbox
+    const INBOX_ID = process.env.CHATWOOT_INBOX_ID || "2";
+    const r = await cw(`/inboxes/${INBOX_ID}`);
+    const d = (r.body || {}) as Record<string, unknown>;
+    res.json({
+      data: {
+        greeting_enabled: Boolean(d.greeting_enabled),
+        greeting_message: typeof d.greeting_message === "string" ? d.greeting_message : null,
+        name: typeof d.name === "string" ? d.name : "Support",
+      },
+    });
+  } catch {
+    res.json({ data: { greeting_enabled: false, greeting_message: null } });
+  }
+});
+
 // GET /api/chat/canned — public, no auth needed
 // Returns canned responses for display as quick-reply chips in the customer chat.
 router.get("/canned", async (_req, res) => {
@@ -102,7 +125,6 @@ router.post("/rating", async (req, res) => {
       method: "POST",
       body: {
         content: `📋 تقييم العميل: ${note}`,
-        message_type: "outgoing",
         private: true,
       },
     });

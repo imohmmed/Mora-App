@@ -34,6 +34,7 @@ import {
   ChatSession,
   clearSession,
   ensureSession,
+  fetchInboxGreeting,
   isNotFound,
   listMessages,
   loadSession,
@@ -371,14 +372,17 @@ function EmptyWelcome({
   t,
   onHint,
   cannedItems,
+  greeting,
 }: {
   p: Palette;
   t: (typeof STR)["en"];
   onHint: (s: string) => void;
   cannedItems: CannedItem[];
+  greeting?: string | null;
 }) {
   const hints = [t.hintOrders, t.hintProduct, t.hintReturn];
   const allChips = [...hints];
+  const welcomeText = greeting || t.welcome;
   return (
     <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.welcomeWrap}>
       <View style={styles.row}>
@@ -391,7 +395,7 @@ function EmptyWelcome({
             { backgroundColor: p.bubbleAgent, borderBottomLeftRadius: 6, maxWidth: "82%" },
           ]}
         >
-          <Text style={[styles.bubbleText, { color: p.bubbleAgentText }]}>{t.welcome}</Text>
+          <Text style={[styles.bubbleText, { color: p.bubbleAgentText }]}>{welcomeText}</Text>
         </View>
       </View>
       <View style={styles.hintWrap}>
@@ -422,6 +426,44 @@ function EmptyWelcome({
           </Animated.View>
         ))}
       </View>
+    </Animated.View>
+  );
+}
+
+// Canned chips shown below the last agent message inside the conversation
+function CannedSuggestions({
+  p,
+  items,
+  onSelect,
+}: {
+  p: Palette;
+  items: CannedItem[];
+  onSelect: (content: string) => void;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <Animated.View entering={FadeInDown.delay(100).duration(350)} style={styles.cannedSuggestWrap}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.cannedSuggestScroll}
+        keyboardShouldPersistTaps="always"
+      >
+        {items.map((item) => (
+          <Pressable
+            key={`cs-${item.id}`}
+            onPress={() => onSelect(item.content)}
+            style={({ pressed }) => [
+              styles.cannedSuggestChip,
+              { borderColor: PRIMARY, backgroundColor: `${PRIMARY}12`, opacity: pressed ? 0.65 : 1 },
+            ]}
+          >
+            <Text style={[styles.cannedSuggestText, { color: PRIMARY }]} numberOfLines={1}>
+              {item.short_code}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
     </Animated.View>
   );
 }
@@ -748,6 +790,12 @@ export default function ChatScreen() {
     );
     return () => { show.remove(); hide.remove(); };
   }, [kbAnim]);
+
+  // ── Greeting from Chatwoot inbox settings ────────────────────────────────────
+  const [greetingText, setGreetingText] = useState<string | null>(null);
+  useEffect(() => {
+    fetchInboxGreeting().then((g) => { if (g) setGreetingText(g); }).catch(() => {});
+  }, []);
 
   // ── Canned responses ─────────────────────────────────────────────────────────
   const [cannedItems, setCannedItems] = useState<CannedItem[]>([]);
@@ -1091,9 +1139,25 @@ export default function ChatScreen() {
         onContentSizeChange={() => scrollToEnd(false)}
       >
         {messages.length === 0 ? (
-          <EmptyWelcome p={p} t={t} onHint={handleSend} cannedItems={cannedItems} />
+          <EmptyWelcome p={p} t={t} onHint={handleSend} cannedItems={cannedItems} greeting={greetingText} />
         ) : (
-          items
+          <>
+            {items}
+            {/* Show canned chips below the last agent message when customer hasn't replied yet */}
+            {(() => {
+              const lastMsg = messages[messages.length - 1];
+              const customerHasReplied = messages.some((m) => m.author === "me");
+              if (
+                cannedItems.length > 0 &&
+                lastMsg?.author === "agent" &&
+                !customerHasReplied &&
+                !convResolved
+              ) {
+                return <CannedSuggestions p={p} items={cannedItems} onSelect={handleSend} />;
+              }
+              return null;
+            })()}
+          </>
         )}
         {error && (
           <Pressable onPress={refresh} style={styles.errorRow}>
@@ -1394,6 +1458,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   modalBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
+
+  cannedSuggestWrap: { marginTop: 6, marginBottom: 2 },
+  cannedSuggestScroll: { paddingHorizontal: 38, gap: 8, paddingVertical: 4 },
+  cannedSuggestChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 16,
+    borderWidth: 1,
+    maxWidth: 200,
+  },
+  cannedSuggestText: { fontFamily: "Inter_500Medium", fontSize: 13 },
 
   actionsSheet: {
     borderTopLeftRadius: 24,

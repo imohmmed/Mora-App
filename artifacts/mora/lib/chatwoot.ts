@@ -237,6 +237,22 @@ export async function sendAttachment(
   return normalize((await res.json()) as RawMessage);
 }
 
+/** Fetch the inbox greeting message via our api-server (uses agent token internally). */
+export async function fetchInboxGreeting(): Promise<string | null> {
+  try {
+    const domain = typeof process !== "undefined" ? process.env.EXPO_PUBLIC_DOMAIN : undefined;
+    const base = domain ? `https://${domain}/api` : "/api";
+    const res = await fetch(`${base}/chat/inbox`);
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data?: { greeting_enabled?: boolean; greeting_message?: string | null } };
+    const d = json?.data;
+    if (d?.greeting_enabled && d?.greeting_message) return d.greeting_message;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function markSeen(s: ChatSession): Promise<void> {
   try {
     await fetch(
