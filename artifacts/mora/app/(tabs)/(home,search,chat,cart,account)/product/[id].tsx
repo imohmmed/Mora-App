@@ -752,6 +752,56 @@ export default function ProductDetailScreen() {
             </AccordionSection>
           )}
 
+          {/* ── Complete the Set ── */}
+          {(product.completeTheSet?.length ?? 0) > 0 && (
+            <View style={[styles.sectionWrap, { borderTopColor: colors.border }]}>
+              <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
+                COMPLETE THE SET
+              </Text>
+              <View style={{ gap: 10, paddingHorizontal: 16 }}>
+                {product.completeTheSet!.map((item) => {
+                  const hasDiscount = item.comparePrice != null && item.comparePrice > item.price;
+                  return (
+                    <Pressable
+                      key={item.id}
+                      style={[styles.ctsRow, { borderColor: colors.border, backgroundColor: colors.background }]}
+                      onPress={() => router.push(`/product/${item.id}`)}
+                    >
+                      <View style={[styles.ctsImg, { backgroundColor: cardColor(item.id) }]}>
+                        <Image
+                          source={{ uri: item.images?.[0] }}
+                          style={StyleSheet.absoluteFill}
+                          contentFit="cover"
+                        />
+                      </View>
+                      <View style={styles.ctsInfo}>
+                        <Text style={[styles.ctsTitle, { color: colors.foreground }]} numberOfLines={2}>
+                          {item.title}
+                        </Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          <Text style={[styles.ctsPrice, { color: PRIMARY }]}>
+                            {formatIQD(item.price)}
+                          </Text>
+                          {hasDiscount && (
+                            <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: "#E53935", textDecorationLine: "line-through" }}>
+                              {formatIQD(item.comparePrice!)}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                      <Pressable
+                        style={styles.ctsAddBtn}
+                        onPress={(e) => { e.stopPropagation?.(); setQuickAddRelated(item); }}
+                      >
+                        <Text style={styles.ctsAddText}>Add</Text>
+                      </Pressable>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
           {/* ── Related Products ── */}
           {(relatedItems.length > 0 || loadingMore) && (
             <View style={[styles.sectionWrap, { borderTopColor: colors.border }]}>
@@ -985,4 +1035,22 @@ const styles = StyleSheet.create({
   },
   relatedTitle: { fontFamily: "Inter_500Medium", fontSize: 12, lineHeight: 17 },
   relatedPrice: { fontFamily: "Inter_700Bold", fontSize: 13 },
+
+  /* Complete the Set */
+  ctsRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    borderRadius: 10, borderWidth: 1, padding: 10, overflow: "hidden",
+  },
+  ctsImg: {
+    width: 72, height: 90, borderRadius: 6, overflow: "hidden",
+    flexShrink: 0, position: "relative",
+  },
+  ctsInfo: { flex: 1, gap: 4 },
+  ctsTitle: { fontFamily: "Inter_500Medium", fontSize: 13, lineHeight: 18 },
+  ctsPrice: { fontFamily: "Inter_700Bold", fontSize: 14 },
+  ctsAddBtn: {
+    backgroundColor: "#111111", paddingHorizontal: 16, paddingVertical: 10,
+    borderRadius: 100, alignItems: "center", flexShrink: 0,
+  },
+  ctsAddText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 12, letterSpacing: 0.5 },
 });

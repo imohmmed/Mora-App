@@ -140,6 +140,11 @@ export const products = {
 
     "products.section.tags": "الوسوم",
     "products.tags.placeholder": "أضف وسماً...",
+
+    "products.section.completeSet": "اكمل الطقم",
+    "products.completeSet.desc": "اختار منتجات تظهر في قسم 'اكمل الطقم' داخل صفحة هذا المنتج",
+    "products.completeSet.searchPlaceholder": "ابحث باسم المنتج...",
+    "products.completeSet.empty": "ما اضيف منتجات بعد",
   },
   en: {
     // List page
@@ -282,5 +287,10 @@ export const products = {
 
     "products.section.tags": "Tags",
     "products.tags.placeholder": "Add a tag...",
+
+    "products.section.completeSet": "Complete the Set",
+    "products.completeSet.desc": "Pick products to show in the 'Complete the Set' section on this product page",
+    "products.completeSet.searchPlaceholder": "Search by product name...",
+    "products.completeSet.empty": "No products added yet",
   },
 } as const;

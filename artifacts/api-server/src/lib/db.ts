@@ -44,6 +44,13 @@ db.exec(`
     PRIMARY KEY (collection_slug, product_id)
   );
 
+  CREATE TABLE IF NOT EXISTS product_complete_set (
+    product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    related_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (product_id, related_id)
+  );
+
   CREATE TABLE IF NOT EXISTS variants (
     id            TEXT PRIMARY KEY,
     product_id    TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,

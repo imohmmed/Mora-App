@@ -19,6 +19,7 @@ export type Product = {
   variants: Variant[];
   optionDefinitions?: OptionDefinition[];
   videoUrl?: string;
+  completeTheSet?: Product[];
 };
 
 export type Variant = {

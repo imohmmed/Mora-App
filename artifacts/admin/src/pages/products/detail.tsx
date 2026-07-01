@@ -98,6 +98,12 @@ export default function ProductDetail() {
   const [variants, setVariants] = useState<VariantRow[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [collectionsLoaded, setCollectionsLoaded] = useState(false);
+  const [completeTheSetIds, setCompleteTheSetIds] = useState<string[]>([]);
+  const [csProductsMap, setCsProductsMap] = useState<Record<string, { title: string; image?: string }>>({});
+  const [csLoaded, setCsLoaded] = useState(false);
+  const [csQuery, setCsQuery] = useState("");
+  const [csResults, setCsResults] = useState<{ id: string; title: string; images: string[] }[]>([]);
+  const [csSearching, setCsSearching] = useState(false);
 
   useEffect(() => {
     if (!product) return;
@@ -141,6 +147,32 @@ export default function ProductDetail() {
       setCollectionsLoaded(true);
     });
   }, [id]);
+
+  useEffect(() => {
+    if (!id || csLoaded) return;
+    adminFetch<Array<{ id: string; title: string; images: string[] }>>(`/admin/products/${id}/complete-the-set`).then((r) => {
+      const items = r.data ?? [];
+      setCompleteTheSetIds(items.map((p) => p.id));
+      const map: Record<string, { title: string; image?: string }> = {};
+      items.forEach((p) => { map[p.id] = { title: p.title, image: (p.images ?? [])[0] }; });
+      setCsProductsMap(map);
+      setCsLoaded(true);
+    });
+  }, [id]);
+
+  useEffect(() => {
+    const q = csQuery.trim();
+    if (!q) { setCsResults([]); return; }
+    const timer = setTimeout(async () => {
+      setCsSearching(true);
+      try {
+        const r = await adminFetch<Array<{ id: string; title: string; images: string[] }>>(`/admin/products?q=${encodeURIComponent(q)}`);
+        setCsResults(r.data ?? []);
+      } catch {}
+      setCsSearching(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [csQuery]);
 
   const priceNum = parseFloat(price) || 0;
   const costNum = parseFloat(cost) || 0;
@@ -212,6 +244,11 @@ export default function ProductDetail() {
       await adminFetch(`/admin/products/${id}/collections`, {
         method: "PUT",
         body: JSON.stringify({ collectionIds: selectedCollections }),
+      });
+
+      await adminFetch(`/admin/products/${id}/complete-the-set`, {
+        method: "PUT",
+        body: JSON.stringify({ relatedIds: completeTheSetIds }),
       });
 
       invalidate();
@@ -302,6 +339,76 @@ export default function ProductDetail() {
                 onChange={setSelectedCollections}
                 productId={id ?? ""}
               />
+            </CardContent>
+          </Card>
+
+          {/* Complete the Set */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("products.section.completeSet")}</CardTitle>
+              <CardDescription>{t("products.completeSet.desc")}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="relative">
+                <Input
+                  placeholder={t("products.completeSet.searchPlaceholder")}
+                  value={csQuery}
+                  onChange={(e) => setCsQuery(e.target.value)}
+                  onBlur={() => setTimeout(() => setCsResults([]), 150)}
+                />
+                {csSearching && (
+                  <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">...</span>
+                )}
+                {csResults.length > 0 && csQuery && (
+                  <div className="absolute z-50 w-full mt-1 border rounded-md bg-popover shadow-md max-h-60 overflow-auto">
+                    {csResults
+                      .filter((p) => !completeTheSetIds.includes(p.id) && p.id !== id)
+                      .map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-start"
+                          onMouseDown={() => {
+                            setCompleteTheSetIds((prev) => [...prev, p.id]);
+                            setCsProductsMap((prev) => ({ ...prev, [p.id]: { title: p.title, image: (p.images ?? [])[0] } }));
+                            setCsQuery("");
+                            setCsResults([]);
+                          }}
+                        >
+                          {(p.images ?? [])[0] && (
+                            <img src={(p.images ?? [])[0]} alt="" className="w-8 h-10 object-cover rounded flex-shrink-0" />
+                          )}
+                          <span className="truncate">{p.title}</span>
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              {completeTheSetIds.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("products.completeSet.empty")}</p>
+              ) : (
+                <div className="space-y-2">
+                  {completeTheSetIds.map((pid) => {
+                    const p = csProductsMap[pid];
+                    return (
+                      <div key={pid} className="flex items-center gap-2 p-2 rounded-md border bg-muted/20">
+                        {p?.image && (
+                          <img src={p.image} alt="" className="w-8 h-10 object-cover rounded flex-shrink-0" />
+                        )}
+                        <span className="flex-1 text-sm truncate">{p?.title ?? pid}</span>
+                        <button
+                          type="button"
+                          onClick={() => setCompleteTheSetIds((prev) => prev.filter((i) => i !== pid))}
+                          className="text-muted-foreground hover:text-destructive transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 

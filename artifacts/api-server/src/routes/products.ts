@@ -41,7 +41,10 @@ router.get("/store/products/:id", (req, res) => {
   const product = parseOne(db.prepare(`SELECT * FROM products WHERE id=?`).get(req.params["id"]) as Row | undefined);
   if (!product) { res.status(404).json({ data: null, meta: {}, error: "Product not found" }); return; }
   const variants = parseRows(db.prepare(`SELECT * FROM variants WHERE product_id=?`).all(req.params["id"]) as Row[]);
-  res.json({ data: { ...product, variants }, meta: {}, error: null });
+  const csRows = db.prepare(`SELECT p.* FROM products p JOIN product_complete_set cs ON cs.related_id=p.id WHERE cs.product_id=? AND p.status='active' ORDER BY cs.sort_order`).all(req.params["id"]) as Row[];
+  const getVars = db.prepare(`SELECT * FROM variants WHERE product_id=?`);
+  const completeTheSet = parseRows(csRows).map((p) => ({ ...p, variants: parseRows(getVars.all(p["id"] as string) as Row[]) }));
+  res.json({ data: { ...product, variants, completeTheSet }, meta: {}, error: null });
 });
 
 router.get("/store/products/related/:id", (req, res) => {
@@ -135,7 +138,9 @@ router.get("/admin/products/:id", (req, res) => {
   const product = parseOne(db.prepare(`SELECT * FROM products WHERE id=?`).get(req.params["id"]) as Row | undefined);
   if (!product) { res.status(404).json({ data: null, meta: {}, error: "Product not found" }); return; }
   const variants = parseRows(db.prepare(`SELECT * FROM variants WHERE product_id=?`).all(req.params["id"]) as Row[]);
-  res.json({ data: { ...product, variants }, meta: {}, error: null });
+  const csRows = db.prepare(`SELECT p.id, p.title, p.images FROM products p JOIN product_complete_set cs ON cs.related_id=p.id WHERE cs.product_id=? ORDER BY cs.sort_order`).all(req.params["id"]) as Row[];
+  const completeTheSet = parseRows(csRows);
+  res.json({ data: { ...product, variants, completeTheSet }, meta: {}, error: null });
 });
 
 router.post("/admin/products", (req, res) => {
@@ -173,6 +178,22 @@ router.put("/admin/products/:id", (req, res) => {
 });
 
 // ─── Admin: product collections & variant sync ────────────────────────────────
+
+router.get("/admin/products/:id/complete-the-set", requireAdmin, (req, res) => {
+  const rows = db.prepare(`SELECT p.id, p.title, p.images FROM products p JOIN product_complete_set cs ON cs.related_id=p.id WHERE cs.product_id=? ORDER BY cs.sort_order`).all(req.params["id"]) as Row[];
+  res.json({ data: parseRows(rows), meta: {}, error: null });
+});
+
+router.put("/admin/products/:id/complete-the-set", requireAdmin, (req, res) => {
+  const productId = req.params["id"];
+  if (!db.prepare(`SELECT id FROM products WHERE id=?`).get(productId)) { res.status(404).json({ data: null, meta: {}, error: "Product not found" }); return; }
+  const b = req.body as { relatedIds?: string[] };
+  const ids = (b.relatedIds ?? []).filter((rid) => rid !== productId);
+  db.prepare(`DELETE FROM product_complete_set WHERE product_id=?`).run(productId);
+  const ins = db.prepare(`INSERT OR IGNORE INTO product_complete_set (product_id, related_id, sort_order) VALUES (?, ?, ?)`);
+  ids.forEach((rid, i) => ins.run(productId, rid, i));
+  res.json({ data: { relatedIds: ids }, meta: {}, error: null });
+});
 
 router.get("/admin/products/:id/collections", requireAdmin, (req, res) => {
   const productId = req.params["id"];
