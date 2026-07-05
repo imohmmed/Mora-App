@@ -760,7 +760,9 @@ export default function ChatScreen() {
   const t = STR[lang === "ar" ? "ar" : "en"];
 
   const webReserve = Platform.OS === "web" ? 84 + (insets.bottom || 0) : 0;
-  const composerBottom = Platform.OS === "web" ? webReserve : insets.bottom;
+  const [kbVisible, setKbVisible] = useState(false);
+  const composerBottom =
+    Platform.OS === "web" ? webReserve : kbVisible ? 0 : insets.bottom;
 
   // ── Keyboard avoidance (no jumping) ──────────────────────────────────────────
   const kbAnim = useRef(new RNAnimated.Value(0)).current;
@@ -789,17 +791,19 @@ export default function ChatScreen() {
       });
     const show = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
-      (e) => animCfg(e).start()
+      (e) => { setKbVisible(true); animCfg(e).start(); }
     );
     const hide = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
-      (e) =>
+      (e) => {
+        setKbVisible(false);
         RNAnimated.timing(kbAnim, {
           toValue: 0,
           duration: e.duration || 200,
           easing: Easing.bezier(0.17, 0.59, 0.4, 0.77),
           useNativeDriver: false,
-        }).start()
+        }).start();
+      }
     );
     return () => { show.remove(); hide.remove(); };
   }, [kbAnim]);
