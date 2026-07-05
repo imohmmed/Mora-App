@@ -102,11 +102,20 @@ export type SpecialCollection = {
 export type StoryItem = {
   id: string;
   title: string;
+  titleAr?: string;
   imageUrl: string;
   linkUrl: string;
   sortOrder: number;
   gender?: string;
   collectionId?: string | null;
+};
+
+export type StorySibling = {
+  id: string;
+  title: string;
+  titleAr?: string;
+  imageUrl: string;
+  collectionId: string | null;
 };
 
 export type StoryRow = {

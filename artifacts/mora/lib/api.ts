@@ -1,4 +1,4 @@
-import type { Product, Order, OrderItem, Collection, SpecialCollection, Banner, StoryRow } from "./types";
+import type { Product, Order, OrderItem, Collection, SpecialCollection, Banner, StoryRow, StorySibling } from "./types";
 import { notifyUnauthorized } from "../context/AuthContext";
 
 type ApiResponse<T> = { data: T; meta: Record<string, unknown>; error: string | null };
@@ -115,6 +115,10 @@ export async function fetchSpecialCollections(): Promise<SpecialCollection[]> {
 
 export async function fetchStories(): Promise<StoryRow[]> {
   return apiFetch<StoryRow[]>("/store/stories");
+}
+
+export async function fetchStorySiblings(collectionId: string): Promise<StorySibling[]> {
+  return apiFetch<StorySibling[]>(`/store/story-siblings/${collectionId}`);
 }
 
 export async function fetchCollectionProducts(params: {

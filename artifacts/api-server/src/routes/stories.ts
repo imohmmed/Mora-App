@@ -76,6 +76,33 @@ router.get("/store/collection-products", (req, res) => {
   res.json({ data: products, meta: { total: products.length }, error: null });
 });
 
+// ─── Store: sibling story items (same row) for a given collection ─────────
+router.get("/store/story-siblings/:collectionId", (req, res) => {
+  const { collectionId } = req.params;
+  const item = db.prepare(
+    `SELECT id, row_id FROM story_items WHERE collection_id=? AND status='active'`
+  ).get(collectionId) as { id: string; row_id: string } | undefined;
+
+  if (!item) return res.json({ data: [], meta: {}, error: null });
+
+  const siblings = db.prepare(
+    `SELECT id, title, title_ar, image_url, collection_id FROM story_items
+     WHERE row_id=? AND status='active' AND id != ? ORDER BY sort_order ASC`
+  ).all(item.row_id, item.id) as { id: string; title: string; title_ar: string; image_url: string; collection_id: string | null }[];
+
+  res.json({
+    data: siblings.map((s) => ({
+      id: s.id,
+      title: s.title,
+      titleAr: s.title_ar ?? "",
+      imageUrl: s.image_url,
+      collectionId: s.collection_id,
+    })),
+    meta: {},
+    error: null,
+  });
+});
+
 // ─── Admin: list rows with items ───────────────────────────────────────────
 router.get("/admin/story-rows", (_req, res) => {
   const rows = db.prepare(

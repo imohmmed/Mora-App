@@ -44,7 +44,7 @@ function StoryCircle({ item }: { item: StoryItem }) {
         }
       }}
     >
-      <View style={[styles.circleOuter, { borderColor: colors.primary }]}>
+      <View style={styles.circleOuter}>
         <View style={[styles.circleInner, { backgroundColor: colors.muted }]}>
           {item.imageUrl ? (
             <Image
@@ -278,8 +278,6 @@ const styles = StyleSheet.create({
     width: CIRCLE + 4,
     height: CIRCLE + 4,
     borderRadius: (CIRCLE + 4) / 2,
-    borderWidth: 2,
-    padding: 2,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -23,13 +23,49 @@ import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { fetchSpecialCollection, fetchCollection, searchProducts, fetchBrowseProducts } from "@/lib/api";
+import { fetchSpecialCollection, fetchCollection, searchProducts, fetchBrowseProducts, fetchStorySiblings } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import { GlassBackButton } from "@/components/GlassBackButton";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
-import type { Product, Variant } from "@/lib/types";
+import type { Product, Variant, StorySibling } from "@/lib/types";
+
+const SIB_CIRCLE = 64;
+const SIB_ITEM_W = SIB_CIRCLE + 14;
+
+function SiblingStories({ siblings }: { siblings: StorySibling[] }) {
+  const router = useRouter();
+  const colors = useColors();
+  const { lang } = useLanguage();
+  if (!siblings.length) return null;
+
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.siblingScroll}
+      decelerationRate="fast"
+    >
+      {siblings.map((s) => (
+        <Pressable
+          key={s.id}
+          style={({ pressed }) => [styles.siblingWrap, { opacity: pressed ? 0.75 : 1 }]}
+          onPress={() => { if (s.collectionId) router.push(`/collection/${s.collectionId}` as any); }}
+        >
+          <View style={[styles.siblingCircle, { backgroundColor: colors.secondary }]}>
+            {s.imageUrl ? (
+              <Image source={{ uri: s.imageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+            ) : null}
+          </View>
+          <Text style={[styles.siblingLabel, { color: colors.foreground }]} numberOfLines={2}>
+            {lang === "ar" && s.titleAr ? s.titleAr : s.title}
+          </Text>
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
+}
 
 const { width } = Dimensions.get("window");
 const HERO_H = 260;
@@ -167,6 +203,13 @@ export default function CollectionScreen() {
     queryKey: ["collection-search", debouncedQ],
     queryFn: () => searchProducts(debouncedQ),
     enabled: debouncedQ.trim().length > 0,
+  });
+
+  const { data: siblings } = useQuery({
+    queryKey: ["story-siblings", slug],
+    queryFn: () => fetchStorySiblings(slug ?? ""),
+    enabled: isRegularCollection,
+    staleTime: 120_000,
   });
 
   const collection = data;
@@ -374,6 +417,11 @@ export default function CollectionScreen() {
             )}
           </View>
         </View>
+
+        {/* Sibling story sections — quick nav to other collections in the same row */}
+        {isRegularCollection && !!siblings?.length && (
+          <SiblingStories siblings={siblings} />
+        )}
 
         {/* Search suggestions / results header */}
         {debouncedQ.trim().length > 0 && (
@@ -598,6 +646,33 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 4,
     borderWidth: 1,
+  },
+
+  /* ── Sibling stories (other collections in same row) ── */
+  siblingScroll: {
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  siblingWrap: {
+    width: SIB_ITEM_W,
+    alignItems: "center",
+    gap: 6,
+  },
+  siblingCircle: {
+    width: SIB_CIRCLE,
+    height: SIB_CIRCLE,
+    borderRadius: SIB_CIRCLE / 2,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  siblingLabel: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 11,
+    textAlign: "center",
+    lineHeight: 14,
+    maxWidth: SIB_ITEM_W,
   },
   chipText: { fontFamily: "Inter_500Medium", fontSize: 13 },
 
