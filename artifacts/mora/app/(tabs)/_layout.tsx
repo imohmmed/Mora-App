@@ -70,7 +70,7 @@ export default function TabLayout() {
         <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="(chat)">
+      <NativeTabs.Trigger name="(chat)" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Label hidden />
         <NativeTabs.Trigger.Icon
           sf={{ default: "message", selected: "message.fill" }}
