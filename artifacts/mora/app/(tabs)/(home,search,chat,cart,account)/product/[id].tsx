@@ -755,8 +755,8 @@ export default function ProductDetailScreen() {
           {/* ── Complete the Set ── */}
           {(product.completeTheSet?.length ?? 0) > 0 && (
             <View style={[styles.sectionWrap, { borderTopColor: colors.border }]}>
-              <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
-                COMPLETE THE SET
+              <Text style={[styles.sectionLabel, { color: colors.foreground }, lang === "ar" && { textAlign: "right" }]}>
+                {lang === "ar" ? "اشتري الاوتفت كامل" : "COMPLETE THE SET"}
               </Text>
               <View style={{ gap: 10, paddingHorizontal: 16 }}>
                 {product.completeTheSet!.map((item) => {
@@ -764,7 +764,7 @@ export default function ProductDetailScreen() {
                   return (
                     <Pressable
                       key={item.id}
-                      style={[styles.ctsRow, { borderColor: colors.border, backgroundColor: colors.background }]}
+                      style={[styles.ctsRow, { borderColor: colors.border, backgroundColor: colors.background }, lang === "ar" && { flexDirection: "row-reverse" }]}
                       onPress={() => router.push(`/product/${item.id}`)}
                     >
                       <View style={[styles.ctsImg, { backgroundColor: cardColor(item.id) }]}>
@@ -775,10 +775,10 @@ export default function ProductDetailScreen() {
                         />
                       </View>
                       <View style={styles.ctsInfo}>
-                        <Text style={[styles.ctsTitle, { color: colors.foreground }]} numberOfLines={2}>
+                        <Text style={[styles.ctsTitle, { color: colors.foreground }, lang === "ar" && { textAlign: "right" }]} numberOfLines={2}>
                           {item.title}
                         </Text>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <View style={{ flexDirection: lang === "ar" ? "row-reverse" : "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                           <Text style={[styles.ctsPrice, { color: PRIMARY }]}>
                             {formatIQD(item.price)}
                           </Text>
@@ -793,7 +793,7 @@ export default function ProductDetailScreen() {
                         style={styles.ctsAddBtn}
                         onPress={(e) => { e.stopPropagation?.(); setQuickAddRelated(item); }}
                       >
-                        <Text style={styles.ctsAddText}>Add</Text>
+                        <Text style={styles.ctsAddText}>{lang === "ar" ? "أضف" : "Add"}</Text>
                       </Pressable>
                     </Pressable>
                   );
