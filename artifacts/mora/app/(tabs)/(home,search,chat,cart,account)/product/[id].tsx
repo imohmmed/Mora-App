@@ -703,55 +703,6 @@ export default function ProductDetailScreen() {
             <ShippingRulesNote style={[styles.deliveryRow, { borderTopColor: colors.border }]} />
           </View>
 
-          {/* ── Instagram Reel ── */}
-          {!!product.videoUrl && (
-            <ReelPlayer url={product.videoUrl} colors={colors} />
-          )}
-
-          {/* ── Description (accordion) ── */}
-          {!!product.description && (
-            <AccordionSection
-              title={lang === "ar" ? "الوصف" : "DESCRIPTION"}
-              colors={colors}
-              initialOpen={true}
-              isAr={lang === "ar"}
-            >
-              <Text style={[styles.descText, { color: colors.mutedForeground }, lang === "ar" && { textAlign: "right" }]}>
-                {product.description}
-              </Text>
-            </AccordionSection>
-          )}
-
-          {/* ── Warranty ── */}
-          {warranty && warranty.items.length > 0 && (
-            <AccordionSection
-              title={lang === "ar" ? "الضمان" : (warranty.title || "WARRANTY")}
-              colors={colors}
-              isAr={lang === "ar"}
-            >
-              <View style={styles.textSection}>
-                {warranty.items.map((item) => (
-                  <TextParagraph key={item.id} item={item} colors={colors} />
-                ))}
-              </View>
-            </AccordionSection>
-          )}
-
-          {/* ── Star Customers ── */}
-          {testimonials && testimonials.items.length > 0 && (
-            <AccordionSection
-              title={lang === "ar" ? "زبائن النجوم ⭐" : (testimonials.title || "STAR CUSTOMERS ⭐")}
-              colors={colors}
-              isAr={lang === "ar"}
-            >
-              <View style={styles.textSection}>
-                {testimonials.items.map((item, i) => (
-                  <TextParagraph key={item.id} item={item} colors={colors} isBold={i === 0} />
-                ))}
-              </View>
-            </AccordionSection>
-          )}
-
           {/* ── Complete the Set ── */}
           {(product.completeTheSet?.length ?? 0) > 0 && (
             <View style={[styles.sectionWrap, { borderTopColor: colors.border }]}>
@@ -800,6 +751,55 @@ export default function ProductDetailScreen() {
                 })}
               </View>
             </View>
+          )}
+
+          {/* ── Instagram Reel ── */}
+          {!!product.videoUrl && (
+            <ReelPlayer url={product.videoUrl} colors={colors} />
+          )}
+
+          {/* ── Description (accordion) ── */}
+          {!!product.description && (
+            <AccordionSection
+              title={lang === "ar" ? "الوصف" : "DESCRIPTION"}
+              colors={colors}
+              initialOpen={true}
+              isAr={lang === "ar"}
+            >
+              <Text style={[styles.descText, { color: colors.mutedForeground }, lang === "ar" && { textAlign: "right" }]}>
+                {product.description}
+              </Text>
+            </AccordionSection>
+          )}
+
+          {/* ── Warranty ── */}
+          {warranty && warranty.items.length > 0 && (
+            <AccordionSection
+              title={lang === "ar" ? "الضمان" : (warranty.title || "WARRANTY")}
+              colors={colors}
+              isAr={lang === "ar"}
+            >
+              <View style={styles.textSection}>
+                {warranty.items.map((item) => (
+                  <TextParagraph key={item.id} item={item} colors={colors} />
+                ))}
+              </View>
+            </AccordionSection>
+          )}
+
+          {/* ── Star Customers ── */}
+          {testimonials && testimonials.items.length > 0 && (
+            <AccordionSection
+              title={lang === "ar" ? "زبائن النجوم ⭐" : (testimonials.title || "STAR CUSTOMERS ⭐")}
+              colors={colors}
+              isAr={lang === "ar"}
+            >
+              <View style={styles.textSection}>
+                {testimonials.items.map((item, i) => (
+                  <TextParagraph key={item.id} item={item} colors={colors} isBold={i === 0} />
+                ))}
+              </View>
+            </AccordionSection>
           )}
 
           {/* ── Related Products ── */}
