@@ -22,10 +22,12 @@ import { format } from "date-fns";
 import { useSearch, useLocation } from "wouter";
 import { useState, useRef, useEffect } from "react";
 import { PageContainer, PageHeader, EmptyState } from "@/components/ui/page-primitives";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { useT } from "@/i18n/LanguageContext";
 
 const adminToken = () => { try { return localStorage.getItem("mora_admin_token") || ""; } catch { return ""; } };
 const AUTH_HEADER = () => ({ Authorization: `Bearer ${adminToken()}`, "Content-Type": "application/json" });
+const stripHtml = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 
 type MetaobjectEntry = { id: string; type: string; fields: Record<string, string> };
 type FileEntry = { id: string; filename: string; size: number; mimeType: string; url: string; createdAt: string };
@@ -1150,7 +1152,7 @@ function ContentSectionsTab() {
                 <div key={item.id} className="flex items-start gap-3 p-3 bg-muted/40 rounded-lg">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm">{item.name}</p>
-                    <p className="text-xs text-muted-foreground line-clamp-1">{item.description || item.text}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{stripHtml(item.text || item.description || "")}</p>
                   </div>
                   {item.type && <Badge variant="outline" className="text-xs capitalize">{item.type}</Badge>}
                   {item.rating != null && (
@@ -1232,10 +1234,16 @@ function ContentSectionsTab() {
                         </div>
                       )}
                     </div>
-                    {editing.key === "warranty" ? (
+                    {(editing.key === "warranty" || editing.key === "testimonials") ? (
                       <div>
-                        <Label className="text-xs">{t("content.sections.f.description")}</Label>
-                        <Input value={item.description ?? ""} onChange={e => updItem(idx, "description", e.target.value)} placeholder={t("content.sections.descriptionPh")} />
+                        <Label className="text-xs">
+                          {editing.key === "warranty" ? t("content.sections.f.description") : t("content.sections.f.review")}
+                        </Label>
+                        <RichTextEditor
+                          value={item.text ?? item.description ?? ""}
+                          onChange={html => updItem(idx, "text", html)}
+                          placeholder={editing.key === "warranty" ? t("content.sections.descriptionPh") : t("content.sections.reviewPh")}
+                        />
                       </div>
                     ) : (
                       <div>

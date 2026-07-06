@@ -35,6 +35,7 @@ import { BlurView } from "expo-blur";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { ShippingRulesNote } from "@/components/ShippingRulesNote";
 import { ReelPlayer } from "@/components/ReelPlayer";
+import RenderHtml from "react-native-render-html";
 import type { ContentSectionItem } from "@/lib/api";
 import type { Variant, Product } from "@/lib/types";
 
@@ -91,18 +92,45 @@ function TextParagraph({
   item,
   colors,
   isBold,
+  contentWidth,
 }: {
   item: ContentSectionItem;
   colors: ReturnType<typeof useColors>;
   isBold?: boolean;
+  contentWidth: number;
 }) {
-  const content = item.text ?? item.name ?? "";
+  const content = item.text ?? item.description ?? item.name ?? "";
   if (!content) return null;
+
+  const isHtml = /<[a-z][\s\S]*>/i.test(content);
+  const baseColor = isBold ? colors.foreground : colors.mutedForeground;
+
+  if (isHtml) {
+    return (
+      <RenderHtml
+        contentWidth={contentWidth}
+        source={{ html: content }}
+        baseStyle={{
+          color: baseColor,
+          fontFamily: isBold ? "Inter_600SemiBold" : "Inter_400Regular",
+          fontSize: 14,
+          lineHeight: 22,
+        }}
+        tagsStyles={{
+          p: { marginTop: 0, marginBottom: 8 },
+          strong: { fontFamily: "Inter_600SemiBold" },
+          b: { fontFamily: "Inter_600SemiBold" },
+        }}
+        enableExperimentalMarginCollapsing
+      />
+    );
+  }
+
   return (
     <Text
       style={[
         styles.textParagraph,
-        { color: isBold ? colors.foreground : colors.mutedForeground },
+        { color: baseColor },
         isBold && { fontFamily: "Inter_600SemiBold" },
       ]}
     >
@@ -781,7 +809,7 @@ export default function ProductDetailScreen() {
             >
               <View style={styles.textSection}>
                 {warranty.items.map((item) => (
-                  <TextParagraph key={item.id} item={item} colors={colors} />
+                  <TextParagraph key={item.id} item={item} colors={colors} contentWidth={screenWidth - 40} />
                 ))}
               </View>
             </AccordionSection>
@@ -796,7 +824,7 @@ export default function ProductDetailScreen() {
             >
               <View style={styles.textSection}>
                 {testimonials.items.map((item, i) => (
-                  <TextParagraph key={item.id} item={item} colors={colors} isBold={i === 0} />
+                  <TextParagraph key={item.id} item={item} colors={colors} isBold={i === 0} contentWidth={screenWidth - 40} />
                 ))}
               </View>
             </AccordionSection>
