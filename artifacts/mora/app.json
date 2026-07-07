@@ -14,8 +14,9 @@
     },
     "ios": {
       "supportsTablet": true,
+      "mac_catalyst_enabled": false,
       "bundleIdentifier": "app.mora1.com",
-      "buildNumber": "15",
+      "buildNumber": "16",
       "appleTeamId": "PM27C7JC3M",
       "usesAppleSignIn": true,
       "associatedDomains": [
