@@ -19,7 +19,7 @@ import {
   BookImage, Layers, Zap, Tag, TrendingUp, Star, Eye, EyeOff, Image as ImageIcon,
   FolderOpen, Pencil, Wand2, LayoutList, Loader2, CheckCircle2, Gift, Settings2,
   User, Droplet, Box, ShoppingBag, Heart, Watch, ShoppingCart, Smile, Sun,
-  Scissors, Award, Camera, Grid3x3,
+  Scissors, Award, Camera, Grid3x3, Upload,
 } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -310,116 +310,101 @@ function MenuTabBarSection() {
   );
 }
 
-// ─── Search Collections (the BROWSE grid on the app's search page) ───────────
+// ─── Search Collections (Browse Sections shown on app search page) ────────────
 
-type SearchCollection = {
-  id: string;
-  nameEn: string;
-  nameAr: string;
-  icon: string;
-  color: string;
-  image?: string;
-  linkType: "category" | "gender" | "sale" | "collection" | "search";
-  linkValue: string;
+type BrowseSection = {
+  slug: string;
+  titleEn: string;
+  titleAr: string;
+  image: string;
+  productCount: number;
 };
-
-const DEFAULT_SEARCH_COLLECTIONS: SearchCollection[] = [
-  { id: "sc_women",  nameEn: "Women",  nameAr: "نساء",    icon: "user",         color: "#F5EBF5", linkType: "gender",   linkValue: "women" },
-  { id: "sc_men",    nameEn: "Men",    nameAr: "رجال",    icon: "user",         color: "#EBF0F5", linkType: "gender",   linkValue: "men" },
-  { id: "sc_beauty", nameEn: "Beauty", nameAr: "تجميل",   icon: "droplet",      color: "#F5F0EB", linkType: "category", linkValue: "beauty" },
-  { id: "sc_shoes",  nameEn: "Shoes",  nameAr: "أحذية",   icon: "box",          color: "#EBF5F0", linkType: "category", linkValue: "shoes" },
-  { id: "sc_bags",   nameEn: "Bags",   nameAr: "حقائب",   icon: "shopping-bag", color: "#F5EBEB", linkType: "category", linkValue: "bags" },
-  { id: "sc_sale",   nameEn: "Sale",   nameAr: "تخفيضات", icon: "tag",          color: "#FFF3E0", linkType: "sale",     linkValue: "" },
-];
-
-const SC_ICON_OPTIONS: { name: string; Comp: React.ComponentType<{ className?: string }> }[] = [
-  { name: "user", Comp: User }, { name: "droplet", Comp: Droplet }, { name: "box", Comp: Box },
-  { name: "shopping-bag", Comp: ShoppingBag }, { name: "tag", Comp: Tag }, { name: "heart", Comp: Heart },
-  { name: "star", Comp: Star }, { name: "gift", Comp: Gift }, { name: "watch", Comp: Watch },
-  { name: "shopping-cart", Comp: ShoppingCart }, { name: "zap", Comp: Zap }, { name: "smile", Comp: Smile },
-  { name: "sun", Comp: Sun }, { name: "scissors", Comp: Scissors }, { name: "award", Comp: Award },
-  { name: "camera", Comp: Camera },
-];
 
 function SearchCollectionsSection() {
   const { t } = useT();
   const [sectionOpen, setSectionOpen] = useState(false);
-  const [cards, setCards] = useState<SearchCollection[]>(DEFAULT_SEARCH_COLLECTIONS);
-  const [sectionId, setSectionId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [sections, setSections] = useState<BrowseSection[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [savingSlug, setSavingSlug] = useState<string | null>(null);
+  const [uploadingSlug, setUploadingSlug] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const { data: sections, isLoading } = useQuery<{ id: string; key: string; items: SearchCollection[] }[]>({
-    queryKey: ["admin-content-sections"],
-    queryFn: () => apiFetch<{ id: string; key: string; items: SearchCollection[] }[]>("/admin/content-sections"),
-    staleTime: 10_000,
-  });
-
-  const { data: cols = [] } = useQuery<Collection[]>({
-    queryKey: ["admin-collections-hub"],
-    queryFn: () => apiFetch<Collection[]>("/admin/collections"),
-    staleTime: 30_000,
-  });
+  const loadSections = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch<BrowseSection[]>("/admin/browse-collections");
+      setSections(data);
+    } catch { /* ignore */ }
+    finally { setLoading(false); }
+  }, []);
 
   useEffect(() => {
-    if (!sections) return;
-    const section = sections.find((s) => s.key === "search_collections");
-    if (section) {
-      setSectionId(section.id);
-      if (section.items?.length) setCards(section.items as SearchCollection[]);
-    }
-  }, [sections]);
+    if (sectionOpen) loadSections();
+  }, [sectionOpen, loadSections]);
 
-  const update = (index: number, field: keyof SearchCollection, value: string) => {
-    setCards((prev) => prev.map((c, i) => i === index ? { ...c, [field]: value } : c));
-    setSaved(false);
-  };
-  const moveUp = (i: number) => {
-    if (i === 0) return;
-    setCards((prev) => { const n = [...prev]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; return n; });
-    setSaved(false);
-  };
-  const moveDown = (i: number) => {
-    if (i === cards.length - 1) return;
-    setCards((prev) => { const n = [...prev]; [n[i], n[i + 1]] = [n[i + 1], n[i]]; return n; });
-    setSaved(false);
-  };
-  const removeCard = (i: number) => {
-    setCards((prev) => prev.filter((_, idx) => idx !== i));
-    setSaved(false);
-  };
-  const addCard = () => {
-    setCards((prev) => [...prev, {
-      id: `sc_${Date.now()}`, nameEn: "New", nameAr: "جديد",
-      icon: "tag", color: "#F0F0F0", linkType: "category", linkValue: "",
-    }]);
-    setSaved(false);
-  };
-
-  const saveAll = async () => {
-    setSaving(true);
+  const handleAdd = async () => {
     try {
-      if (sectionId) {
-        await apiFetch(`/admin/content-sections/${sectionId}`, {
-          method: "PUT",
-          body: JSON.stringify({ items: cards }),
-        });
-      } else {
-        const result = await apiFetch<{ id: string }>("/admin/content-sections", {
-          method: "POST",
-          body: JSON.stringify({ key: "search_collections", title: "Search Collections", items: cards, status: "active" }),
-        });
-        if ((result as any)?.id) setSectionId((result as any).id);
-      }
-      setSaved(true);
-      toast({ title: t("toast.saved"), description: t("searchCol.saved.desc") });
-      setTimeout(() => setSaved(false), 3000);
+      const data = await apiFetch<BrowseSection>("/admin/browse-collections", {
+        method: "POST",
+        body: JSON.stringify({ titleEn: "New Section", titleAr: "قسم جديد" }),
+      });
+      setSections((prev) => [...prev, { ...data, productCount: 0 }]);
     } catch (e) {
       toast({ title: t("toast.error"), description: (e as Error).message, variant: "destructive" });
-    } finally {
-      setSaving(false);
     }
+  };
+
+  const handleDelete = async (slug: string) => {
+    try {
+      await apiFetch(`/admin/browse-collections/${slug}`, { method: "DELETE" });
+      setSections((prev) => prev.filter((s) => s.slug !== slug));
+    } catch (e) {
+      toast({ title: t("toast.error"), description: (e as Error).message, variant: "destructive" });
+    }
+  };
+
+  const handleFieldChange = (slug: string, field: "titleEn" | "titleAr", value: string) => {
+    setSections((prev) => prev.map((s) => s.slug === slug ? { ...s, [field]: value } : s));
+  };
+
+  const handleSave = async (slug: string) => {
+    const sec = sections.find((s) => s.slug === slug);
+    if (!sec) return;
+    setSavingSlug(slug);
+    try {
+      await apiFetch(`/admin/browse-collections/${slug}/meta`, {
+        method: "PUT",
+        body: JSON.stringify({ titleEn: sec.titleEn, titleAr: sec.titleAr, image: sec.image }),
+      });
+      toast({ title: t("toast.saved") });
+    } catch (e) {
+      toast({ title: t("toast.error"), description: (e as Error).message, variant: "destructive" });
+    } finally { setSavingSlug(null); }
+  };
+
+  const handleImageUpload = async (slug: string, file: File) => {
+    setUploadingSlug(slug);
+    try {
+      const form = new FormData();
+      form.append("image", file);
+      const res = await fetch(`${API}/admin/uploads`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${adminAuthToken()}` },
+        body: form,
+      });
+      const json = await res.json() as { data?: { url: string }; error?: string };
+      if (!json.data?.url) throw new Error(json.error ?? "Upload failed");
+      const url = json.data.url;
+      setSections((prev) => prev.map((s) => s.slug === slug ? { ...s, image: url } : s));
+      const sec = sections.find((s) => s.slug === slug);
+      await apiFetch(`/admin/browse-collections/${slug}/meta`, {
+        method: "PUT",
+        body: JSON.stringify({ titleEn: sec?.titleEn, titleAr: sec?.titleAr, image: url }),
+      });
+      toast({ title: t("toast.saved") });
+    } catch (e) {
+      toast({ title: t("toast.error"), description: (e as Error).message, variant: "destructive" });
+    } finally { setUploadingSlug(null); }
   };
 
   return (
@@ -436,171 +421,124 @@ function SearchCollectionsSection() {
           <p className="font-bold text-base">{t("searchCol.title")}</p>
           <p className="text-xs text-muted-foreground">{t("searchCol.hint")}</p>
         </div>
-        <Badge variant="outline">{t("collections.tabsCount", { n: cards.length })}</Badge>
+        <Badge variant="outline">{t("collections.tabsCount", { n: sections.length })}</Badge>
         {sectionOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground rtl:rotate-180" />}
       </button>
 
       {sectionOpen && (
         <div className="border-t p-5 space-y-4">
-          {/* Live preview */}
-          <div className="bg-white rounded-2xl border-2 border-border overflow-hidden shadow-sm">
-            <div className="bg-muted/40 px-3 py-2 flex items-center gap-2 border-b">
-              <Eye className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-xs font-medium text-muted-foreground">{t("searchCol.preview")}</span>
-            </div>
-            <div className="px-4 py-3 grid grid-cols-3 gap-3">
-              {cards.map((card) => {
-                const Icon = SC_ICON_OPTIONS.find((o) => o.name === card.icon)?.Comp ?? Tag;
-                return (
-                  <div key={card.id} className="rounded-xl overflow-hidden flex flex-col items-center justify-center gap-1.5 aspect-[4/3] relative" style={{ backgroundColor: card.color }}>
-                    {card.image ? (
-                      <img src={card.image} alt={card.nameEn} className="absolute inset-0 w-full h-full object-cover" />
+          {/* Preview grid */}
+          {sections.length > 0 && (
+            <div className="bg-white rounded-2xl border-2 border-border overflow-hidden shadow-sm">
+              <div className="bg-muted/40 px-3 py-2 flex items-center gap-2 border-b">
+                <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">{t("searchCol.preview")}</span>
+              </div>
+              <div className="px-4 py-3 grid grid-cols-3 gap-3">
+                {sections.map((s) => (
+                  <div key={s.slug} className="rounded-xl overflow-hidden aspect-[4/3] bg-muted relative">
+                    {s.image ? (
+                      <img src={s.image} alt={s.titleEn} className="absolute inset-0 w-full h-full object-cover" />
                     ) : (
-                      <>
-                        <Icon className="w-5 h-5 text-foreground/70" />
-                        <span className="text-[11px] font-bold leading-tight text-center">{card.nameAr}</span>
-                        <span className="text-[9px] text-muted-foreground leading-tight">{card.nameEn}</span>
-                      </>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <ImageIcon className="w-6 h-6 text-muted-foreground/30" />
+                      </div>
                     )}
+                    <div className="absolute bottom-0 start-0 end-0 bg-gradient-to-t from-black/60 px-2 py-1.5">
+                      <p className="text-[10px] text-white font-semibold truncate">{s.titleAr || s.titleEn}</p>
+                    </div>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
-          {isLoading ? (
+          {loading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
               <Loader2 className="w-4 h-4 animate-spin" /> {t("common.loading")}
             </div>
           ) : (
-            <div className="space-y-2">
-              {cards.map((card, i) => (
-                <div key={card.id} className="flex flex-wrap items-center gap-2 p-2 border rounded-xl bg-background">
-                  <GripVertical className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-
-                  <Input
-                    value={card.nameAr}
-                    onChange={(e) => update(i, "nameAr", e.target.value)}
-                    className="h-8 text-sm w-28 text-start font-medium"
-                    placeholder={t("searchCol.nameAr")}
-                    dir="rtl"
-                  />
-                  <Input
-                    value={card.nameEn}
-                    onChange={(e) => update(i, "nameEn", e.target.value)}
-                    className="h-8 text-sm w-28"
-                    placeholder={t("searchCol.nameEn")}
-                  />
-
-                  <div className="w-32 shrink-0">
-                    <Select value={card.icon} onValueChange={(v) => update(i, "icon", v)}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {SC_ICON_OPTIONS.map(({ name, Comp }) => (
-                          <SelectItem key={name} value={name}>
-                            <span className="flex items-center gap-2"><Comp className="w-4 h-4" />{name}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <input
-                    type="color"
-                    value={card.color}
-                    onChange={(e) => update(i, "color", e.target.value)}
-                    className="h-8 w-10 rounded border cursor-pointer shrink-0"
-                    title={t("searchCol.color")}
-                  />
-
-                  <Input
-                    value={card.image ?? ""}
-                    onChange={(e) => update(i, "image", e.target.value)}
-                    className="h-8 text-xs w-40 shrink-0"
-                    placeholder="Image URL (optional)"
-                  />
-
-                  <div className="w-32 shrink-0">
-                    <Select value={card.linkType} onValueChange={(v) => update(i, "linkType", v)}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="category">{t("searchCol.link.category")}</SelectItem>
-                        <SelectItem value="gender">{t("searchCol.link.gender")}</SelectItem>
-                        <SelectItem value="sale">{t("searchCol.link.sale")}</SelectItem>
-                        <SelectItem value="collection">{t("searchCol.link.collection")}</SelectItem>
-                        <SelectItem value="search">{t("searchCol.link.search")}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {card.linkType === "gender" && (
-                    <div className="w-28 shrink-0">
-                      <Select value={card.linkValue || "women"} onValueChange={(v) => update(i, "linkValue", v)}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="women">{t("collections.gender.women")}</SelectItem>
-                          <SelectItem value="men">{t("collections.gender.men")}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  {card.linkType === "collection" && (
-                    <div className="w-44 shrink-0">
-                      <Select value={card.linkValue} onValueChange={(v) => update(i, "linkValue", v)}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t("searchCol.pickCollection")} /></SelectTrigger>
-                        <SelectContent>
-                          {cols.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  {(card.linkType === "category" || card.linkType === "search") && (
+            <div className="space-y-3">
+              {sections.map((s) => (
+                <div key={s.slug} className="border rounded-xl p-3 space-y-2.5 bg-background">
+                  <div className="flex gap-2">
                     <Input
-                      value={card.linkValue}
-                      onChange={(e) => update(i, "linkValue", e.target.value)}
-                      className="h-8 text-xs w-32 shrink-0"
-                      placeholder={card.linkType === "category" ? t("collections.category.placeholder") : t("searchCol.keyword")}
+                      value={s.titleAr}
+                      onChange={(e) => handleFieldChange(s.slug, "titleAr", e.target.value)}
+                      className="h-8 text-sm text-start flex-1"
+                      placeholder="اسم عربي"
+                      dir="rtl"
                     />
-                  )}
-
-                  <div className="flex items-center gap-1 shrink-0 ms-auto">
-                    <button type="button" disabled={i === 0} onClick={() => moveUp(i)}
-                      className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-30">
-                      <ChevronUp className="w-4 h-4" />
-                    </button>
-                    <button type="button" disabled={i === cards.length - 1} onClick={() => moveDown(i)}
-                      className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-30">
-                      <ChevronDown className="w-4 h-4" />
-                    </button>
-                    <button type="button" onClick={() => removeCard(i)}
-                      className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <Input
+                      value={s.titleEn}
+                      onChange={(e) => handleFieldChange(s.slug, "titleEn", e.target.value)}
+                      className="h-8 text-sm flex-1"
+                      placeholder="English name"
+                    />
                   </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {s.image ? (
+                      <img src={s.image} className="w-14 h-14 rounded-lg object-cover border" alt="" />
+                    ) : (
+                      <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center border border-dashed">
+                        <ImageIcon className="w-5 h-5 text-muted-foreground/40" />
+                      </div>
+                    )}
+                    <label className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground border rounded-lg px-3 py-1.5 hover:bg-muted/50 transition-colors cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleImageUpload(s.slug, f);
+                          e.target.value = "";
+                        }}
+                      />
+                      {uploadingSlug === s.slug ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      {uploadingSlug === s.slug ? t("action.uploading") : t("action.uploadImage")}
+                    </label>
+                    <div className="ms-auto flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleSave(s.slug)}
+                        disabled={savingSlug === s.slug}
+                        className={cn(
+                          "flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg transition-colors",
+                          savingSlug === s.slug
+                            ? "bg-primary/70 text-primary-foreground cursor-wait"
+                            : "bg-primary text-primary-foreground hover:bg-primary/90"
+                        )}
+                      >
+                        {savingSlug === s.slug ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                        {t("action.saveChanges")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(s.slug)}
+                        className="w-7 h-7 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  {s.productCount > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {s.productCount} product{s.productCount !== 1 ? "s" : ""}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-1">
-            <button type="button" onClick={addCard}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground border rounded-lg px-3 py-1.5 hover:bg-muted/50 transition-colors">
-              <Plus className="w-4 h-4" /> {t("searchCol.addCard")}
-            </button>
-            <button type="button" onClick={saveAll} disabled={saving}
-              className={cn(
-                "flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-lg transition-colors",
-                saving ? "bg-primary/70 text-primary-foreground cursor-wait" :
-                saved  ? "bg-green-500/10 text-green-700 border border-green-200" :
-                         "bg-primary text-primary-foreground hover:bg-primary/90"
-              )}>
-              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> {t("action.saving")}</> :
-               saved  ? <><CheckCircle2 className="w-4 h-4" /> {t("toast.saved")}</> :
-                        t("action.saveChanges")}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground border rounded-lg px-3 py-1.5 hover:bg-muted/50 transition-colors"
+          >
+            <Plus className="w-4 h-4" /> {t("searchCol.addCard")}
+          </button>
         </div>
       )}
     </div>

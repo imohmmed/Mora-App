@@ -92,6 +92,18 @@ router.get("/store/browse-collections/:slug", (req, res) => {
 // ── Admin ───────────────────────────────────────────────────────────────────
 router.use("/admin/browse-collections", requireAdmin);
 
+router.get("/admin/browse-collections/by-product/:productId", (req, res) => {
+  const { productId } = req.params as { productId: string };
+  const slugs = getIndex();
+  const inSections = slugs.filter((slug) => {
+    const row = db.prepare(
+      `SELECT COUNT(*) as n FROM special_collection_items WHERE collection_slug=? AND product_id=?`
+    ).get(slug, productId) as { n: number };
+    return row.n > 0;
+  });
+  res.json({ data: inSections, meta: {}, error: null });
+});
+
 router.get("/admin/browse-collections", (_req, res) => {
   const slugs = getIndex();
   const result = slugs

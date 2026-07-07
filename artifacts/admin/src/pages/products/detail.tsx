@@ -15,12 +15,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Plus, X, Search, Star } from "lucide-react";
+import { ArrowLeft, Save, Plus, X, Search, Star, Upload, Image as ImageIcon, Loader2 as Loader2Icon } from "lucide-react";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { SortableImageGrid } from "@/components/ui/SortableImageGrid";
 import { VariantBuilder, type OptionGroup, type VariantRow } from "@/components/ui/VariantBuilder";
 import { CollectionMultiSelect } from "@/components/ui/CollectionMultiSelect";
-import { adminFetch } from "@/lib/api";
+import { adminFetch, getAdminToken } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { useT } from "@/i18n/LanguageContext";
 
@@ -98,6 +98,9 @@ export default function ProductDetail() {
   const [variants, setVariants] = useState<VariantRow[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [collectionsLoaded, setCollectionsLoaded] = useState(false);
+  const [browseSections, setBrowseSections] = useState<{ slug: string; titleEn: string; titleAr: string; image: string }[]>([]);
+  const [productInBrowse, setProductInBrowse] = useState<string[]>([]);
+  const [browseToggling, setBrowseToggling] = useState<string | null>(null);
   const [completeTheSetIds, setCompleteTheSetIds] = useState<string[]>([]);
   const [csProductsMap, setCsProductsMap] = useState<Record<string, { title: string; image?: string }>>({});
   const [csLoaded, setCsLoaded] = useState(false);
@@ -147,6 +150,36 @@ export default function ProductDetail() {
       setCollectionsLoaded(true);
     });
   }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    Promise.all([
+      adminFetch<{ slug: string; titleEn: string; titleAr: string; image: string }[]>("/admin/browse-collections"),
+      adminFetch<string[]>(`/admin/browse-collections/by-product/${id}`),
+    ]).then(([sectionsRes, inRes]) => {
+      setBrowseSections(sectionsRes.data ?? []);
+      setProductInBrowse(inRes.data ?? []);
+    }).catch(() => {});
+  }, [id]);
+
+  const handleBrowseToggle = async (slug: string) => {
+    if (!id || browseToggling) return;
+    const isIn = productInBrowse.includes(slug);
+    setBrowseToggling(slug);
+    try {
+      if (isIn) {
+        await adminFetch(`/admin/browse-collections/${slug}/products/${id}`, { method: "DELETE" });
+        setProductInBrowse((prev) => prev.filter((s) => s !== slug));
+      } else {
+        await adminFetch(`/admin/browse-collections/${slug}/products`, {
+          method: "POST",
+          body: JSON.stringify({ productId: id }),
+        });
+        setProductInBrowse((prev) => [...prev, slug]);
+      }
+    } catch { /* ignore */ }
+    finally { setBrowseToggling(null); }
+  };
 
   useEffect(() => {
     if (!id || csLoaded) return;
@@ -341,6 +374,62 @@ export default function ProductDetail() {
               />
             </CardContent>
           </Card>
+
+          {/* Browse Sections */}
+          {browseSections.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("products.section.browseSections") ?? "Browse Sections"}</CardTitle>
+                <CardDescription>
+                  {t("products.browseSections.desc") ?? "Add this product to search-page browse sections"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {browseSections.map((sec) => {
+                    const isIn = productInBrowse.includes(sec.slug);
+                    const isToggling = browseToggling === sec.slug;
+                    return (
+                      <button
+                        key={sec.slug}
+                        type="button"
+                        onClick={() => handleBrowseToggle(sec.slug)}
+                        disabled={!!browseToggling}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-colors text-start ${
+                          isIn
+                            ? "bg-primary/5 border-primary/30 hover:bg-primary/10"
+                            : "bg-background border-border hover:bg-muted/50"
+                        } disabled:opacity-60`}
+                      >
+                        {sec.image ? (
+                          <img src={sec.image} alt={sec.titleEn} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                            <ImageIcon className="w-4 h-4 text-muted-foreground/40" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{sec.titleAr || sec.titleEn}</p>
+                          {sec.titleAr && sec.titleEn && (
+                            <p className="text-xs text-muted-foreground truncate">{sec.titleEn}</p>
+                          )}
+                        </div>
+                        {isToggling ? (
+                          <Loader2Icon className="w-4 h-4 animate-spin text-muted-foreground flex-shrink-0" />
+                        ) : (
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                            isIn ? "border-primary bg-primary" : "border-muted-foreground/30"
+                          }`}>
+                            {isIn && <div className="w-2 h-2 rounded-full bg-white" />}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Complete the Set */}
           <Card>
