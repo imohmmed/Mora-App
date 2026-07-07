@@ -40,14 +40,6 @@ const PRIMARY = "#0274C1";
 const FALLBACK_TRENDING: TrendingKeyword[] = ["Blazer", "Linen", "Dress", "Sandals", "Jeans", "Silk"]
   .map((label, i) => ({ id: `tr_${i}`, label }));
 
-const FALLBACK_COLLECTIONS: SearchCollection[] = [
-  { id: "sc_women",  nameEn: "Women",  nameAr: "نساء",    icon: "user",         color: "#F5EBF5", linkType: "gender",   linkValue: "women" },
-  { id: "sc_men",    nameEn: "Men",    nameAr: "رجال",    icon: "user",         color: "#EBF0F5", linkType: "gender",   linkValue: "men" },
-  { id: "sc_beauty", nameEn: "Beauty", nameAr: "تجميل",   icon: "droplet",      color: "#F5F0EB", linkType: "category", linkValue: "beauty" },
-  { id: "sc_shoes",  nameEn: "Shoes",  nameAr: "أحذية",   icon: "box",          color: "#EBF5F0", linkType: "category", linkValue: "shoes" },
-  { id: "sc_bags",   nameEn: "Bags",   nameAr: "حقائب",   icon: "shopping-bag", color: "#F5EBEB", linkType: "category", linkValue: "bags" },
-  { id: "sc_sale",   nameEn: "Sale",   nameAr: "تخفيضات", icon: "tag",          color: "#FFF3E0", linkType: "sale",     linkValue: "" },
-];
 
 const CARD_COLORS = [
   "#E8EDF5", "#F0EBE3", "#E8F0E8", "#F5EDEB",
@@ -205,14 +197,12 @@ export default function SearchScreen() {
   });
   const trendingItems = (contentSections?.trending?.items as unknown as TrendingKeyword[]) ?? [];
   const trending = trendingItems.length ? trendingItems : FALLBACK_TRENDING;
-  const browseItems = (contentSections?.search_collections?.items as unknown as SearchCollection[]) ?? [];
-
   const { data: curatedBrowse } = useQuery({
     queryKey: ["browse-collections"],
     queryFn: fetchBrowseCollections,
     staleTime: 5 * 60_000,
   });
-  const curatedItems: SearchCollection[] = (curatedBrowse ?? []).map((bc) => ({
+  const browseCollections: SearchCollection[] = (curatedBrowse ?? []).map((bc) => ({
     id: bc.slug,
     nameEn: bc.titleEn,
     nameAr: bc.titleAr,
@@ -222,9 +212,6 @@ export default function SearchScreen() {
     linkValue: bc.slug,
     image: bc.image,
   }));
-
-  const baseBrowse = browseItems.length ? browseItems : FALLBACK_COLLECTIONS;
-  const browseCollections = [...baseBrowse, ...curatedItems];
 
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");

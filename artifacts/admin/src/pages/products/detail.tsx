@@ -366,70 +366,63 @@ export default function ProductDetail() {
               <CardTitle>{t("products.section.collections")}</CardTitle>
               <CardDescription>{t("products.collections.desc")}</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <CollectionMultiSelect
                 selected={selectedCollections}
                 onChange={setSelectedCollections}
                 productId={id ?? ""}
               />
+              {browseSections.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-0.5">
+                    {t("products.section.browseSections") ?? "Search Sections"}
+                  </p>
+                  <div className="space-y-2">
+                    {browseSections.map((sec) => {
+                      const isIn = productInBrowse.includes(sec.slug);
+                      const isToggling = browseToggling === sec.slug;
+                      return (
+                        <button
+                          key={sec.slug}
+                          type="button"
+                          onClick={() => handleBrowseToggle(sec.slug)}
+                          disabled={!!browseToggling}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-colors text-start ${
+                            isIn
+                              ? "bg-primary/5 border-primary/30 hover:bg-primary/10"
+                              : "bg-background border-border hover:bg-muted/50"
+                          } disabled:opacity-60`}
+                        >
+                          {sec.image ? (
+                            <img src={sec.image} alt={sec.titleEn} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                              <ImageIcon className="w-4 h-4 text-muted-foreground/40" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{sec.titleAr || sec.titleEn}</p>
+                            {sec.titleAr && sec.titleEn && (
+                              <p className="text-xs text-muted-foreground truncate">{sec.titleEn}</p>
+                            )}
+                          </div>
+                          {isToggling ? (
+                            <Loader2Icon className="w-4 h-4 animate-spin text-muted-foreground flex-shrink-0" />
+                          ) : (
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                              isIn ? "border-primary bg-primary" : "border-muted-foreground/30"
+                            }`}>
+                              {isIn && <div className="w-2 h-2 rounded-full bg-white" />}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
-
-          {/* Browse Sections */}
-          {browseSections.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("products.section.browseSections") ?? "Browse Sections"}</CardTitle>
-                <CardDescription>
-                  {t("products.browseSections.desc") ?? "Add this product to search-page browse sections"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {browseSections.map((sec) => {
-                    const isIn = productInBrowse.includes(sec.slug);
-                    const isToggling = browseToggling === sec.slug;
-                    return (
-                      <button
-                        key={sec.slug}
-                        type="button"
-                        onClick={() => handleBrowseToggle(sec.slug)}
-                        disabled={!!browseToggling}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-colors text-start ${
-                          isIn
-                            ? "bg-primary/5 border-primary/30 hover:bg-primary/10"
-                            : "bg-background border-border hover:bg-muted/50"
-                        } disabled:opacity-60`}
-                      >
-                        {sec.image ? (
-                          <img src={sec.image} alt={sec.titleEn} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
-                        ) : (
-                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                            <ImageIcon className="w-4 h-4 text-muted-foreground/40" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{sec.titleAr || sec.titleEn}</p>
-                          {sec.titleAr && sec.titleEn && (
-                            <p className="text-xs text-muted-foreground truncate">{sec.titleEn}</p>
-                          )}
-                        </div>
-                        {isToggling ? (
-                          <Loader2Icon className="w-4 h-4 animate-spin text-muted-foreground flex-shrink-0" />
-                        ) : (
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                            isIn ? "border-primary bg-primary" : "border-muted-foreground/30"
-                          }`}>
-                            {isIn && <div className="w-2 h-2 rounded-full bg-white" />}
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Complete the Set */}
           <Card>
