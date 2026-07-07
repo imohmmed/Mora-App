@@ -37,6 +37,7 @@ type Banner = {
   title: string;
   subtitle: string;
   imageUrl: string;
+  videoUrl: string;
   bgColor: string;
   linkUrl: string;
   hasButton: boolean;
@@ -51,6 +52,7 @@ const EMPTY_BANNER: Omit<Banner, "id" | "createdAt" | "sortOrder"> = {
   title: "",
   subtitle: "",
   imageUrl: "",
+  videoUrl: "",
   bgColor: "#0274C1",
   linkUrl: "",
   hasButton: true,
@@ -80,9 +82,10 @@ function BannerForm({
   const { t } = useT();
   const isEdit = !!initial;
   const [form, setForm] = useState<typeof EMPTY_BANNER>(initial
-    ? { title: initial.title, subtitle: initial.subtitle, imageUrl: initial.imageUrl, bgColor: initial.bgColor, linkUrl: initial.linkUrl, hasButton: initial.hasButton, buttonText: initial.buttonText, buttonAlign: initial.buttonAlign, status: initial.status }
+    ? { title: initial.title, subtitle: initial.subtitle, imageUrl: initial.imageUrl, videoUrl: initial.videoUrl ?? "", bgColor: initial.bgColor, linkUrl: initial.linkUrl, hasButton: initial.hasButton, buttonText: initial.buttonText, buttonAlign: initial.buttonAlign, status: initial.status }
     : { ...EMPTY_BANNER });
   const [saving, setSaving] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [error, setError] = useState("");
 
   const set = (k: keyof typeof EMPTY_BANNER, v: unknown) => setForm(p => ({ ...p, [k]: v }));
@@ -128,6 +131,48 @@ function BannerForm({
             {form.imageUrl && (
               <div className="relative h-28 rounded-md overflow-hidden border bg-muted">
                 <img src={form.imageUrl} alt="preview" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = "none")} />
+              </div>
+            )}
+          </div>
+          <div className="grid gap-1.5">
+            <Label>{t("content.banners.f.videoUrl")}</Label>
+            <Input value={form.videoUrl} onChange={e => set("videoUrl", e.target.value)} placeholder="https://..." />
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setUploadingVideo(true);
+                    try {
+                      const fd = new FormData();
+                      fd.append("video", file);
+                      const r = await fetch("/api/admin/uploads/video", { method: "POST", headers: AUTH_HEADER(), body: fd });
+                      const json = await r.json();
+                      if (json.data?.url) set("videoUrl", json.data.url);
+                      else throw new Error(json.error ?? "Upload failed");
+                    } catch (err) {
+                      setError((err as Error).message);
+                    } finally {
+                      setUploadingVideo(false);
+                      e.target.value = "";
+                    }
+                  }}
+                />
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border font-medium transition-colors ${uploadingVideo ? "opacity-50 pointer-events-none" : "hover:bg-muted cursor-pointer"}`}>
+                  {uploadingVideo ? "جاري الرفع..." : "رفع فيديو"}
+                </span>
+              </label>
+              {form.videoUrl && (
+                <button type="button" className="text-xs text-destructive hover:underline" onClick={() => set("videoUrl", "")}>حذف الفيديو</button>
+              )}
+            </div>
+            {form.videoUrl && (
+              <div className="relative rounded-md overflow-hidden border bg-black" style={{ height: 120 }}>
+                <video src={form.videoUrl} className="w-full h-full object-cover" muted autoPlay loop playsInline onError={e => (e.currentTarget.style.display = "none")} />
               </div>
             )}
           </div>

@@ -80,6 +80,7 @@ export type Banner = {
   title: string;
   subtitle: string;
   imageUrl: string;
+  videoUrl?: string;
   bgColor: string;
   linkUrl: string;
   hasButton: boolean;

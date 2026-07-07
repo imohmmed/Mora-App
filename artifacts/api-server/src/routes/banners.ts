@@ -21,16 +21,16 @@ router.post("/admin/banners", (req, res) => {
   const b = req.body as Record<string, unknown>;
   const id = `ban_${Date.now()}`;
   const count = ((db.prepare(`SELECT COUNT(*) as n FROM banners`).get() as Row)["n"] as number) ?? 0;
-  db.prepare(`INSERT INTO banners (id,title,subtitle,image_url,bg_color,link_url,has_button,button_text,button_align,sort_order,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
-    .run(id, b["title"] ?? "", b["subtitle"] ?? "", b["imageUrl"] ?? "", b["bgColor"] ?? "#0274C1", b["linkUrl"] ?? "", b["hasButton"] !== false ? 1 : 0, b["buttonText"] ?? "SHOP NOW", b["buttonAlign"] ?? "left", count, b["status"] ?? "active", new Date().toISOString());
+  db.prepare(`INSERT INTO banners (id,title,subtitle,image_url,video_url,bg_color,link_url,has_button,button_text,button_align,sort_order,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, b["title"] ?? "", b["subtitle"] ?? "", b["imageUrl"] ?? "", b["videoUrl"] ?? "", b["bgColor"] ?? "#0274C1", b["linkUrl"] ?? "", b["hasButton"] !== false ? 1 : 0, b["buttonText"] ?? "SHOP NOW", b["buttonAlign"] ?? "left", count, b["status"] ?? "active", new Date().toISOString());
   res.status(201).json({ data: parseOne(db.prepare(`SELECT * FROM banners WHERE id=?`).get(id) as Row | undefined), meta: {}, error: null });
 });
 
 router.put("/admin/banners/:id", (req, res) => {
   const { id } = req.params as { id: string };
   const b = req.body as Record<string, unknown>;
-  db.prepare(`UPDATE banners SET title=?,subtitle=?,image_url=?,bg_color=?,link_url=?,has_button=?,button_text=?,button_align=?,sort_order=?,status=?,updated_at=? WHERE id=?`)
-    .run(b["title"] ?? "", b["subtitle"] ?? "", b["imageUrl"] ?? "", b["bgColor"] ?? "#0274C1", b["linkUrl"] ?? "", b["hasButton"] !== false ? 1 : 0, b["buttonText"] ?? "SHOP NOW", b["buttonAlign"] ?? "left", b["sortOrder"] ?? 0, b["status"] ?? "active", new Date().toISOString(), id);
+  db.prepare(`UPDATE banners SET title=?,subtitle=?,image_url=?,video_url=?,bg_color=?,link_url=?,has_button=?,button_text=?,button_align=?,sort_order=?,status=?,updated_at=? WHERE id=?`)
+    .run(b["title"] ?? "", b["subtitle"] ?? "", b["imageUrl"] ?? "", b["videoUrl"] ?? "", b["bgColor"] ?? "#0274C1", b["linkUrl"] ?? "", b["hasButton"] !== false ? 1 : 0, b["buttonText"] ?? "SHOP NOW", b["buttonAlign"] ?? "left", b["sortOrder"] ?? 0, b["status"] ?? "active", new Date().toISOString(), id);
   res.json({ data: parseOne(db.prepare(`SELECT * FROM banners WHERE id=?`).get(id) as Row | undefined), meta: {}, error: null });
 });
 

@@ -18,6 +18,7 @@ import {
 } from "react-native";
 
 import { Image } from "expo-image";
+import { VideoView, useVideoPlayer } from "expo-video";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -228,6 +229,12 @@ function BannerSlide({ banner, bannerHeight }: { banner: Banner; bannerHeight: n
   };
   const align = ctaAlign[banner.buttonAlign] ?? "flex-start";
 
+  const player = useVideoPlayer(banner.videoUrl || null, (p) => {
+    p.loop = true;
+    p.muted = true;
+    p.play();
+  });
+
   const handlePress = () => {
     if (!banner.hasButton && banner.linkUrl) {
       router.push(banner.linkUrl as any);
@@ -240,13 +247,22 @@ function BannerSlide({ banner, bannerHeight }: { banner: Banner; bannerHeight: n
       onPress={handlePress}
       disabled={!!banner.hasButton}
     >
-      {!!banner.imageUrl && (
+      {!!banner.videoUrl ? (
+        <VideoView
+          player={player}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          nativeControls={false}
+          allowsFullscreen={false}
+          allowsPictureInPicture={false}
+        />
+      ) : !!banner.imageUrl ? (
         <Image
           source={{ uri: banner.imageUrl }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
         />
-      )}
+      ) : null}
       <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.28)" }]} />
       <View style={styles.bannerContent}>
         <Text style={styles.bannerTitle}>{banner.title}</Text>
@@ -452,34 +468,36 @@ export default function HomeScreen() {
   // ── FlatList ListHeaderComponent (all content above product grid) ────────────
   const ListHeader = useMemo(() => (
     <View>
-      {/* ── Banner Carousel ── */}
-      {isBannersLoading ? (
-        <View style={[styles.banner, { backgroundColor: "#E0E0E0", width: SCREEN_WIDTH, height: bannerHeight }]} />
-      ) : displayBanners.length === 0 ? (
-        <View style={[styles.banner, { backgroundColor: "#0274C1", width: SCREEN_WIDTH, height: bannerHeight }]}>
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.18)" }]} />
-          <View style={styles.bannerContent}>
-            <Text style={styles.bannerTitle}>{"New Season\nArrived"}</Text>
-            <Text style={styles.bannerSubtitle}>Explore the latest arrivals</Text>
-            <View style={styles.bannerCta}>
-              <Text style={styles.bannerCtaText}>SHOP NOW</Text>
+      {/* ── Banner Carousel — negative margin cancels FlatList paddingHorizontal ── */}
+      <View style={{ marginHorizontal: -10 }}>
+        {isBannersLoading ? (
+          <View style={[styles.banner, { backgroundColor: "#E0E0E0", width: SCREEN_WIDTH, height: bannerHeight }]} />
+        ) : displayBanners.length === 0 ? (
+          <View style={[styles.banner, { backgroundColor: "#0274C1", width: SCREEN_WIDTH, height: bannerHeight }]}>
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.18)" }]} />
+            <View style={styles.bannerContent}>
+              <Text style={styles.bannerTitle}>{"New Season\nArrived"}</Text>
+              <Text style={styles.bannerSubtitle}>Explore the latest arrivals</Text>
+              <View style={styles.bannerCta}>
+                <Text style={styles.bannerCtaText}>SHOP NOW</Text>
+              </View>
             </View>
           </View>
-        </View>
-      ) : (
-        <FlatList
-          ref={bannerRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={handleBannerMomentumEnd}
-          data={displayBanners}
-          keyExtractor={(b) => b.id}
-          renderItem={({ item }) => <BannerSlide banner={item} bannerHeight={bannerHeight} />}
-          getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })}
-          style={{ height: bannerHeight }}
-        />
-      )}
+        ) : (
+          <FlatList
+            ref={bannerRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={handleBannerMomentumEnd}
+            data={displayBanners}
+            keyExtractor={(b) => b.id}
+            renderItem={({ item }) => <BannerSlide banner={item} bannerHeight={bannerHeight} />}
+            getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })}
+            style={{ height: bannerHeight }}
+          />
+        )}
+      </View>
 
       {displayBanners.length > 1 && (
         <View style={styles.dotsRow}>

@@ -21,6 +21,24 @@ const upload = multer({
   },
 });
 
+const uploadVideo = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, uploadsDir),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase() || ".mp4";
+      cb(null, `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${ext}`);
+    },
+  }),
+  limits: { fileSize: 200 * 1024 * 1024 },
+  fileFilter(_req, file, cb) {
+    if (file.mimetype.startsWith("video/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only video files are accepted"));
+    }
+  },
+});
+
 const router = Router();
 
 router.post(
@@ -55,6 +73,27 @@ router.post(
     } catch {
       res.status(500).json({ data: null, meta: {}, error: "Image processing failed" });
     }
+  }
+);
+
+router.post(
+  "/admin/uploads/video",
+  requireAdmin,
+  uploadVideo.single("video"),
+  (req: Request, res: Response) => {
+    if (!req.file) {
+      res.status(400).json({ data: null, meta: {}, error: "No video file provided" });
+      return;
+    }
+    const proto =
+      (req.headers["x-forwarded-proto"] as string)?.split(",")[0]?.trim() ??
+      req.protocol;
+    const host =
+      (req.headers["x-forwarded-host"] as string)?.split(",")[0]?.trim() ??
+      req.get("host")!;
+    const baseUrl = process.env.API_BASE_URL ?? `${proto}://${host}`;
+    const url = `${baseUrl}/uploads/${req.file.filename}`;
+    res.json({ data: { url }, meta: {}, error: null });
   }
 );
 

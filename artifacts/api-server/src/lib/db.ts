@@ -330,6 +330,7 @@ try { db.exec(`ALTER TABLE customers ADD COLUMN updated_at TEXT NOT NULL DEFAULT
 try { db.exec(`ALTER TABLE products ADD COLUMN rating REAL NOT NULL DEFAULT 0`); } catch { /* already exists */ }
 try { db.exec(`ALTER TABLE products ADD COLUMN rating_count INTEGER NOT NULL DEFAULT 0`); } catch { /* already exists */ }
 try { db.exec(`ALTER TABLE products ADD COLUMN video_url TEXT NOT NULL DEFAULT ''`); } catch { /* already exists */ }
+try { db.exec(`ALTER TABLE banners ADD COLUMN video_url TEXT NOT NULL DEFAULT ''`); } catch { /* already exists */ }
 
 // ─── Admin users (Google OAuth) ──────────────────────────────────────────────
 
