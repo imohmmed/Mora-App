@@ -395,18 +395,19 @@ export default function ProductDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* ── Header ── */}
+      {/* ── Header — floats over image ── */}
       <View
         style={[
           styles.header,
           {
             paddingTop: topPadding + 8,
-            borderBottomColor: colors.border,
-            backgroundColor: colors.background,
+            backgroundColor: "transparent",
+            borderBottomWidth: 0,
           },
         ]}
       >
         <GlassBackButton
+          color="#FFFFFF"
           onPress={() => {
             if (router.canGoBack()) router.back();
             else router.replace("/");
@@ -421,7 +422,7 @@ export default function ProductDetailScreen() {
               testID="cart-header-btn"
             >
               <LiquidGlassBg />
-              <Feather name="shopping-bag" size={20} color={colors.foreground} />
+              <Feather name="shopping-bag" size={20} color="#FFFFFF" />
             </Pressable>
           ) : (
             <Pressable
@@ -436,7 +437,7 @@ export default function ProductDetailScreen() {
                   tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
                 />
               )}
-              <Feather name="shopping-bag" size={20} color={colors.foreground} />
+              <Feather name="shopping-bag" size={20} color="#FFFFFF" />
             </Pressable>
           )}
           {totalItems > 0 && (
@@ -476,7 +477,7 @@ export default function ProductDetailScreen() {
           }
         >
           {/* ── Product Image Gallery ── */}
-          <View style={{ width: imgSize, height: imgSize, alignSelf: "center", backgroundColor: bg }}>
+          <View style={{ width: imgSize, height: imgSize * 1.35, alignSelf: "center", backgroundColor: bg }}>
             {(product.images?.length ?? 0) > 0 ? (
               <FlatList
                 data={product.images}
@@ -490,10 +491,10 @@ export default function ProductDetailScreen() {
                   setActiveImgIdx(idx);
                 }}
                 renderItem={({ item }) => (
-                  <View style={{ width: imgSize, height: imgSize, backgroundColor: bg }}>
+                  <View style={{ width: imgSize, height: imgSize * 1.35, backgroundColor: bg }}>
                     <Image
                       source={{ uri: item }}
-                      style={{ width: imgSize, height: imgSize }}
+                      style={{ width: imgSize, height: imgSize * 1.35 }}
                       contentFit="cover"
                       transition={300}
                     />
@@ -521,9 +522,9 @@ export default function ProductDetailScreen() {
                 ))}
               </View>
             )}
-            {/* Wishlist button */}
+            {/* Wishlist button — below the floating header */}
             <Pressable
-              style={styles.wishlistBtnWrap}
+              style={[styles.wishlistBtnWrap, { top: topPadding + 66 }]}
               onPress={() => {
                 toggle(product.id);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -882,14 +883,18 @@ export default function ProductDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  /* Header */
+  /* Header — absolute overlay on top of image */
   header: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 12,
-    borderBottomWidth: 1,
   },
   backBtn: { padding: 4 },
   cartHeaderBtn: { padding: 4, position: "relative" },
