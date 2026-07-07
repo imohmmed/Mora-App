@@ -50,7 +50,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
 const IS_IOS = Platform.OS === "ios";
 
-type TabFilter = { category?: string; gender?: string; tag?: string };
+type TabFilter = { category?: string; gender?: string; tag?: string; sort?: string };
 type TabConfig = { id: string; label: string; arabicLabel?: string; filterType: string; filterValue?: string };
 
 const DEFAULT_TABS: TabConfig[] = [
@@ -64,10 +64,10 @@ const DEFAULT_TABS: TabConfig[] = [
 
 function getTabFilter(tab: TabConfig): TabFilter {
   switch (tab.filterType) {
-    case "gender":   return { gender: tab.filterValue };
-    case "category": return { category: tab.filterValue };
-    case "sale":     return { category: "sale" };
-    default:         return {};
+    case "gender":   return { gender: tab.filterValue, sort: "newest" };
+    case "category": return { category: tab.filterValue, sort: "newest" };
+    case "sale":     return { category: "sale", sort: "newest" };
+    default:         return { sort: "newest" };
   }
 }
 
@@ -567,12 +567,14 @@ export default function HomeScreen() {
         loading={isCollectionsLoading}
       />
 
-      <StoriesSection rows={storyRows ?? []} activeFilter={activeFilter} />
-
-      {/* ── Trending header ── */}
+      {/* ── New In / section header ── */}
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-          {activeTab?.filterType === "all" ? "TRENDING NOW" : isForYou ? "FOR YOU ✦" : categoryKey}
+          {activeTab?.filterType === "all"
+            ? (lang === "ar" ? "جديد" : "NEW IN")
+            : isForYou
+              ? "FOR YOU ✦"
+              : categoryKey}
         </Text>
         {!isLoading && totalCount > 0 && (
           <Text style={[styles.seeAll, { color: colors.mutedForeground }]}>
@@ -632,6 +634,8 @@ export default function HomeScreen() {
           </Text>
         </View>
       )}
+
+      <StoriesSection rows={storyRows ?? []} activeFilter={activeFilter} />
 
       <HomeSaleCollections />
     </View>

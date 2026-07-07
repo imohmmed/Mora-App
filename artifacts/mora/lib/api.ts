@@ -43,6 +43,7 @@ export async function fetchProducts(params?: {
   q?: string;
   limit?: number;
   page?: number;
+  sort?: string;
 }): Promise<{ products: Product[]; total: number; page: number; limit: number }> {
   const qs = new URLSearchParams();
   if (params?.category) qs.set("category", params.category);
@@ -51,6 +52,7 @@ export async function fetchProducts(params?: {
   if (params?.q) qs.set("q", params.q);
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.page) qs.set("page", String(params.page));
+  if (params?.sort) qs.set("sort", params.sort);
   const query = qs.toString() ? `?${qs.toString()}` : "";
 
   const base = getBaseUrl();

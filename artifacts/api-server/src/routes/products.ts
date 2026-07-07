@@ -9,7 +9,7 @@ const router = Router();
 // ─── Public store endpoints ────────────────────────────────────────────────────
 
 router.get("/store/products", (req, res) => {
-  const { category, gender, tag, q, limit = "20", page = "1" } = req.query as Record<string, string>;
+  const { category, gender, tag, q, limit = "20", page = "1", sort } = req.query as Record<string, string>;
   let sql = `SELECT * FROM products WHERE status='active'`;
   const params: unknown[] = [];
   if (category === "sale") {
@@ -24,6 +24,7 @@ router.get("/store/products", (req, res) => {
   }
   if (tag) { sql += ` AND tags LIKE ?`; params.push(`%"${tag}"%`); }
   if (q) { sql += ` AND (title LIKE ? OR tags LIKE ?)`; params.push(`%${q}%`, `%${q}%`); }
+  sql += sort === "newest" ? ` ORDER BY created_at DESC` : ` ORDER BY updated_at DESC`;
   const all = db.prepare(sql).all(...params) as Row[];
   const total = all.length;
   const pageNum = Math.max(1, parseInt(page));
