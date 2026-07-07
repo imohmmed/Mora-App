@@ -20,7 +20,7 @@ import { useState } from "react";
 
 const COLLECTION_ID = "col_mora-perfumes";
 const { width: SCREEN_W } = Dimensions.get("window");
-const CARD_W = (SCREEN_W - 9) / 2;
+const CARD_W = (SCREEN_W - 21) / 2;
 const CARD_H = CARD_W * 1.4;
 
 const CARD_COLORS = [
@@ -152,7 +152,7 @@ export function MoraPerfumesSection() {
           <PerfumeCard product={item} onQuickAdd={setQuickAddProduct} />
         )}
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 0, gap: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 10, gap: 1 }}
         snapToInterval={CARD_W + 1}
         decelerationRate="fast"
         inverted={isAr}

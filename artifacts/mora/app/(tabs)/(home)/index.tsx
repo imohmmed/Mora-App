@@ -636,11 +636,11 @@ export default function HomeScreen() {
         </View>
       )}
 
-      <MoraPerfumesSection />
-
       <StoriesSection rows={storyRows ?? []} activeFilter={activeFilter} />
 
       <HomeSaleCollections />
+
+      <MoraPerfumesSection />
     </View>
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [
