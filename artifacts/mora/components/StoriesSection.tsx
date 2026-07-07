@@ -12,8 +12,10 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useQuery } from "@tanstack/react-query";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 import { fetchCollectionProducts } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
@@ -65,6 +67,16 @@ function StoryCircle({ item }: { item: StoryItem }) {
   );
 }
 
+const CARD_COLORS = [
+  "#E8EDF5", "#F0EBE3", "#E8F0E8", "#F5EDEB",
+  "#EBF0F5", "#F5EBF5", "#FFF3E0", "#F0F0F0",
+];
+function cardColor(id: string) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffff;
+  return CARD_COLORS[h % CARD_COLORS.length];
+}
+
 // ─── Product Mini Card ────────────────────────────────────────────────────────
 function ProductMiniCard({
   product,
@@ -76,40 +88,63 @@ function ProductMiniCard({
   const router = useRouter();
   const colors = useColors();
   const { lang } = useLanguage();
+  const { ids, toggle } = useWishlist();
+  const liked = ids.has(product.id);
+  const isAr = lang === "ar";
+  const hasDiscount = product.comparePrice != null && product.comparePrice > product.price;
+  const discountPct = hasDiscount
+    ? Math.round(((product.comparePrice! - product.price) / product.comparePrice!) * 100)
+    : 0;
 
   return (
-    <View style={styles.productCard}>
-      <Pressable
-        style={({ pressed }) => [{ opacity: pressed ? 0.88 : 1 }]}
-        onPress={() => router.push(`/product/${product.id}` as any)}
+    <Pressable
+      style={styles.productCard}
+      onPress={() => router.push(`/product/${product.id}` as any)}
+    >
+      <ProductImageCarousel
+        images={product.images ?? []}
+        style={[styles.productImage, { backgroundColor: cardColor(product.id) }]}
       >
-        <ProductImageCarousel
-          images={product.images ?? []}
-          style={[styles.productImage, { backgroundColor: "#EEF0F4" }]}
-        />
-        <View style={styles.productInfo}>
-          <Text style={[styles.productBrand, { color: colors.mutedForeground }]} numberOfLines={1}>
-            {product.vendor?.toUpperCase() ?? "MORA"}
-          </Text>
-          <Text style={[styles.productTitle, { color: colors.foreground }]} numberOfLines={2}>
-            {product.title}
-          </Text>
-          <Text style={[styles.productPrice, { color: colors.foreground }]}>
+        {/* Discount badge — top-left */}
+        {discountPct > 0 && (
+          <View style={[styles.discBadge, isAr ? styles.discBadgeAr : styles.discBadgeEn]}>
+            <Text style={styles.discText}>▼ {discountPct}%</Text>
+          </View>
+        )}
+        {/* Heart — top-right, no background */}
+        <Pressable
+          style={[styles.overlayBtn, isAr ? styles.overlayBtnTopAr : styles.overlayBtnTopEn]}
+          onPress={() => { toggle(product.id); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          hitSlop={10}
+        >
+          <Ionicons name={liked ? "heart" : "heart-outline"} size={20} color={liked ? "#0274C1" : "#FFFFFF"} />
+        </Pressable>
+        {/* Add to Bag "+" — bottom-right, no background */}
+        <Pressable
+          style={[styles.overlayBtn, isAr ? styles.overlayBtnBotAr : styles.overlayBtnBotEn]}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onAddToBag(product); }}
+          hitSlop={10}
+        >
+          <Feather name="plus" size={20} color="#FFFFFF" />
+        </Pressable>
+      </ProductImageCarousel>
+
+      <View style={[styles.productInfo, isAr && { alignItems: "flex-end" }]}>
+        <Text style={[styles.productTitle, { color: colors.foreground }]} numberOfLines={2}>
+          {product.title}
+        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <Text style={[styles.productPrice, { color: "#E53935" }]}>
             {formatIQD(product.price)}
           </Text>
+          {hasDiscount && (
+            <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: colors.mutedForeground, textDecorationLine: "line-through" }}>
+              {formatIQD(product.comparePrice!)}
+            </Text>
+          )}
         </View>
-      </Pressable>
-
-      <Pressable
-        style={styles.addToCartBtn}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          onAddToBag(product);
-        }}
-      >
-        <Text style={styles.addToCartText}>{lang === "ar" ? "اضف لسلتي" : "ADD TO BAG"}</Text>
-      </Pressable>
-    </View>
+      </View>
+    </Pressable>
   );
 }
 
@@ -308,44 +343,31 @@ const styles = StyleSheet.create({
   },
   productImage: {
     width: CARD_W,
-    height: CARD_H,
+    height: CARD_W * 1.4,
     overflow: "hidden",
-    borderRadius: 10,
+    borderRadius: 0,
     position: "relative",
   },
+  discBadge: { position: "absolute", top: 8, zIndex: 2 },
+  discBadgeEn: { left: 8 },
+  discBadgeAr: { right: 8 },
+  discText: { color: "#E53935", fontFamily: "Inter_700Bold", fontSize: 10 },
+  overlayBtn: { position: "absolute", zIndex: 2 },
+  overlayBtnTopEn: { top: 8, right: 8 },
+  overlayBtnTopAr: { top: 8, left: 8 },
+  overlayBtnBotEn: { bottom: 8, right: 8 },
+  overlayBtnBotAr: { bottom: 8, left: 8 },
   productInfo: {
     paddingTop: 8,
-    gap: 2,
-  },
-  productBrand: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 10,
-    letterSpacing: 0.5,
+    gap: 3,
   },
   productTitle: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Inter_500Medium",
     fontSize: 12,
     lineHeight: 16,
-    marginTop: 1,
   },
   productPrice: {
     fontFamily: "Inter_700Bold",
     fontSize: 13,
-    marginTop: 3,
-  },
-
-  /* ADD TO BAG button — matches home page style */
-  addToCartBtn: {
-    backgroundColor: "#0274C1",
-    paddingVertical: 9,
-    alignItems: "center",
-    borderRadius: 100,
-    marginTop: 8,
-  },
-  addToCartText: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    fontSize: 10,
-    letterSpacing: 0.8,
   },
 });
