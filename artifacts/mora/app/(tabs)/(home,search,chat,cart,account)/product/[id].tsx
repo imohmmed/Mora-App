@@ -401,15 +401,10 @@ export default function ProductDetailScreen() {
   const handleNotifyRestock = async () => {
     if (!product || !activeVariant) return;
     if (!token) {
-      // react-native-web's Alert.alert is a no-op, so the login prompt must use
-      // window.confirm on web; native keeps the styled Alert dialog.
+      // On web window.confirm is unreliable (blocked by some browsers).
+      // Redirect directly to auth; native shows a styled Alert dialog.
       if (isWeb) {
-        const ok = window.confirm(
-          lang === "ar"
-            ? "سجّل دخولك حتى نبلغك عند توفر المنتج. تسجيل الدخول الآن؟"
-            : "Sign in so we can notify you when it's back in stock. Sign in now?",
-        );
-        if (ok) router.push("/auth");
+        router.push("/auth");
       } else {
         Alert.alert(
           lang === "ar" ? "تحتاج تسجيل دخول" : "Sign in required",
@@ -428,7 +423,9 @@ export default function ProductDetailScreen() {
       setNotifyingVariant(activeVariant.id);
       await requestRestockNotify(token, product.id, activeVariant.id);
       setLocallyNotified((p) => [...p, activeVariant.id]);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
       refetchSubs();
     } catch {
       const msg = lang === "ar" ? "صار خطأ، حاول مرة ثانية" : "Something went wrong, please try again";
@@ -1177,10 +1174,10 @@ const styles = StyleSheet.create({
   /* Complete the Set */
   ctsRow: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    borderRadius: 10, borderWidth: 1, padding: 10, overflow: "hidden",
+    borderRadius: 16, borderWidth: 1, padding: 10,
   },
   ctsImg: {
-    width: 72, height: 90, borderRadius: 6, overflow: "hidden",
+    width: 72, height: 90, borderRadius: 12, overflow: "hidden",
     flexShrink: 0, position: "relative",
   },
   ctsInfo: { flex: 1, gap: 4 },
