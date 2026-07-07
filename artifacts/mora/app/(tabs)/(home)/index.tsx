@@ -147,32 +147,29 @@ function ProductCard({
           </View>
         )}
 
-        {/* Wishlist — bottom corner */}
+        {/* Wishlist — top-right, no background */}
         <Pressable
           style={[styles.likeBtnWrap, isAr ? styles.likeBtnAr : styles.likeBtnEn]}
           onPress={handleLike}
-          hitSlop={8}
+          hitSlop={10}
         >
-          <View style={[styles.likeBtn, { backgroundColor: "rgba(255,255,255,0.92)" }]}>
-            <Ionicons
-              name={liked ? "heart" : "heart-outline"}
-              size={16}
-              color={liked ? "#0274C1" : "#1A1A1A"}
-            />
-          </View>
+          <Ionicons
+            name={liked ? "heart" : "heart-outline"}
+            size={22}
+            color={liked ? "#0274C1" : "#FFFFFF"}
+          />
         </Pressable>
 
-        {/* Add to Bag strip — bottom of image */}
+        {/* Add to Bag — bottom-right "+", no background */}
         <Pressable
-          style={styles.addToBagStrip}
+          style={[styles.addToBagBtn, isAr ? styles.addToBagBtnAr : styles.addToBagBtnEn]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             onAddToBag(item);
           }}
+          hitSlop={10}
         >
-          <Text style={styles.addToBagText}>
-            {isAr ? "أضف للحقيبة" : "ADD TO BAG"}
-          </Text>
+          <Feather name="plus" size={22} color="#FFFFFF" />
         </Pressable>
       </ProductImageCarousel>
 
@@ -765,39 +762,23 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  /* Wishlist button — bottom corner */
+  /* Wishlist — top-right, no background */
   likeBtnWrap: {
     position: "absolute",
-    bottom: 44,
+    top: 10,
     zIndex: 2,
   },
   likeBtnEn: { right: 10 },
   likeBtnAr: { left: 10 },
-  likeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
 
-  /* Add to Bag strip — bottom of image */
-  addToBagStrip: {
+  /* Add to Bag "+" — bottom-right, no background */
+  addToBagBtn: {
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "rgba(2,116,193,0.88)",
-    paddingVertical: 10,
-    alignItems: "center",
+    bottom: 10,
     zIndex: 2,
   },
-  addToBagText: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    fontSize: 11,
-    letterSpacing: 1,
-  },
+  addToBagBtnEn: { right: 10 },
+  addToBagBtnAr: { left: 10 },
 
   /* Product info */
   productInfo: { paddingTop: 8, gap: 3 },
