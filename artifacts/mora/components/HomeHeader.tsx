@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React from "react";
 import {
   Image as RNImage,
   Platform,
@@ -18,6 +18,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
+import { useNativeReady } from "@/hooks/useNativeReady";
 
 function getBaseUrl() {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -42,6 +43,7 @@ export function HomeHeader({
   const isWeb = Platform.OS === "web";
   const auth = useAuth();
   const token = auth?.token ?? null;
+  const nativeReady = useNativeReady();
 
   const { data: unreadData } = useQuery({
     queryKey: ["notifications-unread", token],
@@ -62,6 +64,7 @@ export function HomeHeader({
   const notificationCount = unreadData?.count ?? 0;
   const topPadding = isWeb ? 0 : insets.top;
 
+  // Icon colour: white when floating over banner, normal otherwise
   const iconColor = transparent ? "#FFFFFF" : colors.foreground;
 
   return (
@@ -77,13 +80,31 @@ export function HomeHeader({
       ]}
     >
       <View style={styles.row}>
-        <RNImage
-          source={LOGO}
-          style={[styles.logo, transparent && { tintColor: "#FFFFFF" }]}
-          resizeMode="contain"
-        />
+
+        {/* ── Logo — blue wordmark, glass pill on native when transparent ── */}
+        <View style={styles.logoPill}>
+          {/* iOS 26+ Liquid Glass */}
+          {transparent && isIOS26Plus && nativeReady && (
+            <LiquidGlassBg />
+          )}
+          {/* Older iOS / Android: BlurView */}
+          {transparent && !isIOS26Plus && !isWeb && (
+            <BlurView
+              style={StyleSheet.absoluteFill}
+              intensity={50}
+              tint="dark"
+            />
+          )}
+          {/* Web: semi-transparent white pill */}
+          {transparent && isWeb && (
+            <View style={[StyleSheet.absoluteFill, styles.webLogoBg]} />
+          )}
+          <RNImage source={LOGO} style={styles.logo} resizeMode="contain" />
+        </View>
+
         <View style={{ flex: 1 }} />
 
+        {/* ── Notifications ── */}
         <View style={styles.iconBtnWrap}>
           <Pressable
             style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
@@ -91,7 +112,7 @@ export function HomeHeader({
             testID="notifications-btn"
           >
             {isIOS26Plus && <LiquidGlassBg />}
-            {!isIOS26Plus && Platform.OS !== "web" && (
+            {!isIOS26Plus && !isWeb && (
               <BlurView
                 style={StyleSheet.absoluteFill}
                 intensity={transparent ? 40 : 60}
@@ -99,7 +120,7 @@ export function HomeHeader({
               />
             )}
             {!isIOS26Plus && isWeb && transparent && (
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.25)", borderRadius: 19 }]} />
+              <View style={[StyleSheet.absoluteFill, styles.webIconBg]} />
             )}
             <Feather name="bell" size={21} color={iconColor} />
           </Pressable>
@@ -112,6 +133,7 @@ export function HomeHeader({
           )}
         </View>
 
+        {/* ── Favourites ── */}
         <View style={styles.iconBtnWrap}>
           <Pressable
             style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
@@ -119,7 +141,7 @@ export function HomeHeader({
             testID="favorites-btn"
           >
             {isIOS26Plus && <LiquidGlassBg />}
-            {!isIOS26Plus && Platform.OS !== "web" && (
+            {!isIOS26Plus && !isWeb && (
               <BlurView
                 style={StyleSheet.absoluteFill}
                 intensity={transparent ? 40 : 60}
@@ -127,7 +149,7 @@ export function HomeHeader({
               />
             )}
             {!isIOS26Plus && isWeb && transparent && (
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.25)", borderRadius: 19 }]} />
+              <View style={[StyleSheet.absoluteFill, styles.webIconBg]} />
             )}
             <Feather name="heart" size={21} color={iconColor} />
           </Pressable>
@@ -155,9 +177,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
+  /* Logo pill container */
+  logoPill: {
+    borderRadius: 10,
+    overflow: "hidden",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   logo: {
     width: 92,
     height: 30,
+  },
+  /* Web-only fallback backgrounds */
+  webLogoBg: {
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderRadius: 10,
+  },
+  webIconBg: {
+    backgroundColor: "rgba(0,0,0,0.28)",
+    borderRadius: 19,
   },
   iconBtnWrap: {
     position: "relative",
