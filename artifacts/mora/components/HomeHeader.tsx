@@ -27,10 +27,12 @@ function getBaseUrl() {
 interface HomeHeaderProps {
   favoritesCount?: number;
   cartCount?: number;
+  transparent?: boolean;
 }
 
 export function HomeHeader({
   favoritesCount = 0,
+  transparent = false,
 }: HomeHeaderProps) {
   const colors = useColors();
   const { resolvedScheme } = useTheme();
@@ -58,8 +60,9 @@ export function HomeHeader({
   });
 
   const notificationCount = unreadData?.count ?? 0;
-
   const topPadding = isWeb ? 0 : insets.top;
+
+  const iconColor = transparent ? "#FFFFFF" : colors.foreground;
 
   return (
     <View
@@ -67,13 +70,18 @@ export function HomeHeader({
         styles.wrapper,
         {
           paddingTop: topPadding + 8,
-          backgroundColor: colors.background,
-          borderBottomColor: colors.border,
+          backgroundColor: transparent ? "transparent" : colors.background,
+          borderBottomColor: transparent ? "transparent" : colors.border,
+          borderBottomWidth: transparent ? 0 : 1,
         },
       ]}
     >
       <View style={styles.row}>
-        <RNImage source={LOGO} style={styles.logo} resizeMode="contain" />
+        <RNImage
+          source={LOGO}
+          style={[styles.logo, transparent && { tintColor: "#FFFFFF" }]}
+          resizeMode="contain"
+        />
         <View style={{ flex: 1 }} />
 
         <View style={styles.iconBtnWrap}>
@@ -86,11 +94,14 @@ export function HomeHeader({
             {!isIOS26Plus && Platform.OS !== "web" && (
               <BlurView
                 style={StyleSheet.absoluteFill}
-                intensity={60}
-                tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
+                intensity={transparent ? 40 : 60}
+                tint={transparent ? "dark" : (isDark ? "systemThinMaterialDark" : "systemThinMaterial")}
               />
             )}
-            <Feather name="bell" size={21} color={colors.foreground} />
+            {!isIOS26Plus && isWeb && transparent && (
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.25)", borderRadius: 19 }]} />
+            )}
+            <Feather name="bell" size={21} color={iconColor} />
           </Pressable>
           {notificationCount > 0 && (
             <View style={[styles.badge, { backgroundColor: colors.primary }]}>
@@ -111,11 +122,14 @@ export function HomeHeader({
             {!isIOS26Plus && Platform.OS !== "web" && (
               <BlurView
                 style={StyleSheet.absoluteFill}
-                intensity={60}
-                tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
+                intensity={transparent ? 40 : 60}
+                tint={transparent ? "dark" : (isDark ? "systemThinMaterialDark" : "systemThinMaterial")}
               />
             )}
-            <Feather name="heart" size={21} color={colors.foreground} />
+            {!isIOS26Plus && isWeb && transparent && (
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.25)", borderRadius: 19 }]} />
+            )}
+            <Feather name="heart" size={21} color={iconColor} />
           </Pressable>
           {favoritesCount > 0 && (
             <View style={[styles.badge, { backgroundColor: colors.primary }]}>
@@ -133,7 +147,6 @@ export function HomeHeader({
 
 const styles = StyleSheet.create({
   wrapper: {
-    borderBottomWidth: 1,
     paddingHorizontal: 16,
     paddingBottom: 12,
   },

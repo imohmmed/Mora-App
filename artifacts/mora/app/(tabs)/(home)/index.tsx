@@ -271,9 +271,8 @@ export default function HomeScreen() {
   const { lang } = useLanguage();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
-  // Full-screen hero: fill remaining height below the HomeHeader
-  // HomeHeader = insets.top (status bar) + ~56px content
-  const bannerHeight = SCREEN_HEIGHT - insets.top - 56;
+  // Full-screen hero: header floats as transparent overlay, so banner = full screen height
+  const bannerHeight = SCREEN_HEIGHT;
   const [activeCategory, setActiveCategory] = useState(0);
   const [activeBanner, setActiveBanner] = useState(0);
   // Tracks the current banner index WITHOUT causing re-renders — used by the
@@ -572,7 +571,6 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <HomeHeader favoritesCount={wishlistCount} cartCount={totalItems} />
       <FlatList
         ref={flatListRef}
         data={isLoading ? [] : products}
@@ -595,6 +593,11 @@ export default function HomeScreen() {
         }
       />
 
+      {/* ── Floating transparent header overlay ── */}
+      <View style={styles.headerOverlay} pointerEvents="box-none">
+        <HomeHeader transparent favoritesCount={wishlistCount} cartCount={totalItems} />
+      </View>
+
       <QuickAddSheet
         visible={quickAddProduct !== null}
         product={quickAddProduct}
@@ -615,6 +618,15 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+
+  /* ── Floating header overlay ── */
+  headerOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+  },
 
   /* ── Banner ── */
   banner: { height: 260, justifyContent: "flex-end", overflow: "hidden" },
