@@ -18,7 +18,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
@@ -27,7 +26,6 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { fetchSpecialCollection, fetchCollection, searchProducts, fetchBrowseProducts, fetchStorySiblings } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
-import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import { GlassBackButton } from "@/components/GlassBackButton";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
@@ -188,7 +186,6 @@ export default function CollectionScreen() {
   const searchRef = useRef<TextInput>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerBgAnim = useRef(new Animated.Value(0)).current;
-  const searchBarAnim = useRef(new Animated.Value(0)).current;
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Browse mode: a category/gender/sale listing routed in from the search page
@@ -241,12 +238,6 @@ export default function CollectionScreen() {
       duration: 180,
       useNativeDriver: false,
     }).start();
-    Animated.spring(searchBarAnim, {
-      toValue: scrolled ? 1 : 0,
-      friction: 9,
-      tension: 80,
-      useNativeDriver: false,
-    }).start();
   }, [scrolled]);
 
   const handleChangeText = (text: string) => {
@@ -281,14 +272,23 @@ export default function CollectionScreen() {
     outputRange: ["rgba(0,0,0,0)", colors.background],
   });
 
-  const searchBarWidth = searchBarAnim.interpolate({
-    inputRange: [0, 1],
+  // Smooth search-bar expansion driven directly by scroll position
+  const SEARCH_START = SCROLL_THRESHOLD - 60;
+  const SEARCH_END   = SCROLL_THRESHOLD + 100;
+
+  const searchBarWidth = scrollY.interpolate({
+    inputRange: [SEARCH_START, SEARCH_END],
     outputRange: [0, width - 120],
+    extrapolate: "clamp",
+  });
+
+  const searchIconOpacity = scrollY.interpolate({
+    inputRange: [SEARCH_START, SEARCH_START + 60],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
   });
 
   const iconColor = scrolled ? colors.foreground : "#ffffff";
-  const ICON_BG_SCROLLED = colors.secondary;
-  const ICON_BG_TOP = "rgba(0,0,0,0.30)";
 
   const HEADER_H = topPad + 56;
 
@@ -299,35 +299,28 @@ export default function CollectionScreen() {
         style={[styles.fixedHeader, { height: HEADER_H, paddingTop: topPad, backgroundColor: headerBg }]}
         pointerEvents="box-none"
       >
-        {/* Back button */}
+        {/* Back button — no background */}
         <GlassBackButton
+          noBackground
           onPress={() => { Keyboard.dismiss(); router.back(); }}
-          color={scrolled ? undefined : "#ffffff"}
+          color={iconColor}
         />
 
-        {/* Flex spacer — title removed to avoid clashing with expanding search bar */}
+        {/* Flex spacer */}
         <View style={{ flex: 1 }} />
 
         {/* Right side: search icon → search bar + cart */}
         <View style={styles.headerRight}>
-          {/* Animated search bar that expands when scrolled */}
+          {/* Animated search bar — width driven by scrollY for smooth expansion */}
           <Animated.View style={[styles.searchBarWrap, { width: searchBarWidth, overflow: "hidden" }]}>
             <Pressable
               style={[
                 styles.searchBarInner,
-                {
-                  backgroundColor: isIOS26Plus ? "transparent" : colors.secondary,
-                  borderColor: isIOS26Plus ? "transparent" : colors.border,
-                  overflow: "hidden",
-                },
+                { backgroundColor: colors.secondary, borderColor: colors.border },
               ]}
               onPress={handleSearchBarTap}
               testID="search-bar-tap"
             >
-              {isIOS26Plus && <LiquidGlassBg />}
-              {!isIOS26Plus && Platform.OS !== "web" && (
-                <BlurView style={StyleSheet.absoluteFill} intensity={55} tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"} />
-              )}
               <Feather name="search" size={14} color={colors.mutedForeground} />
               <TextInput
                 ref={searchRef}
@@ -348,37 +341,27 @@ export default function CollectionScreen() {
             </Pressable>
           </Animated.View>
 
-          {/* Search icon — visible only when NOT scrolled */}
-          {!scrolled && (
+          {/* Search icon — fades out as search bar grows in */}
+          <Animated.View style={{ opacity: searchIconOpacity }}>
             <Pressable
-              style={[styles.iconBtn, { backgroundColor: isIOS26Plus ? "transparent" : ICON_BG_TOP }]}
+              style={styles.iconBtnPlain}
               onPress={handleSearchIconTap}
+              hitSlop={10}
               testID="search-btn"
             >
-              {isIOS26Plus && <LiquidGlassBg />}
-              {!isIOS26Plus && Platform.OS !== "web" && (
-                <BlurView style={StyleSheet.absoluteFill} intensity={55} tint="systemThinMaterialDark" />
-              )}
-              <Feather name="search" size={20} color="#fff" />
+              <Feather name="search" size={22} color={iconColor} />
             </Pressable>
-          )}
+          </Animated.View>
 
-          {/* Cart button */}
+          {/* Cart button — no background */}
           <View style={styles.iconBtnWrap}>
             <Pressable
-              style={[styles.iconBtn, { backgroundColor: isIOS26Plus ? "transparent" : (scrolled ? ICON_BG_SCROLLED : ICON_BG_TOP) }]}
+              style={styles.iconBtnPlain}
               onPress={() => router.push("/cart")}
+              hitSlop={10}
               testID="cart-btn"
             >
-              {isIOS26Plus && <LiquidGlassBg />}
-              {!isIOS26Plus && Platform.OS !== "web" && (
-                <BlurView
-                  style={StyleSheet.absoluteFill}
-                  intensity={55}
-                  tint={scrolled ? (isDark ? "systemThinMaterialDark" : "systemThinMaterial") : "systemThinMaterialDark"}
-                />
-              )}
-              <Feather name="shopping-bag" size={20} color={iconColor} />
+              <Feather name="shopping-bag" size={22} color={iconColor} />
             </Pressable>
             {totalItems > 0 && (
               <View style={styles.cartBadge}>
@@ -551,13 +534,11 @@ const styles = StyleSheet.create({
   iconBtnWrap: {
     position: "relative",
   },
-  iconBtn: {
+  iconBtnPlain: {
     width: 36,
     height: 36,
-    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
   },
   cartBadge: {
     position: "absolute",
