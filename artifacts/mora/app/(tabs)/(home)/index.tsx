@@ -43,7 +43,7 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
 const IS_IOS = Platform.OS === "ios";
 
@@ -219,7 +219,7 @@ function BannerSkeleton() {
   return <View style={[styles.banner, { backgroundColor: "#E0E0E0", width: SCREEN_WIDTH }]} />;
 }
 
-function BannerSlide({ banner }: { banner: Banner }) {
+function BannerSlide({ banner, bannerHeight }: { banner: Banner; bannerHeight: number }) {
   const router = useRouter();
   const ctaAlign: Record<string, "flex-start" | "center" | "flex-end"> = {
     left: "flex-start",
@@ -236,17 +236,18 @@ function BannerSlide({ banner }: { banner: Banner }) {
 
   return (
     <Pressable
-      style={[styles.banner, { backgroundColor: banner.bgColor, width: SCREEN_WIDTH }]}
+      style={[styles.banner, { backgroundColor: banner.bgColor, width: SCREEN_WIDTH, height: bannerHeight }]}
       onPress={handlePress}
       disabled={!!banner.hasButton}
     >
       {!!banner.imageUrl && (
         <Image
           source={{ uri: banner.imageUrl }}
-          style={[StyleSheet.absoluteFill, { opacity: 0.45 }]}
+          style={StyleSheet.absoluteFill}
           contentFit="cover"
         />
       )}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.28)" }]} />
       <View style={styles.bannerContent}>
         <Text style={styles.bannerTitle}>{banner.title}</Text>
         {!!banner.subtitle && (
@@ -270,6 +271,9 @@ export default function HomeScreen() {
   const { lang } = useLanguage();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
+  // Full-screen hero: fill remaining height below the HomeHeader
+  // HomeHeader = insets.top (status bar) + ~56px content
+  const bannerHeight = SCREEN_HEIGHT - insets.top - 56;
   const [activeCategory, setActiveCategory] = useState(0);
   const [activeBanner, setActiveBanner] = useState(0);
   // Tracks the current banner index WITHOUT causing re-renders — used by the
@@ -449,17 +453,12 @@ export default function HomeScreen() {
   // ── FlatList ListHeaderComponent (all content above product grid) ────────────
   const ListHeader = useMemo(() => (
     <View>
-      <CategoryTabs
-        categories={menuTabs.map((t) => lang === "ar" && (t as TabConfig).arabicLabel ? (t as TabConfig).arabicLabel! : t.label)}
-        activeIndex={safeActiveCategory}
-        onChange={setActiveCategory}
-      />
-
       {/* ── Banner Carousel ── */}
       {isBannersLoading ? (
-        <BannerSkeleton />
+        <View style={[styles.banner, { backgroundColor: "#E0E0E0", width: SCREEN_WIDTH, height: bannerHeight }]} />
       ) : displayBanners.length === 0 ? (
-        <View style={[styles.banner, { backgroundColor: "#0274C1", width: SCREEN_WIDTH }]}>
+        <View style={[styles.banner, { backgroundColor: "#0274C1", width: SCREEN_WIDTH, height: bannerHeight }]}>
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.18)" }]} />
           <View style={styles.bannerContent}>
             <Text style={styles.bannerTitle}>{"New Season\nArrived"}</Text>
             <Text style={styles.bannerSubtitle}>Explore the latest arrivals</Text>
@@ -477,8 +476,9 @@ export default function HomeScreen() {
           onMomentumScrollEnd={handleBannerMomentumEnd}
           data={displayBanners}
           keyExtractor={(b) => b.id}
-          renderItem={({ item }) => <BannerSlide banner={item} />}
+          renderItem={({ item }) => <BannerSlide banner={item} bannerHeight={bannerHeight} />}
           getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })}
+          style={{ height: bannerHeight }}
         />
       )}
 
@@ -498,6 +498,13 @@ export default function HomeScreen() {
           ))}
         </View>
       )}
+
+      {/* ── Category Tabs (below banner) ── */}
+      <CategoryTabs
+        categories={menuTabs.map((t) => lang === "ar" && (t as TabConfig).arabicLabel ? (t as TabConfig).arabicLabel! : t.label)}
+        activeIndex={safeActiveCategory}
+        onChange={setActiveCategory}
+      />
 
       <SpecialCollectionsGrid
         collections={specialCollections ?? []}
@@ -541,7 +548,7 @@ export default function HomeScreen() {
   ), [
     activeCategory, safeActiveCategory, activeBanner, categoryKey, activeTab, isForYou, menuTabs, colors, displayBanners,
     isCollectionsLoading, isError, isBannersLoading, isLoading, isRefetching,
-    specialCollections, storyRows, totalCount, activeFilter,
+    specialCollections, storyRows, totalCount, activeFilter, bannerHeight,
   ]);
 
   const renderProduct = useCallback(({ item }: { item: Product }) => (
