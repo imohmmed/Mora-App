@@ -1,19 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAdminListCollections } from "@workspace/api-client-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PageContainer, PageHeader, EmptyState } from "@/components/ui/page-primitives";
-import { FolderTree, Plus, Image as ImageIcon, LayoutList, ChevronUp, ChevronDown, Trash2, GripVertical, Loader2, CheckCircle2 } from "lucide-react";
+import { FolderTree, Plus, Image as ImageIcon, LayoutList, ChevronUp, ChevronDown, Trash2, GripVertical, Loader2, CheckCircle2, Upload, LayoutGrid } from "lucide-react";
 import { fmt } from "@/lib/date";
 import { adminFetch } from "@/lib/api";
 import { useT } from "@/i18n/LanguageContext";
+
+const API = import.meta.env.BASE_URL.replace(/\/$/, "") + "/api";
+const adminToken = () => { try { return localStorage.getItem("mora_admin_token") || ""; } catch { return ""; } };
 
 type TabConfig = {
   id: string;
@@ -197,6 +201,196 @@ function MenuTabBar() {
   );
 }
 
+// ─── BrowseCollectionsManager ─────────────────────────────────────────────────
+
+type BrowseItem = {
+  id: string;
+  nameEn: string;
+  nameAr: string;
+  icon: string;
+  color: string;
+  linkType: "category" | "gender" | "sale" | "collection" | "search";
+  linkValue: string;
+  image?: string;
+};
+
+const DEFAULT_BROWSE: BrowseItem[] = [
+  { id: "sc_women",  nameEn: "Women",  nameAr: "نساء",    icon: "user",         color: "#F5EBF5", linkType: "gender",   linkValue: "women" },
+  { id: "sc_men",    nameEn: "Men",    nameAr: "رجال",    icon: "user",         color: "#EBF0F5", linkType: "gender",   linkValue: "men" },
+  { id: "sc_beauty", nameEn: "Beauty", nameAr: "تجميل",   icon: "droplet",      color: "#F5F0EB", linkType: "category", linkValue: "beauty" },
+  { id: "sc_shoes",  nameEn: "Shoes",  nameAr: "أحذية",   icon: "box",          color: "#EBF5F0", linkType: "category", linkValue: "shoes" },
+  { id: "sc_bags",   nameEn: "Bags",   nameAr: "حقائب",   icon: "shopping-bag", color: "#F5EBEB", linkType: "category", linkValue: "bags" },
+  { id: "sc_sale",   nameEn: "Sale",   nameAr: "تخفيضات", icon: "tag",          color: "#FFF3E0", linkType: "sale",     linkValue: "" },
+];
+
+function BrowseCollectionsManager() {
+  const [items, setItems] = useState<BrowseItem[]>(DEFAULT_BROWSE);
+  const [sectionId, setSectionId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  const fileRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    adminFetch<{ id: string; key: string; items: BrowseItem[] }[]>("/admin/content-sections")
+      .then(({ data }) => {
+        const sec = data?.find((s) => s.key === "search_collections");
+        if (sec) { setSectionId(sec.id); if (sec.items?.length) setItems(sec.items as any); }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const update = (idx: number, field: keyof BrowseItem, value: string) => {
+    setItems((prev) => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
+    setSaved(false);
+  };
+
+  const removeItem = (idx: number) => {
+    setItems((prev) => prev.filter((_, i) => i !== idx));
+    setSaved(false);
+  };
+
+  const addItem = () => {
+    setItems((prev) => [...prev, {
+      id: `sc_${Date.now()}`, nameEn: "New", nameAr: "جديد",
+      icon: "tag", color: "#F0F0F0", linkType: "category", linkValue: "",
+    }]);
+    setSaved(false);
+  };
+
+  const handleImageFile = async (idx: number, file: File) => {
+    setUploadingIdx(idx);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await fetch(`${API}/admin/uploads`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${adminToken()}` },
+        body: fd,
+      });
+      const json = await res.json();
+      if (json.data?.url) {
+        setItems((prev) => prev.map((it, i) => i === idx ? { ...it, image: json.data.url } : it));
+        setSaved(false);
+      }
+    } catch (e) { console.error(e); }
+    finally { setUploadingIdx(null); }
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      if (sectionId) {
+        await adminFetch(`/admin/content-sections/${sectionId}`, { method: "PUT", body: JSON.stringify({ items }) });
+      } else {
+        const r = await adminFetch<{ id: string }>("/admin/content-sections", {
+          method: "POST",
+          body: JSON.stringify({ key: "search_collections", title: "Search Collections", items, status: "active" }),
+        });
+        if (r.data?.id) setSectionId(r.data.id);
+      }
+      setSaved(true); setTimeout(() => setSaved(false), 3000);
+    } catch { } finally { setSaving(false); }
+  };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-24 text-muted-foreground gap-2">
+      <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      {items.map((item, i) => (
+        <div key={item.id} className="border rounded-lg p-3 bg-muted/20 space-y-3">
+          <div className="flex items-start gap-3">
+            {/* Image thumbnail + upload */}
+            <div className="flex-shrink-0 flex flex-col items-center gap-1.5">
+              <div
+                className="w-16 h-16 rounded-md border-2 border-dashed bg-muted flex items-center justify-center overflow-hidden relative cursor-pointer group"
+                style={{ backgroundColor: item.image ? undefined : item.color }}
+                onClick={() => fileRefs.current[i]?.click()}
+              >
+                {item.image ? (
+                  <>
+                    <img src={item.image} alt={item.nameEn} className="w-full h-full object-cover rounded-md" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-md flex items-center justify-center">
+                      <Upload className="w-4 h-4 text-white" />
+                    </div>
+                  </>
+                ) : uploadingIdx === i ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <Upload className="w-4 h-4 text-muted-foreground/60" />
+                )}
+              </div>
+              <input
+                ref={(el) => { fileRefs.current[i] = el; }}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFile(i, f); e.target.value = ""; }}
+              />
+              {item.image && (
+                <button
+                  className="text-[10px] text-destructive hover:underline"
+                  onClick={() => update(i, "image", "")}
+                >Remove</button>
+              )}
+            </div>
+
+            {/* Fields */}
+            <div className="flex-1 grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs mb-1 block">Name (EN)</Label>
+                <Input value={item.nameEn} onChange={(e) => update(i, "nameEn", e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div>
+                <Label className="text-xs mb-1 block">الاسم (AR)</Label>
+                <Input value={item.nameAr} onChange={(e) => update(i, "nameAr", e.target.value)} className="h-8 text-sm text-right" dir="rtl" />
+              </div>
+              <div>
+                <Label className="text-xs mb-1 block">Link Type</Label>
+                <Select value={item.linkType} onValueChange={(v) => update(i, "linkType", v)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gender">Gender</SelectItem>
+                    <SelectItem value="category">Category</SelectItem>
+                    <SelectItem value="sale">Sale</SelectItem>
+                    <SelectItem value="collection">Collection Slug</SelectItem>
+                    <SelectItem value="search">Search Query</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs mb-1 block">Link Value</Label>
+                <Input value={item.linkValue} onChange={(e) => update(i, "linkValue", e.target.value)} className="h-8 text-sm" placeholder="women / beauty / slug…" />
+              </div>
+            </div>
+
+            <button className="text-muted-foreground hover:text-destructive mt-1" onClick={() => removeItem(i)}>
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      ))}
+
+      <div className="flex items-center justify-between pt-1">
+        <Button variant="outline" size="sm" onClick={addItem}>
+          <Plus className="w-4 h-4 me-1" /> Add Collection
+        </Button>
+        <Button size="sm" onClick={save} disabled={saving}>
+          {saving ? <><Loader2 className="w-4 h-4 me-2 animate-spin" />Saving…</>
+            : saved ? <><CheckCircle2 className="w-4 h-4 me-2 text-green-500" />Saved</>
+            : "Save Changes"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function Collections() {
   const { t } = useT();
   const { data: response, isLoading } = useAdminListCollections();
@@ -228,6 +422,22 @@ export default function Collections() {
         </CardHeader>
         <CardContent>
           <MenuTabBar />
+        </CardContent>
+      </Card>
+
+      {/* ── Browse Collections (Search Page) ────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LayoutGrid className="w-5 h-5" />
+            Browse Collections (Search Page)
+          </CardTitle>
+          <CardDescription>
+            Manage the photo grid shown on the search screen. Upload an image for each collection — photos appear as full-bleed tiles side by side.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <BrowseCollectionsManager />
         </CardContent>
       </Card>
 

@@ -152,6 +152,7 @@ export type SearchCollection = {
   color: string;
   linkType: "category" | "gender" | "sale" | "collection" | "search";
   linkValue: string;
+  image?: string;
 };
 
 // Search page: editable trending keyword chip

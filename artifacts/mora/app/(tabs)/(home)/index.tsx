@@ -280,6 +280,7 @@ function BannerSlide({ banner, bannerHeight }: { banner: Banner; bannerHeight: n
 export default function HomeScreen() {
   const colors = useColors();
   const { lang } = useLanguage();
+  const isAr = lang === "ar";
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   // Full-screen hero: header floats as transparent overlay, so banner = full screen height

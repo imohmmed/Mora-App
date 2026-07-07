@@ -432,23 +432,35 @@ export default function SearchScreen() {
                     key={cat.id}
                     style={({ pressed }) => [
                       styles.categoryCard,
-                      {
-                        backgroundColor: cat.color,
-                        borderRadius: 24,
-                        overflow: "hidden",
-                        opacity: pressed ? 0.85 : 1,
-                      },
+                      { opacity: pressed ? 0.85 : 1, overflow: "hidden" },
                     ]}
                     onPress={() => handleCollectionPress(cat)}
                     testID={`category-${cat.id}`}
                   >
-                    {useGlass && <LiquidGlassBg />}
-                    <View style={[styles.categoryInner, { backgroundColor: useGlass ? "transparent" : cat.color }]}>
-                      <View style={[styles.categoryIconBg, { backgroundColor: useGlass ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.5)" }]}>
-                        <Feather name={(cat.icon || "tag") as any} size={22} color="#1A1A1A" />
-                      </View>
-                      <Text style={[styles.categoryLabel, { color: "#1A1A1A" }]}>{label}</Text>
-                    </View>
+                    {cat.image ? (
+                      /* ── Photo tile ── */
+                      <>
+                        <Image
+                          source={{ uri: cat.image }}
+                          style={StyleSheet.absoluteFill}
+                          contentFit="cover"
+                        />
+                        <View style={styles.catImgOverlay}>
+                          <Text style={styles.catImgLabel}>{label}</Text>
+                        </View>
+                      </>
+                    ) : (
+                      /* ── Icon fallback ── */
+                      <>
+                        {useGlass && <LiquidGlassBg />}
+                        <View style={[styles.categoryInner, { backgroundColor: useGlass ? "transparent" : cat.color }]}>
+                          <View style={[styles.categoryIconBg, { backgroundColor: useGlass ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.5)" }]}>
+                            <Feather name={(cat.icon || "tag") as any} size={22} color="#1A1A1A" />
+                          </View>
+                          <Text style={[styles.categoryLabel, { color: "#1A1A1A" }]}>{label}</Text>
+                        </View>
+                      </>
+                    )}
                   </Pressable>
                   );
                 })}
@@ -546,11 +558,12 @@ const styles = StyleSheet.create({
   },
   tagText: { fontFamily: "Inter_500Medium", fontSize: 14 },
 
-  categoriesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  categoriesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   categoryCard: {
-    width: (SCREEN_WIDTH - 56) / 2,
-    height: 100,
+    width: (SCREEN_WIDTH - 40) / 2,
+    height: (SCREEN_WIDTH - 40) / 2 * 1.15,
     overflow: "hidden",
+    borderRadius: 0,
   },
   categoryInner: {
     flex: 1,
@@ -566,6 +579,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   categoryLabel: { fontFamily: "Inter_600SemiBold", fontSize: 14, letterSpacing: 0.3 },
+  catImgOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  catImgLabel: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 15,
+    color: "#FFFFFF",
+    letterSpacing: 0.3,
+  },
 
   errorBox: { alignItems: "center", paddingVertical: 60, gap: 12 },
   errorText: { fontFamily: "Inter_400Regular", fontSize: 14, textAlign: "center", paddingHorizontal: 32 },
