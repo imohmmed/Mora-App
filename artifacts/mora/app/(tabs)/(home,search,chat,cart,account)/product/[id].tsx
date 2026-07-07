@@ -458,38 +458,7 @@ export default function ProductDetailScreen() {
           }}
         />
         <MoraLogo size="small" />
-        <View style={styles.cartBtnWrap}>
-          {isIOS26Plus ? (
-            <Pressable
-              onPress={() => router.push("/cart")}
-              style={styles.glassIconBtn}
-              testID="cart-header-btn"
-            >
-              <LiquidGlassBg />
-              <Feather name="shopping-bag" size={20} color="#FFFFFF" />
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={() => router.push("/cart")}
-              style={[styles.glassIconBtn, { backgroundColor: "transparent" }]}
-              testID="cart-header-btn"
-            >
-              {Platform.OS !== "web" && (
-                <BlurView
-                  style={StyleSheet.absoluteFill}
-                  intensity={60}
-                  tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
-                />
-              )}
-              <Feather name="shopping-bag" size={20} color="#FFFFFF" />
-            </Pressable>
-          )}
-          {totalItems > 0 && (
-            <View style={[styles.cartBadge, { backgroundColor: colors.primary }]}>
-              <Text style={styles.cartBadgeText}>{totalItems > 9 ? "9+" : totalItems}</Text>
-            </View>
-          )}
-        </View>
+        <View style={{ width: 44 }} />
       </Animated.View>
 
       {/* ── Content ── */}

@@ -27,6 +27,7 @@ import { useWishlist } from "@/context/WishlistContext";
 import { fetchSpecialCollection, fetchCollection, searchProducts, fetchBrowseProducts, fetchStorySiblings } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { GlassBackButton } from "@/components/GlassBackButton";
+import { MoraLogo } from "@/components/MoraLogo";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import type { Product, Variant, StorySibling } from "@/lib/types";
@@ -183,9 +184,11 @@ export default function CollectionScreen() {
   const { addItem } = useCart();
 
   const scrollRef = useRef<any>(null);
-  const searchRef = useRef<TextInput>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerBgAnim = useRef(new Animated.Value(0)).current;
+  const headerTranslateY = useRef(new Animated.Value(0)).current;
+  const lastScrollY = useRef(0);
+  const headerShown = useRef(true);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Browse mode: a category/gender/sale listing routed in from the search page
@@ -296,80 +299,25 @@ export default function CollectionScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* ───── Fixed header overlay ───── */}
       <Animated.View
-        style={[styles.fixedHeader, { height: HEADER_H, paddingTop: topPad, backgroundColor: headerBg }]}
+        style={[
+          styles.fixedHeader,
+          { height: HEADER_H, paddingTop: topPad, backgroundColor: headerBg },
+          { transform: [{ translateY: headerTranslateY }] },
+        ]}
         pointerEvents="box-none"
       >
-        {/* Back button — no background */}
+        {/* Back button */}
         <GlassBackButton
           noBackground
-          onPress={() => { Keyboard.dismiss(); router.back(); }}
+          onPress={() => router.back()}
           color={iconColor}
         />
 
-        {/* Flex spacer */}
-        <View style={{ flex: 1 }} />
+        {/* Logo centered */}
+        <MoraLogo size="small" />
 
-        {/* Right side: search icon → search bar + cart */}
-        <View style={styles.headerRight}>
-          {/* Animated search bar — width driven by scrollY for smooth expansion */}
-          <Animated.View style={[styles.searchBarWrap, { width: searchBarWidth, overflow: "hidden" }]}>
-            <Pressable
-              style={[
-                styles.searchBarInner,
-                { backgroundColor: colors.secondary, borderColor: colors.border },
-              ]}
-              onPress={handleSearchBarTap}
-              testID="search-bar-tap"
-            >
-              <Feather name="search" size={14} color={colors.mutedForeground} />
-              <TextInput
-                ref={searchRef}
-                style={[styles.searchBarInput, { color: colors.foreground }]}
-                placeholder="Search..."
-                placeholderTextColor={colors.mutedForeground}
-                value={query}
-                onChangeText={handleChangeText}
-                returnKeyType="search"
-                autoCorrect={false}
-                testID="search-input"
-              />
-              {query.length > 0 && (
-                <Pressable onPress={handleClearSearch} hitSlop={8}>
-                  <Feather name="x" size={14} color={colors.mutedForeground} />
-                </Pressable>
-              )}
-            </Pressable>
-          </Animated.View>
-
-          {/* Search icon — fades out as search bar grows in */}
-          <Animated.View style={{ opacity: searchIconOpacity }}>
-            <Pressable
-              style={styles.iconBtnPlain}
-              onPress={handleSearchIconTap}
-              hitSlop={10}
-              testID="search-btn"
-            >
-              <Feather name="search" size={22} color={iconColor} />
-            </Pressable>
-          </Animated.View>
-
-          {/* Cart button — no background */}
-          <View style={styles.iconBtnWrap}>
-            <Pressable
-              style={styles.iconBtnPlain}
-              onPress={() => router.push("/cart")}
-              hitSlop={10}
-              testID="cart-btn"
-            >
-              <Feather name="shopping-bag" size={22} color={iconColor} />
-            </Pressable>
-            {totalItems > 0 && (
-              <View style={styles.cartBadge}>
-                <Text style={styles.cartBadgeText}>{totalItems > 9 ? "9+" : totalItems}</Text>
-              </View>
-            )}
-          </View>
-        </View>
+        {/* Spacer to balance back button */}
+        <View style={{ width: 44 }} />
       </Animated.View>
 
       {/* ───── Main scrollable content ───── */}
@@ -385,6 +333,23 @@ export default function CollectionScreen() {
             listener: (e: any) => {
               const y = e.nativeEvent.contentOffset.y;
               setScrolled(y > SCROLL_THRESHOLD);
+              // hide-on-scroll-down / show-on-scroll-up
+              if (y < 60) {
+                if (!headerShown.current) {
+                  headerShown.current = true;
+                  Animated.spring(headerTranslateY, { toValue: 0, useNativeDriver: true, tension: 120, friction: 14 }).start();
+                }
+              } else {
+                const dy = y - lastScrollY.current;
+                if (dy > 4 && headerShown.current) {
+                  headerShown.current = false;
+                  Animated.spring(headerTranslateY, { toValue: -120, useNativeDriver: true, tension: 120, friction: 14 }).start();
+                } else if (dy < -4 && !headerShown.current) {
+                  headerShown.current = true;
+                  Animated.spring(headerTranslateY, { toValue: 0, useNativeDriver: true, tension: 120, friction: 14 }).start();
+                }
+              }
+              lastScrollY.current = y;
             },
           }
         )}
@@ -414,39 +379,6 @@ export default function CollectionScreen() {
           <SiblingStories siblings={siblings} />
         )}
 
-        {/* Search suggestions / results header */}
-        {debouncedQ.trim().length > 0 && (
-          <View style={[styles.resultsHeader, { borderBottomColor: colors.border }]}>
-            <Feather name="search" size={13} color={colors.mutedForeground} />
-            <Text style={[styles.resultsCount, { color: colors.mutedForeground }]}>
-              {searchLoading
-                ? "Searching..."
-                : `${displayProducts.length} result${displayProducts.length !== 1 ? "s" : ""} for "${debouncedQ}"`}
-            </Text>
-            <Pressable onPress={handleClearSearch} style={styles.clearBtn}>
-              <Feather name="x" size={13} color={colors.mutedForeground} />
-              <Text style={[styles.clearBtnTxt, { color: colors.mutedForeground }]}>Clear</Text>
-            </Pressable>
-          </View>
-        )}
-
-        {/* Trending chips — show when search bar focused but empty */}
-        {scrolled && query.length === 0 && debouncedQ.length === 0 && (
-          <View style={styles.trendingRow}>
-            <Text style={[styles.trendingLabel, { color: colors.mutedForeground }]}>TRENDING</Text>
-            <View style={styles.chipRow}>
-              {["Blazer", "Dress", "Linen", "Jeans", "Shoes", "Sale"].map((t) => (
-                <Pressable
-                  key={t}
-                  style={[styles.chip, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-                  onPress={() => handleChangeText(t)}
-                >
-                  <Text style={[styles.chipText, { color: colors.foreground }]}>{t}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        )}
 
         {/* Products / search results grid */}
         {isLoading && !refreshing ? (
