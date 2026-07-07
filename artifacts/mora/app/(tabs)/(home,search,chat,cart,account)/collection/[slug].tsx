@@ -70,7 +70,7 @@ function SiblingStories({ siblings }: { siblings: StorySibling[] }) {
 
 const { width } = Dimensions.get("window");
 const HERO_H = 260;
-const CARD_W = (width - 1) / 2;
+const CARD_W = (width - 9) / 2;
 const CARD_COLORS = [
   "#E8EDF5", "#F0EBE3", "#E8F0E8", "#F5EDEB",
   "#EBF0F5", "#F5EBF5", "#FFF3E0", "#F0F0F0",
@@ -614,6 +614,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 1,
+    paddingHorizontal: 4,
   },
   productCard: {
     width: CARD_W,
