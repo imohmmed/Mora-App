@@ -158,6 +158,13 @@ export type SearchCollection = {
 // Search page: editable trending keyword chip
 export type TrendingKeyword = { id: string; label: string };
 
+// Curated browse collections (admin-managed, image-only grid on search page)
+export type BrowseCollection = { slug: string; titleEn: string; titleAr: string; image: string };
+
+export async function fetchBrowseCollections(): Promise<BrowseCollection[]> {
+  return apiFetch<BrowseCollection[]>("/store/browse-collections");
+}
+
 // Browse a category / gender / sale listing, returned in SpecialCollection shape
 export async function fetchBrowseProducts(params: {
   type: "category" | "gender" | "sale";

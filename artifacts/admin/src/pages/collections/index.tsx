@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PageContainer, PageHeader, EmptyState } from "@/components/ui/page-primitives";
-import { FolderTree, Plus, Image as ImageIcon, LayoutList, ChevronUp, ChevronDown, Trash2, GripVertical, Loader2, CheckCircle2, Upload, LayoutGrid } from "lucide-react";
+import { FolderTree, Plus, Image as ImageIcon, LayoutList, ChevronUp, ChevronDown, Trash2, GripVertical, Loader2, CheckCircle2, Upload, LayoutGrid, X, Search, Package } from "lucide-react";
 import { fmt } from "@/lib/date";
 import { adminFetch } from "@/lib/api";
 import { useT } from "@/i18n/LanguageContext";
@@ -391,6 +391,272 @@ function BrowseCollectionsManager() {
   );
 }
 
+// ── Types ─────────────────────────────────────────────────────────────────
+type BrowseColMeta = { slug: string; titleEn: string; titleAr: string; image: string; productCount: number };
+type AdminProduct = { id: string; title: string; images: string[] };
+
+// ── CuratedBrowseCollections ───────────────────────────────────────────────
+function CuratedBrowseCollections() {
+  const [collections, setCollections] = useState<BrowseColMeta[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [colProducts, setColProducts] = useState<Record<string, AdminProduct[]>>({});
+  const [productQuery, setProductQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<AdminProduct[]>([]);
+  const [uploadingSlug, setUploadingSlug] = useState<string | null>(null);
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const loadCollections = () => {
+    adminFetch<BrowseColMeta[]>("/admin/browse-collections")
+      .then(({ data }) => setCollections(data ?? []))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { loadCollections(); }, []);
+
+  const loadProducts = async (slug: string) => {
+    const { data } = await adminFetch<AdminProduct[]>(`/admin/browse-collections/${slug}/products`);
+    setColProducts((p) => ({ ...p, [slug]: data ?? [] }));
+  };
+
+  const toggleExpand = (slug: string) => {
+    const next = expanded === slug ? null : slug;
+    setExpanded(next);
+    if (next && !colProducts[next]) loadProducts(next);
+  };
+
+  const createCollection = async () => {
+    setCreating(true);
+    try {
+      const { data } = await adminFetch<BrowseColMeta>("/admin/browse-collections", {
+        method: "POST",
+        body: JSON.stringify({ titleEn: "New Collection", titleAr: "مجموعة جديدة" }),
+      });
+      if (data) {
+        setCollections((c) => [...c, { ...data, productCount: 0 }]);
+        setExpanded(data.slug);
+      }
+    } finally { setCreating(false); }
+  };
+
+  const updateField = (slug: string, field: keyof BrowseColMeta, value: string) =>
+    setCollections((c) => c.map((col) => col.slug === slug ? { ...col, [field]: value } : col));
+
+  const saveMeta = async (slug: string) => {
+    const col = collections.find((c) => c.slug === slug);
+    if (!col) return;
+    await adminFetch(`/admin/browse-collections/${slug}/meta`, {
+      method: "PUT",
+      body: JSON.stringify({ titleEn: col.titleEn, titleAr: col.titleAr, image: col.image }),
+    });
+  };
+
+  const deleteCollection = async (slug: string) => {
+    if (!confirm("Delete this collection and all its product associations?")) return;
+    await adminFetch(`/admin/browse-collections/${slug}`, { method: "DELETE" });
+    setCollections((c) => c.filter((col) => col.slug !== slug));
+    if (expanded === slug) setExpanded(null);
+  };
+
+  const uploadImage = async (slug: string, file: File) => {
+    setUploadingSlug(slug);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await fetch(`${API}/admin/uploads`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${adminToken()}` },
+        body: fd,
+      });
+      const json = await res.json() as { data?: { url?: string } };
+      if (json.data?.url) {
+        updateField(slug, "image", json.data.url);
+        await adminFetch(`/admin/browse-collections/${slug}/meta`, {
+          method: "PUT",
+          body: JSON.stringify({ image: json.data.url }),
+        });
+      }
+    } finally { setUploadingSlug(null); }
+  };
+
+  const handleProductSearch = (q: string) => {
+    setProductQuery(q);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    if (!q.trim()) { setSearchResults([]); return; }
+    searchTimer.current = setTimeout(async () => {
+      const { data } = await adminFetch<{ products?: AdminProduct[] }>(`/admin/products?q=${encodeURIComponent(q)}&limit=10`);
+      setSearchResults((data as { products?: AdminProduct[] })?.products ?? (Array.isArray(data) ? (data as AdminProduct[]) : []));
+    }, 350);
+  };
+
+  const addProduct = async (slug: string, product: AdminProduct) => {
+    await adminFetch(`/admin/browse-collections/${slug}/products`, {
+      method: "POST",
+      body: JSON.stringify({ productId: product.id }),
+    });
+    setColProducts((p) => ({ ...p, [slug]: [...(p[slug] ?? []), product] }));
+    setCollections((c) => c.map((col) => col.slug === slug ? { ...col, productCount: col.productCount + 1 } : col));
+  };
+
+  const removeProduct = async (slug: string, productId: string) => {
+    await adminFetch(`/admin/browse-collections/${slug}/products/${productId}`, { method: "DELETE" });
+    setColProducts((p) => ({ ...p, [slug]: (p[slug] ?? []).filter((pr) => pr.id !== productId) }));
+    setCollections((c) => c.map((col) => col.slug === slug ? { ...col, productCount: Math.max(0, col.productCount - 1) } : col));
+  };
+
+  if (loading) return (
+    <div className="flex items-center gap-2 text-muted-foreground py-4">
+      <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      <Button size="sm" onClick={createCollection} disabled={creating}>
+        {creating ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <Plus className="w-4 h-4 me-2" />}
+        New Collection
+      </Button>
+
+      {collections.length === 0 && (
+        <p className="text-sm text-muted-foreground py-4 text-center">No curated collections yet. Click "New Collection" to start.</p>
+      )}
+
+      {collections.map((col) => (
+        <div key={col.slug} className="border rounded-lg bg-muted/20">
+          {/* ── Header row ── */}
+          <div className="flex items-center gap-3 p-3">
+            {/* Image tile */}
+            <div
+              className="w-14 h-14 rounded-lg overflow-hidden bg-muted border-2 border-dashed cursor-pointer relative flex items-center justify-center shrink-0 group"
+              onClick={() => fileRefs.current[col.slug]?.click()}
+            >
+              {col.image ? (
+                <img src={col.image} alt={col.titleEn} className="w-full h-full object-cover" />
+              ) : uploadingSlug === col.slug ? (
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              ) : (
+                <ImageIcon className="w-5 h-5 text-muted-foreground/50" />
+              )}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                <Upload className="w-4 h-4 text-white" />
+              </div>
+            </div>
+            <input
+              ref={(el) => { fileRefs.current[col.slug] = el; }}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(col.slug, f); e.target.value = ""; }}
+            />
+
+            {/* Names */}
+            <div className="flex-1 grid grid-cols-2 gap-2 min-w-0">
+              <Input
+                dir="ltr"
+                placeholder="Name (EN)"
+                value={col.titleEn}
+                className="h-8 text-sm"
+                onChange={(e) => updateField(col.slug, "titleEn", e.target.value)}
+                onBlur={() => saveMeta(col.slug)}
+              />
+              <Input
+                dir="rtl"
+                placeholder="الاسم (عربي)"
+                value={col.titleAr}
+                className="h-8 text-sm"
+                onChange={(e) => updateField(col.slug, "titleAr", e.target.value)}
+                onBlur={() => saveMeta(col.slug)}
+              />
+            </div>
+
+            <span className="text-xs text-muted-foreground shrink-0">{col.productCount} items</span>
+
+            <button
+              className="p-1 text-muted-foreground hover:text-foreground"
+              onClick={() => toggleExpand(col.slug)}
+            >
+              {expanded === col.slug ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+            <button
+              className="p-1 text-muted-foreground hover:text-destructive"
+              onClick={() => deleteCollection(col.slug)}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* ── Expanded: product management ── */}
+          {expanded === col.slug && (
+            <div className="border-t p-3 space-y-3">
+              {/* Current products */}
+              {(colProducts[col.slug] ?? []).length === 0 ? (
+                <p className="text-xs text-muted-foreground">No products yet. Search below to add some.</p>
+              ) : (
+                <div className="space-y-1">
+                  {(colProducts[col.slug] ?? []).map((p) => (
+                    <div key={p.id} className="flex items-center gap-2 p-2 border rounded bg-background">
+                      {p.images?.[0] ? (
+                        <img src={p.images[0]} alt={p.title} className="w-8 h-8 rounded object-cover shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded bg-muted flex items-center justify-center shrink-0">
+                          <Package className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      )}
+                      <span className="flex-1 text-sm truncate">{p.title}</span>
+                      <button
+                        className="p-1 text-muted-foreground hover:text-destructive shrink-0"
+                        onClick={() => removeProduct(col.slug, p.id)}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Product search */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  className="h-8 text-sm pl-8"
+                  placeholder="Search products to add…"
+                  value={productQuery}
+                  onChange={(e) => handleProductSearch(e.target.value)}
+                />
+              </div>
+              {searchResults.length > 0 && (
+                <div className="border rounded bg-background divide-y max-h-52 overflow-y-auto">
+                  {searchResults
+                    .filter((sr) => !(colProducts[col.slug] ?? []).some((cp) => cp.id === sr.id))
+                    .map((p) => (
+                      <button
+                        key={p.id}
+                        className="w-full flex items-center gap-2 p-2 hover:bg-muted text-left transition-colors"
+                        onClick={() => { addProduct(col.slug, p); setProductQuery(""); setSearchResults([]); }}
+                      >
+                        {p.images?.[0] ? (
+                          <img src={p.images[0]} alt={p.title} className="w-8 h-8 rounded object-cover shrink-0" />
+                        ) : (
+                          <div className="w-8 h-8 rounded bg-muted flex items-center justify-center shrink-0">
+                            <Package className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        <span className="flex-1 text-sm truncate">{p.title}</span>
+                        <Plus className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Collections() {
   const { t } = useT();
   const { data: response, isLoading } = useAdminListCollections();
@@ -438,6 +704,22 @@ export default function Collections() {
         </CardHeader>
         <CardContent>
           <BrowseCollectionsManager />
+        </CardContent>
+      </Card>
+
+      {/* ── Curated Browse Collections ────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="w-5 h-5" />
+            Curated Browse Collections
+          </CardTitle>
+          <CardDescription>
+            Create collections with hand-picked products. Each collection gets an image tile on the search screen — tap takes customers to the full product list.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CuratedBrowseCollections />
         </CardContent>
       </Card>
 

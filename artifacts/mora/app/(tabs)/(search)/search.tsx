@@ -19,7 +19,7 @@ import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
-import { searchProducts, fetchContentSections } from "@/lib/api";
+import { searchProducts, fetchContentSections, fetchBrowseCollections } from "@/lib/api";
 import type { SearchCollection, TrendingKeyword } from "@/lib/api";
 import { useLanguage } from "@/context/LanguageContext";
 import { useWishlist } from "@/context/WishlistContext";
@@ -206,7 +206,25 @@ export default function SearchScreen() {
   const trendingItems = (contentSections?.trending?.items as unknown as TrendingKeyword[]) ?? [];
   const trending = trendingItems.length ? trendingItems : FALLBACK_TRENDING;
   const browseItems = (contentSections?.search_collections?.items as unknown as SearchCollection[]) ?? [];
-  const browseCollections = browseItems.length ? browseItems : FALLBACK_COLLECTIONS;
+
+  const { data: curatedBrowse } = useQuery({
+    queryKey: ["browse-collections"],
+    queryFn: fetchBrowseCollections,
+    staleTime: 5 * 60_000,
+  });
+  const curatedItems: SearchCollection[] = (curatedBrowse ?? []).map((bc) => ({
+    id: bc.slug,
+    nameEn: bc.titleEn,
+    nameAr: bc.titleAr,
+    icon: "image",
+    color: "#F0F0F0",
+    linkType: "collection" as const,
+    linkValue: bc.slug,
+    image: bc.image,
+  }));
+
+  const baseBrowse = browseItems.length ? browseItems : FALLBACK_COLLECTIONS;
+  const browseCollections = [...baseBrowse, ...curatedItems];
 
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -438,17 +456,12 @@ export default function SearchScreen() {
                     testID={`category-${cat.id}`}
                   >
                     {cat.image ? (
-                      /* ── Photo tile ── */
-                      <>
-                        <Image
-                          source={{ uri: cat.image }}
-                          style={StyleSheet.absoluteFill}
-                          contentFit="cover"
-                        />
-                        <View style={styles.catImgOverlay}>
-                          <Text style={styles.catImgLabel}>{label}</Text>
-                        </View>
-                      </>
+                      /* ── Photo tile (image only, no text overlay) ── */
+                      <Image
+                        source={{ uri: cat.image }}
+                        style={StyleSheet.absoluteFill}
+                        contentFit="cover"
+                      />
                     ) : (
                       /* ── Icon fallback ── */
                       <>

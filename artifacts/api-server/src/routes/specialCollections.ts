@@ -2,6 +2,7 @@ import { Router } from "express";
 import db, { parseRows } from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
 import type { Row } from "../lib/types.js";
+import { getBrowseColMeta } from "./browseCollections.js";
 
 const router = Router();
 
@@ -115,6 +116,27 @@ router.get("/store/special-collections/:slug", (req, res) => {
   const { slug } = req.params as { slug: string };
   const meta = COLLECTION_META[slug];
   if (!meta) {
+    // Check if it's a browse collection (created via admin browse-collections)
+    const browseMeta = getBrowseColMeta(slug);
+    if (browseMeta) {
+      const { limit = "20", page = "1" } = req.query as Record<string, string>;
+      const limitNum = Math.min(50, Math.max(1, parseInt(limit)));
+      const pageNum = Math.max(1, parseInt(page));
+      const offset = (pageNum - 1) * limitNum;
+      const all = db.prepare(`
+        SELECT p.* FROM products p
+        JOIN special_collection_items sci ON p.id = sci.product_id
+        WHERE sci.collection_slug = ? AND p.status = 'active'
+        ORDER BY sci.sort_order ASC
+      `).all(slug) as Row[];
+      const sliced = withVariants(parseRows(all.slice(offset, offset + limitNum)));
+      res.json({
+        data: { slug, title: browseMeta["titleEn"] || slug, titleAr: browseMeta["titleAr"] || "", heroImage: browseMeta["image"] || "", accentColor: "#0274C1", products: sliced },
+        meta: { total: all.length, page: pageNum, limit: limitNum, pages: Math.ceil(all.length / limitNum) },
+        error: null,
+      });
+      return;
+    }
     res.status(404).json({ data: null, meta: {}, error: "Collection not found" });
     return;
   }

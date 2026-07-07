@@ -19,6 +19,7 @@ import uploadsRouter from "./uploads.js";
 import shippingRouter from "./shipping.js";
 import chatAdminRouter from "./chat-admin.js";
 import chatPublicRouter from "./chat-public.js";
+import browseCollectionsRouter from "./browseCollections.js";
 
 const router: IRouter = Router();
 
@@ -33,6 +34,7 @@ router.use(marketingRouter);
 router.use(analyticsRouter);
 router.use(cartRouter);
 router.use(specialCollectionsRouter);
+router.use(browseCollectionsRouter);
 router.use(authRouter);
 router.use(bannersRouter);
 router.use(storiesRouter);
