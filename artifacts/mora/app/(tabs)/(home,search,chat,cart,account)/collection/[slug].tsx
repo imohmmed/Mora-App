@@ -379,7 +379,9 @@ export default function CollectionScreen() {
           />
           <View style={styles.heroOverlay} />
           <View style={[styles.heroContent, { paddingTop: HEADER_H + 8 }, lang === "ar" && { alignItems: "flex-end" }]}>
-            <Text style={[styles.heroTitle, lang === "ar" && { textAlign: "right" }]}>{collection?.title ?? " "}</Text>
+            <Text style={[styles.heroTitle, lang === "ar" && { textAlign: "right" }]}>
+              {lang === "ar" && collection?.titleAr ? collection.titleAr : (collection?.title ?? " ")}
+            </Text>
             {!!collection?.description && (
               <Text style={[styles.heroDescription, lang === "ar" && { textAlign: "right" }]}>{collection.description}</Text>
             )}

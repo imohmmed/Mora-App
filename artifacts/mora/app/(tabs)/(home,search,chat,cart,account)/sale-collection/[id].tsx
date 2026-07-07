@@ -4,6 +4,7 @@ import {
   RefreshControl, StyleSheet, Text, View,
 } from "react-native";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
@@ -19,6 +20,8 @@ import { GlassBackButton } from "@/components/GlassBackButton";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import type { Product, Variant } from "@/lib/types";
+
+const HERO_H = 300;
 
 const { width } = Dimensions.get("window");
 const CARD_W = (width - 9) / 2;
@@ -130,22 +133,31 @@ export default function SaleCollectionScreen() {
         keyExtractor={(p) => p.id}
         numColumns={2}
         columnWrapperStyle={styles.row}
-        contentContainerStyle={[styles.list, { paddingTop: insets.top + 56, paddingBottom: insets.bottom + 80 }]}
+        contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 80 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
         ListHeaderComponent={() => (
-          <View style={[styles.heroHeader, isAr && { alignItems: "flex-end" }]}>
-            {!!title && (
-              <Text style={[styles.heroTitle, { color: colors.foreground }]}>{title}</Text>
-            )}
-            {!!desc && (
-              <Text style={[styles.heroDesc, { color: colors.mutedForeground }]}>{desc}</Text>
-            )}
-            {!isLoading && !!products?.length && (
-              <Text style={[styles.count, { color: colors.mutedForeground }]}>
-                {products.length} {isAr ? "منتج" : "items"}
-              </Text>
-            )}
+          <View style={styles.hero}>
+            {collection?.image ? (
+              <Image source={{ uri: collection.image }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            ) : null}
+            <LinearGradient
+              colors={["rgba(0,0,0,0.0)", "rgba(0,0,0,0.65)"]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={[styles.heroContent, { paddingTop: insets.top + 60 }, isAr && { alignItems: "flex-end" }]}>
+              {!!title && (
+                <Text style={[styles.heroTitle, isAr && { textAlign: "right" }]}>{title}</Text>
+              )}
+              {!!desc && (
+                <Text style={[styles.heroDesc, isAr && { textAlign: "right" }]}>{desc}</Text>
+              )}
+              {!isLoading && !!products?.length && (
+                <Text style={styles.count}>
+                  {products.length} {isAr ? "منتج" : "items"}
+                </Text>
+              )}
+            </View>
           </View>
         )}
         ListEmptyComponent={() =>
@@ -192,10 +204,11 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   list: { paddingHorizontal: 4, gap: 1 },
   row: { gap: 1 },
-  heroHeader: { paddingHorizontal: 10, paddingVertical: 20, gap: 4 },
-  heroTitle: { fontFamily: "Inter_700Bold", fontSize: 22, letterSpacing: 0.3 },
-  heroDesc: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 20 },
-  count: { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 4 },
+  hero: { width: "100%", height: HERO_H, backgroundColor: "#111", marginBottom: 8 },
+  heroContent: { paddingHorizontal: 18, paddingBottom: 20, gap: 6, position: "absolute", bottom: 0, left: 0, right: 0 },
+  heroTitle: { fontFamily: "Inter_700Bold", fontSize: 26, letterSpacing: 0.3, color: "#FFF" },
+  heroDesc: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 20, color: "rgba(255,255,255,0.8)" },
+  count: { fontFamily: "Inter_400Regular", fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 2 },
   productCard: { width: CARD_W, flex: 1 },
   productImage: { width: "100%", height: CARD_W * 1.4, borderRadius: 0 },
   productInfo: { paddingTop: 8, gap: 3, paddingHorizontal: 2 },

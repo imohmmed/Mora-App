@@ -212,6 +212,7 @@ export async function fetchCollection(id: string): Promise<SpecialCollection> {
   return {
     slug: (d["id"] as string) ?? id,
     title: (d["title"] as string) ?? "",
+    titleAr: (d["titleAr"] as string) ?? "",
     description: (d["description"] as string) ?? "",
     heroImage: (d["backgroundImage"] as string) || (d["image"] as string) || "",
     accentColor: "#0274C1",

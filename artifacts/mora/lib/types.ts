@@ -97,6 +97,7 @@ export type Banner = {
 export type SpecialCollection = {
   slug: string;
   title: string;
+  titleAr?: string;
   description: string;
   heroImage: string;
   accentColor: string;

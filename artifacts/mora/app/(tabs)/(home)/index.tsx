@@ -39,6 +39,7 @@ import { fetchProducts, fetchSpecialCollections, fetchBanners, fetchStories, fet
 import { formatIQD } from "@/lib/format";
 import { StoriesSection } from "@/components/StoriesSection";
 import { HomeSaleCollections } from "@/components/HomeSaleCollections";
+import { MoraPerfumesSection } from "@/components/MoraPerfumesSection";
 import type { Product, Banner, Variant } from "@/lib/types";
 
 // Enable LayoutAnimation on Android (always-on on iOS)
@@ -634,6 +635,8 @@ export default function HomeScreen() {
           </Text>
         </View>
       )}
+
+      <MoraPerfumesSection />
 
       <StoriesSection rows={storyRows ?? []} activeFilter={activeFilter} />
 
