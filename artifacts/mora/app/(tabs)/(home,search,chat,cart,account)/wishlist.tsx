@@ -88,56 +88,58 @@ function WishlistCard({
   const { lang } = useLanguage();
   const t = T[lang] ?? T.en;
 
+  const hasDiscount = product.comparePrice != null && product.comparePrice > product.price;
+  const isAr = lang === "ar";
+
   return (
-    <View style={{ width: CARD_WIDTH }}>
-      <Pressable
-        style={({ pressed }) => [{ opacity: pressed ? 0.93 : 1 }]}
-        onPress={() => router.push(`/product/${product.id}`)}
+    <Pressable
+      style={{ width: CARD_WIDTH }}
+      onPress={() => router.push(`/product/${product.id}`)}
+    >
+      <ProductImageCarousel
+        images={product.images ?? []}
+        style={[styles.cardImage, { backgroundColor: cardColor(product.id) }]}
+        placeholder={<Feather name="shopping-bag" size={32} color={colors.mutedForeground} />}
       >
-        <ProductImageCarousel
-          images={product.images ?? []}
-          style={[styles.cardImage, { backgroundColor: cardColor(product.id) }]}
-          placeholder={<Feather name="shopping-bag" size={32} color={colors.mutedForeground} />}
+        {/* Heart — top-right, no background, filled (already in wishlist) */}
+        <Pressable
+          style={[styles.heartBtn, isAr ? styles.heartBtnAr : styles.heartBtnEn]}
+          onPress={() => {
+            toggle(product.id);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+          hitSlop={10}
         >
-          <Pressable
-            style={styles.removeBtn}
-            onPress={() => {
-              toggle(product.id);
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }}
-          >
-            <Ionicons name="heart" size={16} color="#0274C1" />
-          </Pressable>
-        </ProductImageCarousel>
-        <View style={styles.cardInfo}>
-          <Text style={[styles.cardVendor, { color: colors.mutedForeground }]}>
-            {product.vendor ?? "Mora"}
+          <Ionicons name="heart" size={22} color="#0274C1" />
+        </Pressable>
+        {/* Add to Bag "+" — bottom-right, no background */}
+        <Pressable
+          style={[styles.plusBtn, isAr ? styles.plusBtnAr : styles.plusBtnEn]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onAddToBag(product);
+          }}
+          hitSlop={10}
+        >
+          <Feather name="plus" size={22} color="#FFFFFF" />
+        </Pressable>
+      </ProductImageCarousel>
+      <View style={[styles.cardInfo, isAr && { alignItems: "flex-end" }]}>
+        <Text style={[styles.cardTitle, { color: colors.foreground }]} numberOfLines={2}>
+          {product.title}
+        </Text>
+        <View style={styles.priceRow}>
+          <Text style={[styles.cardPrice, { color: "#E53935" }]}>
+            {formatIQD(product.price)}
           </Text>
-          <Text style={[styles.cardTitle, { color: colors.foreground }]} numberOfLines={2}>
-            {product.title}
-          </Text>
-          <View style={styles.priceRow}>
-            <Text style={[styles.cardPrice, { color: colors.foreground }]}>
-              {formatIQD(product.price)}
+          {hasDiscount && (
+            <Text style={[styles.comparePrice, { color: colors.mutedForeground }]}>
+              {formatIQD(product.comparePrice!)}
             </Text>
-            {product.comparePrice != null && product.comparePrice > product.price && (
-              <Text style={[styles.comparePrice]}>
-                {formatIQD(product.comparePrice)}
-              </Text>
-            )}
-          </View>
+          )}
         </View>
-      </Pressable>
-      <Pressable
-        style={[styles.addBtn, { backgroundColor: "#0274C1" }]}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          onAddToBag(product);
-        }}
-      >
-        <Text style={styles.addBtnText}>{t.addToBag}</Text>
-      </Pressable>
-    </View>
+      </View>
+    </Pressable>
   );
 }
 
@@ -299,37 +301,27 @@ const styles = StyleSheet.create({
   emptySub: { fontFamily: "Inter_400Regular", fontSize: 15, textAlign: "center", lineHeight: 22 },
   cardImage: {
     width: "100%",
-    height: CARD_WIDTH * 1.3,
-    borderRadius: 12,
+    height: CARD_WIDTH * 1.4,
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
     overflow: "hidden",
   },
-  removeBtn: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderRadius: 20,
-    padding: 6,
-    zIndex: 1,
-  },
+  heartBtn: { position: "absolute", top: 10, zIndex: 2 },
+  heartBtnEn: { right: 10 },
+  heartBtnAr: { left: 10 },
+  plusBtn: { position: "absolute", bottom: 10, zIndex: 2 },
+  plusBtnEn: { right: 10 },
+  plusBtnAr: { left: 10 },
   cardInfo: { paddingTop: 8, gap: 3 },
-  cardVendor: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 11,
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-  },
-  cardTitle: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18 },
-  priceRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 },
+  cardTitle: { fontFamily: "Inter_500Medium", fontSize: 13, lineHeight: 18 },
+  priceRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
   cardPrice: { fontFamily: "Inter_700Bold", fontSize: 14 },
   comparePrice: {
     fontFamily: "Inter_400Regular",
     fontSize: 12,
     textDecorationLine: "line-through",
-    color: "#E53935",
   },
   addBtn: {
     paddingVertical: 10,

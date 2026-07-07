@@ -731,7 +731,7 @@ const styles = StyleSheet.create({
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
 
   /* ── FlatList column wrapper ── */
-  row: { gap: 16, marginBottom: 16 },
+  row: { gap: 8, marginBottom: 8 },
 
   /* ── Product card ── */
   productCard: { width: CARD_WIDTH, flex: 1 },

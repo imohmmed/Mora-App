@@ -15,12 +15,26 @@ type Props = {
   onPress: () => void;
   color?: string;
   style?: object;
+  noBackground?: boolean;
 };
 
-export function GlassBackButton({ onPress, color, style }: Props) {
+export function GlassBackButton({ onPress, color, style, noBackground }: Props) {
   const { resolvedScheme } = useTheme();
   const isDark = resolvedScheme === "dark";
-  const iconColor = color ?? (isDark ? "#FFFFFF" : "#000000");
+  const iconColor = color ?? (noBackground ? "#FFFFFF" : isDark ? "#FFFFFF" : "#000000");
+
+  if (noBackground) {
+    return (
+      <Pressable
+        onPress={onPress}
+        hitSlop={12}
+        testID="back-btn"
+        style={({ pressed }) => [styles.btnPlain, style, pressed && { opacity: 0.65 }]}
+      >
+        <Feather name="arrow-left" size={24} color={iconColor} />
+      </Pressable>
+    );
+  }
 
   return (
     <Pressable
@@ -65,6 +79,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
+  },
+  btnPlain: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
   },
   webBg: {
     borderRadius: 21,

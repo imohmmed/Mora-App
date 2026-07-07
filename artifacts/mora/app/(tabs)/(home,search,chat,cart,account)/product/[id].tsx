@@ -153,7 +153,10 @@ function RelatedCard({
 }) {
   const router = useRouter();
   const { lang } = useLanguage();
+  const { ids, toggle } = useWishlist();
+  const liked = ids.has(product.id);
   const bg = cardColor(product.id);
+  const isAr = lang === "ar";
   const hasDiscount =
     product.comparePrice != null && product.comparePrice > product.price;
   const discountPct = hasDiscount
@@ -164,41 +167,54 @@ function RelatedCard({
 
   return (
     <Pressable
-      style={[styles.relatedCard, { width: cardWidth, backgroundColor: colors.background, borderColor: colors.border }]}
+      style={{ width: cardWidth }}
       onPress={() => router.push(`/product/${product.id}`)}
     >
-      <View style={[styles.relatedImg, { width: cardWidth, height: cardWidth * 1.25, backgroundColor: bg }]}>
+      {/* Image block */}
+      <View style={{ width: cardWidth, height: cardWidth * 1.4, backgroundColor: bg, overflow: "hidden", position: "relative" }}>
         <Image
           source={{ uri: product.images?.[0] }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
         />
+        {/* Discount badge — top opposite corner from heart */}
         {discountPct > 0 && (
-          <View style={styles.relatedDisc}>
-            <Text style={styles.relatedDiscText}>-{discountPct}%</Text>
+          <View style={[styles.relatedDisc, isAr ? styles.relatedDiscEn : styles.relatedDiscEn]}>
+            <Text style={styles.relatedDiscText}>▼ {discountPct}%</Text>
           </View>
         )}
+        {/* Heart — top-right, no bg */}
+        <Pressable
+          style={[styles.relatedHeart, isAr ? styles.relatedHeartAr : styles.relatedHeartEn]}
+          onPress={(e) => { e.stopPropagation?.(); toggle(product.id); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          hitSlop={10}
+        >
+          <Ionicons name={liked ? "heart" : "heart-outline"} size={20} color={liked ? "#0274C1" : "#FFFFFF"} />
+        </Pressable>
+        {/* Add to Bag "+" — bottom-right, no bg */}
+        <Pressable
+          style={[styles.relatedPlus, isAr ? styles.relatedPlusAr : styles.relatedPlusEn]}
+          onPress={(e) => { e.stopPropagation?.(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onQuickAdd(product); }}
+          hitSlop={10}
+        >
+          <Feather name="plus" size={20} color="#FFFFFF" />
+        </Pressable>
       </View>
-      <View style={styles.relatedInfo}>
+      {/* Text info */}
+      <View style={[styles.relatedInfo, isAr && { alignItems: "flex-end" }]}>
         <Text style={[styles.relatedTitle, { color: colors.foreground }]} numberOfLines={2}>
           {product.title}
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <Text style={[styles.relatedPrice, { color: PRIMARY }]}>
+          <Text style={[styles.relatedPrice, { color: "#E53935" }]}>
             {formatIQD(product.price)}
           </Text>
           {hasDiscount && (
-            <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: "#E53935", textDecorationLine: "line-through" }}>
+            <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: colors.mutedForeground, textDecorationLine: "line-through" }}>
               {formatIQD(product.comparePrice!)}
             </Text>
           )}
         </View>
-        <Pressable
-          style={styles.relatedAddBtn}
-          onPress={(e) => { e.stopPropagation?.(); onQuickAdd(product); }}
-        >
-          <Text style={styles.relatedAddText}>{lang === "ar" ? "اضفه لسلتي" : "ADD TO BAG"}</Text>
-        </Pressable>
       </View>
     </Pressable>
   );
@@ -407,7 +423,7 @@ export default function ProductDetailScreen() {
         ]}
       >
         <GlassBackButton
-          color="#FFFFFF"
+          noBackground
           onPress={() => {
             if (router.canGoBack()) router.back();
             else router.replace("/");
@@ -522,24 +538,16 @@ export default function ProductDetailScreen() {
                 ))}
               </View>
             )}
-            {/* Wishlist button — below the floating header */}
+            {/* Wishlist button — no background, just icon */}
             <Pressable
               style={[styles.wishlistBtnWrap, { top: topPadding + 66 }]}
               onPress={() => {
                 toggle(product.id);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
+              hitSlop={12}
             >
-              {isIOS26Plus ? (
-                <View style={styles.wishlistBtnGlass}>
-                  <LiquidGlassBg />
-                  <Ionicons name={liked ? "heart" : "heart-outline"} size={22} color={liked ? "#0274C1" : "#FFF"} />
-                </View>
-              ) : (
-                <View style={[styles.wishlistBtnFallback, { backgroundColor: "rgba(255,255,255,0.9)" }]}>
-                  <Ionicons name={liked ? "heart" : "heart-outline"} size={22} color={liked ? "#0274C1" : "#1A1A1A"} />
-                </View>
-              )}
+              <Ionicons name={liked ? "heart" : "heart-outline"} size={26} color={liked ? "#0274C1" : "#FFFFFF"} />
             </Pressable>
           </View>
 
@@ -1043,29 +1051,17 @@ const styles = StyleSheet.create({
   relatedGrid: {
     flexDirection: "row", flexWrap: "wrap", gap: 8, paddingHorizontal: 16,
   },
-  relatedCard: {
-    borderRadius: 10, borderWidth: 1, overflow: "hidden",
-  },
-  relatedImg: { alignItems: "center", justifyContent: "center", position: "relative" },
   relatedDisc: {
-    position: "absolute", top: 8, left: 8,
-    backgroundColor: "#E53935", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3,
+    position: "absolute", top: 8, left: 8, zIndex: 2,
   },
-  relatedDiscText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 10 },
-  relatedInfo: { padding: 10, gap: 4 },
-  relatedAddBtn: {
-    backgroundColor: "#0274C1",
-    paddingVertical: 10,
-    alignItems: "center",
-    borderRadius: 100,
-    marginTop: 8,
-  },
-  relatedAddText: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    fontSize: 11,
-    letterSpacing: 0.8,
-  },
+  relatedDiscText: { color: "#E53935", fontFamily: "Inter_700Bold", fontSize: 10 },
+  relatedHeart: { position: "absolute", top: 8, zIndex: 2 },
+  relatedHeartEn: { right: 8 },
+  relatedHeartAr: { left: 8 },
+  relatedPlus: { position: "absolute", bottom: 8, zIndex: 2 },
+  relatedPlusEn: { right: 8 },
+  relatedPlusAr: { left: 8 },
+  relatedInfo: { paddingTop: 8, gap: 3 },
   relatedTitle: { fontFamily: "Inter_500Medium", fontSize: 12, lineHeight: 17 },
   relatedPrice: { fontFamily: "Inter_700Bold", fontSize: 13 },
 
