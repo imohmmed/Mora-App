@@ -37,7 +37,7 @@ import { ShippingRulesNote } from "@/components/ShippingRulesNote";
 import { ReelPlayer } from "@/components/ReelPlayer";
 import RenderHtml from "react-native-render-html";
 import type { ContentSectionItem } from "@/lib/api";
-import type { Variant, Product } from "@/lib/types";
+import type { Variant, Product, ColorEntry } from "@/lib/types";
 
 const PRIMARY = "#0274C1";
 const GOLD = "#C9922A";
@@ -595,68 +595,129 @@ export default function ProductDetailScreen() {
 
           </View>
 
-          {/* ── Variants / SIZE ── */}
+          {/* ── Variants / SIZE / COLOR ── */}
           {product.variants && product.variants.some((v) => v.option1 && v.option1 !== "Default Title") && (
             <View style={[styles.variantsSection, { borderTopColor: colors.border }]}>
-              <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
-                {(() => {
-                  const def = product.optionDefinitions?.[0];
-                  const named = def
-                    ? (lang === "ar"
-                        ? (def.nameAr || def.nameEn || def.name)
-                        : (def.nameEn || def.nameAr || def.name))
-                    : null;
-                  if (named && named.trim()) return named.trim();
-                  return product.variants[0]?.option1
-                    ? (lang === "ar" ? "القياس" : "SIZE")
-                    : (lang === "ar" ? "الخيارات" : "OPTIONS");
-                })()}
-              </Text>
-              <View style={styles.variantsRow}>
-                {product.variants.map((v) => {
-                  const isActive = activeVariant?.id === v.id;
-                  const outOfStock = v.inventory <= 0;
+              {(() => {
+                const opt1Def = product.optionDefinitions?.[0];
+                const isColorGroup = opt1Def?.type === "color";
+                const colorEntries: ColorEntry[] = opt1Def?.colorEntries ?? [];
+                const named = opt1Def
+                  ? (lang === "ar"
+                      ? (opt1Def.nameAr || opt1Def.nameEn || opt1Def.name)
+                      : (opt1Def.nameEn || opt1Def.nameAr || opt1Def.name))
+                  : null;
+                const sectionTitle = (named && named.trim())
+                  ? named.trim()
+                  : (isColorGroup
+                      ? (lang === "ar" ? "اللون" : "COLOR")
+                      : (lang === "ar" ? "القياس" : "SIZE"));
+
+                if (isColorGroup) {
+                  const uniqueColors = [...new Map(
+                    product.variants
+                      .filter((v) => v.option1 && v.option1 !== "Default Title")
+                      .map((v) => [v.option1, v])
+                  ).values()];
+                  const activeColorName = activeVariant?.option1 ?? null;
+                  const selEntry = colorEntries.find((c) => c.nameEn === activeColorName || c.hex === activeColorName);
+                  const selLabel = selEntry
+                    ? (lang === "ar" ? (selEntry.nameAr || selEntry.nameEn) : (selEntry.nameEn || selEntry.nameAr))
+                    : activeColorName;
+
                   return (
-                    <Pressable
-                      key={v.id}
-                      style={[
-                        styles.variantChip,
-                        {
-                          borderColor: isActive
-                            ? "transparent"
-                            : (isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.13)"),
-                          backgroundColor: isActive ? PRIMARY : "transparent",
-                          opacity: outOfStock ? 0.4 : 1,
-                        },
-                      ]}
-                      onPress={() => {
-                        if (!outOfStock) {
-                          setSelectedVariant(v);
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        }
-                      }}
-                      disabled={outOfStock}
-                    >
-                      {/* Glass / blur background for inactive chips */}
-                      {!isActive && Platform.OS !== "web" && (
-                        <View style={styles.chipGlassBg}>
-                          {isIOS26Plus
-                            ? <LiquidGlassBg />
-                            : <BlurView
-                                style={StyleSheet.absoluteFill}
-                                intensity={55}
-                                tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
-                              />
-                          }
-                        </View>
-                      )}
-                      <Text style={[styles.variantText, { color: isActive ? "#FFFFFF" : colors.foreground }]}>
-                        {v.option1 ?? v.title}
+                    <>
+                      <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
+                        {sectionTitle}{selLabel ? ` — ${selLabel}` : ""}
                       </Text>
-                    </Pressable>
+                      <View style={[styles.variantsRow, { gap: 10 }]}>
+                        {uniqueColors.map((v) => {
+                          const isActive = activeVariant?.option1 === v.option1;
+                          const outOfStock = v.inventory <= 0;
+                          const entry = colorEntries.find((c) => c.nameEn === v.option1 || c.hex === v.option1);
+                          const hex = entry?.hex || "#888888";
+                          return (
+                            <Pressable
+                              key={v.id}
+                              style={[
+                                styles.colorSwatchBtn,
+                                {
+                                  backgroundColor: hex,
+                                  borderWidth: isActive ? 3 : 1.5,
+                                  borderColor: isActive ? PRIMARY : (isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.18)"),
+                                  opacity: outOfStock ? 0.4 : 1,
+                                },
+                              ]}
+                              onPress={() => {
+                                if (!outOfStock) {
+                                  setSelectedVariant(v);
+                                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                }
+                              }}
+                              disabled={outOfStock}
+                            >
+                              {isActive && <View style={styles.colorSwatchRing} />}
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </>
                   );
-                })}
-              </View>
+                }
+
+                return (
+                  <>
+                    <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
+                      {sectionTitle}
+                    </Text>
+                    <View style={styles.variantsRow}>
+                      {product.variants.map((v) => {
+                        const isActive = activeVariant?.id === v.id;
+                        const outOfStock = v.inventory <= 0;
+                        return (
+                          <Pressable
+                            key={v.id}
+                            style={[
+                              styles.variantChip,
+                              {
+                                borderColor: isActive
+                                  ? "transparent"
+                                  : (isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.13)"),
+                                backgroundColor: isActive ? PRIMARY : "transparent",
+                                opacity: outOfStock ? 0.4 : 1,
+                              },
+                            ]}
+                            onPress={() => {
+                              if (!outOfStock) {
+                                setSelectedVariant(v);
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              }
+                            }}
+                            disabled={outOfStock}
+                          >
+                            {!isActive && Platform.OS !== "web" && (
+                              <View style={styles.chipGlassBg}>
+                                {isIOS26Plus
+                                  ? <LiquidGlassBg />
+                                  : <BlurView
+                                      style={StyleSheet.absoluteFill}
+                                      intensity={55}
+                                      tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
+                                    />
+                                }
+                              </View>
+                            )}
+                            <Text style={[styles.variantText, { color: isActive ? "#FFFFFF" : colors.foreground }]}>
+                              {v.option1 ?? v.title}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </>
+                );
+              })()}
+
             </View>
           )}
 
@@ -1008,6 +1069,23 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   variantText: { fontFamily: "Inter_500Medium", fontSize: 14 },
+  colorSwatchBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    overflow: "hidden",
+    position: "relative",
+  },
+  colorSwatchRing: {
+    position: "absolute",
+    top: 2,
+    left: 2,
+    right: 2,
+    bottom: 2,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.75)",
+  },
 
   /* Quantity stepper */
   qtyWrap: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },

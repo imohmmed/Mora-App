@@ -36,7 +36,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { requestRestockNotify } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
-import type { Product, Variant } from "@/lib/types";
+import type { ColorEntry, Product, Variant } from "@/lib/types";
 
 const PRIMARY = "#0274C1";
 const { width: SW } = Dimensions.get("window");
@@ -240,6 +240,69 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   const heartBg    = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.05)";
   const heartBorder = liked ? PRIMARY : (isDark ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.12)");
 
+  const opt1Def = product?.optionDefinitions?.[0];
+  const opt2Def = product?.optionDefinitions?.[1];
+  const isOpt1Color = opt1Def?.type === "color";
+  const isOpt2Color = opt2Def?.type === "color";
+
+  // ── Color circle renderer ──────────────────────────────────────────────────
+  const renderColorChips = (
+    colorEntries: ColorEntry[],
+    values: string[],
+    selected: string | null,
+    onSelect: (v: string) => void,
+    isOOS: (v: string) => boolean,
+    label: string,
+  ) => {
+    const selEntry = colorEntries.find((c) => c.nameEn === selected || c.hex === selected);
+    const selName = selEntry
+      ? (lang === "ar" ? (selEntry.nameAr || selEntry.nameEn) : (selEntry.nameEn || selEntry.nameAr))
+      : selected;
+    return (
+      <View style={[styles.axisWrap, lang === "ar" && { alignItems: "flex-end" }]}>
+        <Text style={[styles.axisLabel, { color: textMuted }, lang === "ar" && { textAlign: "right" }]}>
+          {lang === "ar"
+            ? (selected ? `${label} — ${selName}` : `اختر ${label}`)
+            : (selected ? `${label} — ${selName}` : `SELECT ${label}`)}
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.chipRow, lang === "ar" && { flexDirection: "row-reverse" }]}
+        >
+          {values.map((val) => {
+            const entry = colorEntries.find((c) => c.nameEn === val || c.hex === val);
+            const hex = entry?.hex || "#888888";
+            const active = selected === val;
+            const oos = isOOS(val);
+            return (
+              <Pressable
+                key={val}
+                style={{ opacity: oos ? 0.35 : 1 }}
+                onPress={() => !oos && onSelect(val)}
+                disabled={oos}
+              >
+                <View
+                  style={[
+                    styles.colorSwatch,
+                    {
+                      backgroundColor: hex,
+                      borderWidth: active ? 3 : 1.5,
+                      borderColor: active ? PRIMARY : "rgba(0,0,0,0.18)",
+                    },
+                  ]}
+                >
+                  {active && <View style={styles.colorSwatchRing} />}
+                  {oos && <View style={styles.strikeThrough} />}
+                </View>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
+  };
+
   // ── Chip renderer ─────────────────────────────────────────────────────────────
   const renderChips = (
     values: string[],
@@ -376,13 +439,13 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
           {/* ── Variants ─────────────────────────────────────────────────── */}
           {(hasOpt1 || hasOpt2) && (
             <View style={[styles.optionsWrap, { borderTopColor: divider }]}>
-              {hasOpt1 && renderChips(
-                opt1Values, selectedOpt1,
-                (v) => { setSelectedOpt1(v); setSelectedOpt2(null); },
-                isOpt1OOS, label1,
+              {hasOpt1 && (isOpt1Color && opt1Def?.colorEntries
+                ? renderColorChips(opt1Def.colorEntries, opt1Values, selectedOpt1, (v) => { setSelectedOpt1(v); setSelectedOpt2(null); }, isOpt1OOS, label1)
+                : renderChips(opt1Values, selectedOpt1, (v) => { setSelectedOpt1(v); setSelectedOpt2(null); }, isOpt1OOS, label1)
               )}
-              {hasOpt2 && renderChips(
-                opt2Values, selectedOpt2, setSelectedOpt2, isOpt2OOS, label2,
+              {hasOpt2 && (isOpt2Color && opt2Def?.colorEntries
+                ? renderColorChips(opt2Def.colorEntries, opt2Values, selectedOpt2, setSelectedOpt2, isOpt2OOS, label2)
+                : renderChips(opt2Values, selectedOpt2, setSelectedOpt2, isOpt2OOS, label2)
               )}
             </View>
           )}
@@ -662,5 +725,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     minWidth: 30,
     textAlign: "center",
+  },
+  colorSwatch: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    overflow: "hidden",
+    marginRight: 8,
+    position: "relative",
+  },
+  colorSwatchRing: {
+    position: "absolute",
+    top: 2,
+    left: 2,
+    right: 2,
+    bottom: 2,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.75)",
   },
 });

@@ -1,12 +1,21 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Plus, X, Trash2, PencilLine, Check } from "lucide-react";
+import { Plus, X, Trash2, PencilLine, Check, Palette, AlignJustify } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type OptionGroup = { name?: string; nameEn?: string; nameAr?: string; values: string[] };
+export type ColorEntry = { nameEn: string; nameAr: string; hex: string };
+
+export type OptionGroup = {
+  name?: string;
+  nameEn?: string;
+  nameAr?: string;
+  values: string[];
+  type?: "variant" | "color";
+  colorEntries?: ColorEntry[];
+};
 
 export function optionGroupName(g: OptionGroup): string {
   return (g.nameEn || g.nameAr || g.name || "").trim();
@@ -68,6 +77,7 @@ export function VariantBuilder({
   const [valueInputs, setValueInputs] = useState<string[]>(optionGroups.map(() => ""));
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [bulkFields, setBulkFields] = useState<BulkFields>({
     price: "", comparePrice: "", inventory: "", sku: "", cost: "",
   });
@@ -92,9 +102,17 @@ export function VariantBuilder({
     setSelected(new Set());
   };
 
-  const addGroup = () => {
+  const addVariantGroup = () => {
     if (optionGroups.length >= 3) return;
-    const next = [...optionGroups, { nameEn: "", nameAr: "", values: [] }];
+    const next = [...optionGroups, { nameEn: "", nameAr: "", values: [], type: "variant" as const }];
+    onOptionGroupsChange(next);
+    setValueInputs([...valueInputs, ""]);
+    syncVariants(next);
+  };
+
+  const addColorGroup = () => {
+    if (optionGroups.length >= 3) return;
+    const next = [...optionGroups, { nameEn: "Color", nameAr: "اللون", values: [], type: "color" as const, colorEntries: [] }];
     onOptionGroupsChange(next);
     setValueInputs([...valueInputs, ""]);
     syncVariants(next);
@@ -133,6 +151,39 @@ export function VariantBuilder({
     syncVariants(next);
   };
 
+  const setColorEntryField = (gi: number, ci: number, field: keyof ColorEntry, value: string) => {
+    const next = optionGroups.map((g, idx) => {
+      if (idx !== gi || !g.colorEntries) return g;
+      const newEntries = g.colorEntries.map((c, cIdx) =>
+        cIdx === ci ? { ...c, [field]: value } : c
+      );
+      return { ...g, colorEntries: newEntries, values: newEntries.map((c) => c.nameEn || c.hex) };
+    });
+    onOptionGroupsChange(next);
+    syncVariants(next);
+  };
+
+  const addColorEntry = (gi: number) => {
+    const next = optionGroups.map((g, idx) => {
+      if (idx !== gi) return g;
+      const newEntry: ColorEntry = { nameEn: "", nameAr: "", hex: "#000000" };
+      const newEntries = [...(g.colorEntries ?? []), newEntry];
+      return { ...g, colorEntries: newEntries, values: newEntries.map((c) => c.nameEn || c.hex) };
+    });
+    onOptionGroupsChange(next);
+    syncVariants(next);
+  };
+
+  const removeColorEntry = (gi: number, ci: number) => {
+    const next = optionGroups.map((g, idx) => {
+      if (idx !== gi || !g.colorEntries) return g;
+      const newEntries = g.colorEntries.filter((_, cIdx) => cIdx !== ci);
+      return { ...g, colorEntries: newEntries, values: newEntries.map((c) => c.nameEn || c.hex) };
+    });
+    onOptionGroupsChange(next);
+    syncVariants(next);
+  };
+
   const allKeys = variants.map(variantKey);
   const allSelected = allKeys.length > 0 && allKeys.every((k) => selected.has(k));
   const someSelected = selected.size > 0;
@@ -167,6 +218,12 @@ export function VariantBuilder({
 
   const hasCombos = combos.length > 0;
 
+  const getColorHex = (optionIdx: number, value: string): string | null => {
+    const group = optionGroups[optionIdx];
+    if (group?.type !== "color" || !group.colorEntries) return null;
+    return group.colorEntries.find((c) => c.nameEn === value || c.hex === value)?.hex ?? null;
+  };
+
   return (
     <div className="space-y-4">
       {optionGroups.length === 0 ? (
@@ -174,91 +231,194 @@ export function VariantBuilder({
           <p className="text-sm text-muted-foreground mb-3">
             Add options like size or color
           </p>
-          <Button type="button" variant="outline" size="sm" onClick={addGroup}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add option
-          </Button>
+          <div className="flex gap-2 justify-center">
+            <Button type="button" variant="outline" size="sm" onClick={addVariantGroup}>
+              <AlignJustify className="w-4 h-4 mr-2" />
+              Add variant
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={addColorGroup}>
+              <Palette className="w-4 h-4 mr-2" />
+              Add color
+            </Button>
+          </div>
         </div>
       ) : (
         <>
           <div className="space-y-3">
             {optionGroups.map((group, gi) => (
               <div key={gi} className="border rounded-lg p-4 space-y-3 bg-muted/10">
+                {/* Header row */}
                 <div className="flex items-start gap-3">
                   <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <Label className="text-xs mb-1 block">Name (English)</Label>
+                      <Label className="text-xs mb-1 block">
+                        {group.type === "color" ? "Color option name (EN)" : "Name (English)"}
+                      </Label>
                       <Input
                         dir="ltr"
-                        placeholder="e.g. Size, Color"
+                        placeholder={group.type === "color" ? "Color" : "e.g. Size, Color"}
                         value={group.nameEn ?? ""}
                         onChange={(e) => setGroupField(gi, "nameEn", e.target.value)}
                       />
                     </div>
                     <div>
-                      <Label className="text-xs mb-1 block">الاسم (عربي)</Label>
+                      <Label className="text-xs mb-1 block">
+                        {group.type === "color" ? "اسم خيار اللون (عربي)" : "الاسم (عربي)"}
+                      </Label>
                       <Input
                         dir="rtl"
-                        placeholder="مثال: القياس، اللون"
+                        placeholder={group.type === "color" ? "اللون" : "مثال: القياس، اللون"}
                         value={group.nameAr ?? ""}
                         onChange={(e) => setGroupField(gi, "nameAr", e.target.value)}
                       />
                     </div>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="mt-5 text-muted-foreground hover:text-destructive"
-                    onClick={() => removeGroup(gi)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-
-                <div>
-                  <Label className="text-xs mb-1 block">Option values</Label>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {group.values.map((val) => (
-                      <Badge key={val} variant="secondary" className="gap-1 pr-1">
-                        {val}
-                        <button
-                          type="button"
-                          onClick={() => removeValue(gi, val)}
-                          className="hover:text-destructive"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Add a value, then press Enter"
-                      value={valueInputs[gi] ?? ""}
-                      onChange={(e) =>
-                        setValueInputs((prev) =>
-                          prev.map((v, idx) => (idx === gi ? e.target.value : v))
-                        )
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") { e.preventDefault(); addValue(gi); }
-                      }}
-                    />
-                    <Button type="button" variant="outline" onClick={() => addValue(gi)}>
-                      <Plus className="w-4 h-4" />
+                  <div className="flex items-center gap-1 mt-5">
+                    {group.type === "color" && (
+                      <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded px-1.5 py-0.5 font-medium">
+                        Color
+                      </span>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => removeGroup(gi)}
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
+
+                {/* Values section */}
+                {group.type === "color" ? (
+                  <div>
+                    <Label className="text-xs mb-2 block">Colors</Label>
+                    <div className="space-y-2 mb-3">
+                      {(group.colorEntries ?? []).map((entry, ci) => (
+                        <div key={ci} className="flex items-center gap-2">
+                          {/* Color circle picker */}
+                          <div className="relative w-9 h-9 shrink-0 cursor-pointer">
+                            <input
+                              type="color"
+                              value={entry.hex}
+                              onChange={(e) => setColorEntryField(gi, ci, "hex", e.target.value)}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              title="Pick color"
+                            />
+                            <div
+                              className="w-9 h-9 rounded-full border-2 border-muted shadow-sm pointer-events-none"
+                              style={{ backgroundColor: entry.hex }}
+                            />
+                          </div>
+                          <Input
+                            dir="ltr"
+                            placeholder="Name (EN) e.g. Black"
+                            value={entry.nameEn}
+                            onChange={(e) => setColorEntryField(gi, ci, "nameEn", e.target.value)}
+                            className="h-8 text-sm flex-1"
+                          />
+                          <Input
+                            dir="rtl"
+                            placeholder="الاسم مثلاً أسود"
+                            value={entry.nameAr}
+                            onChange={(e) => setColorEntryField(gi, ci, "nameAr", e.target.value)}
+                            className="h-8 text-sm flex-1"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeColorEntry(gi, ci)}
+                            className="text-muted-foreground hover:text-destructive shrink-0"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addColorEntry(gi)}
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1.5" />
+                      Add color
+                    </Button>
+                  </div>
+                ) : (
+                  <div>
+                    <Label className="text-xs mb-1 block">Option values</Label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {group.values.map((val) => (
+                        <Badge key={val} variant="secondary" className="gap-1 pr-1">
+                          {val}
+                          <button
+                            type="button"
+                            onClick={() => removeValue(gi, val)}
+                            className="hover:text-destructive"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Add a value, then press Enter"
+                        value={valueInputs[gi] ?? ""}
+                        onChange={(e) =>
+                          setValueInputs((prev) =>
+                            prev.map((v, idx) => (idx === gi ? e.target.value : v))
+                          )
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); addValue(gi); }
+                        }}
+                      />
+                      <Button type="button" variant="outline" onClick={() => addValue(gi)}>
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
 
           {optionGroups.length < 3 && (
-            <Button type="button" variant="ghost" size="sm" onClick={addGroup} className="text-muted-foreground">
-              <Plus className="w-4 h-4 mr-2" />
-              Add another option
-            </Button>
+            <div className="relative">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setAddMenuOpen((v) => !v)}
+                className="text-muted-foreground"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add another option
+              </Button>
+              {addMenuOpen && (
+                <div className="absolute left-0 top-full mt-1 z-20 bg-background border rounded-lg shadow-lg py-1 w-48">
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/60 text-left"
+                    onClick={() => { addVariantGroup(); setAddMenuOpen(false); }}
+                  >
+                    <AlignJustify className="w-4 h-4 text-muted-foreground" />
+                    Add variant
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/60 text-left"
+                    onClick={() => { addColorGroup(); setAddMenuOpen(false); }}
+                  >
+                    <Palette className="w-4 h-4 text-muted-foreground" />
+                    Add color
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </>
       )}
@@ -380,6 +540,8 @@ export function VariantBuilder({
                   {variants.map((v) => {
                     const key = variantKey(v);
                     const isSelected = selected.has(key);
+                    const hex1 = v.option1 ? getColorHex(0, v.option1) : null;
+                    const hex2 = v.option2 ? getColorHex(1, v.option2) : null;
                     return (
                       <tr
                         key={key}
@@ -393,7 +555,23 @@ export function VariantBuilder({
                             onChange={() => toggleRow(key)}
                           />
                         </td>
-                        <td className="px-3 py-2 font-medium text-sm whitespace-nowrap">{key}</td>
+                        <td className="px-3 py-2 font-medium text-sm whitespace-nowrap">
+                          <span className="flex items-center gap-2">
+                            {hex1 && (
+                              <span
+                                className="w-4 h-4 rounded-full border border-muted shrink-0 inline-block"
+                                style={{ backgroundColor: hex1 }}
+                              />
+                            )}
+                            {hex2 && (
+                              <span
+                                className="w-4 h-4 rounded-full border border-muted shrink-0 inline-block"
+                                style={{ backgroundColor: hex2 }}
+                              />
+                            )}
+                            {key}
+                          </span>
+                        </td>
                         <td className="px-3 py-2">
                           <Input
                             type="number" step="1" min="0"

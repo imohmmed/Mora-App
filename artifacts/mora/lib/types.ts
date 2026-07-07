@@ -1,8 +1,12 @@
+export type ColorEntry = { nameEn: string; nameAr: string; hex: string };
+
 export type OptionDefinition = {
   name?: string;
   nameEn?: string;
   nameAr?: string;
   values: string[];
+  type?: "variant" | "color";
+  colorEntries?: ColorEntry[];
 };
 
 export type Product = {
