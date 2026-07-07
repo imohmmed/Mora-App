@@ -635,9 +635,9 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  /* ── Floating header overlay ── */
+  /* ── Floating header overlay — fixed on web, absolute on native ── */
   headerOverlay: {
-    position: "absolute",
+    position: Platform.OS === "web" ? ("fixed" as any) : "absolute",
     top: 0,
     left: 0,
     right: 0,
