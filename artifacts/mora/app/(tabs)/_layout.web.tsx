@@ -34,10 +34,10 @@ export default function TabLayout() {
       screenOptions={{ headerShown: false }}
       tabBar={() => <FloatingTabBar />}
     >
-      <Tabs.Screen name="(home)" />
-      <Tabs.Screen name="(search)" />
-      <Tabs.Screen name="(chat)" />
       <Tabs.Screen name="(cart)" />
+      <Tabs.Screen name="(search)" />
+      <Tabs.Screen name="(home)" />
+      <Tabs.Screen name="(chat)" />
       <Tabs.Screen name="(account)" />
     </Tabs>
   );

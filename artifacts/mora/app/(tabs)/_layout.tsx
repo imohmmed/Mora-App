@@ -57,27 +57,6 @@ export default function TabLayout() {
         },
       })}
     >
-      <NativeTabs.Trigger name="(home)">
-        <NativeTabs.Trigger.Label hidden />
-        <NativeTabs.Trigger.Icon
-          sf={{ default: "house", selected: "house.fill" }}
-          md="home"
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="(search)">
-        <NativeTabs.Trigger.Label hidden />
-        <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="(chat)" disableAutomaticContentInsets>
-        <NativeTabs.Trigger.Label hidden />
-        <NativeTabs.Trigger.Icon
-          sf={{ default: "message", selected: "message.fill" }}
-          md="chat"
-        />
-      </NativeTabs.Trigger>
-
       <NativeTabs.Trigger name="(cart)">
         <NativeTabs.Trigger.Label hidden />
         <NativeTabs.Trigger.Icon
@@ -87,6 +66,27 @@ export default function TabLayout() {
         {cartBadge ? (
           <NativeTabs.Trigger.Badge>{cartBadge}</NativeTabs.Trigger.Badge>
         ) : null}
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="(search)">
+        <NativeTabs.Trigger.Label hidden />
+        <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="(home)">
+        <NativeTabs.Trigger.Label hidden />
+        <NativeTabs.Trigger.Icon
+          sf={{ default: "house", selected: "house.fill" }}
+          md="home"
+        />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="(chat)" disableAutomaticContentInsets>
+        <NativeTabs.Trigger.Label hidden />
+        <NativeTabs.Trigger.Icon
+          sf={{ default: "message", selected: "message.fill" }}
+          md="chat"
+        />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="(account)">
