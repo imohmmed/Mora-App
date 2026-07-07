@@ -8,7 +8,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { fetchSaleCollections, type SaleCollection } from "@/lib/api";
 
 const { width: SCREEN_W } = Dimensions.get("window");
-const CARD_W = (SCREEN_W - 16) / 2;
+const CARD_W = (SCREEN_W - 1) / 2;
 const CARD_H = CARD_W * (16 / 9);
 
 function SaleCard({ col }: { col: SaleCollection }) {
@@ -76,7 +76,7 @@ export function HomeSaleCollections() {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
-        snapToInterval={CARD_W + 8}
+        snapToInterval={CARD_W + 1}
         decelerationRate="fast"
       >
         {collections.map((col) => (
@@ -88,7 +88,7 @@ export function HomeSaleCollections() {
 }
 
 const styles = StyleSheet.create({
-  container: { marginTop: 24, marginBottom: 8 },
+  container: { marginTop: 8, marginBottom: 8 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -100,11 +100,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 1.2,
   },
-  scroll: { paddingHorizontal: 8, gap: 8 },
+  scroll: { gap: 1 },
   card: {
     width: CARD_W,
     height: CARD_H,
-    borderRadius: 12,
+    borderRadius: 0,
     overflow: "hidden",
     backgroundColor: "#222",
   },
