@@ -294,8 +294,9 @@ export type { StoryItem, StoryRow };
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 4,
-    paddingTop: 4,
+    marginTop: 24,
+    marginBottom: 0,
+    paddingTop: 0,
     paddingBottom: 4,
   },
   rowWrap: {

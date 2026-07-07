@@ -89,7 +89,7 @@ export function HomeSaleCollections() {
 }
 
 const styles = StyleSheet.create({
-  container: { marginTop: 8, marginBottom: 8 },
+  container: { marginTop: 24, marginBottom: 0 },
   header: {
     flexDirection: "row",
     alignItems: "center",
