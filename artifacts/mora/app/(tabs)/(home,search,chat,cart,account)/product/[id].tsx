@@ -3,7 +3,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   FlatList,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   RefreshControl,
@@ -303,13 +306,40 @@ export default function ProductDetailScreen() {
 
   const hasMoreRelated = relatedItems.length < relatedTotal;
 
-  const handleScroll = useCallback((e: { nativeEvent: { layoutMeasurement: { height: number }; contentOffset: { y: number }; contentSize: { height: number } } }) => {
+  // Header hide-on-scroll (same behaviour as home screen)
+  const headerTranslateY = useRef(new Animated.Value(0)).current;
+  const lastScrollY = useRef(0);
+  const headerShown = useRef(true);
+
+  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+
+    // Load more related products near bottom
     const nearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 500;
     if (nearBottom && hasMoreRelated && !loadingMore) {
       loadRelatedPage(relatedPage + 1);
     }
-  }, [hasMoreRelated, loadingMore, relatedPage, loadRelatedPage]);
+
+    // Hide / show header
+    const y = contentOffset.y;
+    const dy = y - lastScrollY.current;
+    lastScrollY.current = y;
+
+    if (y < 60) {
+      if (!headerShown.current) {
+        headerShown.current = true;
+        Animated.spring(headerTranslateY, { toValue: 0, useNativeDriver: true, tension: 120, friction: 20 }).start();
+      }
+      return;
+    }
+    if (dy > 4 && headerShown.current) {
+      headerShown.current = false;
+      Animated.spring(headerTranslateY, { toValue: -120, useNativeDriver: true, tension: 120, friction: 20 }).start();
+    } else if (dy < -4 && !headerShown.current) {
+      headerShown.current = true;
+      Animated.spring(headerTranslateY, { toValue: 0, useNativeDriver: true, tension: 120, friction: 20 }).start();
+    }
+  }, [hasMoreRelated, loadingMore, relatedPage, loadRelatedPage, headerTranslateY]);
 
   useEffect(() => {
     if (!product) return;
@@ -411,14 +441,15 @@ export default function ProductDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* ── Header — floats over image ── */}
-      <View
+      {/* ── Header — floats over image, hides on scroll-down ── */}
+      <Animated.View
         style={[
           styles.header,
           {
             paddingTop: topPadding + 8,
             backgroundColor: "transparent",
             borderBottomWidth: 0,
+            transform: [{ translateY: headerTranslateY }],
           },
         ]}
       >
@@ -462,7 +493,7 @@ export default function ProductDetailScreen() {
             </View>
           )}
         </View>
-      </View>
+      </Animated.View>
 
       {/* ── Content ── */}
       {isLoading ? (
@@ -485,7 +516,7 @@ export default function ProductDetailScreen() {
       ) : product ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          scrollEventThrottle={200}
+          scrollEventThrottle={16}
           onScroll={handleScroll}
           contentContainerStyle={{ paddingBottom: (isWeb ? 200 : bottomPadding + 32) }}
           refreshControl={
