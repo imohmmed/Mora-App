@@ -1,4 +1,4 @@
-import { useAdminListBlogPosts, useAdminListMenus } from "@workspace/api-client-react";
+// api-client imports removed (blog/menus tabs deleted)
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { FileText, List as ListIcon, Plus, Boxes, File, ChevronRight, HardDrive, Image as ImageIcon, Pencil, Trash2, X, Layers, ChevronDown, ChevronUp, GripVertical, Settings2, Star, TrendingUp, Loader2, CheckCircle2 } from "lucide-react";
+import { Plus, Image as ImageIcon, Pencil, Trash2, X, ChevronDown, ChevronUp, GripVertical, Settings2, TrendingUp, Loader2, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { useSearch, useLocation } from "wouter";
 import { useState, useRef, useEffect } from "react";
@@ -29,8 +29,6 @@ const adminToken = () => { try { return localStorage.getItem("mora_admin_token")
 const AUTH_HEADER = () => ({ Authorization: `Bearer ${adminToken()}`, "Content-Type": "application/json" });
 const stripHtml = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 
-type MetaobjectEntry = { id: string; type: string; fields: Record<string, string> };
-type FileEntry = { id: string; filename: string; size: number; mimeType: string; url: string; createdAt: string };
 
 type Banner = {
   id: string;
@@ -70,11 +68,6 @@ function safeFormat(dateStr: string | undefined | null, fmt: string): string {
   } catch { return "—"; }
 }
 
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 function BannerForm({
   open, initial, onClose, onSaved,
@@ -745,27 +738,8 @@ function StoriesTab() {
 export default function ContentHub() {
   const { t } = useT();
   const search = useSearch();
-  const [, navigate] = useLocation();
   const params = new URLSearchParams(search);
-  const defaultTab = params.get("tab") ?? "blog";
-
-  const { data: postsRes, isLoading: loadingPosts } = useAdminListBlogPosts();
-  const { data: menusRes, isLoading: loadingMenus } = useAdminListMenus();
-
-  const { data: metaobjectsRes, isLoading: loadingMeta } = useQuery<{ data: MetaobjectEntry[] }>({
-    queryKey: ["/api/admin/content/metaobjects"],
-    queryFn: () => fetch("/api/admin/content/metaobjects", { headers: AUTH_HEADER() }).then(r => r.json()),
-  });
-
-  const { data: filesRes, isLoading: loadingFiles } = useQuery<{ data: FileEntry[] }>({
-    queryKey: ["/api/admin/content/files"],
-    queryFn: () => fetch("/api/admin/content/files", { headers: AUTH_HEADER() }).then(r => r.json()),
-  });
-
-  const metaobjects = metaobjectsRes?.data ?? [];
-  const files = filesRes?.data ?? [];
-  const posts = postsRes?.data ?? [];
-  const menus = menusRes?.data ?? [];
+  const defaultTab = params.get("tab") ?? "banners";
 
   return (
     <PageContainer className="max-w-7xl">
@@ -773,29 +747,9 @@ export default function ContentHub() {
 
       <Tabs defaultValue={defaultTab}>
         <TabsList className="mb-4 flex-wrap h-auto gap-1">
-          <TabsTrigger value="blog" className="gap-2">
-            <FileText className="w-4 h-4" />
-            {t("content.tab.blog")}
-          </TabsTrigger>
           <TabsTrigger value="banners" className="gap-2" data-testid="tab-banners">
             <ImageIcon className="w-4 h-4" />
             {t("content.tab.banners")}
-          </TabsTrigger>
-          <TabsTrigger value="menus" className="gap-2">
-            <ListIcon className="w-4 h-4" />
-            {t("content.tab.menus")}
-          </TabsTrigger>
-          <TabsTrigger value="metaobjects" className="gap-2">
-            <Boxes className="w-4 h-4" />
-            {t("content.tab.metaobjects")}
-          </TabsTrigger>
-          <TabsTrigger value="stories" className="gap-2">
-            <Layers className="w-4 h-4" />
-            {t("content.tab.stories")}
-          </TabsTrigger>
-          <TabsTrigger value="files" className="gap-2">
-            <File className="w-4 h-4" />
-            {t("content.tab.files")}
           </TabsTrigger>
           <TabsTrigger value="sections" className="gap-2">
             <Settings2 className="w-4 h-4" />
@@ -807,247 +761,11 @@ export default function ContentHub() {
           </TabsTrigger>
         </TabsList>
 
-        {/* BLOG POSTS */}
-        <TabsContent value="blog" className="space-y-4">
-          <div className="flex justify-end">
-            <Button data-testid="btn-add-post" onClick={() => navigate("/content/blog/new")}>
-              <Plus className="w-4 h-4 me-2" />
-              {t("content.blog.write")}
-            </Button>
-          </div>
-
-          <div className="hidden md:block bg-card border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("content.blog.col.title")}</TableHead>
-                  <TableHead>{t("common.status")}</TableHead>
-                  <TableHead>{t("content.blog.col.author")}</TableHead>
-                  <TableHead>{t("content.blog.col.published")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loadingPosts ? (
-                  <TableRow><TableCell colSpan={4} className="h-24 text-center">{t("common.loading")}</TableCell></TableRow>
-                ) : posts.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="h-48 text-center">
-                      <div className="flex flex-col items-center justify-center text-muted-foreground">
-                        <FileText className="h-8 w-8 mb-2 opacity-50" />
-                        <p>{t("content.blog.empty")}</p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : posts.map((post) => (
-                  <TableRow key={post.id} className="cursor-pointer">
-                    <TableCell className="font-medium">{post.title}</TableCell>
-                    <TableCell>
-                      <Badge variant={post.status === "published" ? "default" : "secondary"}>{post.status === "published" ? t("common.published") : t("common.draft")}</Badge>
-                    </TableCell>
-                    <TableCell>{post.author}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {safeFormat(post.publishedAt, "MMM d, yyyy")}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="md:hidden space-y-3">
-            {loadingPosts ? (
-              <p className="text-center text-muted-foreground py-8">{t("common.loading")}</p>
-            ) : posts.map((post) => (
-              <Card key={post.id}>
-                <CardContent className="pt-4 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-medium">{post.title}</p>
-                    <Badge variant={post.status === "published" ? "default" : "secondary"}>{post.status === "published" ? t("common.published") : t("common.draft")}</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {post.author} · {post.publishedAt ? safeFormat(post.publishedAt, "MMM d, yyyy") : t("common.draft")}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
         {/* BANNERS */}
         <TabsContent value="banners">
           <BannersTab />
         </TabsContent>
 
-        {/* STORIES */}
-        <TabsContent value="stories">
-          <StoriesTab />
-        </TabsContent>
-
-        {/* MENUS */}
-        <TabsContent value="menus" className="space-y-4">
-          <div className="flex justify-end">
-            <Button data-testid="btn-add-menu" onClick={() => navigate("/content/menus/new")}>
-              <Plus className="w-4 h-4 me-2" />
-              {t("content.menus.create")}
-            </Button>
-          </div>
-          <div className="space-y-3">
-            {loadingMenus ? (
-              <p className="text-center text-muted-foreground py-8">{t("common.loading")}</p>
-            ) : menus.length === 0 ? (
-              <Card className="border-dashed">
-                <EmptyState icon={ListIcon} title={t("content.menus.empty")} />
-              </Card>
-            ) : menus.map((menu) => (
-              <Card
-                key={menu.id}
-                className="cursor-pointer hover:shadow-sm transition-shadow"
-                onClick={() => navigate(`/content/menus/${menu.id}`)}
-              >
-                <CardContent className="pt-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{menu.title}</p>
-                      <p className="text-sm font-mono text-muted-foreground">{menu.handle}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-muted-foreground">{t("content.menus.links", { n: menu.items?.length ?? 0 })}</span>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground rtl:rotate-180" />
-                    </div>
-                  </div>
-                  {menu.items && menu.items.length > 0 && (
-                    <div className="mt-3 ps-3 border-s space-y-1">
-                      {(menu.items as { title: string; url: string }[]).slice(0, 3).map((item, i) => (
-                        <div key={i} className="text-sm text-muted-foreground flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 flex-shrink-0" />
-                          <span>{item.title}</span>
-                          <span className="text-xs text-muted-foreground/60">{item.url}</span>
-                        </div>
-                      ))}
-                      {menu.items.length > 3 && (
-                        <p className="text-xs text-muted-foreground/60">{t("content.menus.more", { n: menu.items.length - 3 })}</p>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* METAOBJECTS */}
-        <TabsContent value="metaobjects" className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
-              {t("content.meta.desc")}
-            </p>
-            <Button size="sm">
-              <Plus className="w-4 h-4 me-2" />
-              {t("content.meta.create")}
-            </Button>
-          </div>
-
-          {loadingMeta ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-            </div>
-          ) : metaobjects.length === 0 ? (
-            <Card className="border-dashed">
-              <EmptyState icon={Boxes} title={t("content.meta.empty")} />
-            </Card>
-          ) : (
-            <div className="border rounded-lg overflow-x-auto">
-              <Table>
-                <thead>
-                  <tr className="border-b bg-muted/40">
-                    <th className="text-start px-4 py-3 text-sm font-medium text-muted-foreground">{t("content.meta.col.type")}</th>
-                    <th className="text-start px-4 py-3 text-sm font-medium text-muted-foreground">{t("content.meta.col.id")}</th>
-                    <th className="text-start px-4 py-3 text-sm font-medium text-muted-foreground">{t("content.meta.col.fields")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {metaobjects.map((obj) => (
-                    <tr key={obj.id} className="hover:bg-muted/20">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Boxes className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-mono text-sm font-medium">{obj.type}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{obj.id}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {Object.keys(obj.fields).map(k => (
-                            <Badge key={k} variant="secondary" className="text-xs font-normal">{k}</Badge>
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
-
-        {/* FILES */}
-        <TabsContent value="files" className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
-              {t("content.files.desc")}
-            </p>
-            <Button size="sm">
-              <Plus className="w-4 h-4 me-2" />
-              {t("content.files.upload")}
-            </Button>
-          </div>
-
-          {loadingFiles ? (
-            <div className="space-y-3">
-              {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
-            </div>
-          ) : files.length === 0 ? (
-            <Card className="border-dashed">
-              <EmptyState icon={File} title={t("content.files.empty")} />
-            </Card>
-          ) : (
-            <div className="border rounded-lg overflow-x-auto">
-              <Table>
-                <thead>
-                  <tr className="border-b bg-muted/40">
-                    <th className="text-start px-4 py-3 text-sm font-medium text-muted-foreground">{t("content.files.col.filename")}</th>
-                    <th className="text-start px-4 py-3 text-sm font-medium text-muted-foreground">{t("content.files.col.type")}</th>
-                    <th className="text-end px-4 py-3 text-sm font-medium text-muted-foreground">{t("content.files.col.size")}</th>
-                    <th className="text-end px-4 py-3 text-sm font-medium text-muted-foreground">{t("content.files.col.uploaded")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {files.map((f) => (
-                    <tr key={f.id} className="hover:bg-muted/20">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {f.mimeType.startsWith("image/")
-                            ? <File className="w-4 h-4 text-blue-500" />
-                            : <HardDrive className="w-4 h-4 text-muted-foreground" />}
-                          <span className="font-medium text-sm">{f.filename}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant="outline" className="text-xs font-mono">{f.mimeType}</Badge>
-                      </td>
-                      <td className="px-4 py-3 text-end text-sm text-muted-foreground">
-                        {formatBytes(f.size)}
-                      </td>
-                      <td className="px-4 py-3 text-end text-sm text-muted-foreground">
-                        {safeFormat(f.createdAt, "MMM d, yyyy")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
         {/* CONTENT SECTIONS */}
         <TabsContent value="sections" className="space-y-4">
           <ContentSectionsTab />
