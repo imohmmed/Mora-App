@@ -63,10 +63,10 @@
     "expo-auth-session": "^56.0.14",
     "expo-clipboard": "^56.0.4",
     "expo-notifications": "~56.0.17",
-    "expo-video": "^57.0.0",
     "firebase": "^12.14.0",
     "lottie-react-native": "~7.3.8",
     "react-native-render-html": "^6.3.4",
+    "react-native-video": "~6.19.2",
     "react-native-webview": "^13.16.1"
   }
 }

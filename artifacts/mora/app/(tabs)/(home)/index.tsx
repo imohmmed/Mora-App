@@ -18,7 +18,7 @@ import {
 } from "react-native";
 
 import { Image } from "expo-image";
-import { VideoView, useVideoPlayer } from "expo-video";
+import Video from "react-native-video";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -229,12 +229,6 @@ function BannerSlide({ banner, bannerHeight }: { banner: Banner; bannerHeight: n
   };
   const align = ctaAlign[banner.buttonAlign] ?? "flex-start";
 
-  const player = useVideoPlayer(banner.videoUrl || null, (p) => {
-    p.loop = true;
-    p.muted = true;
-    p.play();
-  });
-
   const handlePress = () => {
     if (!banner.hasButton && banner.linkUrl) {
       router.push(banner.linkUrl as any);
@@ -248,13 +242,17 @@ function BannerSlide({ banner, bannerHeight }: { banner: Banner; bannerHeight: n
       disabled={!!banner.hasButton}
     >
       {!!banner.videoUrl ? (
-        <VideoView
-          player={player}
+        <Video
+          source={{ uri: banner.videoUrl }}
           style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          nativeControls={false}
-          allowsFullscreen={false}
-          allowsPictureInPicture={false}
+          resizeMode="cover"
+          muted
+          repeat
+          paused={false}
+          controls={false}
+          ignoreSilentSwitch="ignore"
+          playInBackground={false}
+          disableFocus
         />
       ) : !!banner.imageUrl ? (
         <Image
