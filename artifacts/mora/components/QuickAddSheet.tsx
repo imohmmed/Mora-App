@@ -456,23 +456,23 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
               <Text style={[styles.qtyLabel, { color: textMuted }]}>
                 {lang === "ar" ? "الكمية" : "QUANTITY"}
               </Text>
-              <View style={[styles.qtyStepper, { backgroundColor: chipBg, borderColor: chipBorder }]}>
+              <View style={styles.qtyStepper}>
                 <Pressable
                   style={[styles.qtyBtn, quantity <= 1 && { opacity: 0.3 }]}
                   onPress={() => setQuantity((q) => Math.max(1, q - 1))}
                   disabled={quantity <= 1}
-                  hitSlop={4}
+                  hitSlop={8}
                 >
-                  <Feather name="minus" size={13} color={textPri} />
+                  <Feather name="minus" size={14} color={textPri} />
                 </Pressable>
                 <Text style={[styles.qtyNum, { color: textPri }]}>{quantity}</Text>
                 <Pressable
                   style={[styles.qtyBtn, quantity >= maxStock && { opacity: 0.3 }]}
                   onPress={() => setQuantity((q) => Math.min(maxStock, q + 1))}
                   disabled={quantity >= maxStock}
-                  hitSlop={4}
+                  hitSlop={8}
                 >
-                  <Feather name="plus" size={13} color={textPri} />
+                  <Feather name="plus" size={14} color={textPri} />
                 </Pressable>
               </View>
             </View>
@@ -482,16 +482,13 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
         {/* ── Action row: Add to Bag + Favorite ─────────────────────────── */}
         <View style={[styles.actionRow, lang === "ar" && { flexDirection: "row-reverse" }]}>
           <Pressable
-            style={({ pressed }) => [
-              styles.heartBtn,
-              { backgroundColor: heartBg, borderColor: heartBorder, opacity: pressed ? 0.7 : 1 },
-            ]}
+            style={({ pressed }) => [styles.heartBtn, { opacity: pressed ? 0.6 : 1 }]}
             onPress={handleHeart}
-            hitSlop={6}
+            hitSlop={8}
           >
             <Ionicons
               name={liked ? "heart" : "heart-outline"}
-              size={24}
+              size={26}
               color={liked ? PRIMARY : textPri}
             />
           </Pressable>
@@ -670,10 +667,8 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   heartBtn: {
-    width: 54,
-    height: 54,
-    borderRadius: 0,
-    borderWidth: 1.5,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -710,9 +705,6 @@ const styles = StyleSheet.create({
   qtyStepper: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 999,
-    borderWidth: 1.5,
-    overflow: "hidden",
   },
   qtyBtn: {
     width: 40,

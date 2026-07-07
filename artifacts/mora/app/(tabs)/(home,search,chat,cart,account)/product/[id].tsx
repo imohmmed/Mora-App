@@ -729,7 +729,7 @@ export default function ProductDetailScreen() {
                 <Text style={[styles.qtyLabel, { color: colors.mutedForeground }]}>
                   {lang === "ar" ? "الكمية" : "QUANTITY"}
                 </Text>
-                <View style={[styles.qtyStepper, { borderColor: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.12)", backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}>
+                <View style={styles.qtyStepper}>
                   <Pressable
                     style={[styles.qtyBtn, qty <= 1 && { opacity: 0.3 }]}
                     onPress={() => setQty((q) => Math.max(1, q - 1))}
@@ -1090,7 +1090,7 @@ const styles = StyleSheet.create({
   /* Quantity stepper */
   qtyWrap: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   qtyLabel: { fontFamily: "Inter_600SemiBold", fontSize: 11, letterSpacing: 1, textTransform: "uppercase" },
-  qtyStepper: { flexDirection: "row", alignItems: "center", borderRadius: 0, borderWidth: 1.5, overflow: "hidden" },
+  qtyStepper: { flexDirection: "row", alignItems: "center" },
   qtyBtn: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
   qtyNum: { fontFamily: "Inter_700Bold", fontSize: 15, minWidth: 32, textAlign: "center" },
 
