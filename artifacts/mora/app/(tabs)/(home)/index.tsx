@@ -108,99 +108,98 @@ function ProductCard({
   const { lang } = useLanguage();
   const { isWishlisted, toggle } = useWishlist();
   const liked = isWishlisted(item.id);
-  const tag = getTag(item);
   const bg = cardColor(item.id);
-  const nativeReady = useNativeReady();
-  const useGlass = IS_IOS && !!GlassViewComp && nativeReady;
+  const isAr = lang === "ar";
+
+  const hasDiscount = item.comparePrice != null && item.comparePrice > item.price;
+  const discountPct = hasDiscount
+    ? Math.round((1 - item.price / item.comparePrice!) * 100)
+    : 0;
 
   const handleLike = () => {
     toggle(item.id);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  // ── Outer View (not Pressable) so ADD TO BAG never bubbles to navigate ──
   return (
-    <View style={styles.productCard} testID={`product-${item.id}`}>
-      {/* ── Tappable area: image + text info ── */}
-      <Pressable
-        style={({ pressed }) => [{ opacity: pressed ? 0.93 : 1 }]}
-        onPress={() => router.push(`/product/${item.id}`)}
-        onLongPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          onLongPress(item);
-        }}
-        delayLongPress={280}
+    <Pressable
+      style={({ pressed }) => [styles.productCard, { opacity: pressed ? 0.93 : 1 }]}
+      onPress={() => router.push(`/product/${item.id}`)}
+      onLongPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        onLongPress(item);
+      }}
+      delayLongPress={280}
+      testID={`product-${item.id}`}
+    >
+      {/* ── Image ── */}
+      <ProductImageCarousel
+        images={item.images ?? []}
+        style={[styles.productImage, { backgroundColor: bg }]}
+        placeholder={<Feather name="shopping-bag" size={40} color={colors.mutedForeground} />}
       >
-        {/* ── Image area ── */}
-        <ProductImageCarousel
-          images={item.images ?? []}
-          style={[styles.productImage, { backgroundColor: bg }]}
-          placeholder={<Feather name="shopping-bag" size={40} color={colors.mutedForeground} />}
+        {/* Discount badge — top corner */}
+        {hasDiscount && discountPct > 0 && (
+          <View style={[styles.discountBadge, isAr ? styles.discountBadgeAr : styles.discountBadgeEn]}>
+            <Text style={styles.discountBadgeText}>
+              {isAr ? `▼ ${discountPct}% خصم` : `▼ ${discountPct}% OFF`}
+            </Text>
+          </View>
+        )}
+
+        {/* Wishlist — bottom corner */}
+        <Pressable
+          style={[styles.likeBtnWrap, isAr ? styles.likeBtnAr : styles.likeBtnEn]}
+          onPress={handleLike}
+          hitSlop={8}
         >
-          {/* Tag badge */}
-          {tag && (
-            useGlass ? (
-              <GlassViewComp
-                style={[styles.productTag, styles.productTagGlass]}
-                glassEffectStyle="clear"
-              >
-                <Text style={[styles.productTagText, { color: tag === "SALE" ? "#E53935" : "#0274C1" }]}>
-                  {tag}
-                </Text>
-              </GlassViewComp>
-            ) : (
-              <View style={[styles.productTag, { backgroundColor: tag === "SALE" ? "#E53935" : "#0274C1" }]}>
-                <Text style={styles.productTagText}>{tag}</Text>
-              </View>
-            )
-          )}
+          <View style={[styles.likeBtn, { backgroundColor: "rgba(255,255,255,0.92)" }]}>
+            <Ionicons
+              name={liked ? "heart" : "heart-outline"}
+              size={16}
+              color={liked ? "#0274C1" : "#1A1A1A"}
+            />
+          </View>
+        </Pressable>
 
-          {/* Wishlist button */}
-          <Pressable style={styles.likeBtnWrap} onPress={handleLike}>
-            {useGlass ? (
-              <GlassViewComp style={styles.likeBtnGlass} glassEffectStyle="clear">
-                <Ionicons name={liked ? "heart" : "heart-outline"} size={16} color={liked ? "#0274C1" : "#1A1A1A"} />
-              </GlassViewComp>
-            ) : (
-              <View style={[styles.likeBtnFallback, { backgroundColor: "rgba(255,255,255,0.92)" }]}>
-                <Ionicons name={liked ? "heart" : "heart-outline"} size={16} color={liked ? "#0274C1" : "#1A1A1A"} />
-              </View>
-            )}
-          </Pressable>
-        </ProductImageCarousel>
+        {/* Add to Bag strip — bottom of image */}
+        <Pressable
+          style={styles.addToBagStrip}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onAddToBag(item);
+          }}
+        >
+          <Text style={styles.addToBagText}>
+            {isAr ? "أضف للحقيبة" : "ADD TO BAG"}
+          </Text>
+        </Pressable>
+      </ProductImageCarousel>
 
-        {/* ── Text info (no button here) ── */}
-        <View style={styles.productInfo}>
-          <Text style={[styles.productBrand, { color: colors.mutedForeground }]}>
-            {item.vendor ?? "Mora"}
-          </Text>
-          <Text style={[styles.productTitle, { color: colors.foreground }]} numberOfLines={2}>
-            {item.title}
-          </Text>
-          <View style={styles.priceRow}>
+      {/* ── Text info ── */}
+      <View style={[styles.productInfo, isAr && styles.productInfoAr]}>
+        <Text
+          style={[styles.productTitle, { color: colors.foreground }]}
+          numberOfLines={2}
+        >
+          {item.title}
+        </Text>
+        <View style={[styles.priceRow, isAr && styles.priceRowAr]}>
+          {hasDiscount ? (
+            <>
+              <Text style={styles.salePrice}>{formatIQD(item.price)}</Text>
+              <Text style={[styles.originalPrice, { color: colors.mutedForeground }]}>
+                {formatIQD(item.comparePrice!)}
+              </Text>
+            </>
+          ) : (
             <Text style={[styles.productPrice, { color: colors.foreground }]}>
               {formatIQD(item.price)}
             </Text>
-            {item.comparePrice != null && item.comparePrice > item.price && (
-              <Text style={styles.originalPrice}>
-                {formatIQD(item.comparePrice)}
-              </Text>
-            )}
-          </View>
+          )}
         </View>
-      </Pressable>
-
-      {/* ── ADD TO BAG — outside the navigate Pressable; never bubbles ── */}
-      <Pressable
-        style={styles.addToCartBtn}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          onAddToBag(item);
-        }}
-      >
-        <Text style={styles.addToCartText}>{lang === "ar" ? "اضف لسلتي" : "ADD TO BAG"}</Text>
-      </Pressable>
-    </View>
+      </View>
+    </Pressable>
   );
 }
 
@@ -741,50 +740,40 @@ const styles = StyleSheet.create({
   productCard: { width: CARD_WIDTH, flex: 1 },
   productImage: {
     width: "100%",
-    height: CARD_WIDTH * 1.3,
-    borderRadius: 12,
+    height: CARD_WIDTH * 1.4,
+    borderRadius: 0,
     position: "relative",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
 
-  /* Tag badge */
-  productTag: {
+  /* Discount badge — top corner */
+  discountBadge: {
     position: "absolute",
     top: 10,
-    left: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    zIndex: 1,
-    borderRadius: 6,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    zIndex: 2,
   },
-  productTagGlass: {
-    overflow: "hidden",
-  },
-  productTagText: {
-    color: "#FFFFFF",
-    fontSize: 10,
+  discountBadgeEn: { left: 10 },
+  discountBadgeAr: { right: 10 },
+  discountBadgeText: {
+    color: "#E53935",
+    fontSize: 11,
     fontFamily: "Inter_700Bold",
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
 
-  /* Wishlist button */
+  /* Wishlist button — bottom corner */
   likeBtnWrap: {
     position: "absolute",
-    top: 10,
-    right: 10,
-    zIndex: 1,
+    bottom: 44,
+    zIndex: 2,
   },
-  likeBtnGlass: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  likeBtnFallback: {
+  likeBtnEn: { right: 10 },
+  likeBtnAr: { left: 10 },
+  likeBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -792,28 +781,33 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  /* Product info */
-  productInfo: { paddingTop: 10, gap: 2 },
-  productBrand: { fontFamily: "Inter_500Medium", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase" },
-  productTitle: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18, marginTop: 2 },
-  priceRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
-  productPrice: { fontFamily: "Inter_700Bold", fontSize: 14 },
-  originalPrice: { fontFamily: "Inter_400Regular", fontSize: 12, textDecorationLine: "line-through", color: "#E53935" },
-
-  /* Add to cart */
-  addToCartBtn: {
-    backgroundColor: "#0274C1",
+  /* Add to Bag strip — bottom of image */
+  addToBagStrip: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(0,0,0,0.72)",
     paddingVertical: 10,
     alignItems: "center",
-    borderRadius: 100,
-    marginTop: 8,
+    zIndex: 2,
   },
-  addToCartText: {
+  addToBagText: {
     color: "#FFFFFF",
     fontFamily: "Inter_700Bold",
     fontSize: 11,
-    letterSpacing: 0.8,
+    letterSpacing: 1,
   },
+
+  /* Product info */
+  productInfo: { paddingTop: 8, gap: 3 },
+  productInfoAr: { alignItems: "flex-end" },
+  productTitle: { fontFamily: "Inter_700Bold", fontSize: 13, lineHeight: 18 },
+  priceRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
+  priceRowAr: { flexDirection: "row-reverse" },
+  productPrice: { fontFamily: "Inter_700Bold", fontSize: 13 },
+  salePrice: { fontFamily: "Inter_700Bold", fontSize: 13, color: "#E53935" },
+  originalPrice: { fontFamily: "Inter_400Regular", fontSize: 11, textDecorationLine: "line-through" },
 
   /* Error / empty */
   errorBox: { alignItems: "center", paddingVertical: 40, gap: 12 },
