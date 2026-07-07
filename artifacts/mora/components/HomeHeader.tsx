@@ -72,47 +72,47 @@ export function HomeHeader({
     >
       <View style={styles.row}>
 
-        {/* ── Logo ── */}
-        <View style={styles.logoPill}>
-          <RNImage source={LOGO} style={styles.logo} resizeMode="contain" />
-        </View>
+        {/* Left spacer — mirrors right buttons for true centering */}
+        <View style={styles.rightGroup} />
 
-        <View style={{ flex: 1 }} />
+        {/* Logo — centered */}
+        <RNImage source={LOGO} style={styles.logo} resizeMode="contain" />
 
-        {/* ── Notifications ── */}
-        <View style={styles.iconBtnWrap}>
-          <Pressable
-            style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
-            onPress={() => router.push("/notifications" as any)}
-            testID="notifications-btn"
-          >
-            <Feather name="bell" size={21} color={iconColor} />
-          </Pressable>
-          {notificationCount > 0 && (
-            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-              <Text style={styles.badgeText}>
-                {notificationCount > 9 ? "9+" : notificationCount}
-              </Text>
-            </View>
-          )}
-        </View>
+        {/* Right buttons */}
+        <View style={styles.rightGroup}>
+          <View style={styles.iconBtnWrap}>
+            <Pressable
+              style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+              onPress={() => router.push("/notifications" as any)}
+              testID="notifications-btn"
+            >
+              <Feather name="bell" size={21} color={iconColor} />
+            </Pressable>
+            {notificationCount > 0 && (
+              <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+                <Text style={styles.badgeText}>
+                  {notificationCount > 9 ? "9+" : notificationCount}
+                </Text>
+              </View>
+            )}
+          </View>
 
-        {/* ── Favourites ── */}
-        <View style={styles.iconBtnWrap}>
-          <Pressable
-            style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
-            onPress={() => router.push("/wishlist" as any)}
-            testID="favorites-btn"
-          >
-            <Feather name="heart" size={21} color={iconColor} />
-          </Pressable>
-          {favoritesCount > 0 && (
-            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-              <Text style={styles.badgeText}>
-                {favoritesCount > 9 ? "9+" : favoritesCount}
-              </Text>
-            </View>
-          )}
+          <View style={styles.iconBtnWrap}>
+            <Pressable
+              style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+              onPress={() => router.push("/wishlist" as any)}
+              testID="favorites-btn"
+            >
+              <Feather name="heart" size={21} color={iconColor} />
+            </Pressable>
+            {favoritesCount > 0 && (
+              <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+                <Text style={styles.badgeText}>
+                  {favoritesCount > 9 ? "9+" : favoritesCount}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
       </View>
@@ -128,17 +128,17 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-  },
-  logoPill: {
-    paddingHorizontal: 4,
-    paddingVertical: 5,
-    alignItems: "center",
-    justifyContent: "center",
   },
   logo: {
     width: 92,
     height: 30,
+  },
+  rightGroup: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 4,
   },
   iconBtnWrap: {
     position: "relative",

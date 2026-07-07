@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ProductPreviewModal } from "@/components/ProductPreviewModal";
 import {
+  Animated,
   ActivityIndicator,
   Dimensions,
   FlatList,
@@ -299,6 +300,36 @@ export default function HomeScreen() {
   const { totalItems, addItem } = useCart();
   const { count: wishlistCount } = useWishlist();
   const router = useRouter();
+
+  // Header hide-on-scroll
+  const headerTranslateY = useRef(new Animated.Value(0)).current;
+  const lastScrollY = useRef(0);
+  const headerShown = useRef(true);
+
+  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const dy = y - lastScrollY.current;
+    lastScrollY.current = y;
+
+    // Always show near the top
+    if (y < 60) {
+      if (!headerShown.current) {
+        headerShown.current = true;
+        Animated.spring(headerTranslateY, { toValue: 0, useNativeDriver: true, tension: 120, friction: 20 }).start();
+      }
+      return;
+    }
+
+    if (dy > 4 && headerShown.current) {
+      // Scrolling down — hide
+      headerShown.current = false;
+      Animated.spring(headerTranslateY, { toValue: -120, useNativeDriver: true, tension: 120, friction: 20 }).start();
+    } else if (dy < -4 && !headerShown.current) {
+      // Scrolling up — show
+      headerShown.current = true;
+      Animated.spring(headerTranslateY, { toValue: 0, useNativeDriver: true, tension: 120, friction: 20 }).start();
+    }
+  }, [headerTranslateY]);
 
   const handleAddToBag = (product: Product) => {
     setQuickAddProduct(product);
@@ -598,6 +629,8 @@ export default function HomeScreen() {
         ListHeaderComponent={ListHeader}
         ListFooterComponent={ListFooter}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.4}
         refreshControl={
@@ -609,10 +642,13 @@ export default function HomeScreen() {
         }
       />
 
-      {/* ── Floating transparent header overlay ── */}
-      <View style={styles.headerOverlay} pointerEvents="box-none">
+      {/* ── Floating transparent header overlay — hides on scroll down ── */}
+      <Animated.View
+        style={[styles.headerOverlay, { transform: [{ translateY: headerTranslateY }] }]}
+        pointerEvents="box-none"
+      >
         <HomeHeader transparent favoritesCount={wishlistCount} cartCount={totalItems} />
-      </View>
+      </Animated.View>
 
       <QuickAddSheet
         visible={quickAddProduct !== null}

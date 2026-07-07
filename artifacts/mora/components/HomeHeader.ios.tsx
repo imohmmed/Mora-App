@@ -49,35 +49,39 @@ export function HomeHeader({
       ]}
     >
       <View style={styles.row}>
+        {/* Left spacer — mirrors right buttons for true centering */}
+        <View style={styles.rightGroup} />
+
+        {/* Logo — centered */}
         <RNImage source={LOGO} style={styles.logo} resizeMode="contain" />
-        <View style={{ flex: 1 }} />
 
-        {/* Notifications */}
-        <View style={styles.iconWrap}>
-          <Pressable
-            style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/notifications" as any);
-            }}
-          >
-            <Feather name="bell" size={22} color={iconColor} />
-          </Pressable>
-          {notificationCount > 0 && <Badge count={notificationCount} />}
-        </View>
+        {/* Right buttons */}
+        <View style={styles.rightGroup}>
+          <View style={styles.iconWrap}>
+            <Pressable
+              style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/notifications" as any);
+              }}
+            >
+              <Feather name="bell" size={22} color={iconColor} />
+            </Pressable>
+            {notificationCount > 0 && <Badge count={notificationCount} />}
+          </View>
 
-        {/* Favourites */}
-        <View style={styles.iconWrap}>
-          <Pressable
-            style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/wishlist" as any);
-            }}
-          >
-            <Feather name="heart" size={22} color={iconColor} />
-          </Pressable>
-          {favoritesCount > 0 && <Badge count={favoritesCount} />}
+          <View style={styles.iconWrap}>
+            <Pressable
+              style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/wishlist" as any);
+              }}
+            >
+              <Feather name="heart" size={22} color={iconColor} />
+            </Pressable>
+            {favoritesCount > 0 && <Badge count={favoritesCount} />}
+          </View>
         </View>
       </View>
     </View>
@@ -92,11 +96,17 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
   },
   logo: {
     width: 92,
     height: 30,
+  },
+  rightGroup: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 4,
   },
   iconWrap: {
     position: "relative",
