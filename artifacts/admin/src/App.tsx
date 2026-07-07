@@ -29,6 +29,12 @@ import CustomerSegments from "@/pages/customers/segments";
 import Companies from "@/pages/customers/companies";
 import CollectionsHub from "@/pages/collections/hub";
 import CollectionForm from "@/pages/collections/collection-form";
+import MenuTabsPage from "@/pages/collections/sections/menu-tabs";
+import SearchCollectionsPage from "@/pages/collections/sections/search";
+import SaleCollectionsPage from "@/pages/collections/sections/sale";
+import StoriesPage from "@/pages/collections/sections/stories";
+import QuickSectionsPage from "@/pages/collections/sections/quick";
+import BrowsePage from "@/pages/collections/sections/browse";
 import Discounts from "@/pages/discounts";
 import NewDiscount from "@/pages/discounts/new";
 import ContentHub from "@/pages/content";
@@ -91,6 +97,12 @@ function Router() {
         <Route path="/customers" component={Customers} />
         <Route path="/collections/new" component={CollectionForm} />
         <Route path="/collections/:id/edit" component={CollectionForm} />
+        <Route path="/collections/sections/menu-tabs" component={MenuTabsPage} />
+        <Route path="/collections/sections/search" component={SearchCollectionsPage} />
+        <Route path="/collections/sections/sale" component={SaleCollectionsPage} />
+        <Route path="/collections/sections/stories" component={StoriesPage} />
+        <Route path="/collections/sections/quick" component={QuickSectionsPage} />
+        <Route path="/collections/sections/browse" component={BrowsePage} />
         <Route path="/collections/special" component={CollectionsHub} />
         <Route path="/collections" component={CollectionsHub} />
         <Route path="/discounts/new" component={NewDiscount} />
