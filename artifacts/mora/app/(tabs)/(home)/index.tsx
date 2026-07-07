@@ -181,6 +181,18 @@ function ProductCard({
         >
           {item.title}
         </Text>
+        {(() => {
+          const colorDef = item.optionDefinitions?.find((d) => d.type === "color");
+          const hexes = colorDef?.colorEntries?.map((e) => e.hex).filter(Boolean) ?? [];
+          if (!hexes.length) return null;
+          return (
+            <View style={{ flexDirection: isAr ? "row-reverse" : "row", gap: 4, marginBottom: 2 }}>
+              {hexes.slice(0, 7).map((hex, i) => (
+                <View key={i} style={{ width: 11, height: 11, borderRadius: 6, backgroundColor: hex, borderWidth: 0.5, borderColor: "rgba(0,0,0,0.15)" }} />
+              ))}
+            </View>
+          );
+        })()}
         <View style={[styles.priceRow, isAr && styles.priceRowAr]}>
           {hasDiscount ? (
             <>

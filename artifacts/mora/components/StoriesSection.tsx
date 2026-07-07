@@ -133,6 +133,18 @@ function ProductMiniCard({
         <Text style={[styles.productTitle, { color: colors.foreground }]} numberOfLines={2}>
           {product.title}
         </Text>
+        {(() => {
+          const colorDef = product.optionDefinitions?.find((d) => d.type === "color");
+          const hexes = colorDef?.colorEntries?.map((e) => e.hex).filter(Boolean) ?? [];
+          if (!hexes.length) return null;
+          return (
+            <View style={{ flexDirection: isAr ? "row-reverse" : "row", gap: 4, marginBottom: 2 }}>
+              {hexes.slice(0, 7).map((hex, i) => (
+                <View key={i} style={{ width: 11, height: 11, borderRadius: 6, backgroundColor: hex, borderWidth: 0.5, borderColor: "rgba(0,0,0,0.15)" }} />
+              ))}
+            </View>
+          );
+        })()}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <Text style={[styles.productPrice, { color: "#E53935" }]}>
             {formatIQD(product.price)}
