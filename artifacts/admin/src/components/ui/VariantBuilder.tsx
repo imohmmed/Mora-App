@@ -443,73 +443,116 @@ export function VariantBuilder({
           </div>
 
           {bulkOpen && (
-            <div className="border rounded-lg p-4 bg-muted/10 space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-foreground">
-                  Edit {selected.size} selected variant{selected.size !== 1 ? "s" : ""}
-                </p>
+            <div className="border rounded-lg bg-muted/10 overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/20">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    Bulk Edit — {selected.size} variant{selected.size !== 1 ? "s" : ""} selected
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Leave a field blank to keep each variant's existing value.
+                  </p>
+                </div>
                 <button
                   type="button"
-                  className="text-muted-foreground hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground ml-4 shrink-0"
                   onClick={() => setBulkOpen(false)}
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Only filled fields will be updated — leave blank to keep existing value.
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Price (IQD)</Label>
-                  <Input
-                    type="number" min="0" step="1" placeholder="e.g. 25000"
-                    className="h-8 text-sm"
-                    value={bulkFields.price}
-                    onChange={(e) => setBulkFields((f) => ({ ...f, price: e.target.value }))}
-                  />
+
+              <div className="p-4 space-y-5">
+                {/* Pricing */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">💰 Pricing</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Price (IQD)</Label>
+                      <Input
+                        type="number" min="0" step="1" placeholder="e.g. 25000"
+                        className="h-8 text-sm"
+                        value={bulkFields.price}
+                        onChange={(e) => setBulkFields((f) => ({ ...f, price: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Compare Price (IQD)</Label>
+                      <Input
+                        type="number" min="0" step="1" placeholder="e.g. 35000"
+                        className="h-8 text-sm"
+                        value={bulkFields.comparePrice}
+                        onChange={(e) => setBulkFields((f) => ({ ...f, comparePrice: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Cost (IQD)</Label>
+                      <Input
+                        type="number" min="0" step="1" placeholder="e.g. 12000"
+                        className="h-8 text-sm"
+                        value={bulkFields.cost}
+                        onChange={(e) => setBulkFields((f) => ({ ...f, cost: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  {/* Live margin preview */}
+                  {bulkFields.price && bulkFields.cost && parseFloat(bulkFields.price) > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Margin:{" "}
+                      <span className={(() => {
+                        const m = ((parseFloat(bulkFields.price) - parseFloat(bulkFields.cost)) / parseFloat(bulkFields.price)) * 100;
+                        return m >= 50 ? "text-green-600 font-semibold" : m >= 30 ? "text-amber-600 font-semibold" : "text-red-600 font-semibold";
+                      })()}>
+                        {(((parseFloat(bulkFields.price) - parseFloat(bulkFields.cost)) / parseFloat(bulkFields.price)) * 100).toFixed(1)}%
+                      </span>
+                    </p>
+                  )}
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Compare Price (IQD)</Label>
-                  <Input
-                    type="number" min="0" step="1" placeholder="e.g. 35000"
-                    className="h-8 text-sm"
-                    value={bulkFields.comparePrice}
-                    onChange={(e) => setBulkFields((f) => ({ ...f, comparePrice: e.target.value }))}
-                  />
+
+                {/* Inventory */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">📦 Inventory</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Stock Quantity</Label>
+                      <Input
+                        type="number" min="0" step="1" placeholder="e.g. 10"
+                        className="h-8 text-sm"
+                        value={bulkFields.inventory}
+                        onChange={(e) => setBulkFields((f) => ({ ...f, inventory: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">SKU</Label>
+                      <Input
+                        placeholder="e.g. SHIRT-BLK-M"
+                        className="h-8 text-sm font-mono"
+                        value={bulkFields.sku}
+                        onChange={(e) => setBulkFields((f) => ({ ...f, sku: e.target.value }))}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Stock</Label>
-                  <Input
-                    type="number" min="0" step="1" placeholder="e.g. 10"
-                    className="h-8 text-sm"
-                    value={bulkFields.inventory}
-                    onChange={(e) => setBulkFields((f) => ({ ...f, inventory: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Cost (IQD)</Label>
-                  <Input
-                    type="number" min="0" step="1" placeholder="e.g. 12000"
-                    className="h-8 text-sm"
-                    value={bulkFields.cost}
-                    onChange={(e) => setBulkFields((f) => ({ ...f, cost: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1 col-span-2">
-                  <Label className="text-xs">SKU</Label>
-                  <Input
-                    placeholder="e.g. SHIRT-BLK-M"
-                    className="h-8 text-sm font-mono"
-                    value={bulkFields.sku}
-                    onChange={(e) => setBulkFields((f) => ({ ...f, sku: e.target.value }))}
-                  />
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 pt-1 border-t">
+                  <Button type="button" size="sm" className="gap-1.5 text-xs" onClick={applyBulk}>
+                    <Check className="w-3.5 h-3.5" />
+                    Apply to {selected.size} variant{selected.size !== 1 ? "s" : ""}
+                  </Button>
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                    onClick={() => {
+                      setBulkOpen(false);
+                      setBulkFields({ price: "", comparePrice: "", inventory: "", sku: "", cost: "" });
+                    }}
+                  >
+                    Cancel
+                  </button>
                 </div>
               </div>
-              <Button type="button" size="sm" className="gap-1.5 text-xs" onClick={applyBulk}>
-                <Check className="w-3.5 h-3.5" />
-                Apply to {selected.size} variant{selected.size !== 1 ? "s" : ""}
-              </Button>
             </div>
           )}
 

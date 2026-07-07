@@ -656,21 +656,6 @@ export default function ProductDetail() {
             <CardHeader><CardTitle>{t("products.section.organization")}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label>{t("products.category")}</Label>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="women">{t("products.cat.women")}</SelectItem>
-                    <SelectItem value="men">{t("products.cat.men")}</SelectItem>
-                    <SelectItem value="beauty">{t("products.cat.beauty")}</SelectItem>
-                    <SelectItem value="new_in">{t("products.cat.newIn")}</SelectItem>
-                    <SelectItem value="sale">{t("products.cat.sale")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
                 <Label>{t("products.field.audience")}</Label>
                 <Select value={gender} onValueChange={setGender}>
                   <SelectTrigger>
@@ -683,16 +668,6 @@ export default function ProductDetail() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="vendor">{t("products.field.vendor")}</Label>
-                <Input
-                  id="vendor"
-                  placeholder={t("products.placeholder.vendor")}
-                  value={vendor}
-                  onChange={(e) => setVendor(e.target.value)}
-                />
-              </div>
-
               {/* ── Rating ── */}
               <div className="grid gap-2">
                 <Label>{t("products.field.rating")}</Label>
