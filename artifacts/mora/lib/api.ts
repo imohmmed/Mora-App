@@ -280,3 +280,24 @@ export async function fetchRestockRequests(authToken: string): Promise<string[]>
   });
   return data.variantIds ?? [];
 }
+
+export type SaleCollection = {
+  id: string;
+  title: string;
+  titleAr: string;
+  description: string;
+  descriptionAr: string;
+  image: string;
+  sortOrder: number;
+  active: boolean;
+  conditionType: string;
+  conditionValue: string;
+};
+
+export async function fetchSaleCollections(): Promise<SaleCollection[]> {
+  return apiFetch<SaleCollection[]>("/store/sale-collections");
+}
+
+export async function fetchSaleCollectionProducts(id: string): Promise<Product[]> {
+  return apiFetch<Product[]>(`/store/sale-collections/${id}/products`);
+}

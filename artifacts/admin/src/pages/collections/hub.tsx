@@ -45,6 +45,11 @@ type Collection = {
   id: string; title: string; description?: string; image?: string;
   productsCount?: number; createdAt?: string;
 };
+type SaleCollection = {
+  id: string; title: string; titleAr: string; description: string; descriptionAr: string;
+  image: string; sortOrder: number; active: boolean;
+  conditionType: string; conditionValue: string; productCount: number;
+};
 type Product = {
   id: string; title: string; vendor: string; price: number;
   images: string[]; compare_price?: number;
@@ -1731,7 +1736,388 @@ function CollectionRow({
   );
 }
 
-// ─── Main Hub ────────────────────────────────────────────────────────────────
+// ─── Sale Collections Section ────────────────────────────────────────────────
+
+function SaleCollectionsSection() {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [cols, setCols] = useState<SaleCollection[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [prodSearch, setProdSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [colProducts, setColProducts] = useState<Record<string, Product[]>>({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch<SaleCollection[]>("/admin/sale-collections");
+      setCols(data);
+    } catch { /* ignore */ }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { if (open) load(); }, [open, load]);
+
+  const handleAdd = async () => {
+    try {
+      const data = await apiFetch<SaleCollection>("/admin/sale-collections", {
+        method: "POST",
+        body: JSON.stringify({ title: "New Sale Collection", titleAr: "كولكشن تخفيضات" }),
+      });
+      setCols((p) => [...p, data]);
+      setExpandedId(data.id);
+    } catch (e) { toast({ title: "Error", description: (e as Error).message, variant: "destructive" }); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this sale collection?")) return;
+    try {
+      await apiFetch(`/admin/sale-collections/${id}`, { method: "DELETE" });
+      setCols((p) => p.filter((c) => c.id !== id));
+      if (expandedId === id) setExpandedId(null);
+    } catch (e) { toast({ title: "Error", description: (e as Error).message, variant: "destructive" }); }
+  };
+
+  const handleField = (id: string, field: keyof SaleCollection, value: string | boolean) => {
+    setCols((p) => p.map((c) => c.id === id ? { ...c, [field]: value } : c));
+  };
+
+  const handleSave = async (col: SaleCollection) => {
+    setSaving(col.id);
+    try {
+      await apiFetch(`/admin/sale-collections/${col.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          title: col.title, titleAr: col.titleAr,
+          description: col.description, descriptionAr: col.descriptionAr,
+          image: col.image, active: col.active,
+          conditionType: col.conditionType, conditionValue: col.conditionValue,
+        }),
+      });
+      toast({ title: "Saved ✓" });
+    } catch (e) { toast({ title: "Error", description: (e as Error).message, variant: "destructive" }); }
+    finally { setSaving(null); }
+  };
+
+  const handleImageUpload = async (id: string, file: File) => {
+    setUploading(id);
+    try {
+      const form = new FormData();
+      form.append("image", file);
+      const res = await fetch(`${API}/admin/uploads`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${adminAuthToken()}` },
+        body: form,
+      });
+      const json = await res.json() as { data?: { url: string }; error?: string };
+      if (!json.data?.url) throw new Error(json.error ?? "Upload failed");
+      handleField(id, "image", json.data.url);
+      const col = cols.find((c) => c.id === id);
+      if (col) await apiFetch(`/admin/sale-collections/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ ...col, image: json.data.url }),
+      });
+      toast({ title: "Image uploaded ✓" });
+    } catch (e) { toast({ title: "Error", description: (e as Error).message, variant: "destructive" }); }
+    finally { setUploading(null); }
+  };
+
+  const loadColProducts = async (id: string) => {
+    try {
+      const data = await apiFetch<Product[]>(`/admin/sale-collections/${id}/products`);
+      setColProducts((p) => ({ ...p, [id]: data }));
+    } catch { /* ignore */ }
+  };
+
+  const handleSearchProducts = async (q: string) => {
+    if (!q.trim()) { setSearchResults([]); return; }
+    setSearching(true);
+    try {
+      const data = await apiFetch<{ products: Product[] }>(`/admin/products?q=${encodeURIComponent(q)}&limit=10`);
+      setSearchResults((data as any).products ?? data as any);
+    } catch { /* ignore */ }
+    finally { setSearching(false); }
+  };
+
+  const handleAddProduct = async (colId: string, productId: string) => {
+    try {
+      await apiFetch(`/admin/sale-collections/${colId}/products`, {
+        method: "POST",
+        body: JSON.stringify({ productId }),
+      });
+      await loadColProducts(colId);
+    } catch (e) { toast({ title: "Error", description: (e as Error).message, variant: "destructive" }); }
+  };
+
+  const handleRemoveProduct = async (colId: string, productId: string) => {
+    try {
+      await apiFetch(`/admin/sale-collections/${colId}/products/${productId}`, { method: "DELETE" });
+      setColProducts((p) => ({ ...p, [colId]: (p[colId] ?? []).filter((x) => x.id !== productId) }));
+    } catch (e) { toast({ title: "Error", description: (e as Error).message, variant: "destructive" }); }
+  };
+
+  return (
+    <div className="border rounded-2xl overflow-hidden bg-card">
+      <button
+        type="button"
+        className="w-full flex items-center gap-3 px-5 py-4 text-start hover:bg-accent/20 transition-colors"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <div className="w-9 h-9 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-600 flex-shrink-0">
+          <Tag className="w-5 h-5" />
+        </div>
+        <div className="flex-1 min-w-0 text-start">
+          <p className="font-bold text-base">Home Sale Collections</p>
+          <p className="text-xs text-muted-foreground">بطاقات تخفيضات تظهر في الصفحة الرئيسية — صورة 9:16</p>
+        </div>
+        <Badge variant="outline" className="text-xs">{cols.length}</Badge>
+        {open ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+      </button>
+
+      {open && (
+        <div className="border-t px-5 py-4 space-y-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : cols.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">لا يوجد كولكشنات. أضف واحد بالزر أدناه.</p>
+          ) : (
+            <div className="space-y-3">
+              {cols.map((col) => {
+                const isExpanded = expandedId === col.id;
+                return (
+                  <div key={col.id} className="border rounded-xl overflow-hidden">
+                    {/* Row header */}
+                    <div className="flex items-center gap-3 px-4 py-3 bg-muted/30">
+                      <div className="w-10 h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                        {col.image ? (
+                          <img src={col.image} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ImageIcon className="w-4 h-4 text-muted-foreground/40" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm truncate">{col.title || "Untitled"}</p>
+                        <p className="text-xs text-muted-foreground truncate">{col.titleAr || "—"}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {col.conditionType === "manual" ? `${col.productCount} products (manual)` :
+                           col.conditionType === "tag" ? `Tag: ${col.conditionValue}` : "All products"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { handleField(col.id, "active", !col.active); }}
+                          className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                            col.active ? "bg-green-100 text-green-600" : "bg-muted text-muted-foreground")}
+                          title={col.active ? "Active" : "Inactive"}
+                        >
+                          {col.active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setExpandedId(isExpanded ? null : col.id); if (!isExpanded) loadColProducts(col.id); }}
+                          className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-accent transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(col.id)}
+                          className="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Edit panel */}
+                    {isExpanded && (
+                      <div className="p-4 space-y-4 border-t bg-background">
+                        {/* Image upload */}
+                        <div className="flex gap-4 items-start">
+                          <div
+                            className="w-24 rounded-xl overflow-hidden border-2 border-dashed border-muted-foreground/30 bg-muted flex-shrink-0 cursor-pointer hover:border-primary/50 transition-colors"
+                            style={{ aspectRatio: "9/16" }}
+                            onClick={() => document.getElementById(`sale-img-${col.id}`)?.click()}
+                          >
+                            {col.image ? (
+                              <img src={col.image} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-muted-foreground/60">
+                                <Upload className="w-5 h-5" />
+                                <span className="text-[9px] text-center px-1">9:16<br/>Image</span>
+                              </div>
+                            )}
+                            {uploading === col.id && (
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <Loader2 className="w-5 h-5 animate-spin text-white" />
+                              </div>
+                            )}
+                          </div>
+                          <input
+                            id={`sale-img-${col.id}`}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(col.id, f); e.target.value = ""; }}
+                          />
+                          <div className="flex-1 space-y-2">
+                            <div>
+                              <Label className="text-xs">Title (EN)</Label>
+                              <Input value={col.title} onChange={(e) => handleField(col.id, "title", e.target.value)} className="h-8 text-sm mt-1" />
+                            </div>
+                            <div>
+                              <Label className="text-xs">العنوان (AR)</Label>
+                              <Input value={col.titleAr} onChange={(e) => handleField(col.id, "titleAr", e.target.value)} dir="rtl" className="h-8 text-sm mt-1" />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Description (EN)</Label>
+                            <Input value={col.description} onChange={(e) => handleField(col.id, "description", e.target.value)} className="h-8 text-sm mt-1" placeholder="e.g. Sale under 50,000 IQD" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">الوصف (AR)</Label>
+                            <Input value={col.descriptionAr} onChange={(e) => handleField(col.id, "descriptionAr", e.target.value)} dir="rtl" className="h-8 text-sm mt-1" placeholder="الوصف بالعربي" />
+                          </div>
+                        </div>
+
+                        {/* Condition */}
+                        <div className="space-y-2">
+                          <Label className="text-xs">Products Source</Label>
+                          <div className="flex gap-2">
+                            {(["manual","tag","all"] as const).map((ct) => (
+                              <button
+                                key={ct}
+                                type="button"
+                                onClick={() => handleField(col.id, "conditionType", ct)}
+                                className={cn("flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors",
+                                  col.conditionType === ct
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "bg-background border-border hover:bg-muted")}
+                              >
+                                {ct === "manual" ? "Manual" : ct === "tag" ? "By Tag" : "All Products"}
+                              </button>
+                            ))}
+                          </div>
+                          {col.conditionType === "tag" && (
+                            <div>
+                              <Label className="text-xs">Tag Name</Label>
+                              <Input
+                                value={col.conditionValue}
+                                onChange={(e) => handleField(col.id, "conditionValue", e.target.value)}
+                                className="h-8 text-sm mt-1"
+                                placeholder="e.g. sale, summer, clearance"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Save */}
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleSave(col)}
+                            disabled={saving === col.id}
+                            className="flex items-center gap-2 px-4 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-60"
+                          >
+                            {saving === col.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                            Save
+                          </button>
+                        </div>
+
+                        {/* Products (manual mode only) */}
+                        {col.conditionType === "manual" && (
+                          <div className="border-t pt-4 space-y-3">
+                            <p className="text-sm font-semibold">Products</p>
+                            {/* Current products */}
+                            {(colProducts[col.id] ?? []).length > 0 && (
+                              <div className="space-y-1">
+                                {(colProducts[col.id] ?? []).map((p) => (
+                                  <div key={p.id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-muted/50">
+                                    <div className="w-8 h-8 rounded bg-muted overflow-hidden flex-shrink-0">
+                                      {p.images?.[0] && <img src={p.images[0]} alt="" className="w-full h-full object-cover" />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-medium truncate">{p.title}</p>
+                                      <p className="text-[10px] text-muted-foreground">{formatIQD(p.price)}</p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveProduct(col.id, p.id)}
+                                      className="w-6 h-6 rounded flex items-center justify-center text-red-400 hover:bg-red-50 transition-colors"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {/* Search to add */}
+                            <div className="relative">
+                              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                              <Input
+                                value={prodSearch}
+                                onChange={(e) => { setProdSearch(e.target.value); handleSearchProducts(e.target.value); }}
+                                className="pl-7 h-8 text-sm"
+                                placeholder="Search products to add..."
+                              />
+                            </div>
+                            {searching && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground mx-auto" />}
+                            {searchResults.length > 0 && (
+                              <div className="border rounded-lg overflow-hidden divide-y">
+                                {searchResults.slice(0, 6).map((p) => (
+                                  <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => { handleAddProduct(col.id, p.id); setSearchResults([]); setProdSearch(""); }}
+                                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 text-start transition-colors"
+                                  >
+                                    <div className="w-7 h-7 rounded bg-muted overflow-hidden flex-shrink-0">
+                                      {p.images?.[0] && <img src={p.images[0]} alt="" className="w-full h-full object-cover" />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-medium truncate">{p.title}</p>
+                                      <p className="text-[10px] text-muted-foreground">{formatIQD(p.price)}</p>
+                                    </div>
+                                    <Plus className="w-3 h-3 text-primary flex-shrink-0" />
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-muted-foreground/30 rounded-xl text-sm text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Add Sale Collection
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function CollectionsHub() {
   const { t } = useT();
@@ -1741,6 +2127,7 @@ export default function CollectionsHub() {
 
       <MenuTabBarSection />
       <SearchCollectionsSection />
+      <SaleCollectionsSection />
       <StoriesSection />
       <QuickSectionsSection />
       <CollectionsSection />

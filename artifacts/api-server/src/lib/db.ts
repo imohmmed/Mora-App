@@ -1219,4 +1219,29 @@ db.exec(`
   }
 }
 
+// ─── Sale Collections (home page promotional cards) ───────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sale_collections (
+    id              TEXT PRIMARY KEY,
+    title           TEXT NOT NULL DEFAULT '',
+    title_ar        TEXT NOT NULL DEFAULT '',
+    description     TEXT NOT NULL DEFAULT '',
+    description_ar  TEXT NOT NULL DEFAULT '',
+    image           TEXT NOT NULL DEFAULT '',
+    sort_order      INTEGER NOT NULL DEFAULT 0,
+    active          INTEGER NOT NULL DEFAULT 1,
+    condition_type  TEXT NOT NULL DEFAULT 'manual',
+    condition_value TEXT NOT NULL DEFAULT '',
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS sale_collection_products (
+    collection_id TEXT NOT NULL,
+    product_id    TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    sort_order    INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (collection_id, product_id)
+  );
+`);
+
 export default db;

@@ -38,6 +38,7 @@ import { useCart } from "@/context/CartContext";
 import { fetchProducts, fetchSpecialCollections, fetchBanners, fetchStories, fetchContentSections } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { StoriesSection } from "@/components/StoriesSection";
+import { HomeSaleCollections } from "@/components/HomeSaleCollections";
 import type { Product, Banner, Variant } from "@/lib/types";
 
 // Enable LayoutAnimation on Android (always-on on iOS)
@@ -631,6 +632,8 @@ export default function HomeScreen() {
           </Text>
         </View>
       )}
+
+      <HomeSaleCollections />
     </View>
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [
