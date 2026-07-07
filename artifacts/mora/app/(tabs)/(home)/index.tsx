@@ -599,8 +599,8 @@ export default function HomeScreen() {
             </View>
           )}
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: bottomPadding + 80, gap: 8 }}
-          snapToInterval={CARD_WIDTH + 8}
+          contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: bottomPadding + 80, gap: 1 }}
+          snapToInterval={CARD_WIDTH + 1}
           decelerationRate="fast"
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.4}
@@ -738,7 +738,7 @@ const styles = StyleSheet.create({
   seeAll: { fontFamily: "Inter_500Medium", fontSize: 12, letterSpacing: 0.5 },
 
   /* ── Skeleton row (horizontal loading state) ── */
-  skeletonRow: { flexDirection: "row", gap: 8, paddingHorizontal: 10 },
+  skeletonRow: { flexDirection: "row", gap: 1, paddingHorizontal: 10 },
 
   /* ── Horizontal slide card wrapper ── */
   slideCard: { width: CARD_WIDTH },

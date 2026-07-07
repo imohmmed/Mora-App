@@ -376,7 +376,7 @@ export default function ProductDetailScreen() {
 
   const warranty = contentSections?.warranty;
   const testimonials = contentSections?.testimonials;
-  const cardWidth = Math.floor((Math.min(screenWidth, 600) - 32 - 8) / 2);
+  const cardWidth = Math.floor((Math.min(screenWidth, 600) - 1) / 2);
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -1124,7 +1124,7 @@ const styles = StyleSheet.create({
 
   /* Related Products grid */
   relatedGrid: {
-    flexDirection: "row", flexWrap: "wrap", gap: 4, paddingHorizontal: 16,
+    flexDirection: "row", flexWrap: "wrap", gap: 1, paddingHorizontal: 0,
   },
   relatedDisc: {
     position: "absolute", top: 8, left: 8, zIndex: 2,

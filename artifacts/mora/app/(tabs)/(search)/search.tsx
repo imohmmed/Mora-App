@@ -571,9 +571,9 @@ const styles = StyleSheet.create({
   },
   tagText: { fontFamily: "Inter_500Medium", fontSize: 14 },
 
-  categoriesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  categoriesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 1 },
   categoryCard: {
-    width: (SCREEN_WIDTH - 40) / 2,
+    width: (SCREEN_WIDTH - 33) / 2,
     height: (SCREEN_WIDTH - 40) / 2 * 1.15,
     overflow: "hidden",
     borderRadius: 0,

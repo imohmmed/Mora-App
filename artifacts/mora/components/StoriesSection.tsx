@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
   productsScroll: {
     paddingHorizontal: 12,
     paddingTop: 14,
-    gap: 6,
+    gap: 1,
   },
   productCard: {
     width: CARD_W,
