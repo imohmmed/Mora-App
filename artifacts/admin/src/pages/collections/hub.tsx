@@ -318,6 +318,7 @@ type SearchCollection = {
   nameAr: string;
   icon: string;
   color: string;
+  image?: string;
   linkType: "category" | "gender" | "sale" | "collection" | "search";
   linkValue: string;
 };
@@ -366,7 +367,7 @@ function SearchCollectionsSection() {
     const section = sections.find((s) => s.key === "search_collections");
     if (section) {
       setSectionId(section.id);
-      if (section.items) setCards(section.items as SearchCollection[]);
+      if (section.items?.length) setCards(section.items as SearchCollection[]);
     }
   }, [sections]);
 
@@ -451,10 +452,16 @@ function SearchCollectionsSection() {
               {cards.map((card) => {
                 const Icon = SC_ICON_OPTIONS.find((o) => o.name === card.icon)?.Comp ?? Tag;
                 return (
-                  <div key={card.id} className="rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 aspect-[4/3]" style={{ backgroundColor: card.color }}>
-                    <Icon className="w-5 h-5 text-foreground/70" />
-                    <span className="text-[11px] font-bold leading-tight text-center">{card.nameAr}</span>
-                    <span className="text-[9px] text-muted-foreground leading-tight">{card.nameEn}</span>
+                  <div key={card.id} className="rounded-xl overflow-hidden flex flex-col items-center justify-center gap-1.5 aspect-[4/3] relative" style={{ backgroundColor: card.color }}>
+                    {card.image ? (
+                      <img src={card.image} alt={card.nameEn} className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <>
+                        <Icon className="w-5 h-5 text-foreground/70" />
+                        <span className="text-[11px] font-bold leading-tight text-center">{card.nameAr}</span>
+                        <span className="text-[9px] text-muted-foreground leading-tight">{card.nameEn}</span>
+                      </>
+                    )}
                   </div>
                 );
               })}
@@ -504,6 +511,13 @@ function SearchCollectionsSection() {
                     onChange={(e) => update(i, "color", e.target.value)}
                     className="h-8 w-10 rounded border cursor-pointer shrink-0"
                     title={t("searchCol.color")}
+                  />
+
+                  <Input
+                    value={card.image ?? ""}
+                    onChange={(e) => update(i, "image", e.target.value)}
+                    className="h-8 text-xs w-40 shrink-0"
+                    placeholder="Image URL (optional)"
                   />
 
                   <div className="w-32 shrink-0">
