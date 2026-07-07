@@ -327,14 +327,14 @@ export default function HomeScreen() {
     }
   }, [headerTranslateY]);
 
-  const handleAddToBag = (product: Product) => {
+  const handleAddToBag = useCallback((product: Product) => {
     setQuickAddProduct(product);
-  };
+  }, []);
 
-  const handleLongPress = (product: Product) => {
+  const handleLongPress = useCallback((product: Product) => {
     setPreviewProduct(product);
     setPreviewVisible(true);
-  };
+  }, []);
 
   const handleQuickAddConfirm = (variant: Variant, qty: number) => {
     if (!quickAddProduct) return;
@@ -581,8 +581,41 @@ export default function HomeScreen() {
 
       {/* Skeleton rows (2 per row) when loading */}
       {isLoading && (
-        <View style={styles.grid}>
-          {Array.from({ length: 6 }).map((_, i) => <ProductSkeleton key={i} />)}
+        <View style={styles.skeletonRow}>
+          {Array.from({ length: 4 }).map((_, i) => <ProductSkeleton key={i} />)}
+        </View>
+      )}
+
+      {/* ── Horizontal product slide ── */}
+      {!isLoading && !isError && (
+        <FlatList
+          horizontal
+          data={products}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.slideCard}>
+              <ProductCard item={item} onAddToBag={handleAddToBag} onLongPress={handleLongPress} />
+            </View>
+          )}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: bottomPadding + 80, gap: 8 }}
+          snapToInterval={CARD_WIDTH + 8}
+          decelerationRate="fast"
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.4}
+          inverted={isAr}
+          ListFooterComponent={isFetchingNextPage ? (
+            <ActivityIndicator size="small" color={colors.primary} style={{ paddingHorizontal: 20, alignSelf: "center" }} />
+          ) : null}
+        />
+      )}
+
+      {!isLoading && products.length === 0 && !isError && (
+        <View style={styles.emptyBox}>
+          <Feather name="inbox" size={40} color={colors.border} />
+          <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+            No products found
+          </Text>
         </View>
       )}
     </View>
@@ -591,44 +624,20 @@ export default function HomeScreen() {
     activeCategory, safeActiveCategory, activeBanner, categoryKey, activeTab, isForYou, menuTabs, colors, displayBanners,
     isCollectionsLoading, isError, isBannersLoading, isLoading, isRefetching,
     specialCollections, storyRows, totalCount, activeFilter, bannerHeight,
+    products, isFetchingNextPage, handleEndReached, bottomPadding, isAr,
+    handleAddToBag, handleLongPress,
   ]);
-
-  const renderProduct = useCallback(({ item }: { item: Product }) => (
-    <ProductCard item={item} onAddToBag={handleAddToBag} onLongPress={handleLongPress} />
-  ), []);
-
-  const ListFooter = isFetchingNextPage ? (
-    <ActivityIndicator
-      size="small"
-      color={colors.primary}
-      style={{ paddingVertical: 20 }}
-    />
-  ) : !isLoading && products.length === 0 && !isError ? (
-    <View style={styles.emptyBox}>
-      <Feather name="inbox" size={40} color={colors.border} />
-      <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-        No products found
-      </Text>
-    </View>
-  ) : null;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         ref={flatListRef}
-        data={isLoading ? [] : products}
-        keyExtractor={(item) => item.id}
-        renderItem={renderProduct}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: bottomPadding + 80 }}
+        data={[]}
+        renderItem={null}
         ListHeaderComponent={ListHeader}
-        ListFooterComponent={ListFooter}
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        onEndReached={handleEndReached}
-        onEndReachedThreshold={0.4}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -727,11 +736,11 @@ const styles = StyleSheet.create({
   sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1 },
   seeAll: { fontFamily: "Inter_500Medium", fontSize: 12, letterSpacing: 0.5 },
 
-  /* ── Grid (skeleton rows only) ── */
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
+  /* ── Skeleton row (horizontal loading state) ── */
+  skeletonRow: { flexDirection: "row", gap: 8, paddingHorizontal: 10 },
 
-  /* ── FlatList column wrapper ── */
-  row: { gap: 8, marginBottom: 8 },
+  /* ── Horizontal slide card wrapper ── */
+  slideCard: { width: CARD_WIDTH },
 
   /* ── Product card ── */
   productCard: { width: CARD_WIDTH, flex: 1 },

@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 18,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 0,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
@@ -609,14 +609,14 @@ const styles = StyleSheet.create({
   heartBtn: {
     width: 54,
     height: 54,
-    borderRadius: 999,
+    borderRadius: 0,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
   addBtn: {
     flex: 1,
-    borderRadius: 999,
+    borderRadius: 0,
     paddingVertical: 16,
     alignItems: "center",
   },

@@ -988,7 +988,7 @@ const styles = StyleSheet.create({
   saleBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 2 },
   saleBadgeText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 0.5 },
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 2 },
-  tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 50, borderWidth: 1 },
+  tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, borderWidth: 1 },
   tagText: { fontFamily: "Inter_400Regular", fontSize: 12 },
 
   /* Variants */
@@ -997,14 +997,14 @@ const styles = StyleSheet.create({
   variantChip: {
     paddingHorizontal: 18,
     paddingVertical: 9,
-    borderRadius: 100,
+    borderRadius: 0,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
   chipGlassBg: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 100,
+    borderRadius: 0,
     overflow: "hidden",
   },
   variantText: { fontFamily: "Inter_500Medium", fontSize: 14 },
@@ -1012,7 +1012,7 @@ const styles = StyleSheet.create({
   /* Quantity stepper */
   qtyWrap: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   qtyLabel: { fontFamily: "Inter_600SemiBold", fontSize: 11, letterSpacing: 1, textTransform: "uppercase" },
-  qtyStepper: { flexDirection: "row", alignItems: "center", borderRadius: 999, borderWidth: 1.5, overflow: "hidden" },
+  qtyStepper: { flexDirection: "row", alignItems: "center", borderRadius: 0, borderWidth: 1.5, overflow: "hidden" },
   qtyBtn: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
   qtyNum: { fontFamily: "Inter_700Bold", fontSize: 15, minWidth: 32, textAlign: "center" },
 
@@ -1020,7 +1020,7 @@ const styles = StyleSheet.create({
   addBagSection: { paddingHorizontal: 16, paddingVertical: 16, gap: 12, borderTopWidth: 1 },
   addBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 10, paddingVertical: 16, borderRadius: 100,
+    gap: 10, paddingVertical: 16, borderRadius: 0,
   },
   addBtnText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1 },
   deliveryRow: {
@@ -1049,7 +1049,7 @@ const styles = StyleSheet.create({
 
   /* Related Products grid */
   relatedGrid: {
-    flexDirection: "row", flexWrap: "wrap", gap: 8, paddingHorizontal: 16,
+    flexDirection: "row", flexWrap: "wrap", gap: 4, paddingHorizontal: 16,
   },
   relatedDisc: {
     position: "absolute", top: 8, left: 8, zIndex: 2,
