@@ -62,17 +62,30 @@ function GuestScreen({
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
-        <View style={{ width: 38 }} />
-        <Text style={[styles.acctTitle, { color: colors.foreground }]}>
-          {isAr ? "حسابي" : "MY ACCOUNT"}
-        </Text>
-        <Pressable style={styles.glassIconBtn} onPress={onOpenSettings} testID="btn-settings">
-          {isIOS26Plus
-            ? <LiquidGlassBg />
-            : Platform.OS !== "web" && <BlurView style={StyleSheet.absoluteFill} intensity={60} tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"} />
-          }
-          <Feather name="settings" size={18} color={colors.foreground} />
-        </Pressable>
+        {Platform.OS === "web" ? (
+          <>
+            <Text style={[styles.pageTitleWeb, { color: colors.foreground }, isAr && { textAlign: "right" }]}>
+              {isAr ? "حسابي" : "MY ACCOUNT"}
+            </Text>
+            <Pressable style={styles.flatIconBtn} onPress={onOpenSettings} testID="btn-settings">
+              <Feather name="settings" size={20} color={colors.foreground} />
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <View style={{ width: 38 }} />
+            <Text style={[styles.acctTitle, { color: colors.foreground }]}>
+              {isAr ? "حسابي" : "MY ACCOUNT"}
+            </Text>
+            <Pressable style={styles.glassIconBtn} onPress={onOpenSettings} testID="btn-settings">
+              {isIOS26Plus
+                ? <LiquidGlassBg />
+                : <BlurView style={StyleSheet.absoluteFill} intensity={60} tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"} />
+              }
+              <Feather name="settings" size={18} color={colors.foreground} />
+            </Pressable>
+          </>
+        )}
       </View>
 
       <View style={[styles.guestBody, { paddingBottom: botPad + 80 }]}>
@@ -194,17 +207,30 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
     <View style={[styles.container, { backgroundColor: bg }]}>
       {/* ── Header ── */}
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
-        <View style={{ width: 38 }} />
-        <Text style={[styles.acctTitle, { color: colors.foreground }]}>
-          {isAr ? "حسابي" : "MY ACCOUNT"}
-        </Text>
-        <Pressable style={styles.glassIconBtn} onPress={onOpenSettings} testID="btn-settings">
-          {isIOS26Plus
-            ? <LiquidGlassBg />
-            : Platform.OS !== "web" && <BlurView style={StyleSheet.absoluteFill} intensity={60} tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"} />
-          }
-          <Feather name="settings" size={18} color={colors.foreground} />
-        </Pressable>
+        {Platform.OS === "web" ? (
+          <>
+            <Text style={[styles.pageTitleWeb, { color: colors.foreground }, isAr && { textAlign: "right" }]}>
+              {isAr ? "حسابي" : "MY ACCOUNT"}
+            </Text>
+            <Pressable style={styles.flatIconBtn} onPress={onOpenSettings} testID="btn-settings">
+              <Feather name="settings" size={20} color={colors.foreground} />
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <View style={{ width: 38 }} />
+            <Text style={[styles.acctTitle, { color: colors.foreground }]}>
+              {isAr ? "حسابي" : "MY ACCOUNT"}
+            </Text>
+            <Pressable style={styles.glassIconBtn} onPress={onOpenSettings} testID="btn-settings">
+              {isIOS26Plus
+                ? <LiquidGlassBg />
+                : <BlurView style={StyleSheet.absoluteFill} intensity={60} tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"} />
+              }
+              <Feather name="settings" size={18} color={colors.foreground} />
+            </Pressable>
+          </>
+        )}
       </View>
 
       <ScrollView
@@ -216,6 +242,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
           styles.profileCard,
           { backgroundColor: useGlassSurface ? "transparent" : card, overflow: "hidden" },
           isAr && { flexDirection: "row-reverse" },
+          Platform.OS === "web" && { borderRadius: 0, margin: 0, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
         ]}>
           {useGlassSurface && <GlassBase isDark={isDark} />}
           {useGlassSurface && (
@@ -260,7 +287,7 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }, isAr && { textAlign: "right" }]}>
               {isAr ? section.titleAr : section.titleEn}
             </Text>
-            <View style={[styles.sectionCard, { backgroundColor: useGlassSurface ? "transparent" : card }]}>
+            <View style={[styles.sectionCard, { backgroundColor: useGlassSurface ? "transparent" : card }, Platform.OS === "web" && { borderRadius: 0 }]}>
               {useGlassSurface && <GlassBase isDark={isDark} />}
               {useGlassSurface && (
                 <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? SURFACE_TINT_DARK : SURFACE_TINT_LIGHT }]} />
@@ -408,6 +435,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   acctTitle:    { fontFamily: "Inter_700Bold", fontSize: 15, letterSpacing: 1 },
+  pageTitleWeb: { fontFamily: "Inter_900Black", fontSize: 22, fontWeight: "900", letterSpacing: -0.4, flex: 1 },
+  flatIconBtn:  { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
   iconBtn:      { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
   glassIconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", overflow: "hidden" },
 

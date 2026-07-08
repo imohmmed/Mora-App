@@ -92,7 +92,7 @@ function FreeShippingBar({ subtotal, isDark, lang }: { subtotal: number; isDark:
   return (
     <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12 }}>
       <View style={[fs.track, { backgroundColor: barBg }]}>
-        <View style={[fs.fill, { width: `${Math.round(pct * 100)}%` as any, backgroundColor: isFree ? "#22C55E" : PRIMARY }]} />
+        <View style={[fs.fill, { width: `${Math.round(pct * 100)}%` as any, backgroundColor: PRIMARY }]} />
       </View>
       <Text style={[fs.txt, { color: isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.5)" }, isAr && { textAlign: "right" }]}>
         {isFree

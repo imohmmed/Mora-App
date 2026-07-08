@@ -92,13 +92,27 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
-      {/* ── Header — back button always on left ── */}
+      {/* ── Header ── */}
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
-        <GlassBackButton onPress={() => router.back()} />
-        <Text style={[styles.acctTitle, { color: colors.foreground }]}>
-          {isAr ? "الإعدادات" : "SETTINGS"}
-        </Text>
-        <View style={{ width: 38 }} />
+        {Platform.OS === "web" ? (
+          <>
+            <Pressable style={styles.flatIconBtn} onPress={() => router.back()}>
+              <Feather name={isAr ? "chevron-right" : "chevron-left"} size={22} color={colors.foreground} />
+            </Pressable>
+            <Text style={[styles.pageTitleWeb, { color: colors.foreground }, isAr && { textAlign: "right" }]}>
+              {isAr ? "الإعدادات" : "SETTINGS"}
+            </Text>
+            <View style={{ width: 38 }} />
+          </>
+        ) : (
+          <>
+            <GlassBackButton onPress={() => router.back()} />
+            <Text style={[styles.acctTitle, { color: colors.foreground }]}>
+              {isAr ? "الإعدادات" : "SETTINGS"}
+            </Text>
+            <View style={{ width: 38 }} />
+          </>
+        )}
       </View>
 
       <ScrollView
@@ -110,7 +124,7 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }, isAr && { textAlign: "right" }]}>
             {isAr ? "المظهر" : "APPEARANCE"}
           </Text>
-          <View style={[styles.sectionCard, { backgroundColor: useGlassSurface ? "transparent" : card }]}>
+          <View style={[styles.sectionCard, { backgroundColor: useGlassSurface ? "transparent" : card }, Platform.OS === "web" && { borderRadius: 0 }]}>
             {useGlassSurface && <GlassBase isDark={isDark} />}
             {useGlassSurface && (
               <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? SURFACE_TINT_DARK : SURFACE_TINT_LIGHT }]} />
@@ -146,7 +160,7 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }, isAr && { textAlign: "right" }]}>
             {isAr ? "اللغة" : "LANGUAGE"}
           </Text>
-          <View style={[styles.sectionCard, { backgroundColor: useGlassSurface ? "transparent" : card }]}>
+          <View style={[styles.sectionCard, { backgroundColor: useGlassSurface ? "transparent" : card }, Platform.OS === "web" && { borderRadius: 0 }]}>
             {useGlassSurface && <GlassBase isDark={isDark} />}
             {useGlassSurface && (
               <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? SURFACE_TINT_DARK : SURFACE_TINT_LIGHT }]} />
@@ -205,7 +219,7 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }, isAr && { textAlign: "right" }]}>
             {isAr ? "معلومات" : "INFORMATION"}
           </Text>
-          <View style={[styles.sectionCard, { backgroundColor: useGlassSurface ? "transparent" : card }]}>
+          <View style={[styles.sectionCard, { backgroundColor: useGlassSurface ? "transparent" : card }, Platform.OS === "web" && { borderRadius: 0 }]}>
             {useGlassSurface && <GlassBase isDark={isDark} />}
             {useGlassSurface && (
               <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? SURFACE_TINT_DARK : SURFACE_TINT_LIGHT }]} />
@@ -292,6 +306,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   acctTitle:        { fontFamily: "Inter_700Bold", fontSize: 15, letterSpacing: 1 },
+  pageTitleWeb:     { fontFamily: "Inter_900Black", fontSize: 22, fontWeight: "900", letterSpacing: -0.4, flex: 1 },
+  flatIconBtn:      { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
   themeRow:         { flexDirection: "row", padding: 12, gap: 10 },
   themeOption:      { flex: 1, flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 12, borderRadius: 8, borderWidth: 1.5 },
   themeOptionLabel: { fontFamily: "Inter_600SemiBold", fontSize: 12, letterSpacing: 0.3 },

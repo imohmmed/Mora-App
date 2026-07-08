@@ -92,11 +92,25 @@ export default function OrdersScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
-        <GlassBackButton onPress={() => router.back()} />
-        <Text style={[styles.acctTitle, { color: colors.foreground }]}>
-          {isAr ? "طلباتي" : "MY ORDERS"}
-        </Text>
-        <View style={{ width: 38 }} />
+        {Platform.OS === "web" ? (
+          <>
+            <Pressable style={styles.flatIconBtn} onPress={() => router.back()}>
+              <Feather name={isAr ? "chevron-right" : "chevron-left"} size={22} color={colors.foreground} />
+            </Pressable>
+            <Text style={[styles.pageTitleWeb, { color: colors.foreground }, isAr && { textAlign: "right" }]}>
+              {isAr ? "طلباتي" : "MY ORDERS"}
+            </Text>
+            <View style={{ width: 38 }} />
+          </>
+        ) : (
+          <>
+            <GlassBackButton onPress={() => router.back()} />
+            <Text style={[styles.acctTitle, { color: colors.foreground }]}>
+              {isAr ? "طلباتي" : "MY ORDERS"}
+            </Text>
+            <View style={{ width: 38 }} />
+          </>
+        )}
       </View>
 
       <ScrollView
@@ -128,7 +142,7 @@ export default function OrdersScreen() {
             return (
               <Pressable
                 key={order.id}
-                style={({ pressed }) => [styles.orderCard, { backgroundColor: card, opacity: pressed ? 0.85 : 1 }]}
+                style={({ pressed }) => [styles.orderCard, { backgroundColor: card, opacity: pressed ? 0.85 : 1 }, Platform.OS === "web" && { borderRadius: 0, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: "transparent" }]}
                 onPress={() => router.push({ pathname: "/orders/[id]", params: { id: order.id, email: user?.email ?? "" } } as any)}
               >
                 {/* Top row */}
@@ -202,6 +216,8 @@ const styles = StyleSheet.create({
   container:       { flex: 1 },
   acctHeader:      { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
   acctTitle:       { fontFamily: "Inter_700Bold", fontSize: 15, letterSpacing: 1 },
+  pageTitleWeb:    { fontFamily: "Inter_900Black", fontSize: 22, fontWeight: "900", letterSpacing: -0.4, flex: 1, paddingHorizontal: 8 },
+  flatIconBtn:     { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
   orderCard:       { borderRadius: 16, overflow: "hidden" },
   orderCardTop:    { alignItems: "center", justifyContent: "space-between", padding: 14 },
   orderNum:        { fontFamily: "Inter_600SemiBold", fontSize: 14 },

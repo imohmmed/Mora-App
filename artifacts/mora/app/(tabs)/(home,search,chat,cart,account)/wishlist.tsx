@@ -199,15 +199,33 @@ export default function WishlistScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* ── Header ── */}
       <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
-        <GlassBackButton onPress={() => router.back()} />
-        <Text style={[styles.title, { color: colors.foreground }]}>{t.title}</Text>
-        <View style={styles.spacer}>
-          {wishlistIds.length > 0 && (
-            <Text style={[styles.savedCount, { color: colors.mutedForeground }]}>
-              {t.saved(wishlistIds.length)}
-            </Text>
-          )}
-        </View>
+        {isWeb ? (
+          <>
+            <Pressable style={styles.flatIconBtn} onPress={() => router.back()}>
+              <Feather name={lang === "ar" ? "chevron-right" : "chevron-left"} size={22} color={colors.foreground} />
+            </Pressable>
+            <Text style={[styles.titleWeb, { color: colors.foreground }, lang === "ar" && { textAlign: "right" }]}>{t.title}</Text>
+            <View style={styles.spacer}>
+              {wishlistIds.length > 0 && (
+                <Text style={[styles.savedCount, { color: colors.mutedForeground }]}>
+                  {t.saved(wishlistIds.length)}
+                </Text>
+              )}
+            </View>
+          </>
+        ) : (
+          <>
+            <GlassBackButton onPress={() => router.back()} />
+            <Text style={[styles.title, { color: colors.foreground }]}>{t.title}</Text>
+            <View style={styles.spacer}>
+              {wishlistIds.length > 0 && (
+                <Text style={[styles.savedCount, { color: colors.mutedForeground }]}>
+                  {t.saved(wishlistIds.length)}
+                </Text>
+              )}
+            </View>
+          </>
+        )}
       </View>
 
       {/* ── Content ── */}
@@ -278,9 +296,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     gap: 12,
   },
-  title: { fontFamily: "Inter_700Bold", fontSize: 18, flex: 1, textAlign: "center" },
-  spacer: { width: 60, alignItems: "flex-end" },
-  savedCount: { fontFamily: "Inter_500Medium", fontSize: 13 },
+  title:       { fontFamily: "Inter_700Bold", fontSize: 18, flex: 1, textAlign: "center" },
+  titleWeb:    { fontFamily: "Inter_900Black", fontSize: 22, fontWeight: "900", letterSpacing: -0.4, flex: 1, paddingHorizontal: 8 },
+  flatIconBtn: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
+  spacer:      { width: 60, alignItems: "flex-end" },
+  savedCount:  { fontFamily: "Inter_500Medium", fontSize: 13 },
   emptyWrap: {
     flex: 1,
     alignItems: "center",
