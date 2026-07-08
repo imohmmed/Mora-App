@@ -170,45 +170,33 @@ function CartItemRow({
         </View>
 
         {/* Info */}
-        <View style={{ flex: 1, alignItems: isAr ? "flex-end" : "flex-start", justifyContent: "space-between" }}>
-          <View style={{ gap: 3, alignItems: isAr ? "flex-end" : "flex-start" }}>
-            <Text style={[ci.title, { color: textCol }]} numberOfLines={2}>{item.title}</Text>
-            {(item.size || item.color) && (
-              <Text style={[ci.variant, { color: sub }]}>
-                {[item.size, item.color].filter(Boolean).join("   ")}
-              </Text>
+        <View style={{ flex: 1, alignItems: isAr ? "flex-end" : "flex-start", gap: 4 }}>
+          <Text style={[ci.title, { color: textCol }]} numberOfLines={2}>{item.title}</Text>
+          {(item.size || item.color) && (
+            <Text style={[ci.variant, { color: sub }]}>
+              {[item.size, item.color].filter(Boolean).join("   ")}
+            </Text>
+          )}
+          <View style={[ci.priceRow, isAr && { flexDirection: "row-reverse" }]}>
+            <Text style={ci.price}>{formatIQD(item.price)}</Text>
+            {hasDiscount && (
+              <Text style={[ci.comparePrice, { color: sub }]}>{formatIQD(item.comparePrice!)}</Text>
             )}
-            <View style={[ci.priceRow, isAr && { flexDirection: "row-reverse" }]}>
-              <Text style={ci.price}>{formatIQD(item.price)}</Text>
-              {hasDiscount && (
-                <Text style={[ci.comparePrice, { color: sub }]}>{formatIQD(item.comparePrice!)}</Text>
-              )}
-            </View>
-          </View>
-
-          {/* Qty controls */}
-          <View style={[ci.qtyRow, isAr && { flexDirection: "row-reverse" }]}>
-            <Pressable onPress={onDec} style={ci.qBtn} hitSlop={10}>
-              <Feather
-                name={item.quantity === 1 ? "trash-2" : "minus"}
-                size={12}
-                color={item.quantity === 1 ? "#EF4444" : textCol}
-              />
-            </Pressable>
-            <Text style={[ci.qNum, { color: textCol }]}>{item.quantity}</Text>
-            <Pressable onPress={onInc} style={ci.qBtn} hitSlop={10}>
-              <Feather name="plus" size={12} color={textCol} />
-            </Pressable>
           </View>
         </View>
 
-        {/* Bookmark + Remove */}
-        <View style={ci.actions}>
-          <Pressable hitSlop={10} onPress={() => {}}>
-            <Feather name="bookmark" size={16} color={PRIMARY} />
+        {/* Qty controls — vertical column on the right */}
+        <View style={ci.qtyCol}>
+          <Pressable onPress={onInc} style={ci.qColBtn} hitSlop={8}>
+            <Feather name="plus" size={13} color={textCol} />
           </Pressable>
-          <Pressable hitSlop={10} onPress={onRemove}>
-            <Feather name="x" size={16} color={PRIMARY} />
+          <Text style={[ci.qColNum, { color: textCol }]}>{item.quantity}</Text>
+          <Pressable onPress={onDec} style={ci.qColBtn} hitSlop={8}>
+            <Feather
+              name={item.quantity === 1 ? "trash-2" : "minus"}
+              size={13}
+              color={item.quantity === 1 ? "#EF4444" : textCol}
+            />
           </Pressable>
         </View>
       </View>
@@ -225,10 +213,9 @@ const ci = StyleSheet.create({
   priceRow:    { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
   price:       { fontSize: 14, fontWeight: "800", color: PRIMARY },
   comparePrice:{ fontSize: 12, fontWeight: "500", textDecorationLine: "line-through" },
-  qtyRow:      { flexDirection: "row", alignItems: "center", gap: 0, marginTop: 10 },
-  qBtn:        { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(0,0,0,0.15)", borderRadius: 4 },
-  qNum:        { minWidth: 28, textAlign: "center", fontSize: 13, fontWeight: "700" },
-  actions:     { alignItems: "center", justifyContent: "space-between", paddingVertical: 4, gap: 16 },
+  qtyCol:      { alignItems: "center", justifyContent: "space-between", paddingVertical: 4, gap: 6, minWidth: 32 },
+  qColBtn:     { width: 30, height: 30, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(0,0,0,0.15)", borderRadius: 4 },
+  qColNum:     { fontSize: 14, fontWeight: "800", textAlign: "center", minWidth: 24 },
   swipeOuter:  { width: 76, marginBottom: 1 },
   swipeBtn:    { flex: 1, backgroundColor: "#EF4444", borderRadius: 0, alignItems: "center", justifyContent: "center" },
   swipeLbl:    { color: "#fff", fontSize: 9, fontWeight: "700", letterSpacing: 0.5, marginTop: 4 },
