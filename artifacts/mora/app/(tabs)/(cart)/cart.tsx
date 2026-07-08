@@ -214,7 +214,7 @@ const ci = StyleSheet.create({
   price:       { fontSize: 14, fontWeight: "800", color: PRIMARY },
   comparePrice:{ fontSize: 12, fontWeight: "500", textDecorationLine: "line-through" },
   qtyCol:      { alignItems: "center", justifyContent: "space-between", paddingVertical: 4, gap: 6, minWidth: 32 },
-  qColBtn:     { width: 30, height: 30, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(0,0,0,0.15)", borderRadius: 4 },
+  qColBtn:     { width: 30, height: 30, alignItems: "center", justifyContent: "center" },
   qColNum:     { fontSize: 14, fontWeight: "800", textAlign: "center", minWidth: 24 },
   swipeOuter:  { width: 76, marginBottom: 1 },
   swipeBtn:    { flex: 1, backgroundColor: "#EF4444", borderRadius: 0, alignItems: "center", justifyContent: "center" },
