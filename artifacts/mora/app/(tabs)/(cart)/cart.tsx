@@ -54,8 +54,8 @@ function StepBar({ current, isDark, lang }: { current: 1 | 2 | 3; isDark: boolea
             <View style={sb.item}>
               <View style={[sb.dot, active && sb.dotActive, done && sb.dotDone]}>
                 {done
-                  ? <Feather name="check" size={9} color="#fff" />
-                  : <Text style={[sb.dotNum, { color: active ? "#fff" : dimText }]}>{step}</Text>}
+                  ? <Feather name="check" size={13} color={PRIMARY} />
+                  : <Text style={[sb.dotNum, { color: active ? PRIMARY : dimText }]}>{step}</Text>}
               </View>
               <Text style={[sb.lbl, { color: active ? PRIMARY : dimText }, active && { fontWeight: "800" }]}>
                 {label}
