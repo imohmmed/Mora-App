@@ -117,6 +117,12 @@ router.get("/admin/story-rows", (_req, res) => {
     id: row.id,
     title: (row as any).title,
     titleAr: (row as any).title_ar ?? "",
+    descriptionEn: (row as any).description_en ?? "",
+    descriptionAr: (row as any).description_ar ?? "",
+    backgroundImage: (row as any).background_image ?? "",
+    image: (row as any).image ?? "",
+    conditionType: (row as any).condition_type ?? "manual",
+    conditionValue: (row as any).condition_value ?? "",
     sortOrder: (row as any).sort_order,
     status: (row as any).status,
     createdAt: (row as any).created_at,
@@ -152,13 +158,20 @@ router.post("/admin/story-rows", (req, res) => {
 
 // ─── Admin: update row ─────────────────────────────────────────────────────
 router.put("/admin/story-rows/:id", (req, res) => {
-  const { title, titleAr, status, sortOrder } = req.body as { title?: string; titleAr?: string; status?: string; sortOrder?: number };
+  const { title, titleAr, status, sortOrder, descriptionEn, descriptionAr, backgroundImage, image, conditionType, conditionValue } =
+    req.body as { title?: string; titleAr?: string; status?: string; sortOrder?: number; descriptionEn?: string; descriptionAr?: string; backgroundImage?: string; image?: string; conditionType?: string; conditionValue?: string };
   const row = db.prepare(`SELECT id FROM story_rows WHERE id=?`).get(req.params.id);
   if (!row) return res.status(404).json({ data: null, meta: {}, error: "Not found" });
-  if (title !== undefined) db.prepare(`UPDATE story_rows SET title=? WHERE id=?`).run(title, req.params.id);
-  if (titleAr !== undefined) db.prepare(`UPDATE story_rows SET title_ar=? WHERE id=?`).run(titleAr, req.params.id);
-  if (status !== undefined) db.prepare(`UPDATE story_rows SET status=? WHERE id=?`).run(status, req.params.id);
-  if (sortOrder !== undefined) db.prepare(`UPDATE story_rows SET sort_order=? WHERE id=?`).run(sortOrder, req.params.id);
+  if (title !== undefined)           db.prepare(`UPDATE story_rows SET title=? WHERE id=?`).run(title, req.params.id);
+  if (titleAr !== undefined)         db.prepare(`UPDATE story_rows SET title_ar=? WHERE id=?`).run(titleAr, req.params.id);
+  if (status !== undefined)          db.prepare(`UPDATE story_rows SET status=? WHERE id=?`).run(status, req.params.id);
+  if (sortOrder !== undefined)       db.prepare(`UPDATE story_rows SET sort_order=? WHERE id=?`).run(sortOrder, req.params.id);
+  if (descriptionEn !== undefined)   db.prepare(`UPDATE story_rows SET description_en=? WHERE id=?`).run(descriptionEn, req.params.id);
+  if (descriptionAr !== undefined)   db.prepare(`UPDATE story_rows SET description_ar=? WHERE id=?`).run(descriptionAr, req.params.id);
+  if (backgroundImage !== undefined) db.prepare(`UPDATE story_rows SET background_image=? WHERE id=?`).run(backgroundImage, req.params.id);
+  if (image !== undefined)           db.prepare(`UPDATE story_rows SET image=? WHERE id=?`).run(image, req.params.id);
+  if (conditionType !== undefined)   db.prepare(`UPDATE story_rows SET condition_type=? WHERE id=?`).run(conditionType, req.params.id);
+  if (conditionValue !== undefined)  db.prepare(`UPDATE story_rows SET condition_value=? WHERE id=?`).run(conditionValue, req.params.id);
   const updated = db.prepare(`SELECT * FROM story_rows WHERE id=?`).get(req.params.id);
   return res.json({ data: updated, meta: {}, error: null });
 });

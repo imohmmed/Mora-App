@@ -129,12 +129,15 @@ router.post("/admin/browse-collections", (req, res) => {
 
 router.put("/admin/browse-collections/:slug/meta", (req, res) => {
   const { slug } = req.params as { slug: string };
-  const { titleEn, titleAr, image } = req.body as Record<string, string>;
+  const { titleEn, titleAr, image, backgroundImage, descriptionEn, descriptionAr } = req.body as Record<string, string>;
   const existing = getBrowseColMeta(slug);
   if (!existing) { res.status(404).json({ data: null, meta: {}, error: "Not found" }); return; }
-  if (titleEn !== undefined) existing["titleEn"] = titleEn;
-  if (titleAr !== undefined) existing["titleAr"] = titleAr;
-  if (image !== undefined) existing["image"] = image;
+  if (titleEn !== undefined)          existing["titleEn"] = titleEn;
+  if (titleAr !== undefined)          existing["titleAr"] = titleAr;
+  if (image !== undefined)            existing["image"] = image;
+  if (backgroundImage !== undefined)  existing["backgroundImage"] = backgroundImage;
+  if (descriptionEn !== undefined)    existing["descriptionEn"] = descriptionEn;
+  if (descriptionAr !== undefined)    existing["descriptionAr"] = descriptionAr;
   saveMeta(slug, existing);
   res.json({ data: existing, meta: {}, error: null });
 });
