@@ -162,20 +162,20 @@ const styles = StyleSheet.create({
   stageLine: {
     color: "#FFFFFF",
     fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Cairo_600SemiBold",
     textAlign: "right",
   },
   subLine: {
     color: "rgba(255,255,255,0.5)",
     fontSize: 11,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     textAlign: "right",
     marginTop: 1,
   },
   cartText: {
     color: "#FFFFFF",
     fontSize: 13,
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Cairo_500Medium",
     flex: 1,
     textAlign: "right",
   },
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   badgeText: {
     color: "#FFFFFF",
     fontSize: 11,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
   },
   ctaBtn: {
     paddingHorizontal: 10,
@@ -200,6 +200,6 @@ const styles = StyleSheet.create({
   ctaText: {
     color: "#EF4444",
     fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Cairo_600SemiBold",
   },
 });

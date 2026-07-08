@@ -601,18 +601,18 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   vendorText: {
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Cairo_500Medium",
     fontSize: 11,
     letterSpacing: 0.5,
     textTransform: "uppercase",
   },
   titleText: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 17,
     lineHeight: 22,
   },
   priceText: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 17,
     marginTop: 2,
   },
@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   axisLabel: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Cairo_600SemiBold",
     fontSize: 11,
     letterSpacing: 1,
     textTransform: "uppercase",
@@ -649,7 +649,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   chipText: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Cairo_600SemiBold",
     fontSize: 13,
   },
   strikeThrough: {
@@ -684,7 +684,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   addBtnText: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 14,
     letterSpacing: 0.5,
   },
@@ -697,7 +697,7 @@ const styles = StyleSheet.create({
     paddingTop: 14,
   },
   qtyLabel: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Cairo_600SemiBold",
     fontSize: 11,
     letterSpacing: 1,
     textTransform: "uppercase",
@@ -713,7 +713,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   qtyNum: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 15,
     minWidth: 30,
     textAlign: "center",

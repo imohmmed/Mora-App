@@ -38,7 +38,7 @@ export function CategoryTabs({
                     ? colors.foreground
                     : colors.mutedForeground,
                 fontFamily:
-                  activeIndex === i ? "Inter_700Bold" : "Inter_500Medium",
+                  activeIndex === i ? "Cairo_700Bold" : "Cairo_500Medium",
               },
             ]}
           >

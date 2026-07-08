@@ -85,7 +85,7 @@ function FallbackCategoryTabs({ categories, activeIndex, onChange }: CategoryTab
               styles.text,
               {
                 color: activeIndex === i ? colors.foreground : colors.mutedForeground,
-                fontFamily: activeIndex === i ? "Inter_700Bold" : "Inter_500Medium",
+                fontFamily: activeIndex === i ? "Cairo_700Bold" : "Cairo_500Medium",
               },
             ]}
           >

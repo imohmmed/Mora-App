@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 16,
     letterSpacing: 0.2,
   },
@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 2,
   },
-  cartBadgeText: { color: "#fff", fontSize: 8, fontFamily: "Inter_700Bold" },
+  cartBadgeText: { color: "#fff", fontSize: 8, fontFamily: "Cairo_700Bold" },
 
   /* ── Search bar ── */
   searchBarWrap: {
@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
   searchBarInput: {
     flex: 1,
     fontSize: 14,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     padding: 0,
   },
 
@@ -539,14 +539,14 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
   },
   heroTitle: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 28,
     color: "#fff",
     letterSpacing: 0.3,
     marginBottom: 6,
   },
   heroDescription: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 13,
     color: "rgba(255,255,255,0.85)",
     lineHeight: 18,
@@ -561,9 +561,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
   },
-  resultsCount: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 13 },
+  resultsCount: { flex: 1, fontFamily: "Cairo_400Regular", fontSize: 13 },
   clearBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
-  clearBtnTxt: { fontFamily: "Inter_500Medium", fontSize: 12 },
+  clearBtnTxt: { fontFamily: "Cairo_500Medium", fontSize: 12 },
   trendingRow: {
     paddingHorizontal: 16,
     paddingTop: 12,
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   trendingLabel: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 11,
     letterSpacing: 1,
   },
@@ -603,13 +603,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   siblingLabel: {
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Cairo_500Medium",
     fontSize: 11,
     textAlign: "center",
     lineHeight: 14,
     maxWidth: SIB_ITEM_W,
   },
-  chipText: { fontFamily: "Inter_500Medium", fontSize: 13 },
+  chipText: { fontFamily: "Cairo_500Medium", fontSize: 13 },
 
   /* ── Products 2-column grid ── */
   productGrid: {
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
   discBadge: { position: "absolute", top: 10, zIndex: 2 },
   discBadgeEn: { left: 10 },
   discBadgeAr: { right: 10 },
-  discText: { color: "#E53935", fontFamily: "Inter_700Bold", fontSize: 10 },
+  discText: { color: "#E53935", fontFamily: "Cairo_700Bold", fontSize: 10 },
   heartBtn: { position: "absolute", top: 10, zIndex: 2 },
   heartBtnEn: { right: 10 },
   heartBtnAr: { left: 10 },
@@ -639,11 +639,11 @@ const styles = StyleSheet.create({
   plusBtnEn: { right: 10 },
   plusBtnAr: { left: 10 },
   productInfo: { paddingTop: 8, gap: 3 },
-  productTitle: { fontFamily: "Inter_500Medium", fontSize: 13, lineHeight: 18 },
+  productTitle: { fontFamily: "Cairo_500Medium", fontSize: 13, lineHeight: 18 },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
-  price: { fontFamily: "Inter_700Bold", fontSize: 14 },
+  price: { fontFamily: "Cairo_700Bold", fontSize: 14 },
   comparePrice: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 12,
     textDecorationLine: "line-through",
   },
@@ -656,8 +656,8 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 24,
   },
-  errorText: { fontFamily: "Inter_500Medium", fontSize: 15 },
+  errorText: { fontFamily: "Cairo_500Medium", fontSize: 15 },
   retryBtn: { paddingHorizontal: 24, paddingVertical: 10, borderRadius: 8 },
-  retryText: { color: "#fff", fontFamily: "Inter_600SemiBold", fontSize: 14 },
-  emptyText: { fontFamily: "Inter_400Regular", fontSize: 15, textAlign: "center" },
+  retryText: { color: "#fff", fontFamily: "Cairo_600SemiBold", fontSize: 14 },
+  emptyText: { fontFamily: "Cairo_400Regular", fontSize: 15, textAlign: "center" },
 });

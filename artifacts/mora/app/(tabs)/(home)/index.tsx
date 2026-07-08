@@ -712,14 +712,14 @@ const styles = StyleSheet.create({
   banner: { height: 260, justifyContent: "flex-end", overflow: "hidden" },
   bannerContent: { padding: 24, paddingBottom: 28 },
   bannerTitle: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 32,
     color: "#FFFFFF",
     lineHeight: 38,
     marginBottom: 8,
   },
   bannerSubtitle: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 14,
     color: "rgba(255,255,255,0.85)",
     marginBottom: 20,
@@ -731,7 +731,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   bannerCtaText: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 13,
     color: "#000000",
     letterSpacing: 1,
@@ -756,8 +756,8 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 12,
   },
-  sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1 },
-  seeAll: { fontFamily: "Inter_500Medium", fontSize: 12, letterSpacing: 0.5 },
+  sectionTitle: { fontFamily: "Cairo_700Bold", fontSize: 14, letterSpacing: 1 },
+  seeAll: { fontFamily: "Cairo_500Medium", fontSize: 12, letterSpacing: 0.5 },
 
   /* ── Skeleton row (horizontal loading state) ── */
   skeletonRow: { flexDirection: "row", gap: 1, paddingHorizontal: 10 },
@@ -790,7 +790,7 @@ const styles = StyleSheet.create({
   discountBadgeText: {
     color: "#E53935",
     fontSize: 11,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     letterSpacing: 0.3,
   },
 
@@ -815,18 +815,18 @@ const styles = StyleSheet.create({
   /* Product info */
   productInfo: { paddingTop: 8, gap: 3 },
   productInfoAr: { alignItems: "flex-end" },
-  productTitle: { fontFamily: "Inter_700Bold", fontSize: 13, lineHeight: 18 },
+  productTitle: { fontFamily: "Cairo_700Bold", fontSize: 13, lineHeight: 18 },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
   priceRowAr: { flexDirection: "row-reverse" },
-  productPrice: { fontFamily: "Inter_700Bold", fontSize: 13 },
-  salePrice: { fontFamily: "Inter_700Bold", fontSize: 13, color: "#E53935" },
-  originalPrice: { fontFamily: "Inter_400Regular", fontSize: 11, textDecorationLine: "line-through" },
+  productPrice: { fontFamily: "Cairo_700Bold", fontSize: 13 },
+  salePrice: { fontFamily: "Cairo_700Bold", fontSize: 13, color: "#E53935" },
+  originalPrice: { fontFamily: "Cairo_400Regular", fontSize: 11, textDecorationLine: "line-through" },
 
   /* Error / empty */
   errorBox: { alignItems: "center", paddingVertical: 40, gap: 12 },
-  errorText: { fontFamily: "Inter_400Regular", fontSize: 14 },
+  errorText: { fontFamily: "Cairo_400Regular", fontSize: 14 },
   retryBtn: { paddingHorizontal: 20, paddingVertical: 10, borderWidth: 1, borderRadius: 8 },
-  retryText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  retryText: { fontFamily: "Cairo_600SemiBold", fontSize: 13 },
   emptyBox: { alignItems: "center", paddingVertical: 40, gap: 12 },
-  emptyText: { fontFamily: "Inter_400Regular", fontSize: 14 },
+  emptyText: { fontFamily: "Cairo_400Regular", fontSize: 14 },
 });

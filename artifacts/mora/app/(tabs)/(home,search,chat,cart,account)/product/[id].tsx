@@ -115,14 +115,14 @@ function TextParagraph({
         source={{ html: content }}
         baseStyle={{
           color: baseColor,
-          fontFamily: isBold ? "Inter_600SemiBold" : "Inter_400Regular",
+          fontFamily: isBold ? "Cairo_600SemiBold" : "Cairo_400Regular",
           fontSize: 14,
           lineHeight: 22,
         }}
         tagsStyles={{
           p: { marginTop: 0, marginBottom: 8 },
-          strong: { fontFamily: "Inter_600SemiBold" },
-          b: { fontFamily: "Inter_600SemiBold" },
+          strong: { fontFamily: "Cairo_600SemiBold" },
+          b: { fontFamily: "Cairo_600SemiBold" },
         }}
         enableExperimentalMarginCollapsing
       />
@@ -134,7 +134,7 @@ function TextParagraph({
       style={[
         styles.textParagraph,
         { color: baseColor },
-        isBold && { fontFamily: "Inter_600SemiBold" },
+        isBold && { fontFamily: "Cairo_600SemiBold" },
       ]}
     >
       {content}
@@ -213,7 +213,7 @@ function RelatedCard({
             {formatIQD(product.price)}
           </Text>
           {hasDiscount && (
-            <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: colors.mutedForeground, textDecorationLine: "line-through" }}>
+            <Text style={{ fontFamily: "Cairo_400Regular", fontSize: 11, color: colors.mutedForeground, textDecorationLine: "line-through" }}>
               {formatIQD(product.comparePrice!)}
             </Text>
           )}
@@ -829,7 +829,7 @@ export default function ProductDetailScreen() {
                             {formatIQD(item.price)}
                           </Text>
                           {hasDiscount && (
-                            <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: "#E53935", textDecorationLine: "line-through" }}>
+                            <Text style={{ fontFamily: "Cairo_400Regular", fontSize: 11, color: "#E53935", textDecorationLine: "line-through" }}>
                               {formatIQD(item.comparePrice!)}
                             </Text>
                           )}
@@ -972,13 +972,13 @@ const styles = StyleSheet.create({
     minWidth: 16, height: 16, borderRadius: 8,
     alignItems: "center", justifyContent: "center", paddingHorizontal: 3,
   },
-  cartBadgeText: { color: "#FFFFFF", fontSize: 10, fontFamily: "Inter_700Bold" },
+  cartBadgeText: { color: "#FFFFFF", fontSize: 10, fontFamily: "Cairo_700Bold" },
 
   /* Error */
   errorBox: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
-  errorText: { fontFamily: "Inter_400Regular", fontSize: 14 },
+  errorText: { fontFamily: "Cairo_400Regular", fontSize: 14 },
   retryBtn: { paddingHorizontal: 24, paddingVertical: 10, borderWidth: 1, borderRadius: 4 },
-  retryText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  retryText: { fontFamily: "Cairo_600SemiBold", fontSize: 13 },
 
   /* Image */
   imageBox: {
@@ -1038,16 +1038,16 @@ const styles = StyleSheet.create({
 
   /* Info */
   infoSection: { padding: 20, gap: 10 },
-  vendor: { fontFamily: "Inter_500Medium", fontSize: 12, letterSpacing: 1, textTransform: "uppercase" },
-  title: { fontFamily: "Inter_700Bold", fontSize: 22, lineHeight: 28 },
+  vendor: { fontFamily: "Cairo_500Medium", fontSize: 12, letterSpacing: 1, textTransform: "uppercase" },
+  title: { fontFamily: "Cairo_700Bold", fontSize: 22, lineHeight: 28 },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 2 },
-  price: { fontFamily: "Inter_700Bold", fontSize: 22 },
-  comparePrice: { fontFamily: "Inter_400Regular", fontSize: 16, textDecorationLine: "line-through" },
+  price: { fontFamily: "Cairo_700Bold", fontSize: 22 },
+  comparePrice: { fontFamily: "Cairo_400Regular", fontSize: 16, textDecorationLine: "line-through" },
   saleBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 2 },
-  saleBadgeText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 0.5 },
+  saleBadgeText: { color: "#FFFFFF", fontFamily: "Cairo_700Bold", fontSize: 11, letterSpacing: 0.5 },
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 2 },
   tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, borderWidth: 1 },
-  tagText: { fontFamily: "Inter_400Regular", fontSize: 12 },
+  tagText: { fontFamily: "Cairo_400Regular", fontSize: 12 },
 
   /* Variants */
   variantsSection: { paddingHorizontal: 20, paddingVertical: 16, gap: 12, borderTopWidth: 1 },
@@ -1065,7 +1065,7 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     overflow: "hidden",
   },
-  variantText: { fontFamily: "Inter_500Medium", fontSize: 14 },
+  variantText: { fontFamily: "Cairo_500Medium", fontSize: 14 },
   colorSwatchBtn: {
     width: 36,
     height: 36,
@@ -1086,10 +1086,10 @@ const styles = StyleSheet.create({
 
   /* Quantity stepper */
   qtyWrap: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  qtyLabel: { fontFamily: "Inter_600SemiBold", fontSize: 11, letterSpacing: 1, textTransform: "uppercase" },
+  qtyLabel: { fontFamily: "Cairo_600SemiBold", fontSize: 11, letterSpacing: 1, textTransform: "uppercase" },
   qtyStepper: { flexDirection: "row", alignItems: "center" },
   qtyBtn: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
-  qtyNum: { fontFamily: "Inter_700Bold", fontSize: 15, minWidth: 32, textAlign: "center" },
+  qtyNum: { fontFamily: "Cairo_700Bold", fontSize: 15, minWidth: 32, textAlign: "center" },
 
   /* Add to Bag */
   addBagSection: { paddingHorizontal: 16, paddingVertical: 16, gap: 12, borderTopWidth: 1 },
@@ -1097,12 +1097,12 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 10, paddingVertical: 16, borderRadius: 0,
   },
-  addBtnText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1 },
+  addBtnText: { color: "#FFFFFF", fontFamily: "Cairo_700Bold", fontSize: 14, letterSpacing: 1 },
   deliveryRow: {
     flexDirection: "row", alignItems: "center", gap: 8,
     paddingTop: 12, borderTopWidth: 1,
   },
-  deliveryText: { fontFamily: "Inter_400Regular", fontSize: 12, flex: 1 },
+  deliveryText: { fontFamily: "Cairo_400Regular", fontSize: 12, flex: 1 },
 
   /* Accordion */
   accordionWrap: { borderTopWidth: 1 },
@@ -1110,17 +1110,17 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 20, paddingVertical: 16,
   },
-  accordionTitle: { fontFamily: "Inter_700Bold", fontSize: 13, letterSpacing: 0.8 },
+  accordionTitle: { fontFamily: "Cairo_700Bold", fontSize: 13, letterSpacing: 0.8 },
   accordionBody: { paddingHorizontal: 20, paddingBottom: 16 },
-  descText: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 22 },
+  descText: { fontFamily: "Cairo_400Regular", fontSize: 14, lineHeight: 22 },
 
   /* Text sections (warranty / star customers) */
   textSection: { gap: 10 },
-  textParagraph: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 22 },
+  textParagraph: { fontFamily: "Cairo_400Regular", fontSize: 14, lineHeight: 22 },
 
   /* Section wrapper */
   sectionWrap: { paddingVertical: 16, borderTopWidth: 1, gap: 12 },
-  sectionLabel: { fontFamily: "Inter_700Bold", fontSize: 13, letterSpacing: 0.8, paddingHorizontal: 20 },
+  sectionLabel: { fontFamily: "Cairo_700Bold", fontSize: 13, letterSpacing: 0.8, paddingHorizontal: 20 },
 
   /* Related Products grid */
   relatedGrid: {
@@ -1129,7 +1129,7 @@ const styles = StyleSheet.create({
   relatedDisc: {
     position: "absolute", top: 8, left: 8, zIndex: 2,
   },
-  relatedDiscText: { color: "#E53935", fontFamily: "Inter_700Bold", fontSize: 10 },
+  relatedDiscText: { color: "#E53935", fontFamily: "Cairo_700Bold", fontSize: 10 },
   relatedHeart: { position: "absolute", top: 8, zIndex: 2 },
   relatedHeartEn: { right: 8 },
   relatedHeartAr: { left: 8 },
@@ -1137,8 +1137,8 @@ const styles = StyleSheet.create({
   relatedPlusEn: { right: 8 },
   relatedPlusAr: { left: 8 },
   relatedInfo: { paddingTop: 8, gap: 3 },
-  relatedTitle: { fontFamily: "Inter_500Medium", fontSize: 12, lineHeight: 17 },
-  relatedPrice: { fontFamily: "Inter_700Bold", fontSize: 13 },
+  relatedTitle: { fontFamily: "Cairo_500Medium", fontSize: 12, lineHeight: 17 },
+  relatedPrice: { fontFamily: "Cairo_700Bold", fontSize: 13 },
 
   /* Complete the Set */
   ctsRow: {
@@ -1150,11 +1150,11 @@ const styles = StyleSheet.create({
     flexShrink: 0, position: "relative",
   },
   ctsInfo: { flex: 1, gap: 4 },
-  ctsTitle: { fontFamily: "Inter_500Medium", fontSize: 13, lineHeight: 18 },
-  ctsPrice: { fontFamily: "Inter_700Bold", fontSize: 14 },
+  ctsTitle: { fontFamily: "Cairo_500Medium", fontSize: 13, lineHeight: 18 },
+  ctsPrice: { fontFamily: "Cairo_700Bold", fontSize: 14 },
   ctsAddBtn: {
     backgroundColor: "#111111", paddingHorizontal: 16, paddingVertical: 10,
     borderRadius: 100, alignItems: "center", flexShrink: 0,
   },
-  ctsAddText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 12, letterSpacing: 0.5 },
+  ctsAddText: { color: "#FFFFFF", fontFamily: "Cairo_700Bold", fontSize: 12, letterSpacing: 0.5 },
 });

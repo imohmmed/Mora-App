@@ -155,10 +155,10 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
   },
-  acctTitle: { fontFamily: "Inter_700Bold", fontSize: 15, letterSpacing: 1 },
-  hint: { fontFamily: "Inter_400Regular", fontSize: 12.5, lineHeight: 18, marginBottom: 8, paddingHorizontal: 18 },
+  acctTitle: { fontFamily: "Cairo_700Bold", fontSize: 15, letterSpacing: 1 },
+  hint: { fontFamily: "Cairo_400Regular", fontSize: 12.5, lineHeight: 18, marginBottom: 8, paddingHorizontal: 18 },
   section: { paddingHorizontal: 16, marginBottom: 16 },
-  sectionLabel: { fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 1, marginBottom: 8 },
+  sectionLabel: { fontFamily: "Cairo_700Bold", fontSize: 11, letterSpacing: 1, marginBottom: 8 },
   sectionCard: { borderRadius: 16, padding: 12 },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   chip: {
@@ -169,6 +169,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     alignItems: "center",
   },
-  chipTxt: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
+  chipTxt: { fontFamily: "Cairo_600SemiBold", fontSize: 14 },
   centeredBox: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 60, gap: 12 },
 });

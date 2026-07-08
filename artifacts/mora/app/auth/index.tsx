@@ -319,13 +319,13 @@ const styles = StyleSheet.create({
   logoWrap:     { alignItems: "center", marginBottom: 48 },
   logoImg:      { width: 160, height: 60 },
   protectedRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 8 },
-  protectedTxt: { fontFamily: "Inter_500Medium", fontSize: 13 },
+  protectedTxt: { fontFamily: "Cairo_500Medium", fontSize: 13 },
 
   errorBox: {
     flexDirection: "row", alignItems: "center", gap: 8,
     padding: 12, borderWidth: 1, borderRadius: 12, marginBottom: 16,
   },
-  errorTxt: { fontFamily: "Inter_400Regular", fontSize: 13, color: "#DC2626", flex: 1 },
+  errorTxt: { fontFamily: "Cairo_400Regular", fontSize: 13, color: "#DC2626", flex: 1 },
 
   socialBtn: {
     flexDirection: "row",
@@ -338,10 +338,10 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   appleBtn:  { backgroundColor: "#000" },
-  socialTxt: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
+  socialTxt: { fontFamily: "Cairo_600SemiBold", fontSize: 15 },
 
   termsTxt: {
-    fontFamily: "Inter_400Regular", fontSize: 11,
+    fontFamily: "Cairo_400Regular", fontSize: 11,
     textAlign: "center", lineHeight: 18, marginTop: 8, marginBottom: 24,
   },
 
@@ -351,5 +351,5 @@ const styles = StyleSheet.create({
     borderRadius: 20, alignSelf: "center", borderWidth: 1,
     marginTop: 4, marginBottom: 8,
   },
-  langTxt: { fontFamily: "Inter_500Medium", fontSize: 13 },
+  langTxt: { fontFamily: "Cairo_500Medium", fontSize: 13 },
 });

@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   },
   saleBadgeText: {
     color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 11,
     letterSpacing: 0.5,
   },
@@ -245,20 +245,20 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   vendor: {
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Cairo_500Medium",
     fontSize: 11,
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
   title: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 17,
     lineHeight: 22,
   },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 },
-  price: { fontFamily: "Inter_700Bold", fontSize: 18 },
+  price: { fontFamily: "Cairo_700Bold", fontSize: 18 },
   comparePrice: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 14,
     textDecorationLine: "line-through",
     color: "#E53935",
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   actionText: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Cairo_600SemiBold",
     fontSize: 14,
   },
   divider: { width: 1, marginVertical: 12 },

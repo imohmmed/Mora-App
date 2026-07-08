@@ -40,5 +40,5 @@ export function ShippingRulesNote({ style }: { style?: StyleProp<ViewStyle> }) {
 const styles = StyleSheet.create({
   wrap: { gap: 8 },
   row: { flexDirection: "row", alignItems: "center", gap: 8 },
-  text: { fontFamily: "Inter_400Regular", fontSize: 12, flex: 1, lineHeight: 17 },
+  text: { fontFamily: "Cairo_400Regular", fontSize: 12, flex: 1, lineHeight: 17 },
 });

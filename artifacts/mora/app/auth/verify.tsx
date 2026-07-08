@@ -270,18 +270,18 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   title: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 24,
     marginBottom: 8,
   },
   subtitle: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 14,
     marginBottom: 4,
     textAlign: "center",
   },
   phoneDisplay: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Cairo_600SemiBold",
     fontSize: 15,
     marginBottom: 36,
     letterSpacing: 1,
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     textAlign: "center",
     fontSize: 22,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
   },
 
   /* ── Error ── */
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   errorTxt: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 13,
     color: "#DC2626",
     flex: 1,
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   verifyTxt: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 15,
     letterSpacing: 0.5,
   },
@@ -343,15 +343,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   resendLabel: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 13,
   },
   resendTimer: {
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Cairo_500Medium",
     fontSize: 13,
   },
   resendLink: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Cairo_600SemiBold",
     fontSize: 13,
   },
 });

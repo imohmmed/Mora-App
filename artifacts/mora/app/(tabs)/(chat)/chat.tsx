@@ -1316,9 +1316,9 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "#22C55E",
   },
-  headerTitle: { fontFamily: "Inter_700Bold", fontSize: 17 },
+  headerTitle: { fontFamily: "Cairo_700Bold", fontSize: 17 },
   headerSubRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
-  headerSub: { fontFamily: "Inter_400Regular", fontSize: 12.5 },
+  headerSub: { fontFamily: "Cairo_400Regular", fontSize: 12.5 },
 
   row: { flexDirection: "row", alignItems: "flex-end", marginVertical: 3 },
   rowMine: { justifyContent: "flex-end" },
@@ -1328,17 +1328,17 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 20,
   },
-  bubbleText: { fontFamily: "Inter_400Regular", fontSize: 15, lineHeight: 21 },
+  bubbleText: { fontFamily: "Cairo_400Regular", fontSize: 15, lineHeight: 21 },
   attachImage: { width: 220, height: 220, borderRadius: 16, backgroundColor: "rgba(0,0,0,0.05)" },
   fileRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4, paddingHorizontal: 6 },
-  fileText: { fontFamily: "Inter_500Medium", fontSize: 14 },
+  fileText: { fontFamily: "Cairo_500Medium", fontSize: 14 },
 
   metaRow: { flexDirection: "row", marginTop: 3, marginHorizontal: 4 },
-  meta: { fontFamily: "Inter_400Regular", fontSize: 11 },
+  meta: { fontFamily: "Cairo_400Regular", fontSize: 11 },
 
   systemRow: { alignItems: "center", marginVertical: 8 },
   systemText: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 12,
     paddingHorizontal: 12,
     paddingVertical: 5,
@@ -1348,7 +1348,7 @@ const styles = StyleSheet.create({
 
   daySepRow: { alignItems: "center", marginVertical: 12 },
   daySep: {
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Cairo_500Medium",
     fontSize: 11.5,
     paddingHorizontal: 12,
     paddingVertical: 5,
@@ -1364,7 +1364,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
   },
-  hintText: { fontFamily: "Inter_500Medium", fontSize: 14 },
+  hintText: { fontFamily: "Cairo_500Medium", fontSize: 14 },
 
   formWrap: { alignItems: "center", paddingHorizontal: 30 },
   formIconWrap: { marginBottom: 18 },
@@ -1375,9 +1375,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  formTitle: { fontFamily: "Inter_700Bold", fontSize: 22, textAlign: "center" },
+  formTitle: { fontFamily: "Cairo_700Bold", fontSize: 22, textAlign: "center" },
   formSub: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 14.5,
     textAlign: "center",
     marginTop: 8,
@@ -1388,10 +1388,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     paddingHorizontal: 16,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 15.5,
   },
-  formErr: { color: "#E5484D", fontFamily: "Inter_400Regular", fontSize: 13 },
+  formErr: { color: "#E5484D", fontFamily: "Cairo_400Regular", fontSize: 13 },
   startBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -1403,10 +1403,10 @@ const styles = StyleSheet.create({
     width: "100%",
     marginTop: 22,
   },
-  startBtnText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 16 },
+  startBtnText: { color: "#FFFFFF", fontFamily: "Cairo_700Bold", fontSize: 16 },
 
   headerActionBtn: { padding: 6 },
-  senderName: { fontFamily: "Inter_400Regular", fontSize: 11, marginBottom: 3, marginLeft: 4 },
+  senderName: { fontFamily: "Cairo_400Regular", fontSize: 11, marginBottom: 3, marginLeft: 4 },
 
   composerWrap: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -1430,7 +1430,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     maxWidth: 180,
   },
-  cannedChipText: { fontFamily: "Inter_500Medium", fontSize: 13 },
+  cannedChipText: { fontFamily: "Cairo_500Medium", fontSize: 13 },
 
   attachBtn: { padding: 8 },
   composerInput: {
@@ -1441,7 +1441,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: Platform.OS === "ios" ? 11 : 8,
     paddingBottom: Platform.OS === "ios" ? 11 : 8,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 15.5,
   },
   sendBtn: {
@@ -1462,7 +1462,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginTop: 12,
   },
-  toastText: { fontFamily: "Inter_500Medium", fontSize: 13 },
+  toastText: { fontFamily: "Cairo_500Medium", fontSize: 13 },
 
   modalOverlay: {
     flex: 1,
@@ -1475,7 +1475,7 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 16,
   },
-  modalTitle: { fontFamily: "Inter_700Bold", fontSize: 18, textAlign: "center" },
+  modalTitle: { fontFamily: "Cairo_700Bold", fontSize: 18, textAlign: "center" },
   starsRow: { flexDirection: "row", justifyContent: "center", gap: 10 },
   modalInput: {
     minHeight: 80,
@@ -1483,7 +1483,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 14.5,
     textAlignVertical: "top",
   },
@@ -1496,7 +1496,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
   },
-  modalBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 15 },
+  modalBtnText: { fontFamily: "Cairo_600SemiBold", fontSize: 15 },
 
   cannedSuggestWrap: { marginTop: 6, marginBottom: 2 },
   cannedSuggestScroll: { paddingHorizontal: 38, gap: 8, paddingVertical: 4 },
@@ -1507,7 +1507,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     maxWidth: 200,
   },
-  cannedSuggestText: { fontFamily: "Inter_500Medium", fontSize: 13 },
+  cannedSuggestText: { fontFamily: "Cairo_500Medium", fontSize: 13 },
 
   actionsSheet: {
     borderTopLeftRadius: 24,
@@ -1523,7 +1523,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginBottom: 8,
   },
-  actionsTitle: { fontFamily: "Inter_700Bold", fontSize: 16, marginBottom: 4 },
+  actionsTitle: { fontFamily: "Cairo_700Bold", fontSize: 16, marginBottom: 4 },
   actionRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1540,8 +1540,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  actionLabel: { fontFamily: "Inter_500Medium", fontSize: 15, flex: 1 },
+  actionLabel: { fontFamily: "Cairo_500Medium", fontSize: 15, flex: 1 },
 
   errorRow: { alignItems: "center", paddingVertical: 12 },
-  errorText: { fontFamily: "Inter_500Medium", fontSize: 13 },
+  errorText: { fontFamily: "Cairo_500Medium", fontSize: 13 },
 });

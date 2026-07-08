@@ -544,10 +544,10 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     borderWidth: 1.5,
   },
-  searchInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", padding: 0 },
+  searchInput: { flex: 1, fontSize: 15, fontFamily: "Cairo_400Regular", padding: 0 },
 
   section: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8 },
-  sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 13, letterSpacing: 1, marginBottom: 12 },
+  sectionTitle: { fontFamily: "Cairo_700Bold", fontSize: 13, letterSpacing: 1, marginBottom: 12 },
 
   tagsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" },
   tag: {
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     borderWidth: 1,
   },
-  tagText: { fontFamily: "Inter_500Medium", fontSize: 14 },
+  tagText: { fontFamily: "Cairo_500Medium", fontSize: 14 },
 
   categoriesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 1 },
   categoryCard: {
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  categoryLabel: { fontFamily: "Inter_600SemiBold", fontSize: 14, letterSpacing: 0.3 },
+  categoryLabel: { fontFamily: "Cairo_600SemiBold", fontSize: 14, letterSpacing: 0.3 },
   catImgOverlay: {
     position: "absolute",
     bottom: 0,
@@ -589,19 +589,19 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.35)",
   },
   catImgLabel: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 15,
     color: "#FFFFFF",
     letterSpacing: 0.3,
   },
 
   errorBox: { alignItems: "center", paddingVertical: 60, gap: 12 },
-  errorText: { fontFamily: "Inter_400Regular", fontSize: 14, textAlign: "center", paddingHorizontal: 32 },
+  errorText: { fontFamily: "Cairo_400Regular", fontSize: 14, textAlign: "center", paddingHorizontal: 32 },
   retryBtn: { paddingHorizontal: 24, paddingVertical: 10, borderWidth: 1, borderRadius: 8 },
-  retryText: { fontFamily: "Inter_600SemiBold", fontSize: 13 },
+  retryText: { fontFamily: "Cairo_600SemiBold", fontSize: 13 },
 
   resultsHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
-  resultsCount: { fontFamily: "Inter_400Regular", fontSize: 13 },
+  resultsCount: { fontFamily: "Cairo_400Regular", fontSize: 13 },
 
   grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 16, paddingTop: 16 },
 
@@ -626,12 +626,12 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   resultInfo: { paddingTop: 8, gap: 2 },
-  resultBrand: { fontFamily: "Inter_500Medium", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase" },
-  resultTitle: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18 },
+  resultBrand: { fontFamily: "Cairo_500Medium", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase" },
+  resultTitle: { fontFamily: "Cairo_400Regular", fontSize: 13, lineHeight: 18 },
   resultPriceRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
-  resultPrice: { fontFamily: "Inter_700Bold", fontSize: 14 },
+  resultPrice: { fontFamily: "Cairo_700Bold", fontSize: 14 },
   resultOriginal: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 12,
     textDecorationLine: "line-through",
     color: "#E53935",
@@ -645,12 +645,12 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     marginTop: 8,
   },
-  addToCartText: { color: "#FFFFFF", fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 0.8 },
+  addToCartText: { color: "#FFFFFF", fontFamily: "Cairo_700Bold", fontSize: 11, letterSpacing: 0.8 },
 
   emptyResults: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 80, gap: 12 },
-  emptyTitle: { fontFamily: "Inter_600SemiBold", fontSize: 18, textAlign: "center" },
+  emptyTitle: { fontFamily: "Cairo_600SemiBold", fontSize: 18, textAlign: "center" },
   emptySubtitle: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 14,
     textAlign: "center",
     paddingHorizontal: 32,

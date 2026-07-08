@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 14,
     letterSpacing: 1.2,
   },
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   },
   textWrap: { padding: 14, alignItems: "center", gap: 4 },
   cardTitle: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 14,
     color: "#FFFFFF",
     textAlign: "center",
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   cardDesc: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 11,
     color: "rgba(255,255,255,0.8)",
     textAlign: "center",
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   shopBtnText: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Cairo_600SemiBold",
     fontSize: 10,
     color: "#FFFFFF",
     letterSpacing: 0.8,

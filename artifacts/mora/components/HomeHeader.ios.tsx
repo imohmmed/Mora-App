@@ -131,5 +131,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     zIndex: 10,
   },
-  badgeText: { color: "#FFFFFF", fontSize: 10, fontFamily: "Inter_700Bold" },
+  badgeText: { color: "#FFFFFF", fontSize: 10, fontFamily: "Cairo_700Bold" },
 });

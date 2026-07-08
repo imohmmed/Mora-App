@@ -522,6 +522,6 @@ const styles = StyleSheet.create({
   badgeText: {
     color: "#fff",
     fontSize: 9,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
   },
 });

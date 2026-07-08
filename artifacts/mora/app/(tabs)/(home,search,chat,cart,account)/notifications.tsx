@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     gap: 12,
   },
-  title: { fontFamily: "Inter_700Bold", fontSize: 18, flex: 1, textAlign: "center" },
+  title: { fontFamily: "Cairo_700Bold", fontSize: 18, flex: 1, textAlign: "center" },
   spacer: { width: 30 },
   emptyWrap: {
     flex: 1,
@@ -228,9 +228,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 8,
   },
-  emptyTitle: { fontFamily: "Inter_700Bold", fontSize: 22, textAlign: "center" },
+  emptyTitle: { fontFamily: "Cairo_700Bold", fontSize: 22, textAlign: "center" },
   emptySubtitle: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 15,
     textAlign: "center",
     lineHeight: 22,
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   },
   loginBtnText: {
     color: "#fff",
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 15,
   },
   list: {
@@ -278,12 +278,12 @@ const styles = StyleSheet.create({
   },
   notifContent: { flex: 1 },
   notifTitle: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 14,
     marginBottom: 3,
   },
   notifBody: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 13,
     lineHeight: 18,
     marginBottom: 6,
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   notifTime: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     fontSize: 11,
   },
   linkChip: {
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(2,116,193,0.10)",
   },
   linkChipText: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 11,
   },
 });

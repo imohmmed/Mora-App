@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     textAlign: "center",
   },
   divider: {
@@ -262,16 +262,16 @@ const styles = StyleSheet.create({
   },
   optionLabel: {
     fontSize: 17,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
   },
   optionSub: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     marginTop: 2,
   },
   checkmark: {
     fontSize: 18,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Cairo_600SemiBold",
     marginLeft: 12,
   },
   cancelCard: {
@@ -282,6 +282,6 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     fontSize: 17,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Cairo_600SemiBold",
   },
 });

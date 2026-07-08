@@ -150,7 +150,7 @@ function ProductMiniCard({
             {formatIQD(product.price)}
           </Text>
           {hasDiscount && (
-            <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: colors.mutedForeground, textDecorationLine: "line-through" }}>
+            <Text style={{ fontFamily: "Cairo_400Regular", fontSize: 11, color: colors.mutedForeground, textDecorationLine: "line-through" }}>
               {formatIQD(product.comparePrice!)}
             </Text>
           )}
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   rowTitle: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Cairo_600SemiBold",
     fontSize: 11,
     letterSpacing: 1.2,
     textTransform: "uppercase",
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   circleLabel: {
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Cairo_500Medium",
     fontSize: 11,
     textAlign: "center",
     lineHeight: 14,
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   discBadge: { position: "absolute", top: 8, zIndex: 2 },
   discBadgeEn: { left: 8 },
   discBadgeAr: { right: 8 },
-  discText: { color: "#E53935", fontFamily: "Inter_700Bold", fontSize: 10 },
+  discText: { color: "#E53935", fontFamily: "Cairo_700Bold", fontSize: 10 },
   overlayBtn: { position: "absolute", zIndex: 2 },
   overlayBtnTopEn: { top: 8, right: 8 },
   overlayBtnTopAr: { top: 8, left: 8 },
@@ -375,12 +375,12 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   productTitle: {
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Cairo_500Medium",
     fontSize: 12,
     lineHeight: 16,
   },
   productPrice: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Cairo_700Bold",
     fontSize: 13,
   },
 });

@@ -222,6 +222,6 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
   },
-  title: { fontFamily: "Inter_700Bold", fontSize: 28, letterSpacing: -0.5 },
-  subtitle: { fontFamily: "Inter_500Medium", fontSize: 12, marginTop: 2 },
+  title: { fontFamily: "Cairo_700Bold", fontSize: 28, letterSpacing: -0.5 },
+  subtitle: { fontFamily: "Cairo_500Medium", fontSize: 12, marginTop: 2 },
 });

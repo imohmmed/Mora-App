@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 15,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Cairo_400Regular",
     flex: 1,
   },
   divider: {
