@@ -424,7 +424,7 @@ export default function CartScreen() {
   const divider = isDark ? "#1A1A1A" : "#EBEBEB";
   const barBg   = isDark ? "#0A0A0A" : "#FFFFFF";
   const isWeb   = Platform.OS === "web";
-  const barBottom = isWeb ? 84 : insets.bottom + 8;
+  const barBottom = isWeb ? 74 : insets.bottom + 8;
 
   const totalQty = items.reduce((s, i) => s + i.quantity, 0);
 
@@ -596,6 +596,6 @@ const s = StyleSheet.create({
   totalRow:     { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   totalLbl:     { fontSize: 14, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase" },
   totalAmt:     { fontSize: 18, fontWeight: "900", letterSpacing: -0.4 },
-  checkBtn:     { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#111111", paddingVertical: 15, borderRadius: 4 },
+  checkBtn:     { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: PRIMARY, paddingVertical: 15, borderRadius: 4 },
   checkTxt:     { color: "#fff", fontSize: 14, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" },
 });
