@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   LayoutAnimation,
@@ -25,7 +25,8 @@ import { useLanguage } from "@/context/LanguageContext";
 import { fetchStories, fetchSpecialCollection } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { StoriesSection } from "@/components/StoriesSection";
-import type { CartItem, Product } from "@/lib/types";
+import { QuickAddSheet } from "@/components/QuickAddSheet";
+import type { CartItem, Product, Variant } from "@/lib/types";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -240,6 +241,8 @@ function AlsoBoughtSection({ lang, isDark }: { lang: string; isDark: boolean }) 
   const router = useRouter();
   const isAr = lang === "ar";
 
+  const [sheetProduct, setSheetProduct] = useState<Product | null>(null);
+
   const { data } = useQuery({
     queryKey: ["also-bought"],
     queryFn:  () => fetchSpecialCollection("trends"),
@@ -250,38 +253,38 @@ function AlsoBoughtSection({ lang, isDark }: { lang: string; isDark: boolean }) 
   const products = (data?.products ?? []).slice(0, 8);
   if (!products.length) return null;
 
-  const textCol  = isDark ? "#FFFFFF" : "#111111";
-  const cardBg   = isDark ? "#141414" : "#F7F7F7";
-  const divider  = isDark ? "#1A1A1A" : "#EBEBEB";
+  const textCol    = isDark ? "#FFFFFF" : "#111111";
+  const cardBg     = isDark ? "#141414" : "#F7F7F7";
+  const divider    = isDark ? "#1A1A1A" : "#EBEBEB";
   const hdrDivider = isDark ? "#1F1F1F" : "#DCDCDC";
 
-  const handleAdd = (product: Product) => {
-    const inCart = cartItems.some((i) => i.productId === product.id);
-    if (inCart) return;
-    const variant = product.variants?.[0];
+  const handleConfirm = (variant: Variant, qty: number) => {
+    const p = sheetProduct;
+    if (!p) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     addItem({
-      productId: product.id,
-      variantId: variant?.id ?? product.id,
-      title:     product.title,
-      vendor:    product.vendor ?? "",
-      price:     variant?.price ?? product.price,
-      quantity:  1,
-      image:     product.images?.[0],
+      productId: p.id,
+      variantId: variant.id,
+      title:     p.title,
+      vendor:    p.vendor ?? "",
+      price:     variant.price,
+      quantity:  qty,
+      image:     p.images?.[0],
+      size:      variant.size,
+      color:     variant.color,
     });
+    setSheetProduct(null);
   };
 
   return (
     <View style={{ marginTop: 6 }}>
-      {/* Section header */}
       <View style={[ab.hdrRow, { borderTopColor: hdrDivider, borderBottomColor: hdrDivider }]}>
         <Text style={[ab.hdr, { color: textCol }]}>
           {isAr ? "اشترى معه أيضًا" : "OTHERS ALSO BOUGHT"}
         </Text>
       </View>
 
-      {/* Horizontal product scroll */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -305,11 +308,15 @@ function AlsoBoughtSection({ lang, isDark }: { lang: string; isDark: boolean }) 
               <View style={ab.cardBody}>
                 <Text style={[ab.cardPrice, { color: textCol }]}>{formatIQD(product.price)}</Text>
                 <Pressable
-                  style={[ab.addBtn, inCart && ab.addBtnDone]}
-                  onPress={(e) => { e.stopPropagation?.(); handleAdd(product); }}
-                  hitSlop={6}
+                  onPress={(e) => { e.stopPropagation?.(); if (!inCart) setSheetProduct(product); }}
+                  hitSlop={10}
+                  style={ab.addIconBtn}
                 >
-                  <Feather name={inCart ? "check" : "plus"} size={13} color="#fff" />
+                  <Feather
+                    name={inCart ? "check" : "plus"}
+                    size={18}
+                    color={inCart ? "#22C55E" : PRIMARY}
+                  />
                 </Pressable>
               </View>
             </Pressable>
@@ -317,8 +324,14 @@ function AlsoBoughtSection({ lang, isDark }: { lang: string; isDark: boolean }) 
         })}
       </ScrollView>
 
-      {/* Bottom divider */}
       <View style={{ height: 1, backgroundColor: divider, marginTop: 4 }} />
+
+      <QuickAddSheet
+        visible={sheetProduct !== null}
+        product={sheetProduct}
+        onClose={() => setSheetProduct(null)}
+        onConfirm={handleConfirm}
+      />
     </View>
   );
 }
@@ -331,8 +344,7 @@ const ab = StyleSheet.create({
   cardImg:  { width: 118, height: 140 },
   cardBody: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 8, paddingVertical: 8 },
   cardPrice:{ fontSize: 12, fontWeight: "700" },
-  addBtn:   { width: 26, height: 26, borderRadius: 13, backgroundColor: "#111", alignItems: "center", justifyContent: "center" },
-  addBtnDone: { backgroundColor: "#22C55E" },
+  addIconBtn: { padding: 4, alignItems: "center", justifyContent: "center" },
 });
 
 // ─── Gift Section (restyled) ──────────────────────────────────────────────────
@@ -340,6 +352,7 @@ const ab = StyleSheet.create({
 function GiftSection({ lang, isDark }: { lang: string; isDark: boolean }) {
   const { addItem, items: cartItems } = useCart();
   const isAr = lang === "ar";
+  const [sheetProduct, setSheetProduct] = useState<Product | null>(null);
 
   const { data } = useQuery({
     queryKey: ["gift-wrapping"],
@@ -354,13 +367,13 @@ function GiftSection({ lang, isDark }: { lang: string; isDark: boolean }) {
   const bg      = isDark ? "#141414" : "#F7F7F7";
   const divider = isDark ? "#1A1A1A" : "#EBEBEB";
 
-  const handleAdd = (product: Product) => {
-    const inCart = cartItems.some((i) => i.productId === product.id);
-    if (inCart) return;
-    const v = product.variants?.[0];
+  const handleConfirm = (variant: Variant, qty: number) => {
+    const p = sheetProduct;
+    if (!p) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    addItem({ productId: product.id, variantId: v?.id ?? product.id, title: product.title, vendor: product.vendor ?? "", price: v?.price ?? product.price, quantity: 1, image: product.images?.[0] });
+    addItem({ productId: p.id, variantId: variant.id, title: p.title, vendor: p.vendor ?? "", price: variant.price, quantity: qty, image: p.images?.[0], size: variant.size, color: variant.color });
+    setSheetProduct(null);
   };
 
   return (
@@ -380,14 +393,21 @@ function GiftSection({ lang, isDark }: { lang: string; isDark: boolean }) {
               <Image source={{ uri: p.images?.[0] ?? "" }} style={ab.cardImg} contentFit="cover" />
               <View style={ab.cardBody}>
                 <Text style={[ab.cardPrice, { color: textCol }]}>{formatIQD(p.price)}</Text>
-                <Pressable style={[ab.addBtn, inCart && ab.addBtnDone]} onPress={() => handleAdd(p)} hitSlop={6}>
-                  <Feather name={inCart ? "check" : "plus"} size={13} color="#fff" />
+                <Pressable hitSlop={10} style={ab.addIconBtn} onPress={() => { if (!inCart) setSheetProduct(p); }}>
+                  <Feather name={inCart ? "check" : "plus"} size={18} color={inCart ? "#22C55E" : PRIMARY} />
                 </Pressable>
               </View>
             </View>
           );
         })}
       </ScrollView>
+
+      <QuickAddSheet
+        visible={sheetProduct !== null}
+        product={sheetProduct}
+        onClose={() => setSheetProduct(null)}
+        onConfirm={handleConfirm}
+      />
     </View>
   );
 }
