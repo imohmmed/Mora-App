@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import ReanimatedSwipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
@@ -31,40 +31,36 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-
 const PRIMARY = "#0274C1";
+const FREE_SHIP_THRESHOLD = 75000;
 
-function StepIndicator({ current, isDark, lang }: { current: 1 | 2 | 3; isDark: boolean; lang: string }) {
+// ─── Step Indicator ──────────────────────────────────────────────────────────
+
+function StepBar({ current, isDark, lang }: { current: 1 | 2 | 3; isDark: boolean; lang: string }) {
   const isAr = lang === "ar";
-  const steps = isAr ? ["سلتي", "الدفع", "تم التثبيت"] : ["Cart", "Checkout", "Done"];
-  const inactiveCircle = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
-  const inactiveText   = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)";
-  const inactiveLine   = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
+  const steps = isAr ? ["السلة", "الدفع", "تم"] : ["CART", "CHECKOUT", "DONE"];
+  const dimText = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.22)";
+  const dimLine = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)";
 
   return (
-    <View style={[si.container, isAr && { flexDirection: "row-reverse" }]}>
+    <View style={[sb.row, isAr && { flexDirection: "row-reverse" }]}>
       {steps.map((label, i) => {
-        const step   = i + 1;
-        const done   = step < current;
+        const step = i + 1;
         const active = step === current;
+        const done = step < current;
         return (
           <React.Fragment key={label}>
-            <View style={si.stepWrap}>
-              <View style={[si.circle, {
-                backgroundColor: active || done ? PRIMARY : "transparent",
-                borderColor: active || done ? PRIMARY : inactiveCircle,
-              }]}>
+            <View style={sb.item}>
+              <View style={[sb.dot, active && sb.dotActive, done && sb.dotDone]}>
                 {done
-                  ? <Feather name="check" size={11} color="#fff" />
-                  : <Text style={{ fontSize: 11, fontWeight: "700", color: active ? "#fff" : inactiveText }}>{step}</Text>
-                }
+                  ? <Feather name="check" size={9} color="#fff" />
+                  : <Text style={[sb.dotNum, { color: active ? "#fff" : dimText }]}>{step}</Text>}
               </View>
-              <Text style={{ fontSize: 9, fontWeight: "700", letterSpacing: isAr ? 0 : 0.5,
-                color: active ? PRIMARY : inactiveText, marginTop: 5 }}>
+              <Text style={[sb.lbl, { color: active ? PRIMARY : dimText }, active && { fontWeight: "800" }]}>
                 {label}
               </Text>
             </View>
-            {i < 2 && <View style={[si.line, { backgroundColor: step < current ? PRIMARY : inactiveLine }]} />}
+            {i < 2 && <View style={[sb.line, { backgroundColor: done ? PRIMARY : dimLine }]} />}
           </React.Fragment>
         );
       })}
@@ -72,48 +68,76 @@ function StepIndicator({ current, isDark, lang }: { current: 1 | 2 | 3; isDark: 
   );
 }
 
-const si = StyleSheet.create({
-  container: { flexDirection: "row", alignItems: "center", paddingHorizontal: 30, marginTop: 10, marginBottom: 4 },
-  stepWrap:  { alignItems: "center" },
-  circle:    { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  line:      { flex: 1, height: 1.5, marginBottom: 16 },
+const sb = StyleSheet.create({
+  row:      { flexDirection: "row", alignItems: "center", paddingHorizontal: 24, marginTop: 8, marginBottom: 6 },
+  item:     { alignItems: "center", gap: 4 },
+  dot:      { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: "rgba(0,0,0,0.15)", alignItems: "center", justifyContent: "center" },
+  dotActive:{ backgroundColor: PRIMARY, borderColor: PRIMARY },
+  dotDone:  { backgroundColor: PRIMARY, borderColor: PRIMARY },
+  dotNum:   { fontSize: 10, fontWeight: "700" },
+  lbl:      { fontSize: 9, fontWeight: "600", letterSpacing: 0.6, textTransform: "uppercase" },
+  line:     { flex: 1, height: 1.5, marginBottom: 14 },
 });
 
+// ─── Free Shipping Bar ────────────────────────────────────────────────────────
+
+function FreeShippingBar({ subtotal, isDark, lang }: { subtotal: number; isDark: boolean; lang: string }) {
+  const isAr = lang === "ar";
+  const remaining = Math.max(0, FREE_SHIP_THRESHOLD - subtotal);
+  const pct = Math.min(1, subtotal / FREE_SHIP_THRESHOLD);
+  const isFree = remaining === 0;
+  const barBg = isDark ? "#1E1E1E" : "#EBEBEB";
+
+  return (
+    <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12 }}>
+      <View style={[fs.track, { backgroundColor: barBg }]}>
+        <View style={[fs.fill, { width: `${Math.round(pct * 100)}%` as any, backgroundColor: isFree ? "#22C55E" : PRIMARY }]} />
+      </View>
+      <Text style={[fs.txt, { color: isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.5)" }, isAr && { textAlign: "right" }]}>
+        {isFree
+          ? (isAr ? "🎉 حصلت على شحن مجاني!" : "🎉 You've unlocked free shipping!")
+          : isAr
+            ? `أنت على بُعد ${formatIQD(remaining)} من **التوصيل المجاني**`
+            : `You're ${formatIQD(remaining)} away from `}
+        {!isFree && !isAr && <Text style={{ fontWeight: "800", color: isDark ? "#fff" : "#111" }}>free shipping</Text>}
+      </Text>
+    </View>
+  );
+}
+
+const fs = StyleSheet.create({
+  track: { height: 4, borderRadius: 2, overflow: "hidden" },
+  fill:  { height: "100%", borderRadius: 2 },
+  txt:   { fontSize: 12, marginTop: 7, lineHeight: 17 },
+});
+
+// ─── Cart Item Row ────────────────────────────────────────────────────────────
+
 function CartItemRow({
-  item,
-  isDark,
-  onRemove,
-  onInc,
-  onDec,
-  lang,
+  item, isDark, onRemove, onInc, onDec, lang,
 }: {
-  item: CartItem;
-  isDark: boolean;
-  onRemove: () => void;
-  onInc: () => void;
-  onDec: () => void;
-  lang: string;
+  item: CartItem; isDark: boolean;
+  onRemove: () => void; onInc: () => void; onDec: () => void; lang: string;
 }) {
   const isAr = lang === "ar";
   const swipeRef = useRef<SwipeableMethods>(null);
-  const card    = isDark ? "#1C1C1E" : "#FFFFFF";
-  const textCol = isDark ? "#FFFFFF" : "#1A1A1A";
-  const sub     = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.42)";
-  const btnBdr  = isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.12)";
+  const textCol = isDark ? "#FFFFFF" : "#111111";
+  const sub     = isDark ? "rgba(255,255,255,0.45)" : "#888888";
+  const divClr  = isDark ? "#1A1A1A" : "#EBEBEB";
 
-  const renderRightActions = (progress: SharedValue<number>) => {
+  const renderSwipeAction = (progress: SharedValue<number>) => {
     const AnimatedContent = () => {
       const style = useAnimatedStyle(() => ({
         transform: [{ scale: interpolate(progress.value, [0, 1], [0.6, 1], "clamp") }],
-        opacity: interpolate(progress.value, [0, 0.6], [0, 1], "clamp"),
+        opacity: interpolate(progress.value, [0, 0.5], [0, 1], "clamp"),
         alignItems: "center" as const,
       }));
       return (
-        <View style={cs.swipeOuter}>
-          <Pressable style={cs.swipeBtn} onPress={() => { swipeRef.current?.close(); onRemove(); }}>
+        <View style={ci.swipeOuter}>
+          <Pressable style={ci.swipeBtn} onPress={() => { swipeRef.current?.close(); onRemove(); }}>
             <Animated.View style={style}>
-              <Feather name="trash-2" size={20} color="#fff" />
-              <Text style={cs.swipeLbl}>Remove</Text>
+              <Feather name="trash-2" size={18} color="#fff" />
+              <Text style={ci.swipeLbl}>{isAr ? "حذف" : "REMOVE"}</Text>
             </Animated.View>
           </Pressable>
         </View>
@@ -122,45 +146,68 @@ function CartItemRow({
     return <AnimatedContent />;
   };
 
+  const hasDiscount = item.comparePrice && item.comparePrice > item.price;
+
   return (
     <ReanimatedSwipeable
       ref={swipeRef}
-      renderRightActions={isAr ? undefined : renderRightActions}
-      renderLeftActions={isAr ? renderRightActions : undefined}
-      rightThreshold={40}
-      leftThreshold={40}
+      renderRightActions={isAr ? undefined : renderSwipeAction}
+      renderLeftActions={isAr ? renderSwipeAction : undefined}
+      rightThreshold={48}
+      leftThreshold={48}
       overshootRight={false}
       overshootLeft={false}
     >
-      <View style={[cs.card, { backgroundColor: card }, isAr && { flexDirection: "row-reverse" }]}>
-        <View style={cs.imgWrap}>
-          {item.image ? (
-            <Image source={{ uri: item.image }} style={cs.img} contentFit="cover" />
-          ) : (
-            <View style={[cs.img, { backgroundColor: isDark ? "#2C2C2E" : "#F0F0F0", alignItems: "center", justifyContent: "center" }]}>
-              <Feather name="image" size={22} color={sub} />
+      <View style={[ci.row, { borderBottomColor: divClr }, isAr && { flexDirection: "row-reverse" }]}>
+        {/* Product image */}
+        <View style={ci.imgWrap}>
+          {item.image
+            ? <Image source={{ uri: item.image }} style={ci.img} contentFit="cover" />
+            : <View style={[ci.img, { backgroundColor: isDark ? "#222" : "#F0F0F0", alignItems: "center", justifyContent: "center" }]}>
+                <Feather name="image" size={20} color={sub} />
+              </View>}
+        </View>
+
+        {/* Info */}
+        <View style={{ flex: 1, alignItems: isAr ? "flex-end" : "flex-start", justifyContent: "space-between" }}>
+          <View style={{ gap: 3, alignItems: isAr ? "flex-end" : "flex-start" }}>
+            <Text style={[ci.title, { color: textCol }]} numberOfLines={2}>{item.title}</Text>
+            {(item.size || item.color) && (
+              <Text style={[ci.variant, { color: sub }]}>
+                {[item.size, item.color].filter(Boolean).join("   ")}
+              </Text>
+            )}
+            <View style={[ci.priceRow, isAr && { flexDirection: "row-reverse" }]}>
+              <Text style={ci.price}>{formatIQD(item.price)}</Text>
+              {hasDiscount && (
+                <Text style={[ci.comparePrice, { color: sub }]}>{formatIQD(item.comparePrice!)}</Text>
+              )}
             </View>
-          )}
+          </View>
+
+          {/* Qty controls */}
+          <View style={[ci.qtyRow, isAr && { flexDirection: "row-reverse" }]}>
+            <Pressable onPress={onDec} style={ci.qBtn} hitSlop={10}>
+              <Feather
+                name={item.quantity === 1 ? "trash-2" : "minus"}
+                size={12}
+                color={item.quantity === 1 ? "#EF4444" : textCol}
+              />
+            </Pressable>
+            <Text style={[ci.qNum, { color: textCol }]}>{item.quantity}</Text>
+            <Pressable onPress={onInc} style={ci.qBtn} hitSlop={10}>
+              <Feather name="plus" size={12} color={textCol} />
+            </Pressable>
+          </View>
         </View>
 
-        <View style={{ flex: 1, gap: 3, alignItems: isAr ? "flex-end" : "flex-start" }}>
-          <Text style={[cs.titleTxt, { color: textCol, textAlign: isAr ? "right" : "left" }]} numberOfLines={2}>{item.title}</Text>
-          {(item.size || item.color) && (
-            <Text style={{ fontSize: 11, color: sub, textAlign: isAr ? "right" : "left" }}>
-              {[item.size, item.color].filter(Boolean).join("  ·  ")}
-            </Text>
-          )}
-          <Text style={cs.price}>{formatIQD(item.price)}</Text>
-        </View>
-
-        <View style={cs.qtyCol}>
-          <Pressable onPress={onInc} style={[cs.qBtn, { borderColor: btnBdr }]} hitSlop={8}>
-            <Feather name="plus" size={13} color={textCol} />
+        {/* Bookmark + Remove */}
+        <View style={ci.actions}>
+          <Pressable hitSlop={10} onPress={() => {}}>
+            <Feather name="bookmark" size={16} color={PRIMARY} />
           </Pressable>
-          <Text style={[cs.qtyNum, { color: textCol }]}>{item.quantity}</Text>
-          <Pressable onPress={onDec} style={[cs.qBtn, { borderColor: btnBdr }]} hitSlop={8}>
-            <Feather name={item.quantity === 1 ? "trash-2" : "minus"} size={13}
-              color={item.quantity === 1 ? "#FF3B30" : textCol} />
+          <Pressable hitSlop={10} onPress={onRemove}>
+            <Feather name="x" size={16} color={PRIMARY} />
           </Pressable>
         </View>
       </View>
@@ -168,45 +215,48 @@ function CartItemRow({
   );
 }
 
-const cs = StyleSheet.create({
-  card:      { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 14, marginHorizontal: 16, marginBottom: 8, borderRadius: 18 },
-  imgWrap:   { width: 72, height: 90, borderRadius: 12, overflow: "hidden", flexShrink: 0 },
-  img:       { width: "100%", height: "100%" },
-  titleTxt:  { fontSize: 13, fontWeight: "600", lineHeight: 18 },
-  price:     { fontSize: 14, fontWeight: "700", color: PRIMARY, marginTop: 2 },
-  qtyCol:    { alignItems: "center", gap: 8 },
-  qBtn:      { width: 28, height: 28, borderRadius: 14, borderWidth: 1.2, alignItems: "center", justifyContent: "center" },
-  qtyNum:    { fontSize: 14, fontWeight: "700", minWidth: 18, textAlign: "center" },
-  swipeOuter:{ width: 80, marginBottom: 8, marginRight: 16 },
-  swipeBtn:  { flex: 1, backgroundColor: "#FF3B30", borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  swipeLbl:  { color: "#fff", fontSize: 10, fontWeight: "600", marginTop: 4 },
+const ci = StyleSheet.create({
+  row:         { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingHorizontal: 16, paddingVertical: 16, borderBottomWidth: 1 },
+  imgWrap:     { width: 80, height: 100, borderRadius: 6, overflow: "hidden", flexShrink: 0 },
+  img:         { width: "100%", height: "100%" },
+  title:       { fontSize: 13, fontWeight: "700", lineHeight: 18, letterSpacing: -0.1 },
+  variant:     { fontSize: 11, fontWeight: "500", letterSpacing: 0.2 },
+  priceRow:    { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
+  price:       { fontSize: 14, fontWeight: "800", color: PRIMARY },
+  comparePrice:{ fontSize: 12, fontWeight: "500", textDecorationLine: "line-through" },
+  qtyRow:      { flexDirection: "row", alignItems: "center", gap: 0, marginTop: 10 },
+  qBtn:        { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(0,0,0,0.15)", borderRadius: 4 },
+  qNum:        { minWidth: 28, textAlign: "center", fontSize: 13, fontWeight: "700" },
+  actions:     { alignItems: "center", justifyContent: "space-between", paddingVertical: 4, gap: 16 },
+  swipeOuter:  { width: 76, marginBottom: 1 },
+  swipeBtn:    { flex: 1, backgroundColor: "#EF4444", borderRadius: 0, alignItems: "center", justifyContent: "center" },
+  swipeLbl:    { color: "#fff", fontSize: 9, fontWeight: "700", letterSpacing: 0.5, marginTop: 4 },
 });
 
-const GIFT_CARD_W = 152;
+// ─── Also Bought Section ──────────────────────────────────────────────────────
 
-function GiftWrapSection({ lang, isDark }: { lang: string; isDark: boolean }) {
-  const { addItem, items } = useCart();
-  const router             = useRouter();
+function AlsoBoughtSection({ lang, isDark }: { lang: string; isDark: boolean }) {
+  const { addItem, items: cartItems } = useCart();
+  const router = useRouter();
+  const isAr = lang === "ar";
 
   const { data } = useQuery({
-    queryKey: ["gift-wrapping"],
-    queryFn:  () => fetchSpecialCollection("gift-wrapping"),
+    queryKey: ["also-bought"],
+    queryFn:  () => fetchSpecialCollection("trends"),
     retry: false,
     staleTime: 300_000,
   });
 
-  const products = data?.products ?? [];
-  if (products.length === 0) return null;
+  const products = (data?.products ?? []).slice(0, 8);
+  if (!products.length) return null;
 
-  const sectionBg = isDark ? "#1A1A1A" : "#F7F7F8";
-  const cardBg    = isDark ? "#2C2C2E" : "#FFFFFF";
-  const textCol   = isDark ? "#FFFFFF" : "#1A1A1A";
-  const sub       = isDark ? "rgba(255,255,255,0.42)" : "rgba(0,0,0,0.4)";
-  const titleTxt  = lang === "ar" ? "ارسال الطلب كهدية" : "Buy As a Gift";
-  const subtitleTxt = lang === "ar" ? "أضف تغليف للطلب وسنرسله كهدية" : "Add wrapping and we'll send it as a gift";
+  const textCol  = isDark ? "#FFFFFF" : "#111111";
+  const cardBg   = isDark ? "#141414" : "#F7F7F7";
+  const divider  = isDark ? "#1A1A1A" : "#EBEBEB";
+  const hdrDivider = isDark ? "#1F1F1F" : "#DCDCDC";
 
   const handleAdd = (product: Product) => {
-    const inCart = items.some((i) => i.productId === product.id);
+    const inCart = cartItems.some((i) => i.productId === product.id);
     if (inCart) return;
     const variant = product.variants?.[0];
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -222,57 +272,116 @@ function GiftWrapSection({ lang, isDark }: { lang: string; isDark: boolean }) {
     });
   };
 
-  const isAr = lang === "ar";
-
   return (
-    <View style={[gw.wrap, { backgroundColor: sectionBg }]}>
-      <View style={[gw.headerRow, isAr && { flexDirection: "row-reverse" }]}>
-        <View style={gw.iconCircle}>
-          <Feather name="gift" size={16} color="#fff" />
-        </View>
-        <View style={{ flex: 1, alignItems: isAr ? "flex-end" : "flex-start" }}>
-          <Text style={[gw.title, { color: textCol }]}>{titleTxt}</Text>
-          <Text style={[gw.subtitle, { color: sub }]}>{subtitleTxt}</Text>
-        </View>
+    <View style={{ marginTop: 6 }}>
+      {/* Section header */}
+      <View style={[ab.hdrRow, { borderTopColor: hdrDivider, borderBottomColor: hdrDivider }]}>
+        <Text style={[ab.hdr, { color: textCol }]}>
+          {isAr ? "اشترى معه أيضًا" : "OTHERS ALSO BOUGHT"}
+        </Text>
       </View>
 
+      {/* Horizontal product scroll */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={gw.scroll}
+        contentContainerStyle={[ab.scroll, isAr && { flexDirection: "row-reverse" }]}
         decelerationRate="fast"
-        snapToInterval={GIFT_CARD_W + 12}
-        style={isAr ? { transform: [{ scaleX: -1 }] } : undefined}
+        snapToInterval={130}
       >
         {products.map((product) => {
-          const inCart = items.some((i) => i.productId === product.id);
+          const inCart = cartItems.some((i) => i.productId === product.id);
           return (
-            <View key={product.id} style={[gw.card, { backgroundColor: cardBg }, isAr && { transform: [{ scaleX: -1 }] }]}>
-              <Pressable
-                style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
-                onPress={() => router.push(`/product/${product.id}` as any)}
-              >
-                <Image
-                  source={{ uri: product.images?.[0] ?? "" }}
-                  style={gw.img}
-                  contentFit="cover"
-                />
-              </Pressable>
-              <View style={gw.cardBody}>
-                <Text style={[gw.cardName, { color: textCol }]} numberOfLines={2}>
-                  {product.title}
-                </Text>
-                <Text style={gw.cardPrice}>{formatIQD(product.price)}</Text>
+            <Pressable
+              key={product.id}
+              style={[ab.card, { backgroundColor: cardBg }]}
+              onPress={() => router.push(`/product/${product.id}` as any)}
+            >
+              <Image
+                source={{ uri: product.images?.[0] ?? "" }}
+                style={ab.cardImg}
+                contentFit="cover"
+              />
+              <View style={ab.cardBody}>
+                <Text style={[ab.cardPrice, { color: textCol }]}>{formatIQD(product.price)}</Text>
                 <Pressable
-                  style={[gw.addBtn, inCart && gw.addBtnDone]}
-                  onPress={() => handleAdd(product)}
-                  disabled={inCart}
+                  style={[ab.addBtn, inCart && ab.addBtnDone]}
+                  onPress={(e) => { e.stopPropagation?.(); handleAdd(product); }}
+                  hitSlop={6}
                 >
-                  {inCart ? (
-                    <><Feather name="check" size={11} color="#fff" /><Text style={gw.addBtnTxt}>{lang === "ar" ? "تمت الإضافة" : "DONE"}</Text></>
-                  ) : (
-                    <Text style={gw.addBtnTxt}>{lang === "ar" ? "أضف" : "ADD"}</Text>
-                  )}
+                  <Feather name={inCart ? "check" : "plus"} size={13} color="#fff" />
+                </Pressable>
+              </View>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {/* Bottom divider */}
+      <View style={{ height: 1, backgroundColor: divider, marginTop: 4 }} />
+    </View>
+  );
+}
+
+const ab = StyleSheet.create({
+  hdrRow:   { borderTopWidth: 1, borderBottomWidth: 1, paddingHorizontal: 16, paddingVertical: 12 },
+  hdr:      { fontSize: 12, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase" },
+  scroll:   { paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
+  card:     { width: 118, borderRadius: 4, overflow: "hidden" },
+  cardImg:  { width: 118, height: 140 },
+  cardBody: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 8, paddingVertical: 8 },
+  cardPrice:{ fontSize: 12, fontWeight: "700" },
+  addBtn:   { width: 26, height: 26, borderRadius: 13, backgroundColor: "#111", alignItems: "center", justifyContent: "center" },
+  addBtnDone: { backgroundColor: "#22C55E" },
+});
+
+// ─── Gift Section (restyled) ──────────────────────────────────────────────────
+
+function GiftSection({ lang, isDark }: { lang: string; isDark: boolean }) {
+  const { addItem, items: cartItems } = useCart();
+  const isAr = lang === "ar";
+
+  const { data } = useQuery({
+    queryKey: ["gift-wrapping"],
+    queryFn:  () => fetchSpecialCollection("gift-wrapping"),
+    retry: false, staleTime: 300_000,
+  });
+
+  const products = data?.products ?? [];
+  if (!products.length) return null;
+
+  const textCol = isDark ? "#fff" : "#111";
+  const bg      = isDark ? "#141414" : "#F7F7F7";
+  const divider = isDark ? "#1A1A1A" : "#EBEBEB";
+
+  const handleAdd = (product: Product) => {
+    const inCart = cartItems.some((i) => i.productId === product.id);
+    if (inCart) return;
+    const v = product.variants?.[0];
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    addItem({ productId: product.id, variantId: v?.id ?? product.id, title: product.title, vendor: product.vendor ?? "", price: v?.price ?? product.price, quantity: 1, image: product.images?.[0] });
+  };
+
+  return (
+    <View style={{ marginBottom: 6 }}>
+      <View style={[ab.hdrRow, { borderTopColor: divider, borderBottomColor: divider, flexDirection: isAr ? "row-reverse" : "row", alignItems: "center", gap: 8 }]}>
+        <Feather name="gift" size={13} color={PRIMARY} />
+        <Text style={[ab.hdr, { color: textCol }]}>{isAr ? "ارسل كهدية" : "BUY AS A GIFT"}</Text>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        contentContainerStyle={[ab.scroll, isAr && { flexDirection: "row-reverse" }]}
+        decelerationRate="fast" snapToInterval={130}
+      >
+        {products.map((p) => {
+          const inCart = cartItems.some((i) => i.productId === p.id);
+          return (
+            <View key={p.id} style={[ab.card, { backgroundColor: bg }]}>
+              <Image source={{ uri: p.images?.[0] ?? "" }} style={ab.cardImg} contentFit="cover" />
+              <View style={ab.cardBody}>
+                <Text style={[ab.cardPrice, { color: textCol }]}>{formatIQD(p.price)}</Text>
+                <Pressable style={[ab.addBtn, inCart && ab.addBtnDone]} onPress={() => handleAdd(p)} hitSlop={6}>
+                  <Feather name={inCart ? "check" : "plus"} size={13} color="#fff" />
                 </Pressable>
               </View>
             </View>
@@ -283,22 +392,7 @@ function GiftWrapSection({ lang, isDark }: { lang: string; isDark: boolean }) {
   );
 }
 
-const gw = StyleSheet.create({
-  wrap:       { marginTop: 6, marginBottom: 6, paddingVertical: 16 },
-  headerRow:  { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, marginBottom: 14 },
-  iconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: PRIMARY, alignItems: "center", justifyContent: "center" },
-  title:      { fontSize: 15, fontWeight: "700", letterSpacing: -0.2 },
-  subtitle:   { fontSize: 11, marginTop: 2 },
-  scroll:     { paddingHorizontal: 16, gap: 12 },
-  card:       { width: GIFT_CARD_W, borderRadius: 16, overflow: "hidden" },
-  img:        { width: GIFT_CARD_W, height: GIFT_CARD_W * 1.15 },
-  cardBody:   { paddingHorizontal: 8, paddingBottom: 10, paddingTop: 8, justifyContent: "space-between", flexGrow: 1 },
-  cardName:   { fontSize: 12, fontWeight: "600", lineHeight: 16, height: 32 },
-  cardPrice:  { fontSize: 13, fontWeight: "700", color: PRIMARY, marginTop: 2 },
-  addBtn:     { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, backgroundColor: PRIMARY, marginTop: 8, paddingVertical: 9, borderRadius: 50 },
-  addBtnDone: { backgroundColor: "#22C55E" },
-  addBtnTxt:  { color: "#fff", fontSize: 11, fontWeight: "700", letterSpacing: 0.8 },
-});
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function CartScreen() {
   const { items, subtotal, removeItem, updateQty } = useCart();
@@ -318,16 +412,12 @@ export default function CartScreen() {
   const storyRows = storyData ?? [];
 
   const bg      = isDark ? "#0A0A0A" : "#FFFFFF";
-  const textCol = isDark ? "#FFFFFF" : "#1A1A1A";
-  const sub     = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.42)";
-  const barBg   = isDark ? "rgba(14,14,14,0.97)" : "rgba(255,255,255,0.97)";
-  const barBdr  = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.08)";
-  // App-only: opaque bar that sits just above the native tab bar (web keeps its own layout).
-  // On native, insets.bottom already accounts for the system NativeTabs bar, so a small
-  // offset places the bar just above it — the old insets.bottom + 54 left a large gap.
-  const isWeb       = Platform.OS === "web";
-  const barBottom   = isWeb ? 84 : insets.bottom + 8;
-  const barBgSolid  = isDark ? "#0E0E0E" : "#FFFFFF";
+  const textCol = isDark ? "#FFFFFF" : "#111111";
+  const sub     = isDark ? "rgba(255,255,255,0.45)" : "#888888";
+  const divider = isDark ? "#1A1A1A" : "#EBEBEB";
+  const barBg   = isDark ? "#0A0A0A" : "#FFFFFF";
+  const isWeb   = Platform.OS === "web";
+  const barBottom = isWeb ? 84 : insets.bottom + 8;
 
   const totalQty = items.reduce((s, i) => s + i.quantity, 0);
 
@@ -362,10 +452,11 @@ export default function CartScreen() {
     router.push("/checkout");
   };
 
+  // ── Empty state ────────────────────────────────────────────────────────────
   if (items.length === 0) {
     return (
       <View style={[s.root, { backgroundColor: bg, paddingTop: insets.top }]}>
-        <View style={[s.header, { paddingTop: 6 }]}>
+        <View style={[s.header, { borderBottomColor: divider }]}>
           <Text style={[s.pageTitle, { color: textCol }]}>
             {lang === "ar" ? "سلتي" : "MY CART"}
           </Text>
@@ -375,45 +466,62 @@ export default function CartScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 100 }}
         >
-          {storiesLoading ? (
-            <ActivityIndicator color={PRIMARY} style={{ marginTop: 48 }} />
-          ) : (
-            <StoriesSection rows={storyRows} circlesOnly />
-          )}
+          {storiesLoading
+            ? <ActivityIndicator color={PRIMARY} style={{ marginTop: 48 }} />
+            : <StoriesSection rows={storyRows} circlesOnly />}
 
           <View style={s.emptyWrap}>
-            <View style={[s.emptyIconCircle, { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" }]}>
-              <Feather name="shopping-bag" size={38} color={sub} />
+            <View style={[s.emptyIcon, { borderColor: divider }]}>
+              <Feather name="shopping-bag" size={32} color={sub} />
             </View>
             <Text style={[s.emptyTitle, { color: textCol }]}>
               {lang === "ar" ? "سلتك فارغة" : "Your cart is empty"}
             </Text>
             <Text style={[s.emptySub, { color: sub }]}>
-              {lang === "ar"
-                ? "يمكنك تصفّح أقسامنا واكتشاف منتجاتنا"
-                : "You can browse our collections"}
+              {lang === "ar" ? "تصفّح منتجاتنا واكتشف تشكيلاتنا" : "Browse our collections and discover our range"}
             </Text>
+            <Pressable
+              style={[s.browseBtn, { borderColor: isDark ? "#333" : "#111" }]}
+              onPress={() => router.push("/" as any)}
+            >
+              <Text style={[s.browseTxt, { color: textCol }]}>
+                {lang === "ar" ? "تسوق الآن" : "SHOP NOW"}
+              </Text>
+              <Feather name={lang === "ar" ? "arrow-left" : "arrow-right"} size={14} color={textCol} />
+            </Pressable>
           </View>
         </ScrollView>
       </View>
     );
   }
 
+  // ── Filled cart ────────────────────────────────────────────────────────────
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      <View style={[s.header, { paddingTop: insets.top + 6 }, lang === "ar" && { flexDirection: "row-reverse" }]}>
-        <Text style={[s.pageTitle, { color: textCol }]}>{lang === "ar" ? "سلتي" : "MY CART"}</Text>
-        <View style={s.badge}>
-          <Text style={s.badgeTxt}>{totalQty}</Text>
+      {/* Header */}
+      <View style={[s.header, { paddingTop: insets.top + 6, borderBottomColor: divider }]}>
+        <View style={[s.headerInner, lang === "ar" && { flexDirection: "row-reverse" }]}>
+          <Text style={[s.pageTitle, { color: textCol }]}>
+            {lang === "ar" ? "سلتي" : "YOUR CART"}
+            <Text style={[s.superscript, { color: PRIMARY }]}>{totalQty}</Text>
+          </Text>
         </View>
       </View>
 
-      <StepIndicator current={1} isDark={isDark} lang={lang} />
+      {/* Step indicator */}
+      <StepBar current={1} isDark={isDark} lang={lang} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 10, paddingBottom: isWeb ? 150 : insets.bottom + 80 }}
+        contentContainerStyle={{ paddingBottom: isWeb ? 150 : insets.bottom + 90 }}
       >
+        {/* Free shipping progress */}
+        <FreeShippingBar subtotal={subtotal} isDark={isDark} lang={lang} />
+
+        {/* Top divider */}
+        <View style={{ height: 1, backgroundColor: divider }} />
+
+        {/* Cart items */}
         {items.map((item) => (
           <CartItemRow
             key={`${item.productId}-${item.variantId}`}
@@ -426,40 +534,39 @@ export default function CartScreen() {
           />
         ))}
 
-        <GiftWrapSection lang={lang} isDark={isDark} />
+        {/* Also bought */}
+        <AlsoBoughtSection lang={lang} isDark={isDark} />
+
+        {/* Gift section */}
+        <GiftSection lang={lang} isDark={isDark} />
+
       </ScrollView>
 
+      {/* Bottom checkout bar */}
       <View style={[
         s.bar,
         {
-          backgroundColor: isWeb ? barBg : barBgSolid,
-          borderTopColor: barBdr,
-          borderTopWidth: 1,
-          paddingTop: isWeb ? 16 : 12,
-          paddingBottom: isWeb ? 14 : 10,
+          backgroundColor: barBg,
+          borderTopColor: divider,
           bottom: barBottom,
         },
-        lang === "ar" && { flexDirection: "row-reverse" },
       ]}>
-        <View style={{ flex: 1, alignItems: lang === "ar" ? "flex-end" : "flex-start" }}>
-          <Text style={[s.barLabel, { color: sub }]}>{lang === "ar" ? "اجمالي السعر" : "Subtotal"}</Text>
-          <Text style={[s.barTotal, { color: textCol }]}>{formatIQD(subtotal)}</Text>
+        {/* Total row */}
+        <View style={[s.totalRow, lang === "ar" && { flexDirection: "row-reverse" }]}>
+          <Text style={[s.totalLbl, { color: textCol }]}>
+            {lang === "ar" ? "المجموع:" : "TOTAL:"}
+          </Text>
+          <Text style={[s.totalAmt, { color: textCol }]}>{formatIQD(subtotal)}</Text>
         </View>
+        {/* Checkout button */}
         <Pressable
           onPress={handleCheckout}
           style={({ pressed }) => [s.checkBtn, pressed && { opacity: 0.82 }]}
         >
-          {lang === "ar" ? (
-            <>
-              <Feather name="arrow-left" size={15} color="#fff" />
-              <Text style={s.checkTxt}>الدفع</Text>
-            </>
-          ) : (
-            <>
-              <Text style={s.checkTxt}>CHECKOUT</Text>
-              <Feather name="arrow-right" size={15} color="#fff" />
-            </>
-          )}
+          <Feather name="lock" size={14} color="#fff" />
+          <Text style={s.checkTxt}>
+            {lang === "ar" ? "إتمام الشراء بأمان" : "SECURE CHECKOUT"}
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -467,19 +574,21 @@ export default function CartScreen() {
 }
 
 const s = StyleSheet.create({
-  root:        { flex: 1 },
-  center:      { alignItems: "center", justifyContent: "center" },
-  header:      { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingBottom: 2, gap: 10 },
-  pageTitle:   { fontSize: 22, fontWeight: "800", letterSpacing: -0.5, flex: 1 },
-  badge:       { backgroundColor: PRIMARY, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3 },
-  badgeTxt:    { color: "#fff", fontSize: 12, fontWeight: "700" },
-  bar:         { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 20, paddingTop: 16, borderTopWidth: 1 },
-  barLabel:    { fontSize: 11, fontWeight: "500", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
-  barTotal:    { fontSize: 18, fontWeight: "800", letterSpacing: -0.4 },
-  checkBtn:    { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: PRIMARY, paddingHorizontal: 22, paddingVertical: 14, borderRadius: 50 },
-  checkTxt:    { color: "#fff", fontSize: 14, fontWeight: "700", letterSpacing: 0.6 },
-  emptyWrap:      { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40, paddingVertical: 40 },
-  emptyIconCircle:{ width: 92, height: 92, borderRadius: 46, alignItems: "center", justifyContent: "center", marginBottom: 18 },
-  emptyTitle:     { fontSize: 19, fontWeight: "800", letterSpacing: -0.4, textAlign: "center" },
-  emptySub:       { fontSize: 13.5, fontWeight: "500", textAlign: "center", lineHeight: 20, marginTop: 6 },
+  root:         { flex: 1 },
+  header:       { borderBottomWidth: 1, paddingHorizontal: 16, paddingBottom: 12 },
+  headerInner:  { flexDirection: "row", alignItems: "center" },
+  pageTitle:    { fontSize: 20, fontWeight: "900", letterSpacing: -0.3, textTransform: "uppercase" },
+  superscript:  { fontSize: 13, fontWeight: "700", lineHeight: 24 },
+  emptyWrap:    { flex: 1, alignItems: "center", paddingHorizontal: 40, paddingVertical: 40, gap: 12 },
+  emptyIcon:    { width: 80, height: 80, borderRadius: 40, borderWidth: 1, alignItems: "center", justifyContent: "center", marginBottom: 6 },
+  emptyTitle:   { fontSize: 18, fontWeight: "800", letterSpacing: -0.3, textAlign: "center" },
+  emptySub:     { fontSize: 13, textAlign: "center", lineHeight: 19 },
+  browseBtn:    { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1.5, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 4, marginTop: 8 },
+  browseTxt:    { fontSize: 13, fontWeight: "700", letterSpacing: 0.8 },
+  bar:          { position: "absolute", bottom: 0, left: 0, right: 0, borderTopWidth: 1, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, gap: 10 },
+  totalRow:     { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  totalLbl:     { fontSize: 14, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase" },
+  totalAmt:     { fontSize: 18, fontWeight: "900", letterSpacing: -0.4 },
+  checkBtn:     { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#111111", paddingVertical: 15, borderRadius: 4 },
+  checkTxt:     { color: "#fff", fontSize: 14, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" },
 });

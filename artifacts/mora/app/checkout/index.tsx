@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import {
   ActivityIndicator,
   Alert,
@@ -42,52 +41,104 @@ function getBaseUrl() {
   return d ? `https://${d}/api` : "/api";
 }
 
-function StepIndicator({ isDark, isAr }: { isDark: boolean; isAr: boolean }) {
-  const steps = isAr
-    ? ["سلتي", "الدفع", "تم التثبيت"]
-    : ["Cart", "Checkout", "Done"];
-  const inactiveCir = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
-  const inactiveTxt = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)";
-  const inactiveLn  = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
+// ─── Step Bar ─────────────────────────────────────────────────────────────────
+function StepBar({ isDark, isAr }: { isDark: boolean; isAr: boolean }) {
+  const steps = isAr ? ["السلة", "الدفع", "تم"] : ["CART", "CHECKOUT", "DONE"];
+  const dimText = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.22)";
+  const dimLine = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)";
   return (
-    <View style={[si.container, isAr && { flexDirection: "row-reverse" }]}>
+    <View style={[sb.row, isAr && { flexDirection: "row-reverse" }]}>
       {steps.map((label, i) => {
-        const step   = i + 1;
-        const done   = step < 2;
+        const step = i + 1;
         const active = step === 2;
+        const done   = step < 2;
         return (
           <React.Fragment key={label}>
-            <View style={si.stepWrap}>
-              <View style={[si.circle, { backgroundColor: active || done ? PRIMARY : "transparent", borderColor: active || done ? PRIMARY : inactiveCir }]}>
-                {done ? <Feather name="check" size={11} color="#fff" />
-                  : <Text style={{ fontSize: 11, fontWeight: "700", color: active ? "#fff" : inactiveTxt }}>{step}</Text>}
+            <View style={sb.item}>
+              <View style={[sb.dot, (active || done) && sb.dotFill]}>
+                {done
+                  ? <Feather name="check" size={9} color="#fff" />
+                  : <Text style={[sb.dotNum, { color: active ? "#fff" : dimText }]}>{step}</Text>}
               </View>
-              <Text style={{ fontSize: 9, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", color: active ? PRIMARY : inactiveTxt, marginTop: 5 }}>{label}</Text>
+              <Text style={[sb.lbl, { color: active ? PRIMARY : dimText }, active && { fontWeight: "800" }]}>
+                {label}
+              </Text>
             </View>
-            {i < 2 && <View style={[si.line, { backgroundColor: step < 2 ? PRIMARY : inactiveLn }]} />}
+            {i < 2 && <View style={[sb.line, { backgroundColor: done ? PRIMARY : dimLine }]} />}
           </React.Fragment>
         );
       })}
     </View>
   );
 }
-const si = StyleSheet.create({
-  container: { flexDirection: "row", alignItems: "center", paddingHorizontal: 30, marginTop: 8, marginBottom: 4 },
-  stepWrap:  { alignItems: "center" },
-  circle:    { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  line:      { flex: 1, height: 1.5, marginBottom: 16 },
+
+const sb = StyleSheet.create({
+  row:     { flexDirection: "row", alignItems: "center", paddingHorizontal: 24, marginTop: 8, marginBottom: 6 },
+  item:    { alignItems: "center", gap: 4 },
+  dot:     { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: "rgba(0,0,0,0.15)", alignItems: "center", justifyContent: "center" },
+  dotFill: { backgroundColor: PRIMARY, borderColor: PRIMARY },
+  dotNum:  { fontSize: 10, fontWeight: "700" },
+  lbl:     { fontSize: 9, fontWeight: "600", letterSpacing: 0.6, textTransform: "uppercase" },
+  line:    { flex: 1, height: 1.5, marginBottom: 14 },
 });
 
-type FormState = { name: string; phone: string; city: string; district: string; street: string; note: string };
-type PayMethod = "cod" | "online";
+// ─── Types ────────────────────────────────────────────────────────────────────
+type FormState    = { name: string; phone: string; city: string; district: string; street: string; note: string };
+type PayMethod    = "cod" | "online";
 type DeliveryType = "standard" | "express" | "pickup";
 
 const DELIVERY_OPTIONS: { key: DeliveryType; icon: string; titleAr: string; titleEn: string; subAr: string; subEn: string }[] = [
-  { key: "standard", icon: "🚚", titleAr: "توصيل عادي",   titleEn: "Standard delivery", subAr: "يتم توصيل الطلب من 1-5 ايام", subEn: "Delivered in 1-5 days" },
-  { key: "express",  icon: "⚡", titleAr: "توصيل سريع",   titleEn: "Express delivery",  subAr: "يتم توصيل الطلب من 1-3 ايام", subEn: "Delivered in 1-3 days" },
-  { key: "pickup",   icon: "🏬", titleAr: "استلام من المحل", titleEn: "Store pickup",   subAr: "يتم استلام الطلب من محلنا في بغداد", subEn: "Pick up from our store in Baghdad" },
+  { key: "standard", icon: "🚚", titleAr: "توصيل عادي",      titleEn: "Standard Delivery", subAr: "يتم توصيل الطلب من 1–5 أيام", subEn: "Delivered in 1–5 days" },
+  { key: "express",  icon: "⚡", titleAr: "توصيل سريع",      titleEn: "Express Delivery",  subAr: "يتم توصيل الطلب من 1–3 أيام", subEn: "Delivered in 1–3 days" },
+  { key: "pickup",   icon: "🏬", titleAr: "استلام من المحل", titleEn: "Store Pickup",       subAr: "استلام من محلنا في بغداد",    subEn: "Pick up from our store in Baghdad" },
 ];
 
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function SectionHeader({ label, isDark }: { label: string; isDark: boolean }) {
+  return (
+    <Text style={[sh.txt, { color: isDark ? "rgba(255,255,255,0.38)" : "#888888" }]}>{label}</Text>
+  );
+}
+const sh = StyleSheet.create({
+  txt: { fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", paddingHorizontal: 16, paddingTop: 22, paddingBottom: 10 },
+});
+
+function Divider({ color }: { color: string }) {
+  return <View style={{ height: 1, backgroundColor: color, marginLeft: 16 }} />;
+}
+
+function FieldRow({
+  label, value, onChangeText, placeholder, keyboardType, textCol, sub, isDark, isAr,
+}: {
+  label: string; value: string; onChangeText: (t: string) => void;
+  placeholder?: string; keyboardType?: any;
+  textCol: string; sub: string; isDark: boolean; isAr?: boolean;
+}) {
+  const border = isDark ? "#1A1A1A" : "#EBEBEB";
+  return (
+    <View style={[fr.wrap, { borderBottomColor: border }]}>
+      <Text style={[fr.lbl, { color: sub }]}>{label}</Text>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.2)"}
+        keyboardType={keyboardType}
+        textAlign={isAr ? "right" : "left"}
+        style={[fr.input, { color: textCol }]}
+        autoCapitalize="words"
+      />
+    </View>
+  );
+}
+const fr = StyleSheet.create({
+  wrap:  { borderBottomWidth: 1, paddingHorizontal: 16, paddingVertical: 14, gap: 4 },
+  lbl:   { fontSize: 10, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase" },
+  input: { fontSize: 15, fontWeight: "600", paddingVertical: 0 },
+});
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function CheckoutScreen() {
   const { resolvedScheme } = useTheme();
   const isDark = resolvedScheme === "dark";
@@ -100,45 +151,40 @@ export default function CheckoutScreen() {
   const isAr = lang === "ar";
 
   const [form, setForm] = useState<FormState>({ name: "", phone: "", city: "", district: "", street: "", note: "" });
-  const [payMethod, setPayMethod] = useState<PayMethod>("cod");
+  const [payMethod, setPayMethod]     = useState<PayMethod>("cod");
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("standard");
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting]   = useState(false);
   const [showGovPicker, setShowGovPicker] = useState(false);
 
-  // Shipping state
-  const [zones, setZones] = useState<ShippingZone[]>([]);
-  const [rules, setRules] = useState<ShippingRule[]>([]);
+  const [zones, setZones]             = useState<ShippingZone[]>([]);
+  const [rules, setRules]             = useState<ShippingRule[]>([]);
   const [selectedZone, setSelectedZone] = useState<ShippingZone | null>(null);
 
-  // Discount code state
-  const [discountInput, setDiscountInput] = useState("");
+  const [discountInput, setDiscountInput]   = useState("");
   const [applyingDiscount, setApplyingDiscount] = useState(false);
-  const [discount, setDiscount] = useState<{ code: string; amount: number; freeShipping?: boolean } | null>(null);
-  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [discount, setDiscount]             = useState<{ code: string; amount: number; freeShipping?: boolean } | null>(null);
+  const [discountError, setDiscountError]   = useState<string | null>(null);
 
   const itemCount = items.reduce((n, i) => n + i.quantity, 0);
-  const discountAmount = discount?.amount ?? 0;
+  const discountAmount   = discount?.amount ?? 0;
   const enabledThresholds = rules.map((r) => r.threshold).filter((t): t is number => t != null);
   const freeShipThreshold = enabledThresholds.length ? Math.min(...enabledThresholds) : null;
   const freeShipping = (discount?.freeShipping ?? false) || (freeShipThreshold != null && subtotal >= freeShipThreshold);
-  const shipping = freeShipping ? 0 : (selectedZone?.price ?? 0);
-  const grandTotal = Math.max(0, subtotal + shipping - discountAmount);
+  const shipping     = freeShipping ? 0 : (selectedZone?.price ?? 0);
+  const grandTotal   = Math.max(0, subtotal + shipping - discountAmount);
+
   const [pendingOnline, setPendingOnline] = useState<{
     orderId: string; orderNumber: string; orderTotal: number; waylUrl: string; snapshot: string;
   } | null>(null);
 
   const bg      = isDark ? "#0A0A0A" : "#FFFFFF";
-  const card    = isDark ? "#1C1C1E" : "#EBF5FF";
-  const textCol = isDark ? "#FFFFFF" : "#1A1A1A";
-  const sub     = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.42)";
-  const divClr  = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
+  const textCol = isDark ? "#FFFFFF" : "#111111";
+  const sub     = isDark ? "rgba(255,255,255,0.38)" : "#888888";
+  const divider = isDark ? "#1A1A1A" : "#EBEBEB";
 
   useEffect(() => {
     if (isLoading) return;
-    if (!user) {
-      router.replace({ pathname: "/auth", params: { returnTo: "/checkout" } } as any);
-      return;
-    }
+    if (!user) { router.replace({ pathname: "/auth", params: { returnTo: "/checkout" } } as any); return; }
     setForm((f) => ({
       ...f,
       name:     f.name     || `${user.firstName} ${user.lastName}`.trim(),
@@ -184,7 +230,7 @@ export default function CheckoutScreen() {
     setDiscountError(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      const res = await fetch(`${getBaseUrl()}/store/discounts/validate`, {
+      const res  = await fetch(`${getBaseUrl()}/store/discounts/validate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, subtotal, itemCount }),
@@ -200,16 +246,10 @@ export default function CheckoutScreen() {
     } catch {
       setDiscount(null);
       setDiscountError("Couldn't check the code. Please try again.");
-    } finally {
-      setApplyingDiscount(false);
-    }
+    } finally { setApplyingDiscount(false); }
   };
 
-  const removeDiscount = () => {
-    setDiscount(null);
-    setDiscountInput("");
-    setDiscountError(null);
-  };
+  const removeDiscount = () => { setDiscount(null); setDiscountInput(""); setDiscountError(null); };
 
   const createOrder = async (base: string) => {
     const orderRes = await fetch(`${base}/store/orders`, {
@@ -217,8 +257,7 @@ export default function CheckoutScreen() {
       headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify({
         email: user?.email || "",
-        subtotal,
-        shipping,
+        subtotal, shipping,
         governorate: selectedZone?.governorate ?? "",
         discountCode: discount?.code,
         shippingAddress: { fullName: form.name, phone: form.phone, city: form.city, district: form.district, street: form.street },
@@ -228,53 +267,44 @@ export default function CheckoutScreen() {
         note: form.note,
       }),
     });
-    const orderJson = await orderRes.json() as { data: { id?: string; order_number?: string; orderNumber?: string; total?: number } | null; error?: string };
-    if (!orderRes.ok) throw new Error(orderJson.error || "Order failed");
+    const json = await orderRes.json() as { data: { id?: string; order_number?: string; orderNumber?: string; total?: number } | null; error?: string };
+    if (!orderRes.ok) throw new Error(json.error || "Order failed");
     return {
-      orderId:     (orderJson.data as any)?.id ?? "",
-      orderNumber: orderJson.data?.order_number || orderJson.data?.orderNumber || "#—",
-      orderTotal:  orderJson.data?.total ?? subtotal,
+      orderId:     (json.data as any)?.id ?? "",
+      orderNumber: json.data?.order_number || json.data?.orderNumber || "#—",
+      orderTotal:  json.data?.total ?? subtotal,
       snapshot:    buildSnapshot(),
     };
   };
 
-  const createWaylLink = async (
-    base: string, orderNumber: string, orderTotal: number,
-  ): Promise<{ url: string | null; paid: boolean }> => {
+  const createWaylLink = async (base: string, orderNumber: string, orderTotal: number): Promise<{ url: string | null; paid: boolean }> => {
     try {
-      const waylRes = await fetch(`${base}/store/wayl/create-link`, {
+      const res  = await fetch(`${base}/store/wayl/create-link`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orderNumber,
-          total: orderTotal,
-          lineItems: items.map((i) => ({ title: i.title, quantity: i.quantity, price: i.price })),
-          redirectionUrl: `https://${process.env.EXPO_PUBLIC_DOMAIN || "moramoda.tech"}/checkout/complete?fromWayl=1`,
-        }),
+        body: JSON.stringify({ orderNumber, total: orderTotal, lineItems: items.map((i) => ({ title: i.title, quantity: i.quantity, price: i.price })), redirectionUrl: `https://${process.env.EXPO_PUBLIC_DOMAIN || "moramoda.tech"}/checkout/complete?fromWayl=1` }),
       });
-      const waylJson = await waylRes.json() as { data: { url?: string; paid?: boolean } | null; error?: string };
-      return { url: waylJson.data?.url || null, paid: !!waylJson.data?.paid };
-    } catch {
-      return { url: null, paid: false };
-    }
+      const json = await res.json() as { data: { url?: string; paid?: boolean } | null };
+      return { url: json.data?.url || null, paid: !!json.data?.paid };
+    } catch { return { url: null, paid: false }; }
   };
 
   const checkWaylStatus = async (base: string, num: string): Promise<"paid" | "failed" | "pending"> => {
     try {
-      const res = await fetch(`${base}/store/wayl/status/${num}`);
+      const res  = await fetch(`${base}/store/wayl/status/${num}`);
       const json = await res.json() as { data: { status?: string; paid?: boolean } | null };
       if (json.data?.paid || json.data?.status === "completed") return "paid";
       if (json.data?.status === "failed" || json.data?.status === "expired") return "failed";
-    } catch { /* ignore */ }
+    } catch {}
     return "pending";
   };
 
   const handlePlaceOrder = async () => {
-    if (!form.name.trim())     { Alert.alert(isAr ? "مطلوب" : "Missing", isAr ? "يرجى إدخال اسمك" : "Please enter your name"); return; }
-    if (!form.phone.trim())    { Alert.alert(isAr ? "مطلوب" : "Missing", isAr ? "يرجى إدخال رقم هاتفك" : "Please enter your phone"); return; }
-    if (!selectedZone)         { Alert.alert(isAr ? "مطلوب" : "Missing", isAr ? "يرجى اختيار المحافظة" : "Please select your governorate"); return; }
-    if (!form.district.trim()) { Alert.alert(isAr ? "مطلوب" : "Missing", isAr ? "يرجى إدخال المنطقة" : "Please enter your district/area"); return; }
-    if (items.length === 0)    { Alert.alert(isAr ? "السلة فارغة" : "Empty Cart", isAr ? "لا يوجد منتجات في السلة" : "Your cart is empty"); return; }
+    if (!form.name.trim())     { Alert.alert(isAr ? "مطلوب" : "Required", isAr ? "يرجى إدخال اسمك" : "Please enter your name"); return; }
+    if (!form.phone.trim())    { Alert.alert(isAr ? "مطلوب" : "Required", isAr ? "يرجى إدخال رقم هاتفك" : "Please enter your phone"); return; }
+    if (!selectedZone)         { Alert.alert(isAr ? "مطلوب" : "Required", isAr ? "يرجى اختيار المحافظة" : "Please select your governorate"); return; }
+    if (!form.district.trim()) { Alert.alert(isAr ? "مطلوب" : "Required", isAr ? "يرجى إدخال المنطقة" : "Please enter your district"); return; }
+    if (items.length === 0)    { Alert.alert(isAr ? "السلة فارغة" : "Empty Cart", isAr ? "لا يوجد منتجات" : "Your cart is empty"); return; }
 
     setSubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -283,567 +313,395 @@ export default function CheckoutScreen() {
     try {
       if (payMethod === "online") {
         let info = pendingOnline;
-
         if (!info) {
           const created = await createOrder(base);
           info = { ...created, waylUrl: "" };
           setPendingOnline(info);
           saveAddressToProfile(base);
         }
-
         if (!info.waylUrl) {
           const wayl = await createWaylLink(base, info.orderNumber, info.orderTotal);
           if (wayl.paid) {
-            startOrderActivity({
-              orderId: info.orderId,
-              orderNumber: info.orderNumber,
-              customerName: form.name || user?.firstName || "Customer",
-              stage: "confirmed",
-              message: deliveryMessage(deliveryType, "confirmed"),
-              deliveryType,
-              priceText: formatIQD(info.orderTotal),
-              isPaid: true,
-            });
-            clearCart();
-            setPendingOnline(null);
+            startOrderActivity({ orderId: info.orderId, orderNumber: info.orderNumber, customerName: form.name || user?.firstName || "Customer", stage: "confirmed", message: deliveryMessage(deliveryType, "confirmed"), deliveryType, priceText: formatIQD(info.orderTotal), isPaid: true });
+            clearCart(); setPendingOnline(null);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            router.replace({
-              pathname: "/checkout/complete",
-              params: {
-                orderNumber: info.orderNumber, total: String(info.orderTotal), name: form.name,
-                city: form.city, district: form.district, phone: form.phone,
-                items: info.snapshot, paymentMethod: "online", paid: "1", waylUrl: "",
-              },
-            } as any);
+            router.replace({ pathname: "/checkout/complete", params: { orderNumber: info.orderNumber, total: String(info.orderTotal), name: form.name, city: form.city, district: form.district, phone: form.phone, items: info.snapshot, paymentMethod: "online", paid: "1", waylUrl: "" } } as any);
             return;
           }
-          if (!wayl.url) throw new Error(isAr ? "تعذّر بدء الدفع، حاول مجدداً" : "Could not start the payment. Please try again.");
+          if (!wayl.url) throw new Error(isAr ? "تعذّر بدء الدفع، حاول مجدداً" : "Could not start payment. Please try again.");
           info = { ...info, waylUrl: wayl.url };
           setPendingOnline(info);
         }
-
         if (Platform.OS === "web") {
-          sessionStorage.setItem("mora_wayl_snap", JSON.stringify({
-            orderNumber: info.orderNumber, total: info.orderTotal, name: form.name,
-            city: form.city, district: form.district, phone: form.phone, snapshot: info.snapshot,
-          }));
+          sessionStorage.setItem("mora_wayl_snap", JSON.stringify({ orderNumber: info.orderNumber, total: info.orderTotal, name: form.name, city: form.city, district: form.district, phone: form.phone, snapshot: info.snapshot }));
           (window as Window & typeof globalThis).location.href = info.waylUrl;
           return;
         }
-
-        await WebBrowser.openBrowserAsync(info.waylUrl, {
-          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-        });
-
+        await WebBrowser.openBrowserAsync(info.waylUrl, { presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN });
         let status: "paid" | "failed" | "pending" = "pending";
         for (let i = 0; i < 5; i++) {
           status = await checkWaylStatus(base, info.orderNumber);
           if (status !== "pending") break;
           await new Promise((r) => setTimeout(r, 1500));
         }
-
         if (status !== "paid") {
           setSubmitting(false);
           Alert.alert(
+            status === "failed" ? (isAr ? "فشل الدفع" : "Payment Failed") : (isAr ? "لم يكتمل الدفع" : "Payment Incomplete"),
             status === "failed"
-              ? (isAr ? "فشل الدفع" : "Payment Failed")
-              : (isAr ? "لم يكتمل الدفع" : "Payment Not Completed"),
-            status === "failed"
-              ? (isAr ? "لم يكتمل دفعك. يمكنك المحاولة مجدداً." : "Your payment was not completed. You can try paying again.")
-              : (isAr ? "لم نتمكن من تأكيد دفعك بعد. إذا دفعت بالفعل، انتظر لحظة وحاول مجدداً." : "We couldn't confirm your payment yet. If you already paid, wait a moment and tap to pay again."),
+              ? (isAr ? "لم يكتمل دفعك. يمكنك المحاولة مجدداً." : "Your payment was not completed. Try again.")
+              : (isAr ? "لم نتمكن من تأكيد دفعك. إذا دفعت، انتظر وحاول مجدداً." : "Couldn't confirm payment. If you paid, wait and try again."),
           );
           return;
         }
-
-        startOrderActivity({
-          orderId: info.orderId,
-          orderNumber: info.orderNumber,
-          customerName: form.name || user?.firstName || "Customer",
-          stage: "confirmed",
-          message: deliveryMessage(deliveryType, "confirmed"),
-          deliveryType,
-          priceText: formatIQD(info.orderTotal),
-          isPaid: true,
-        });
-        clearCart();
-        setPendingOnline(null);
+        startOrderActivity({ orderId: info.orderId, orderNumber: info.orderNumber, customerName: form.name || user?.firstName || "Customer", stage: "confirmed", message: deliveryMessage(deliveryType, "confirmed"), deliveryType, priceText: formatIQD(info.orderTotal), isPaid: true });
+        clearCart(); setPendingOnline(null);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        router.replace({
-          pathname: "/checkout/complete",
-          params: {
-            orderNumber: info.orderNumber, total: String(info.orderTotal), name: form.name,
-            city: form.city, district: form.district, phone: form.phone,
-            items: info.snapshot, paymentMethod: "online", paid: "1", waylUrl: "",
-          },
-        } as any);
+        router.replace({ pathname: "/checkout/complete", params: { orderNumber: info.orderNumber, total: String(info.orderTotal), name: form.name, city: form.city, district: form.district, phone: form.phone, items: info.snapshot, paymentMethod: "online", paid: "1", waylUrl: "" } } as any);
         return;
       }
 
+      // COD
       const created = await createOrder(base);
-      startOrderActivity({
-        orderId: created.orderId,
-        orderNumber: created.orderNumber,
-        customerName: form.name || user?.firstName || "Customer",
-        stage: "confirmed",
-        message: deliveryMessage(deliveryType, "confirmed"),
-        deliveryType,
-        priceText: formatIQD(created.orderTotal),
-        isPaid: false,
-      });
+      startOrderActivity({ orderId: created.orderId, orderNumber: created.orderNumber, customerName: form.name || user?.firstName || "Customer", stage: "confirmed", message: deliveryMessage(deliveryType, "confirmed"), deliveryType, priceText: formatIQD(created.orderTotal), isPaid: false });
       clearCart();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       saveAddressToProfile(base);
-      router.replace({
-        pathname: "/checkout/complete",
-        params: {
-          orderNumber: created.orderNumber, total: String(created.orderTotal), name: form.name,
-          city: form.city, district: form.district, phone: form.phone,
-          items: created.snapshot, paymentMethod: "cod", waylUrl: "",
-        },
-      } as any);
+      router.replace({ pathname: "/checkout/complete", params: { orderNumber: created.orderNumber, total: String(created.orderTotal), name: form.name, city: form.city, district: form.district, phone: form.phone, items: created.snapshot, paymentMethod: "cod", waylUrl: "" } } as any);
     } catch (err: any) {
       setSubmitting(false);
-      Alert.alert(isAr ? "خطأ" : "Error", err.message || (isAr ? "حدث خطأ، حاول مجدداً" : "Something went wrong. Please try again."));
+      Alert.alert(isAr ? "خطأ" : "Error", err.message || (isAr ? "حدث خطأ، حاول مجدداً" : "Something went wrong."));
     }
   };
 
   if (isLoading) return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: isDark ? "#0A0A0A" : "#F2F2F7" }}>
-      <ActivityIndicator color="#0274C1" />
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: bg }}>
+      <ActivityIndicator color={PRIMARY} />
     </View>
   );
   if (!user) return null;
 
   return (
     <View style={[{ flex: 1 }, { backgroundColor: bg }]}>
+      {/* Header */}
+      <View style={[st.header, { paddingTop: insets.top + 6, borderBottomColor: divider }]}>
+        <GlassBackButton onPress={() => { if (router.canGoBack()) router.back(); else router.replace("/cart" as any); }} />
+        <Text style={[st.headTitle, { color: textCol }]}>{isAr ? "الدفع" : "CHECKOUT"}</Text>
+        <View style={{ width: 36 }} />
+      </View>
 
-        {/* ── Header ── زر الرجوع دائماً على اليسار */}
-        <View style={[st.header, { paddingTop: insets.top + 6, paddingHorizontal: 16 }]}>
-          <GlassBackButton
-            onPress={() => {
-              if (router.canGoBack()) router.back();
-              else router.replace("/cart" as any);
-            }}
-          />
-          <Text style={[st.headTitle, { color: textCol }]}>{isAr ? "الدفع" : "Checkout"}</Text>
-          <View style={{ width: 36 }} />
-        </View>
+      <StepBar isDark={isDark} isAr={isAr} />
 
-        <StepIndicator isDark={isDark} isAr={isAr} />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 130 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+      >
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 120 }}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
-          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
-        >
+        {/* ── DELIVERY INFO ── */}
+        <SectionHeader label={isAr ? "معلومات التوصيل" : "DELIVERY INFO"} isDark={isDark} />
+        <View style={{ borderTopWidth: 1, borderTopColor: divider }}>
+          <FieldRow label={isAr ? "الاسم الكامل" : "Full Name"} value={form.name} onChangeText={set("name")} placeholder={isAr ? "محمد عبدالكريم" : "Ahmed Al-Rashidi"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} />
+          <FieldRow label={isAr ? "الهاتف" : "Phone"} value={form.phone} onChangeText={set("phone")} placeholder="+964 770 000 0000" textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="phone-pad" />
 
-          {/* ── Delivery Info ── */}
-          <Text style={[st.sectionLbl, { color: sub }, isAr && { textAlign: "right" }]}>
-            {isAr ? "معلومات التوصيل" : "DELIVERY INFO"}
-          </Text>
-          <View style={[st.group, { backgroundColor: card }]}>
-            <FieldRow
-              label={isAr ? "الاسم الكامل" : "Full Name"}
-              value={form.name} onChangeText={set("name")}
-              placeholder={isAr ? "محمد عبدالكريم" : "Ahmed Al-Rashidi"}
-              textCol={textCol} sub={sub} isDark={isDark} isAr={isAr}
-            />
-            <Divider color={divClr} isAr={isAr} />
-            <FieldRow
-              label={isAr ? "الهاتف" : "Phone"}
-              value={form.phone} onChangeText={set("phone")}
-              placeholder="+964 770 000 0000"
-              textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="phone-pad"
-            />
-            <Divider color={divClr} isAr={isAr} />
-            {/* Governorate picker row */}
-            <Pressable
-              style={[st.fieldRow, isAr && { flexDirection: "row-reverse" }]}
-              onPress={() => setShowGovPicker((v) => !v)}
-            >
-              {isAr ? (
-                <>
-                  <Text style={[st.fieldLbl, { color: sub, textAlign: "right" }]}>المحافظة</Text>
-                  <Text style={[st.fieldInput, { color: form.city ? textCol : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)"), textAlign: "right" }]}>
-                    {form.city || "اختر المحافظة..."}
-                  </Text>
-                  <Feather name={showGovPicker ? "chevron-up" : "chevron-down"} size={15} color={sub} />
-                </>
-              ) : (
-                <>
-                  <Text style={[st.fieldLbl, { color: sub }]}>Governorate</Text>
-                  <Text style={[st.fieldInput, { color: form.city ? textCol : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)") }]}>
-                    {form.city || "Select governorate..."}
-                  </Text>
-                  <Feather name={showGovPicker ? "chevron-up" : "chevron-down"} size={15} color={sub} />
-                </>
-              )}
-            </Pressable>
-            {showGovPicker && (
-              <View style={[st.dropdown, { backgroundColor: isDark ? "rgba(30,30,32,0.98)" : "rgba(248,248,252,0.98)", borderColor: divClr }]}>
-                <ScrollView style={{ maxHeight: 240 }} showsVerticalScrollIndicator={false} bounces={false} nestedScrollEnabled>
-                  {zones.map((z, idx) => {
-                    const label = isAr ? (z.governorateAr || z.governorate) : z.governorate;
-                    const isSelected = selectedZone?.governorate === z.governorate;
-                    return (
-                      <Pressable
-                        key={z.governorate}
-                        style={({ pressed }) => [
-                          st.dropdownRow,
-                          isAr && { flexDirection: "row-reverse" },
-                          idx < zones.length - 1 && { borderBottomWidth: 1, borderBottomColor: divClr },
-                          pressed && { backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)" },
-                        ]}
-                        onPress={() => {
-                          setSelectedZone(z);
-                          set("city")(z.governorateAr || z.governorate);
-                          setShowGovPicker(false);
-                        }}
-                      >
-                        <Text style={[st.dropdownLabel, { color: isSelected ? PRIMARY : textCol }]}>{label}</Text>
-                        {isSelected && <Feather name="check" size={15} color={PRIMARY} />}
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            )}
-            <Divider color={divClr} isAr={isAr} />
-            <FieldRow
-              label={isAr ? "المنطقة / الحي" : "District / Area"}
-              value={form.district} onChangeText={set("district")}
-              placeholder={isAr ? "المنصور" : "Al-Mansour"}
-              textCol={textCol} sub={sub} isDark={isDark} isAr={isAr}
-            />
-            <Divider color={divClr} isAr={isAr} />
-            <FieldRow
-              label={isAr ? "الشارع (اختياري)" : "Street (optional)"}
-              value={form.street} onChangeText={set("street")}
-              placeholder={isAr ? "شارع 14، مبنى 3" : "Street 14, Bldg 3"}
-              textCol={textCol} sub={sub} isDark={isDark} isAr={isAr}
-            />
-          </View>
-
-          {/* ── Payment Method ── */}
-          <Text style={[st.sectionLbl, { color: sub }, isAr && { textAlign: "right" }]}>
-            {isAr ? "طريقة الدفع" : "PAYMENT METHOD"}
-          </Text>
-          <View style={[st.group, { backgroundColor: card }]}>
-
-            {/* Cash on Delivery */}
-            <Pressable
-              onPress={() => setPayMethod("cod")}
-              style={[st.payCard, isAr && { flexDirection: "row-reverse" }, payMethod === "cod" && { backgroundColor: isDark ? "rgba(34,197,94,0.08)" : "rgba(34,197,94,0.06)" }]}
-            >
-              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: payMethod === "cod" ? "rgba(34,197,94,0.18)" : (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"), alignItems: "center", justifyContent: "center" }}>
-                <Text style={{ fontSize: 22 }}>💵</Text>
-              </View>
-              <View style={{ flex: 1, gap: 3 }}>
-                <Text style={[st.payTitle, { color: payMethod === "cod" ? "#22C55E" : textCol }, isAr && { textAlign: "right" }]}>
-                  {isAr ? "الدفع عند الاستلام" : "Cash on Delivery"}
-                </Text>
-                <Text style={[st.paySub, { color: sub }, isAr && { textAlign: "right" }]}>
-                  {isAr ? "ادفع نقداً عند وصول طلبك" : "Pay in cash when your order arrives"}
-                </Text>
-              </View>
-              <View style={[st.radio, { borderColor: payMethod === "cod" ? "#22C55E" : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
-                {payMethod === "cod" && <View style={[st.radioDot, { backgroundColor: "#22C55E" }]} />}
-              </View>
-            </Pressable>
-
-            <Divider color={divClr} isAr={isAr} />
-
-            {/* Online Payment */}
-            <Pressable
-              onPress={() => setPayMethod("online")}
-              style={[st.payCard, isAr && { flexDirection: "row-reverse" }, payMethod === "online" && { backgroundColor: isDark ? "rgba(2,116,193,0.08)" : "rgba(2,116,193,0.06)" }]}
-            >
-              <View style={{ width: 44, alignItems: "flex-start", gap: 2 }}>
-                <View style={{ flexDirection: "row", gap: 3 }}>
-                  {PAYMENT_LOGOS.slice(0, 3).map((logo) => (
-                    <Image key={logo.key} source={logo.src} style={{ width: 13, height: 13, borderRadius: 3 }} contentFit="cover" />
-                  ))}
-                </View>
-                <View style={{ flexDirection: "row", gap: 3 }}>
-                  {PAYMENT_LOGOS.slice(3).map((logo) => (
-                    <Image key={logo.key} source={logo.src} style={{ width: 13, height: 13, borderRadius: 3 }} contentFit="cover" />
-                  ))}
-                </View>
-              </View>
-              <View style={{ flex: 1, gap: 5 }}>
-                <Text style={[st.payTitle, { color: payMethod === "online" ? PRIMARY : textCol }, isAr && { textAlign: "right" }]}>
-                  {isAr ? "الدفع الإلكتروني" : "Online Payment"}
-                </Text>
-                <View style={{ flexDirection: "row", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                  {PAYMENT_LOGOS.map((logo) => (
-                    <Image key={logo.key} source={logo.src} style={{ width: 28, height: 28, borderRadius: 7 }} contentFit="cover" />
-                  ))}
-                </View>
-                <Text style={[st.paySub, { color: sub }, isAr && { textAlign: "right" }]}>
-                  {isAr ? "بطاقة، محفظة وأكثر · مؤمّن عبر Wayl" : "Card, wallet & more · secured via Wayl"}
-                </Text>
-              </View>
-              <View style={[st.radio, { borderColor: payMethod === "online" ? PRIMARY : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
-                {payMethod === "online" && <View style={[st.radioDot, { backgroundColor: PRIMARY }]} />}
-              </View>
-            </Pressable>
-
-          </View>
-
-          {/* ── Delivery Options ── */}
-          <Text style={[st.sectionLbl, { color: sub }, isAr && { textAlign: "right" }]}>
-            {isAr ? "خيارات التوصيل" : "DELIVERY OPTIONS"}
-          </Text>
-          <View style={[st.group, { backgroundColor: card }]}>
-            {DELIVERY_OPTIONS.map((opt, idx) => {
-              const selected = deliveryType === opt.key;
-              return (
-                <React.Fragment key={opt.key}>
-                  {idx > 0 && <Divider color={divClr} isAr={isAr} />}
-                  <Pressable
-                    onPress={() => setDeliveryType(opt.key)}
-                    style={[st.payCard, isAr && { flexDirection: "row-reverse" }, selected && { backgroundColor: isDark ? "rgba(2,116,193,0.08)" : "rgba(2,116,193,0.06)" }]}
-                  >
-                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: selected ? "rgba(2,116,193,0.18)" : (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"), alignItems: "center", justifyContent: "center" }}>
-                      <Text style={{ fontSize: 22 }}>{opt.icon}</Text>
-                    </View>
-                    <View style={{ flex: 1, gap: 3 }}>
-                      <Text style={[st.payTitle, { color: selected ? PRIMARY : textCol }, isAr && { textAlign: "right" }]}>
-                        {isAr ? opt.titleAr : opt.titleEn}
-                      </Text>
-                      <Text style={[st.paySub, { color: sub }, isAr && { textAlign: "right" }]}>
-                        {isAr ? opt.subAr : opt.subEn}
-                      </Text>
-                    </View>
-                    <View style={[st.radio, { borderColor: selected ? PRIMARY : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
-                      {selected && <View style={[st.radioDot, { backgroundColor: PRIMARY }]} />}
-                    </View>
-                  </Pressable>
-                </React.Fragment>
-              );
-            })}
-          </View>
-
-          {/* ── Order Note ── */}
-          <Text style={[st.sectionLbl, { color: sub }, isAr && { textAlign: "right" }]}>
-            {isAr ? "ملاحظة الطلب (اختياري)" : "ORDER NOTE (OPTIONAL)"}
-          </Text>
-          <View style={[st.group, { backgroundColor: card }]}>
-            <TextInput
-              value={form.note}
-              onChangeText={set("note")}
-              placeholder={isAr ? "أي ملاحظات على طلبك..." : "Any notes for your order..."}
-              placeholderTextColor={sub}
-              multiline
-              numberOfLines={3}
-              textAlign={isAr ? "right" : "left"}
-              style={[st.noteInput, { color: textCol, textAlign: isAr ? "right" : "left" }]}
-            />
-          </View>
-
-          {/* ── Discount Code ── */}
-          <Text style={[st.sectionLbl, { color: sub }, isAr && { textAlign: "right" }]}>
-            {isAr ? "رمز الخصم" : "DISCOUNT CODE"}
-          </Text>
-          <View style={[st.group, { backgroundColor: card, padding: 14, gap: 10 }]}>
-            {discount ? (
-              <View style={[st.discountApplied, isAr && { flexDirection: "row-reverse" }]}>
-                <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(34,197,94,0.16)", alignItems: "center", justifyContent: "center" }}>
-                  <Feather name="check" size={16} color="#22C55E" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: textCol, textAlign: isAr ? "right" : "left" }}>{discount.code}</Text>
-                  <Text style={{ fontSize: 11, color: "#22C55E", marginTop: 1, textAlign: isAr ? "right" : "left" }}>
-                    {isAr ? `−${formatIQD(discount.amount)} مطبّق` : `−${formatIQD(discount.amount)} applied`}
-                  </Text>
-                </View>
-                <Pressable onPress={removeDiscount} hitSlop={10} style={{ padding: 4 }}>
-                  <Feather name="x" size={18} color={sub} />
-                </Pressable>
-              </View>
-            ) : (
-              <View style={{ flexDirection: isAr ? "row-reverse" : "row", gap: 10, alignItems: "center" }}>
-                <TextInput
-                  value={discountInput}
-                  onChangeText={(t) => { setDiscountInput(t.toUpperCase()); if (discountError) setDiscountError(null); }}
-                  placeholder={isAr ? "أدخل الرمز" : "Enter code"}
-                  placeholderTextColor={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)"}
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                  textAlign={isAr ? "right" : "left"}
-                  style={[st.discountInput, { color: textCol, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)", textAlign: isAr ? "right" : "left" }]}
-                />
-                <Pressable
-                  onPress={applyDiscount}
-                  disabled={applyingDiscount || !discountInput.trim()}
-                  style={({ pressed }) => [st.discountBtn, { backgroundColor: PRIMARY }, (pressed || applyingDiscount || !discountInput.trim()) && { opacity: 0.6 }]}
-                >
-                  {applyingDiscount
-                    ? <ActivityIndicator color="#fff" size="small" />
-                    : <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>{isAr ? "تطبيق" : "APPLY"}</Text>
-                  }
-                </Pressable>
-              </View>
-            )}
-            {discountError && (
-              <Text style={{ fontSize: 12, color: "#EF4444", textAlign: isAr ? "right" : "left" }}>{discountError}</Text>
-            )}
-          </View>
-
-          {/* ── Order Summary ── */}
-          <Text style={[st.sectionLbl, { color: sub }, isAr && { textAlign: "right" }]}>
-            {isAr ? "ملخص الطلب" : "ORDER SUMMARY"}
-          </Text>
-          <View style={[st.group, { backgroundColor: card }]}>
-            {items.map((item) => (
-              <View key={`${item.productId}-${item.variantId}`} style={[st.summaryRow, isAr && { flexDirection: "row-reverse" }]}>
-                {item.image && <Image source={{ uri: item.image }} style={st.summaryImg} contentFit="cover" />}
-                <View style={{ flex: 1 }}>
-                  <Text style={[st.summaryTitle, { color: textCol }, isAr && { textAlign: "right" }]} numberOfLines={1}>{item.title}</Text>
-                  {(item.size || item.color) && (
-                    <Text style={[{ fontSize: 11, marginTop: 2 }, { color: sub }, isAr && { textAlign: "right" }]}>
-                      {[item.size, item.color].filter(Boolean).join(" · ")}
-                    </Text>
-                  )}
-                </View>
-                <Text style={[{ fontSize: 12, fontWeight: "600" }, { color: sub }]}>×{item.quantity}</Text>
-                <Text style={[{ fontSize: 13, fontWeight: "700", minWidth: 80, textAlign: isAr ? "left" : "right" }, { color: textCol }]}>
-                  {formatIQD(item.price * item.quantity)}
-                </Text>
-              </View>
-            ))}
-            <View style={[st.divider, { backgroundColor: divClr }]} />
-
-            {/* Subtotal */}
-            <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }]}>
-              <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "المجموع الفرعي" : "Subtotal"}</Text>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: textCol }}>{formatIQD(subtotal)}</Text>
-            </View>
-
-            {/* Discount line */}
-            {discount && (
-              <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }]}>
-                <Text style={[st.totalLbl, { color: sub }]}>
-                  {isAr ? `الخصم (${discount.code})` : `Discount (${discount.code})`}
-                </Text>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: "#22C55E" }}>−{formatIQD(discountAmount)}</Text>
-              </View>
-            )}
-
-            {/* Shipping */}
-            <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }]}>
-              <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "الشحن" : "Shipping"}</Text>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: shipping === 0 ? "#22C55E" : textCol }}>
-                {shipping === 0 ? (isAr ? "مجاني" : "Free") : formatIQD(shipping)}
+          {/* Governorate picker */}
+          <Pressable
+            style={[fr2.govRow, { borderBottomColor: divider }, isAr && { flexDirection: "row-reverse" }]}
+            onPress={() => setShowGovPicker((v) => !v)}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={[fr2.govLbl, { color: sub }]}>{isAr ? "المحافظة" : "Governorate"}</Text>
+              <Text style={[fr2.govVal, { color: form.city ? textCol : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)") }]}>
+                {form.city || (isAr ? "اختر المحافظة..." : "Select governorate...")}
               </Text>
             </View>
+            <Feather name={showGovPicker ? "chevron-up" : "chevron-down"} size={16} color={sub} />
+          </Pressable>
 
-            {/* Total */}
-            <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }]}>
-              <Text style={[st.totalLbl, { color: textCol }]}>{isAr ? "المجموع" : "Total"}</Text>
-              <Text style={[st.totalAmt, { color: PRIMARY }]}>{formatIQD(grandTotal)}</Text>
+          {showGovPicker && (
+            <View style={[fr2.dropdown, { backgroundColor: isDark ? "#111" : "#FAFAFA", borderColor: divider }]}>
+              <ScrollView style={{ maxHeight: 224 }} showsVerticalScrollIndicator={false} bounces={false} nestedScrollEnabled>
+                {zones.map((z, idx) => {
+                  const label = isAr ? (z.governorateAr || z.governorate) : z.governorate;
+                  const selected = selectedZone?.governorate === z.governorate;
+                  return (
+                    <Pressable
+                      key={z.governorate}
+                      style={({ pressed }) => [
+                        fr2.dropRow,
+                        isAr && { flexDirection: "row-reverse" },
+                        idx < zones.length - 1 && { borderBottomWidth: 1, borderBottomColor: divider },
+                        pressed && { backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)" },
+                      ]}
+                      onPress={() => { setSelectedZone(z); set("city")(z.governorateAr || z.governorate); setShowGovPicker(false); }}
+                    >
+                      <Text style={[fr2.dropLbl, { color: selected ? PRIMARY : textCol, fontWeight: selected ? "700" : "500" }]}>{label}</Text>
+                      {selected && <Feather name="check" size={14} color={PRIMARY} />}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
             </View>
-          </View>
+          )}
 
-        </ScrollView>
+          <FieldRow label={isAr ? "المنطقة / الحي" : "District / Area"} value={form.district} onChangeText={set("district")} placeholder={isAr ? "المنصور" : "Al-Mansour"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} />
+          <FieldRow label={isAr ? "الشارع (اختياري)" : "Street (optional)"} value={form.street} onChangeText={set("street")} placeholder={isAr ? "شارع 14، مبنى 3" : "Street 14, Bldg 3"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} />
+        </View>
 
-        <View style={[
-          st.footer,
-          {
-            backgroundColor: isIOS26Plus ? "transparent" : bg,
-            paddingBottom: Platform.OS === "web" ? 88 : insets.bottom + 12,
-          },
-        ]}>
-          <LiquidGlassBg />
+        {/* ── DELIVERY TYPE ── */}
+        <SectionHeader label={isAr ? "خيارات التوصيل" : "DELIVERY TYPE"} isDark={isDark} />
+        <View style={{ borderTopWidth: 1, borderTopColor: divider }}>
+          {DELIVERY_OPTIONS.map((opt, idx) => {
+            const selected = deliveryType === opt.key;
+            return (
+              <Pressable
+                key={opt.key}
+                onPress={() => setDeliveryType(opt.key)}
+                style={[st.optRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }, selected && { backgroundColor: isDark ? "rgba(2,116,193,0.06)" : "rgba(2,116,193,0.04)" }]}
+              >
+                <Text style={{ fontSize: 22, lineHeight: 28 }}>{opt.icon}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.optTitle, { color: selected ? PRIMARY : textCol }, isAr && { textAlign: "right" }]}>
+                    {isAr ? opt.titleAr : opt.titleEn}
+                  </Text>
+                  <Text style={[st.optSub, { color: sub }, isAr && { textAlign: "right" }]}>
+                    {isAr ? opt.subAr : opt.subEn}
+                  </Text>
+                </View>
+                <View style={[st.radio, { borderColor: selected ? PRIMARY : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
+                  {selected && <View style={[st.radioDot, { backgroundColor: PRIMARY }]} />}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* ── PAYMENT METHOD ── */}
+        <SectionHeader label={isAr ? "طريقة الدفع" : "PAYMENT METHOD"} isDark={isDark} />
+        <View style={{ borderTopWidth: 1, borderTopColor: divider }}>
+          {/* COD */}
           <Pressable
-            onPress={handlePlaceOrder}
-            disabled={submitting}
-            style={({ pressed }) => [
-              st.placeBtn,
-              payMethod === "online" && { backgroundColor: "#7C3AED" },
-              pressed && { opacity: 0.85 },
-              submitting && { opacity: 0.7 },
-            ]}
+            onPress={() => setPayMethod("cod")}
+            style={[st.optRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }, payMethod === "cod" && { backgroundColor: isDark ? "rgba(34,197,94,0.06)" : "rgba(34,197,94,0.04)" }]}
           >
-            {submitting
-              ? <ActivityIndicator color="#fff" />
-              : payMethod === "online"
-                ? <>
-                    <Feather name="credit-card" size={16} color="#fff" />
-                    <Text style={st.placeTxt}>
-                      {isAr
-                        ? (pendingOnline ? "حاول مجدداً" : "متابعة الدفع")
-                        : (pendingOnline ? "TRY PAYMENT AGAIN" : "PROCEED TO PAYMENT")}
-                    </Text>
-                  </>
-                : <>
-                    <Feather name="check-circle" size={16} color="#fff" />
-                    <Text style={st.placeTxt}>{isAr ? "تثبيت الطلب" : "PLACE ORDER"}</Text>
-                  </>
-            }
+            <View style={[st.payIcon, { backgroundColor: payMethod === "cod" ? "rgba(34,197,94,0.15)" : (isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)") }]}>
+              <Text style={{ fontSize: 20, lineHeight: 24 }}>💵</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[st.optTitle, { color: payMethod === "cod" ? "#22C55E" : textCol }, isAr && { textAlign: "right" }]}>
+                {isAr ? "الدفع عند الاستلام" : "Cash on Delivery"}
+              </Text>
+              <Text style={[st.optSub, { color: sub }, isAr && { textAlign: "right" }]}>
+                {isAr ? "ادفع نقداً عند وصول طلبك" : "Pay cash when your order arrives"}
+              </Text>
+            </View>
+            <View style={[st.radio, { borderColor: payMethod === "cod" ? "#22C55E" : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
+              {payMethod === "cod" && <View style={[st.radioDot, { backgroundColor: "#22C55E" }]} />}
+            </View>
+          </Pressable>
+
+          {/* Online */}
+          <Pressable
+            onPress={() => setPayMethod("online")}
+            style={[st.optRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider, borderBottomWidth: 0 }, payMethod === "online" && { backgroundColor: isDark ? "rgba(2,116,193,0.06)" : "rgba(2,116,193,0.04)" }]}
+          >
+            <View style={[st.payIcon, { backgroundColor: payMethod === "online" ? "rgba(2,116,193,0.15)" : (isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)"), gap: 3 }]}>
+              {PAYMENT_LOGOS.slice(0, 2).map((l) => (
+                <Image key={l.key} source={l.src} style={{ width: 14, height: 14, borderRadius: 3 }} contentFit="cover" />
+              ))}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[st.optTitle, { color: payMethod === "online" ? PRIMARY : textCol }, isAr && { textAlign: "right" }]}>
+                {isAr ? "الدفع الإلكتروني" : "Online Payment"}
+              </Text>
+              <View style={{ flexDirection: isAr ? "row-reverse" : "row", flexWrap: "wrap", gap: 5, marginTop: 5 }}>
+                {PAYMENT_LOGOS.map((l) => (
+                  <Image key={l.key} source={l.src} style={{ width: 26, height: 26, borderRadius: 6 }} contentFit="cover" />
+                ))}
+              </View>
+              <Text style={[st.optSub, { color: sub, marginTop: 4 }, isAr && { textAlign: "right" }]}>
+                {isAr ? "بطاقة، محفظة وأكثر · مؤمّن عبر Wayl" : "Card, wallet & more · secured via Wayl"}
+              </Text>
+            </View>
+            <View style={[st.radio, { borderColor: payMethod === "online" ? PRIMARY : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)"), alignSelf: "flex-start", marginTop: 2 }]}>
+              {payMethod === "online" && <View style={[st.radioDot, { backgroundColor: PRIMARY }]} />}
+            </View>
           </Pressable>
         </View>
+
+        {/* ── ORDER NOTE ── */}
+        <SectionHeader label={isAr ? "ملاحظة (اختياري)" : "ORDER NOTE (OPTIONAL)"} isDark={isDark} />
+        <View style={{ borderTopWidth: 1, borderTopColor: divider, borderBottomWidth: 1, borderBottomColor: divider }}>
+          <TextInput
+            value={form.note}
+            onChangeText={set("note")}
+            placeholder={isAr ? "أي ملاحظات على طلبك..." : "Any notes for your order..."}
+            placeholderTextColor={isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.2)"}
+            multiline
+            numberOfLines={3}
+            textAlign={isAr ? "right" : "left"}
+            style={[{ color: textCol, paddingHorizontal: 16, paddingVertical: 14, fontSize: 14, minHeight: 72, textAlignVertical: "top" }]}
+          />
+        </View>
+
+        {/* ── PROMO CODE ── */}
+        <SectionHeader label={isAr ? "رمز الخصم" : "PROMO CODE"} isDark={isDark} />
+        <View style={{ borderTopWidth: 1, borderTopColor: divider, borderBottomWidth: 1, borderBottomColor: divider, padding: 14 }}>
+          {discount ? (
+            <View style={[dc.applied, isAr && { flexDirection: "row-reverse" }]}>
+              <View style={dc.checkCircle}>
+                <Feather name="check" size={14} color="#22C55E" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[dc.code, { color: textCol }]}>{discount.code}</Text>
+                <Text style={[dc.savings, isAr && { textAlign: "right" }]}>
+                  {isAr ? `−${formatIQD(discount.amount)} مطبّق` : `−${formatIQD(discount.amount)} applied`}
+                </Text>
+              </View>
+              <Pressable onPress={removeDiscount} hitSlop={12}>
+                <Feather name="x" size={18} color={sub} />
+              </Pressable>
+            </View>
+          ) : (
+            <View style={[dc.inputRow, isAr && { flexDirection: "row-reverse" }]}>
+              <TextInput
+                value={discountInput}
+                onChangeText={(t) => { setDiscountInput(t.toUpperCase()); if (discountError) setDiscountError(null); }}
+                placeholder={isAr ? "أدخل الرمز" : "ENTER CODE"}
+                placeholderTextColor={isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.2)"}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                textAlign={isAr ? "right" : "left"}
+                style={[dc.input, { color: textCol, backgroundColor: isDark ? "#1A1A1A" : "#F5F5F5", borderColor: discountError ? "#EF4444" : divider }]}
+              />
+              <Pressable
+                onPress={applyDiscount}
+                disabled={applyingDiscount || !discountInput.trim()}
+                style={({ pressed }) => [dc.applyBtn, (pressed || applyingDiscount || !discountInput.trim()) && { opacity: 0.55 }]}
+              >
+                {applyingDiscount
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={dc.applyTxt}>{isAr ? "تطبيق" : "APPLY"}</Text>}
+              </Pressable>
+            </View>
+          )}
+          {discountError && (
+            <Text style={{ fontSize: 12, color: "#EF4444", marginTop: 8 }}>{discountError}</Text>
+          )}
+        </View>
+
+        {/* ── ORDER SUMMARY ── */}
+        <SectionHeader label={isAr ? "ملخص الطلب" : "ORDER SUMMARY"} isDark={isDark} />
+        <View style={{ borderTopWidth: 1, borderTopColor: divider }}>
+          {items.map((item) => (
+            <View key={`${item.productId}-${item.variantId}`} style={[st.summaryRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
+              {item.image && <Image source={{ uri: item.image }} style={st.summaryImg} contentFit="cover" />}
+              <View style={{ flex: 1 }}>
+                <Text style={[st.summaryTitle, { color: textCol }, isAr && { textAlign: "right" }]} numberOfLines={1}>{item.title}</Text>
+                {(item.size || item.color) && (
+                  <Text style={[st.summarySub, { color: sub }, isAr && { textAlign: "right" }]}>
+                    {[item.size, item.color].filter(Boolean).join(" · ")}
+                  </Text>
+                )}
+              </View>
+              <View style={{ alignItems: isAr ? "flex-start" : "flex-end", gap: 2 }}>
+                <Text style={[st.summaryQty, { color: sub }]}>×{item.quantity}</Text>
+                <Text style={[st.summaryAmt, { color: textCol }]}>{formatIQD(item.price * item.quantity)}</Text>
+              </View>
+            </View>
+          ))}
+
+          {/* Totals */}
+          <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
+            <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "المجموع الفرعي" : "Subtotal"}</Text>
+            <Text style={[st.totalVal, { color: textCol }]}>{formatIQD(subtotal)}</Text>
+          </View>
+          {discount && (
+            <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
+              <Text style={[st.totalLbl, { color: sub }]}>{isAr ? `الخصم (${discount.code})` : `Discount (${discount.code})`}</Text>
+              <Text style={[st.totalVal, { color: "#22C55E" }]}>−{formatIQD(discountAmount)}</Text>
+            </View>
+          )}
+          <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
+            <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "الشحن" : "Shipping"}</Text>
+            <Text style={[st.totalVal, { color: shipping === 0 ? "#22C55E" : textCol }]}>
+              {shipping === 0 ? (isAr ? "مجاني" : "Free") : formatIQD(shipping)}
+            </Text>
+          </View>
+          <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider, borderBottomWidth: 0, paddingVertical: 16 }]}>
+            <Text style={[st.totalLblBold, { color: textCol }]}>{isAr ? "المجموع الكلي" : "TOTAL"}</Text>
+            <Text style={[st.totalBold, { color: PRIMARY }]}>{formatIQD(grandTotal)}</Text>
+          </View>
+        </View>
+
+      </ScrollView>
+
+      {/* Footer CTA */}
+      <View style={[st.footer, { backgroundColor: bg, borderTopColor: divider, paddingBottom: Platform.OS === "web" ? 96 : insets.bottom + 12 }]}>
+        <Pressable
+          onPress={handlePlaceOrder}
+          disabled={submitting}
+          style={({ pressed }) => [
+            st.placeBtn,
+            payMethod === "online" && { backgroundColor: "#7C3AED" },
+            pressed && { opacity: 0.85 },
+            submitting && { opacity: 0.7 },
+          ]}
+        >
+          {submitting
+            ? <ActivityIndicator color="#fff" />
+            : payMethod === "online"
+              ? <><Feather name="credit-card" size={16} color="#fff" /><Text style={st.placeTxt}>{isAr ? (pendingOnline ? "حاول مجدداً" : "متابعة الدفع") : (pendingOnline ? "TRY PAYMENT AGAIN" : "PROCEED TO PAYMENT")}</Text></>
+              : <><Feather name="lock" size={15} color="#fff" /><Text style={st.placeTxt}>{isAr ? "تثبيت الطلب" : "PLACE ORDER"}</Text></>}
+        </Pressable>
+      </View>
     </View>
   );
 }
 
-function Divider({ color, isAr }: { color: string; isAr?: boolean }) {
-  return <View style={{ height: 1, backgroundColor: color, marginLeft: isAr ? 0 : 16, marginRight: isAr ? 16 : 0 }} />;
-}
+const fr2 = StyleSheet.create({
+  govRow:    { paddingHorizontal: 16, paddingVertical: 14, flexDirection: "row", alignItems: "center", borderBottomWidth: 1, gap: 12 },
+  govLbl:    { fontSize: 10, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 },
+  govVal:    { fontSize: 15, fontWeight: "600" },
+  dropdown:  { marginHorizontal: 0, borderWidth: 1, borderTopWidth: 0 },
+  dropRow:   { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14 },
+  dropLbl:   { fontSize: 14 },
+});
 
-function FieldRow({ label, value, onChangeText, placeholder, keyboardType, textCol, sub, isDark, isAr }: {
-  label: string; value: string; onChangeText: (t: string) => void;
-  placeholder?: string; keyboardType?: any;
-  textCol: string; sub: string; isDark: boolean; isAr?: boolean;
-}) {
-  return (
-    <View style={[st.fieldRow, isAr && { flexDirection: "row-reverse" }]}>
-      <Text style={[st.fieldLbl, { color: sub }, isAr && { textAlign: "right" }]}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)"}
-        keyboardType={keyboardType}
-        textAlign={isAr ? "right" : "left"}
-        style={[st.fieldInput, { color: textCol }]}
-        autoCapitalize="words"
-      />
-    </View>
-  );
-}
+const dc = StyleSheet.create({
+  inputRow:  { flexDirection: "row", gap: 10, alignItems: "center" },
+  input:     { flex: 1, height: 46, borderWidth: 1, borderRadius: 4, paddingHorizontal: 14, fontSize: 13, fontWeight: "700", letterSpacing: 1.5 },
+  applyBtn:  { height: 46, paddingHorizontal: 20, borderRadius: 4, alignItems: "center", justifyContent: "center", backgroundColor: "#111111", minWidth: 80 },
+  applyTxt:  { color: "#fff", fontSize: 12, fontWeight: "800", letterSpacing: 0.8 },
+  applied:   { flexDirection: "row", alignItems: "center", gap: 12 },
+  checkCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(34,197,94,0.12)", alignItems: "center", justifyContent: "center" },
+  code:      { fontSize: 14, fontWeight: "700" },
+  savings:   { fontSize: 12, color: "#22C55E", marginTop: 2 },
+});
 
 const st = StyleSheet.create({
-  header:      { flexDirection: "row", alignItems: "center" },
-  backBtn:     { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  headTitle:   { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "700" },
-  sectionLbl:  { fontSize: 11, fontWeight: "700", letterSpacing: 0.8, marginTop: 20, marginBottom: 8, marginHorizontal: 20 },
-  group:       { marginHorizontal: 16, borderRadius: 16, overflow: "hidden" },
-  fieldRow:    { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, gap: 12 },
-  fieldLbl:    { fontSize: 12, fontWeight: "500", width: 108, flexShrink: 0 },
-  fieldInput:  { flex: 1, fontSize: 14, fontWeight: "500", paddingVertical: 2 },
-  payCard:     { flexDirection: "row", alignItems: "center", padding: 14, gap: 12 },
-  payTitle:    { fontSize: 14, fontWeight: "600" },
-  paySub:      { fontSize: 11, lineHeight: 15 },
-  radio:       { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  radioDot:    { width: 10, height: 10, borderRadius: 5 },
-  noteInput:   { padding: 16, fontSize: 14, minHeight: 72, textAlignVertical: "top" },
-  discountInput: { flex: 1, height: 44, borderRadius: 12, paddingHorizontal: 14, fontSize: 14, fontWeight: "600", letterSpacing: 1 },
-  discountBtn:  { height: 44, paddingHorizontal: 20, borderRadius: 12, alignItems: "center", justifyContent: "center", minWidth: 80 },
-  discountApplied: { flexDirection: "row", alignItems: "center", gap: 12 },
-  summaryRow:  { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
-  summaryImg:  { width: 42, height: 52, borderRadius: 8 },
-  summaryTitle:{ fontSize: 13, fontWeight: "600" },
-  divider:     { height: 1, marginHorizontal: 16, marginVertical: 4 },
-  totalRow:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 8 },
-  totalLbl:    { fontSize: 14, fontWeight: "500" },
-  totalAmt:    { fontSize: 16, fontWeight: "800" },
-  footer:      { paddingHorizontal: 16, paddingTop: 12 },
-  placeBtn:    { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: PRIMARY, height: 54, borderRadius: 50 },
-  placeTxt:    { color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 0.8 },
-  dropdown:    { marginHorizontal: 16, marginBottom: 4, borderRadius: 12, borderWidth: 1, overflow: "hidden" },
-  dropdownRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14 },
-  dropdownLabel: { fontSize: 15, fontWeight: "500" },
+  header:       { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
+  headTitle:    { flex: 1, textAlign: "center", fontSize: 15, fontWeight: "900", letterSpacing: 1, textTransform: "uppercase" },
+  optRow:       { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 14, borderBottomWidth: 1 },
+  optTitle:     { fontSize: 14, fontWeight: "700" },
+  optSub:       { fontSize: 11, lineHeight: 16, marginTop: 2 },
+  payIcon:      { width: 42, height: 42, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  radio:        { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  radioDot:     { width: 10, height: 10, borderRadius: 5 },
+  summaryRow:   { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
+  summaryImg:   { width: 44, height: 54, borderRadius: 4 },
+  summaryTitle: { fontSize: 13, fontWeight: "600" },
+  summarySub:   { fontSize: 11, marginTop: 2 },
+  summaryQty:   { fontSize: 11, fontWeight: "600" },
+  summaryAmt:   { fontSize: 13, fontWeight: "700" },
+  totalRow:     { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1 },
+  totalLbl:     { fontSize: 13, fontWeight: "500" },
+  totalVal:     { fontSize: 13, fontWeight: "600" },
+  totalLblBold: { fontSize: 14, fontWeight: "900", letterSpacing: 0.5, textTransform: "uppercase" },
+  totalBold:    { fontSize: 19, fontWeight: "900" },
+  footer:       { paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1 },
+  placeBtn:     { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#111111", height: 52, borderRadius: 4 },
+  placeTxt:     { color: "#fff", fontSize: 14, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase" },
 });
