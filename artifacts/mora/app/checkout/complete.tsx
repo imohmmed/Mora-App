@@ -42,8 +42,8 @@ function StepBar({ isDark }: { isDark: boolean }) {
       {steps.map((label, i) => (
         <React.Fragment key={label}>
           <View style={sb.item}>
-            <View style={[sb.dot, { backgroundColor: PRIMARY, borderColor: PRIMARY }]}>
-              <Feather name="check" size={9} color="#fff" />
+            <View style={sb.dot}>
+              <Feather name="check" size={13} color={PRIMARY} />
             </View>
             <Text style={[sb.lbl, { color: i === 2 ? PRIMARY : isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.45)" }, i === 2 && { fontWeight: "800" }]}>
               {label}
@@ -59,7 +59,7 @@ function StepBar({ isDark }: { isDark: boolean }) {
 const sb = StyleSheet.create({
   row:  { flexDirection: "row", alignItems: "center", paddingHorizontal: 24, marginTop: 8, marginBottom: 8 },
   item: { alignItems: "center", gap: 4 },
-  dot:  { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  dot:  { alignItems: "center", justifyContent: "center", paddingVertical: 2 },
   lbl:  { fontSize: 9, fontWeight: "600", letterSpacing: 0.6, textTransform: "uppercase" },
   line: { flex: 1, height: 1.5, marginBottom: 14 },
 });

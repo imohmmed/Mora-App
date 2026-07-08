@@ -72,10 +72,10 @@ function StepBar({ current, isDark, lang }: { current: 1 | 2 | 3; isDark: boolea
 const sb = StyleSheet.create({
   row:      { flexDirection: "row", alignItems: "center", paddingHorizontal: 24, marginTop: 8, marginBottom: 6 },
   item:     { alignItems: "center", gap: 4 },
-  dot:      { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: "rgba(0,0,0,0.15)", alignItems: "center", justifyContent: "center" },
-  dotActive:{ backgroundColor: PRIMARY, borderColor: PRIMARY },
-  dotDone:  { backgroundColor: PRIMARY, borderColor: PRIMARY },
-  dotNum:   { fontSize: 10, fontWeight: "700" },
+  dot:      { alignItems: "center", justifyContent: "center", paddingVertical: 2 },
+  dotActive:{},
+  dotDone:  {},
+  dotNum:   { fontSize: 13, fontWeight: "800" },
   lbl:      { fontSize: 9, fontWeight: "600", letterSpacing: 0.6, textTransform: "uppercase" },
   line:     { flex: 1, height: 1.5, marginBottom: 14 },
 });
@@ -206,7 +206,7 @@ function CartItemRow({
 
 const ci = StyleSheet.create({
   row:         { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingHorizontal: 16, paddingVertical: 16, borderBottomWidth: 1 },
-  imgWrap:     { width: 80, height: 100, borderRadius: 6, overflow: "hidden", flexShrink: 0 },
+  imgWrap:     { width: 80, height: 100, borderRadius: 0, overflow: "hidden", flexShrink: 0 },
   img:         { width: "100%", height: "100%" },
   title:       { fontSize: 13, fontWeight: "700", lineHeight: 18, letterSpacing: -0.1 },
   variant:     { fontSize: 11, fontWeight: "500", letterSpacing: 0.2 },

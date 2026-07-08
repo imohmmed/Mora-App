@@ -55,10 +55,10 @@ function StepBar({ isDark, isAr }: { isDark: boolean; isAr: boolean }) {
         return (
           <React.Fragment key={label}>
             <View style={sb.item}>
-              <View style={[sb.dot, (active || done) && sb.dotFill]}>
+              <View style={sb.dot}>
                 {done
-                  ? <Feather name="check" size={9} color="#fff" />
-                  : <Text style={[sb.dotNum, { color: active ? "#fff" : dimText }]}>{step}</Text>}
+                  ? <Feather name="check" size={13} color={PRIMARY} />
+                  : <Text style={[sb.dotNum, { color: active ? PRIMARY : dimText }]}>{step}</Text>}
               </View>
               <Text style={[sb.lbl, { color: active ? PRIMARY : dimText }, active && { fontWeight: "800" }]}>
                 {label}
@@ -75,9 +75,8 @@ function StepBar({ isDark, isAr }: { isDark: boolean; isAr: boolean }) {
 const sb = StyleSheet.create({
   row:     { flexDirection: "row", alignItems: "center", paddingHorizontal: 24, marginTop: 8, marginBottom: 6 },
   item:    { alignItems: "center", gap: 4 },
-  dot:     { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: "rgba(0,0,0,0.15)", alignItems: "center", justifyContent: "center" },
-  dotFill: { backgroundColor: PRIMARY, borderColor: PRIMARY },
-  dotNum:  { fontSize: 10, fontWeight: "700" },
+  dot:     { alignItems: "center", justifyContent: "center", paddingVertical: 2 },
+  dotNum:  { fontSize: 13, fontWeight: "800" },
   lbl:     { fontSize: 9, fontWeight: "600", letterSpacing: 0.6, textTransform: "uppercase" },
   line:    { flex: 1, height: 1.5, marginBottom: 14 },
 });
