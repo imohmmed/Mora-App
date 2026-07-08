@@ -510,7 +510,6 @@ export default function CartScreen() {
         <View style={[s.headerInner, lang === "ar" && { flexDirection: "row-reverse" }]}>
           <Text style={[s.pageTitle, { color: textCol }]}>
             {lang === "ar" ? "سلتي" : "YOUR CART"}
-            <Text style={[s.superscript, { color: PRIMARY }]}>{totalQty}</Text>
           </Text>
         </View>
       </View>
