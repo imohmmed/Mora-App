@@ -121,6 +121,8 @@ export default function OrderDetailScreen() {
   const textCol = isDark ? "#FFFFFF" : "#1A1A1A";
   const sub     = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.42)";
   const divClr  = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
+  const divider = isDark ? "#1A1A1A" : "#EBEBEB";
+  const isWeb   = Platform.OS === "web";
   const inputBg = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)";
 
   const [starRating, setStarRating] = useState(0);
@@ -188,10 +190,24 @@ export default function OrderDetailScreen() {
   if (error || !order) {
     return (
       <View style={{ flex: 1, backgroundColor: bg }}>
-        <View style={[st.header, { paddingTop: insets.top + 6, paddingHorizontal: 16 }]}>
-          <GlassBackButton onPress={() => router.back()} />
-          <Text style={[st.headTitle, { color: textCol }]}>{isAr ? "تفاصيل الطلب" : "Order Detail"}</Text>
-          <View style={{ width: 36 }} />
+        <View style={[st.header, { paddingTop: insets.top + 6, paddingHorizontal: 16, borderBottomColor: divider, borderBottomWidth: isWeb ? 1 : 0 }]}>
+          {isWeb ? (
+            <>
+              <Pressable style={st.flatBtn} onPress={() => router.back()}>
+                <Feather name={isAr ? "chevron-right" : "chevron-left"} size={22} color={textCol} />
+              </Pressable>
+              <Text style={[st.pageTitleWeb, { color: textCol }, isAr && { textAlign: "right" }]}>
+                {isAr ? "تفاصيل الطلب" : "ORDER DETAIL"}
+              </Text>
+              <View style={{ width: 36 }} />
+            </>
+          ) : (
+            <>
+              <GlassBackButton onPress={() => router.back()} />
+              <Text style={[st.headTitle, { color: textCol }]}>{isAr ? "تفاصيل الطلب" : "Order Detail"}</Text>
+              <View style={{ width: 36 }} />
+            </>
+          )}
         </View>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
           <Feather name="package" size={48} color={sub} />
@@ -207,14 +223,30 @@ export default function OrderDetailScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: bg }}>
       {/* ── Header — back button always left ── */}
-      <View style={[st.header, { paddingTop: insets.top + 6, paddingHorizontal: 16 }]}>
-        <GlassBackButton onPress={() => router.back()} />
-        <Text style={[st.headTitle, { color: textCol }]}>
-          {order.orderNumber
-            ? `${isAr ? "طلب" : "Order"} ${order.orderNumber}`
-            : (isAr ? "تفاصيل الطلب" : "Order Detail")}
-        </Text>
-        <View style={{ width: 36 }} />
+      <View style={[st.header, { paddingTop: insets.top + 6, paddingHorizontal: 16, borderBottomColor: divider, borderBottomWidth: isWeb ? 1 : 0 }]}>
+        {isWeb ? (
+          <>
+            <Pressable style={st.flatBtn} onPress={() => router.back()}>
+              <Feather name={isAr ? "chevron-right" : "chevron-left"} size={22} color={textCol} />
+            </Pressable>
+            <Text style={[st.pageTitleWeb, { color: textCol }, isAr && { textAlign: "right" }]}>
+              {order.orderNumber
+                ? `${isAr ? "طلب #" : "ORDER #"}${order.orderNumber}`
+                : (isAr ? "تفاصيل الطلب" : "ORDER DETAIL")}
+            </Text>
+            <View style={{ width: 36 }} />
+          </>
+        ) : (
+          <>
+            <GlassBackButton onPress={() => router.back()} />
+            <Text style={[st.headTitle, { color: textCol }]}>
+              {order.orderNumber
+                ? `${isAr ? "طلب" : "Order"} ${order.orderNumber}`
+                : (isAr ? "تفاصيل الطلب" : "Order Detail")}
+            </Text>
+            <View style={{ width: 36 }} />
+          </>
+        )}
       </View>
 
       <ScrollView
@@ -228,6 +260,7 @@ export default function OrderDetailScreen() {
           st.statusCard,
           { backgroundColor: col + (isDark ? "18" : "12"), borderColor: col + "40" },
           isAr && { flexDirection: "row-reverse" },
+          isWeb && { margin: 0, borderRadius: 0, borderLeftWidth: 0, borderRightWidth: 0, borderTopWidth: 0, borderBottomWidth: 1, borderBottomColor: divider },
         ]}>
           <View style={[st.statusDot, { backgroundColor: col }]} />
           <View style={{ flex: 1 }}>
@@ -243,10 +276,10 @@ export default function OrderDetailScreen() {
 
         {/* ── Items ── */}
         <SectionLabel text={isAr ? "الأصناف" : "ITEMS"} sub={sub} isAr={isAr} />
-        <View style={[st.group, { backgroundColor: card }]}>
+        <View style={[st.group, { backgroundColor: isWeb ? "transparent" : card }, isWeb && { marginHorizontal: 0, borderRadius: 0, borderTopWidth: 1, borderTopColor: divider, borderBottomWidth: 1, borderBottomColor: divider }]}>
           {items.map((item, idx) => (
             <View key={(item as any).id ?? idx}>
-              {idx > 0 && <View style={[st.divider, { backgroundColor: divClr }]} />}
+              {idx > 0 && <View style={[st.divider, { backgroundColor: divClr }, isWeb && { marginHorizontal: 0 }]} />}
               <View style={[st.itemRow, isAr && { flexDirection: "row-reverse" }]}>
                 {(item as any).image ? (
                   <Image source={{ uri: (item as any).image }} style={st.itemImg} contentFit="cover" />
@@ -283,19 +316,19 @@ export default function OrderDetailScreen() {
         {(displayName !== "—" || addr.city) && (
           <>
             <SectionLabel text={isAr ? "معلومات التوصيل" : "DELIVERY INFO"} sub={sub} isAr={isAr} />
-            <View style={[st.group, { backgroundColor: card }]}>
+            <View style={[st.group, { backgroundColor: isWeb ? "transparent" : card }, isWeb && { marginHorizontal: 0, borderRadius: 0, borderTopWidth: 1, borderTopColor: divider, borderBottomWidth: 1, borderBottomColor: divider }]}>
               {displayName !== "—" && (
                 <InfoRow label={isAr ? "الاسم" : "Name"} value={displayName} textCol={textCol} sub={sub} isAr={isAr} />
               )}
               {addr.phone && (
                 <>
-                  <View style={[st.divider, { backgroundColor: divClr }]} />
+                  <View style={[st.divider, { backgroundColor: divClr }, isWeb && { marginHorizontal: 0 }]} />
                   <InfoRow label={isAr ? "الهاتف" : "Phone"} value={addr.phone} textCol={textCol} sub={sub} isAr={isAr} />
                 </>
               )}
               {addr.city && (
                 <>
-                  <View style={[st.divider, { backgroundColor: divClr }]} />
+                  <View style={[st.divider, { backgroundColor: divClr }, isWeb && { marginHorizontal: 0 }]} />
                   <InfoRow
                     label={isAr ? "العنوان" : "Address"}
                     value={[addr.city, addr.district, addr.street].filter(Boolean).join(", ")}
@@ -309,17 +342,17 @@ export default function OrderDetailScreen() {
 
         {/* ── Order summary ── */}
         <SectionLabel text={isAr ? "ملخص الطلب" : "ORDER SUMMARY"} sub={sub} isAr={isAr} />
-        <View style={[st.group, { backgroundColor: card }]}>
+        <View style={[st.group, { backgroundColor: isWeb ? "transparent" : card }, isWeb && { marginHorizontal: 0, borderRadius: 0, borderTopWidth: 1, borderTopColor: divider, borderBottomWidth: 1, borderBottomColor: divider }]}>
           <View style={[st.summaryRow, isAr && { flexDirection: "row-reverse" }]}>
             <Text style={[st.summaryLbl, { color: sub }]}>{isAr ? "المجموع الفرعي" : "Subtotal"}</Text>
             <Text style={[st.summaryVal, { color: textCol }]}>{formatIQD((order as any).subtotal ?? order.total)}</Text>
           </View>
-          <View style={[st.divider, { backgroundColor: divClr }]} />
+          <View style={[st.divider, { backgroundColor: divClr }, isWeb && { marginHorizontal: 0 }]} />
           <View style={[st.summaryRow, isAr && { flexDirection: "row-reverse" }]}>
             <Text style={[st.summaryLbl, { color: sub }]}>{isAr ? "الشحن" : "Shipping"}</Text>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: "#22C55E" }}>{isAr ? "مجاني" : "Free"}</Text>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: PRIMARY }}>{isAr ? "مجاني" : "FREE"}</Text>
           </View>
-          <View style={[st.divider, { backgroundColor: divClr }]} />
+          <View style={[st.divider, { backgroundColor: divClr }, isWeb && { marginHorizontal: 0 }]} />
           <View style={[st.summaryRow, isAr && { flexDirection: "row-reverse" }]}>
             <Text style={[st.summaryLbl, { color: textCol, fontWeight: "700" }]}>{isAr ? "المجموع" : "Total"}</Text>
             <Text style={[st.summaryTotal, { color: PRIMARY }]}>{formatIQD(order.total)}</Text>
@@ -330,7 +363,7 @@ export default function OrderDetailScreen() {
         {isDelivered && (
           <>
             <SectionLabel text={isAr ? "تقييم الطلب" : "ORDER REVIEW"} sub={sub} isAr={isAr} />
-            <View style={[st.group, { backgroundColor: card }]}>
+            <View style={[st.group, { backgroundColor: isWeb ? "transparent" : card }, isWeb && { marginHorizontal: 0, borderRadius: 0, borderTopWidth: 1, borderTopColor: divider, borderBottomWidth: 1, borderBottomColor: divider }]}>
               <View style={{ padding: 18, gap: 14 }}>
                 {hasReview ? (
                   <View style={{ gap: 12 }}>
@@ -409,9 +442,9 @@ export default function OrderDetailScreen() {
         )}
 
         {/* ── Shop again ── */}
-        <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
+        <View style={{ paddingHorizontal: isWeb ? 16 : 16, marginTop: 24 }}>
           <Pressable
-            style={({ pressed }) => [st.shopBtn, { backgroundColor: PRIMARY, opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [st.shopBtn, { backgroundColor: PRIMARY, opacity: pressed ? 0.85 : 1 }, isWeb && { borderRadius: 4 }]}
             onPress={() => router.push("/" as any)}
           >
             <Feather name="shopping-bag" size={16} color="#fff" />
@@ -427,6 +460,8 @@ export default function OrderDetailScreen() {
 const st = StyleSheet.create({
   header:       { flexDirection: "row", alignItems: "center", paddingBottom: 8 },
   headTitle:    { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "700" },
+  pageTitleWeb: { fontSize: 22, fontWeight: "900", letterSpacing: -0.4, flex: 1, paddingHorizontal: 8 },
+  flatBtn:      { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
   statusCard:   { margin: 16, borderRadius: 16, borderWidth: 1, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 },
   statusDot:    { width: 10, height: 10, borderRadius: 5 },
   statusLabel:  { fontSize: 14, fontWeight: "700", letterSpacing: 0.4 },

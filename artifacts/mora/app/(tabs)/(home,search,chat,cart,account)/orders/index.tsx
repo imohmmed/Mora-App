@@ -115,7 +115,11 @@ export default function OrdersScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 16, paddingBottom: botPad + 80, gap: 10 }}
+        contentContainerStyle={
+          Platform.OS === "web"
+            ? { paddingBottom: 80 }
+            : { padding: 16, paddingBottom: botPad + 80, gap: 10 }
+        }
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={PRIMARY} />}
       >
         {ordersLoading ? (
@@ -130,82 +134,98 @@ export default function OrdersScreen() {
             </Text>
           </View>
         ) : (
-          orders.map((order) => {
-            const deliveryStage = (order as any).deliveryStage as string | undefined;
-            const reviewRating  = (order as any).reviewRating as number | undefined;
-            const isDelivered   = deliveryStage === "delivered";
-            const hasReview     = !!reviewRating && reviewRating > 0;
-            const showRateBtn   = isDelivered && !hasReview;
-            const colKey        = deliveryStage || order.status;
-            const col           = statusColor(colKey);
+          <>
+            {Platform.OS === "web" && <View style={styles.webListTop} />}
+            {orders.map((order, idx) => {
+              const deliveryStage = (order as any).deliveryStage as string | undefined;
+              const reviewRating  = (order as any).reviewRating as number | undefined;
+              const isDelivered   = deliveryStage === "delivered";
+              const hasReview     = !!reviewRating && reviewRating > 0;
+              const showRateBtn   = isDelivered && !hasReview;
+              const colKey        = deliveryStage || order.status;
+              const col           = statusColor(colKey);
 
-            return (
-              <Pressable
-                key={order.id}
-                style={({ pressed }) => [styles.orderCard, { backgroundColor: card, opacity: pressed ? 0.85 : 1 }, Platform.OS === "web" && { borderRadius: 0, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: "transparent" }]}
-                onPress={() => router.push({ pathname: "/orders/[id]", params: { id: order.id, email: user?.email ?? "" } } as any)}
-              >
-                {/* Top row */}
-                <View style={[styles.orderCardTop, { flexDirection: isAr ? "row-reverse" : "row" }]}>
-                  <View style={{ flex: 1, alignItems: isAr ? "flex-end" : "flex-start" }}>
-                    <Text style={[styles.orderNum, { color: colors.foreground }]}>
-                      {isAr ? `طلب ${order.orderNumber ?? order.id.slice(0, 8).toUpperCase()}` : `Order ${order.orderNumber ?? order.id.slice(0, 8).toUpperCase()}`}
-                    </Text>
-                    <Text style={[styles.orderDate, { color: colors.mutedForeground }]}>{formatDate(order.createdAt, isAr)}</Text>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: col + "20" }]}>
-                    <Text style={[styles.statusTxt, { color: col }]}>
-                      {stageLabel(deliveryStage, order.status, isAr)}
-                    </Text>
-                  </View>
-                  <Feather
-                    name={isAr ? "chevron-left" : "chevron-right"}
-                    size={14}
-                    color={colors.mutedForeground}
-                    style={{ marginStart: 6 }}
-                  />
-                </View>
+              return (
+                <Pressable
+                  key={order.id}
+                  style={({ pressed }) => [
+                    styles.orderCard,
+                    { backgroundColor: card, opacity: pressed ? 0.85 : 1 },
+                    Platform.OS === "web" && styles.orderCardWeb,
+                  ]}
+                  onPress={() => router.push({ pathname: "/orders/[id]", params: { id: order.id, email: user?.email ?? "" } } as any)}
+                >
+                  {/* Colored status strip on web */}
+                  {Platform.OS === "web" && (
+                    <View style={[styles.statusStrip, { backgroundColor: col }]} />
+                  )}
 
-                {/* Bottom row */}
-                <View style={[styles.orderCardBottom, { borderTopColor: colors.border, flexDirection: isAr ? "row-reverse" : "row" }]}>
-                  <Text style={[styles.orderItems, { color: colors.mutedForeground }]}>
-                    {isAr
-                      ? `${order.lineItems?.length ?? 0} صنف`
-                      : `${order.lineItems?.length ?? 0} item${(order.lineItems?.length ?? 0) !== 1 ? "s" : ""}`
-                    }
-                  </Text>
-                  <Text style={[styles.orderTotal, { color: colors.foreground }]}>{formatIQD(order.total)}</Text>
-                </View>
-
-                {/* Review row — stars if reviewed, "أعطينا رأيك" if delivered+unreviewed */}
-                {(hasReview || showRateBtn) && (
-                  <View style={[styles.reviewRow, { borderTopColor: colors.border, flexDirection: isAr ? "row-reverse" : "row" }]}>
-                    {hasReview ? (
-                      <>
-                        <StarDisplay rating={reviewRating!} />
-                        <Text style={[styles.reviewedTxt, { color: sub }]}>
-                          {isAr ? "قيّمت هذا الطلب" : "You reviewed this order"}
+                  <View style={{ flex: 1 }}>
+                    {/* Top row */}
+                    <View style={[styles.orderCardTop, { flexDirection: isAr ? "row-reverse" : "row" }]}>
+                      <View style={{ flex: 1, alignItems: isAr ? "flex-end" : "flex-start" }}>
+                        <Text style={[styles.orderNum, { color: colors.foreground }]}>
+                          {isAr ? `طلب #${order.orderNumber ?? order.id.slice(0, 8).toUpperCase()}` : `Order #${order.orderNumber ?? order.id.slice(0, 8).toUpperCase()}`}
                         </Text>
-                      </>
-                    ) : (
-                      <Pressable
-                        style={({ pressed }) => [styles.rateBtn, { opacity: pressed ? 0.75 : 1 }]}
-                        onPress={(e) => {
-                          e.stopPropagation?.();
-                          router.push({ pathname: "/orders/[id]", params: { id: order.id, email: user?.email ?? "" } } as any);
-                        }}
-                      >
-                        <Feather name="star" size={13} color="#F59E0B" />
-                        <Text style={styles.rateBtnTxt}>
-                          {isAr ? "أعطينا رأيك" : "Leave a review"}
-                        </Text>
-                      </Pressable>
+                        <Text style={[styles.orderDate, { color: colors.mutedForeground }]}>{formatDate(order.createdAt, isAr)}</Text>
+                      </View>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <View style={[styles.statusBadge, { backgroundColor: col + "18", borderColor: col + "40", borderWidth: 1 }]}>
+                          <View style={[styles.statusDot, { backgroundColor: col }]} />
+                          <Text style={[styles.statusTxt, { color: col }]}>
+                            {stageLabel(deliveryStage, order.status, isAr)}
+                          </Text>
+                        </View>
+                        <Feather
+                          name={isAr ? "chevron-left" : "chevron-right"}
+                          size={14}
+                          color={colors.mutedForeground}
+                        />
+                      </View>
+                    </View>
+
+                    {/* Bottom row */}
+                    <View style={[styles.orderCardBottom, { borderTopColor: isDark ? "#1A1A1A" : "#EBEBEB", flexDirection: isAr ? "row-reverse" : "row" }]}>
+                      <Text style={[styles.orderItems, { color: colors.mutedForeground }]}>
+                        {isAr
+                          ? `${order.lineItems?.length ?? 0} صنف`
+                          : `${order.lineItems?.length ?? 0} item${(order.lineItems?.length ?? 0) !== 1 ? "s" : ""}`
+                        }
+                      </Text>
+                      <Text style={[styles.orderTotal, { color: colors.foreground }]}>{formatIQD(order.total)}</Text>
+                    </View>
+
+                    {/* Review row */}
+                    {(hasReview || showRateBtn) && (
+                      <View style={[styles.reviewRow, { borderTopColor: isDark ? "#1A1A1A" : "#EBEBEB", flexDirection: isAr ? "row-reverse" : "row" }]}>
+                        {hasReview ? (
+                          <>
+                            <StarDisplay rating={reviewRating!} />
+                            <Text style={[styles.reviewedTxt, { color: sub }]}>
+                              {isAr ? "قيّمت هذا الطلب" : "You reviewed this order"}
+                            </Text>
+                          </>
+                        ) : (
+                          <Pressable
+                            style={({ pressed }) => [styles.rateBtn, { opacity: pressed ? 0.75 : 1 }]}
+                            onPress={(e) => {
+                              e.stopPropagation?.();
+                              router.push({ pathname: "/orders/[id]", params: { id: order.id, email: user?.email ?? "" } } as any);
+                            }}
+                          >
+                            <Feather name="star" size={13} color="#F59E0B" />
+                            <Text style={styles.rateBtnTxt}>
+                              {isAr ? "أعطينا رأيك" : "Leave a review"}
+                            </Text>
+                          </Pressable>
+                        )}
+                      </View>
                     )}
                   </View>
-                )}
-              </Pressable>
-            );
-          })
+                </Pressable>
+              );
+            })}
+          </>
         )}
       </ScrollView>
     </View>
@@ -218,11 +238,15 @@ const styles = StyleSheet.create({
   acctTitle:       { fontFamily: "Inter_700Bold", fontSize: 15, letterSpacing: 1 },
   pageTitleWeb:    { fontFamily: "Inter_900Black", fontSize: 22, fontWeight: "900", letterSpacing: -0.4, flex: 1, paddingHorizontal: 8 },
   flatIconBtn:     { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
+  webListTop:      { height: 1, backgroundColor: "#EBEBEB" },
   orderCard:       { borderRadius: 16, overflow: "hidden" },
+  orderCardWeb:    { flexDirection: "row", borderRadius: 0, backgroundColor: "transparent", borderBottomWidth: 1, borderBottomColor: "#EBEBEB", overflow: "hidden" },
+  statusStrip:     { width: 4, alignSelf: "stretch" },
+  statusDot:       { width: 7, height: 7, borderRadius: 3.5 },
   orderCardTop:    { alignItems: "center", justifyContent: "space-between", padding: 14 },
   orderNum:        { fontFamily: "Inter_600SemiBold", fontSize: 14 },
   orderDate:       { fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 },
-  statusBadge:     { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 },
+  statusBadge:     { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 },
   statusTxt:       { fontFamily: "Inter_600SemiBold", fontSize: 12 },
   orderCardBottom: { alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, borderTopWidth: 1, justifyContent: "space-between" },
   orderItems:      { fontFamily: "Inter_400Regular", fontSize: 13 },
