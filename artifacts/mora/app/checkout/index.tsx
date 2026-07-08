@@ -170,7 +170,9 @@ export default function CheckoutScreen() {
   const freeShipThreshold = enabledThresholds.length ? Math.min(...enabledThresholds) : null;
   const freeShipping = (discount?.freeShipping ?? false) || (freeShipThreshold != null && subtotal >= freeShipThreshold);
   const shipping     = freeShipping ? 0 : (selectedZone?.price ?? 0);
-  const grandTotal   = Math.max(0, subtotal + shipping - discountAmount);
+  const grandTotal        = Math.max(0, subtotal + shipping - discountAmount);
+  const originalSubtotal = items.reduce((s, i) => s + ((i.comparePrice && i.comparePrice > i.price ? i.comparePrice : i.price) * i.quantity), 0);
+  const itemDiscount      = Math.max(0, originalSubtotal - subtotal);
 
   const [pendingOnline, setPendingOnline] = useState<{
     orderId: string; orderNumber: string; orderTotal: number; waylUrl: string; snapshot: string;
@@ -615,19 +617,36 @@ export default function CheckoutScreen() {
           {/* Totals */}
           <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
             <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "المجموع الفرعي" : "Subtotal"}</Text>
-            <Text style={[st.totalVal, { color: textCol }]}>{formatIQD(subtotal)}</Text>
+            <Text style={[st.totalVal, { color: textCol }]}>{formatIQD(itemDiscount > 0 ? originalSubtotal : subtotal)}</Text>
           </View>
+          {itemDiscount > 0 && (
+            <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
+              <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "الخصم" : "Discount"}</Text>
+              <Text style={[st.totalVal, { color: "#EF4444" }]}>−{formatIQD(itemDiscount)}</Text>
+            </View>
+          )}
           {discount && (
             <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
-              <Text style={[st.totalLbl, { color: sub }]}>{isAr ? `الخصم (${discount.code})` : `Discount (${discount.code})`}</Text>
-              <Text style={[st.totalVal, { color: "#22C55E" }]}>−{formatIQD(discountAmount)}</Text>
+              <Text style={[st.totalLbl, { color: sub }]}>{isAr ? `كود الخصم (${discount.code})` : `Discount (${discount.code})`}</Text>
+              <Text style={[st.totalVal, { color: "#EF4444" }]}>−{formatIQD(discountAmount)}</Text>
             </View>
           )}
           <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
             <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "الشحن" : "Shipping"}</Text>
-            <Text style={[st.totalVal, { color: shipping === 0 ? "#22C55E" : textCol }]}>
-              {shipping === 0 ? (isAr ? "مجاني" : "Free") : formatIQD(shipping)}
-            </Text>
+            {freeShipping && selectedZone && selectedZone.price > 0 ? (
+              <View style={[{ flexDirection: "row", alignItems: "center", gap: 6 }, isAr && { flexDirection: "row-reverse" }]}>
+                <Text style={[st.totalVal, { color: "#EF4444", textDecorationLine: "line-through" }]}>
+                  {formatIQD(selectedZone.price)}
+                </Text>
+                <Text style={[st.totalVal, { color: PRIMARY, fontWeight: "800" }]}>
+                  {isAr ? "مجاني" : "FREE"}
+                </Text>
+              </View>
+            ) : (
+              <Text style={[st.totalVal, { color: shipping === 0 ? PRIMARY : textCol }]}>
+                {shipping === 0 ? (isAr ? "مجاني" : "FREE") : formatIQD(shipping)}
+              </Text>
+            )}
           </View>
           <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider, borderBottomWidth: 0, paddingVertical: 16 }]}>
             <Text style={[st.totalLblBold, { color: textCol }]}>{isAr ? "المجموع الكلي" : "TOTAL"}</Text>
@@ -638,7 +657,7 @@ export default function CheckoutScreen() {
       </ScrollView>
 
       {/* Footer CTA */}
-      <View style={[st.footer, { backgroundColor: bg, borderTopColor: divider, paddingBottom: Platform.OS === "web" ? 96 : insets.bottom + 12 }]}>
+      <View style={[st.footer, { backgroundColor: bg, borderTopColor: divider, paddingBottom: Platform.OS === "web" ? 76 : insets.bottom + 12 }]}>
         <Pressable
           onPress={handlePlaceOrder}
           disabled={submitting}
