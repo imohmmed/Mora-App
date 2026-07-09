@@ -624,7 +624,7 @@ export default function HomeScreen() {
             </View>
           )}
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: bottomPadding + 80, gap: 1 }}
+          contentContainerStyle={{ paddingHorizontal: 1, paddingBottom: bottomPadding + 80, gap: 1 }}
           snapToInterval={CARD_WIDTH + 1}
           decelerationRate="fast"
           onEndReached={handleEndReached}

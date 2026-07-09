@@ -26,8 +26,8 @@ const { width: SCREEN_W } = Dimensions.get("window");
 
 const CIRCLE  = 68;
 const ITEM_W  = CIRCLE + 12;
-const CARD_W  = (SCREEN_W - 32) / 2.5;
-const CARD_H  = CARD_W * 1.25;
+const CARD_W  = (SCREEN_W - 48) / 2;
+const CARD_H  = CARD_W * 1.4;
 
 // ─── Story Circle ─────────────────────────────────────────────────────────────
 function StoryCircle({ item }: { item: StoryItem }) {
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
 
   /* Products row */
   productsScroll: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 1,
     paddingTop: 14,
     gap: 1,
   },

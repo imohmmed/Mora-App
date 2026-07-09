@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 1.2,
   },
-  scroll: { gap: 1, paddingHorizontal: 10 },
+  scroll: { gap: 1, paddingHorizontal: 1 },
   card: {
     width: CARD_W,
     height: CARD_H,

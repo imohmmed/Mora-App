@@ -33,3 +33,7 @@ EXPO_PUBLIC_FIREBASE_APP_ID = "1:274592364900:web:973422e09c892c6f3be271"
 EXPO_PUBLIC_PROJECT_ID = "f245a229-e776-496d-88cf-992ec1ac7e36"
 
 [nix]
+
+[[ports]]
+localPort = 8080
+externalPort = 80

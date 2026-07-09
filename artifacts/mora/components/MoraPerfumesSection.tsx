@@ -240,7 +240,7 @@ export const MoraPerfumesSection = forwardRef<MoraPerfumesSectionHandle, {}>(fun
           </Text>
         </View>
       ) : (
-        <View style={{ paddingHorizontal: 14, gap: 18 }}>
+        <View style={{ paddingHorizontal: 1, gap: 18 }}>
           {visibleProducts.map((item) => (
             <PerfumeCard key={item.id} product={item} onQuickAdd={setQuickAddProduct} />
           ))}
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
+    paddingHorizontal: 1,
     paddingBottom: 10,
   },
   sectionTitle: {
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   filterRow: {
     flexDirection: "row",
     gap: 8,
-    paddingHorizontal: 14,
+    paddingHorizontal: 1,
     paddingBottom: 16,
   },
   filterPill: {
