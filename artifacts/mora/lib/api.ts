@@ -71,6 +71,33 @@ export async function fetchProducts(params?: {
   };
 }
 
+export async function fetchForYouProducts(params?: {
+  viewed?: string[];
+  limit?: number;
+  page?: number;
+}): Promise<{ products: Product[]; total: number; page: number; limit: number }> {
+  const qs = new URLSearchParams();
+  if (params?.viewed?.length) qs.set("viewed", params.viewed.join(","));
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.page) qs.set("page", String(params.page));
+  const query = qs.toString() ? `?${qs.toString()}` : "";
+
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/store/products/foryou${query}`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error("Failed to fetch recommended products");
+  const json = (await res.json()) as ApiResponse<Product[]> & {
+    meta: { total?: number; page?: number; limit?: number };
+  };
+  return {
+    products: json.data,
+    total: (json.meta.total as number) ?? 0,
+    page: (json.meta.page as number) ?? 1,
+    limit: (json.meta.limit as number) ?? 20,
+  };
+}
+
 export async function fetchProduct(id: string): Promise<Product> {
   return apiFetch<Product>(`/store/products/${id}`);
 }

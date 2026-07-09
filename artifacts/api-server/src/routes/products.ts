@@ -38,6 +38,89 @@ router.get("/store/products", (req, res) => {
   res.json({ data: products, meta: { total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum) }, error: null });
 });
 
+router.get("/store/products/foryou", (req, res) => {
+  const { viewed = "", page = "1", limit = "20" } = req.query as Record<string, string>;
+  const viewedIds = viewed.split(",").map((s) => s.trim()).filter(Boolean);
+
+  const activeRows = db.prepare(`SELECT * FROM products WHERE status='active'`).all() as Row[];
+  const active = parseRows(activeRows);
+  const getVariantsForYou = db.prepare(`SELECT * FROM variants WHERE product_id=?`);
+
+  const pageNum  = Math.max(1, parseInt(page));
+  const limitNum = Math.min(50, Math.max(1, parseInt(limit)));
+
+  const seedRows = viewedIds.length
+    ? (db.prepare(`SELECT * FROM products WHERE id IN (${viewedIds.map(() => "?").join(",")})`).all(...viewedIds) as Row[])
+    : [];
+  const seeds = parseRows(seedRows);
+
+  let ordered: typeof active;
+
+  if (seeds.length === 0) {
+    ordered = [...active].sort((a, b) => {
+      const rb = ((b["rating"] as number) || 0) * Math.log(1 + ((b["ratingCount"] as number) || (b["rating_count"] as number) || 0));
+      const ra = ((a["rating"] as number) || 0) * Math.log(1 + ((a["ratingCount"] as number) || (a["rating_count"] as number) || 0));
+      return (rb - ra) + (Math.random() - 0.5) * 3;
+    });
+  } else {
+    const viewedSet = new Set(viewedIds);
+    const candidates = active.filter((p) => !viewedSet.has(p["id"] as string));
+
+    const seedFeatures = seeds.map((s) => {
+      let tags: string[] = [];
+      try { tags = JSON.parse((s["tags"] as string) || "[]"); } catch {}
+      return {
+        tags,
+        category: (s["category"] as string) || "",
+        gender: (s["gender"] as string) || "",
+        vendor: (s["vendor"] as string) || "",
+        price: (s["price"] as number) || 0,
+      };
+    });
+
+    const scored = candidates.map((p) => {
+      let pTags: string[] = [];
+      try { pTags = JSON.parse((p["tags"] as string) || "[]"); } catch {}
+      const pCategory = (p["category"] as string) || "";
+      const pGender = (p["gender"] as string) || "";
+      const pVendor = (p["vendor"] as string) || "";
+      const pPrice = (p["price"] as number) || 0;
+      const pRating = ((p["rating"] as number) || 0) * Math.log(1 + ((p["ratingCount"] as number) || (p["rating_count"] as number) || 0));
+
+      let score = 0;
+      for (const sf of seedFeatures) {
+        if (sf.category && pCategory === sf.category) score += 4;
+        score += pTags.filter((t) => sf.tags.includes(t)).length * 2;
+        if (sf.gender && sf.gender !== "all" && pGender === sf.gender) score += 2;
+        if (sf.vendor && pVendor === sf.vendor) score += 1;
+        if (sf.price > 0) {
+          const ratio = Math.abs(pPrice - sf.price) / sf.price;
+          if (ratio <= 0.3) score += 1;
+        }
+      }
+      score = score / seedFeatures.length;
+      score += pRating * 0.15;
+      return { product: p, score };
+    });
+
+    scored.sort((a, b) => (b.score - a.score) || (Math.random() - 0.5));
+    ordered = scored.map((s) => s.product);
+
+    if (ordered.length < candidates.length) {
+      const usedIds = new Set(ordered.map((p) => p["id"]));
+      candidates.forEach((p) => { if (!usedIds.has(p["id"])) ordered.push(p); });
+    }
+  }
+
+  const total = ordered.length;
+  const sliced = ordered.slice((pageNum - 1) * limitNum, pageNum * limitNum);
+  const withVariants = sliced.map((p) => ({
+    ...p,
+    variants: parseRows(getVariantsForYou.all(p["id"] as string) as Row[]),
+  }));
+  res.json({ data: withVariants, meta: { total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum) }, error: null });
+});
+
 router.get("/store/products/:id", (req, res) => {
   const product = parseOne(db.prepare(`SELECT * FROM products WHERE id=?`).get(req.params["id"]) as Row | undefined);
   if (!product) { res.status(404).json({ data: null, meta: {}, error: "Product not found" }); return; }

@@ -35,7 +35,7 @@ import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
-import { fetchProducts, fetchSpecialCollections, fetchBanners, fetchStories, fetchContentSections } from "@/lib/api";
+import { fetchProducts, fetchForYouProducts, fetchSpecialCollections, fetchBanners, fetchStories, fetchContentSections } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { StoriesSection } from "@/components/StoriesSection";
 import { HomeSaleCollections } from "@/components/HomeSaleCollections";
@@ -437,26 +437,18 @@ export default function HomeScreen() {
   const activeTab = menuTabs[safeActiveCategory] ?? menuTabs[0];
   const categoryKey = activeTab?.label ?? "ALL";
   const isForYou = activeTab?.filterType === "foryou";
-  const [forYouFilter, setForYouFilter] = useState<TabFilter>({});
+  const [viewedIds, setViewedIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isForYou) return;
     AsyncStorage.getItem("mora_views").then((raw) => {
       const views = JSON.parse(raw || "[]") as { id: string; tags: string[]; gender: string }[];
-      if (views.length === 0) { setForYouFilter({}); return; }
-      const tagCount: Record<string, number> = {};
-      const genderCount: Record<string, number> = {};
-      views.slice(0, 15).forEach((v) => {
-        v.tags?.forEach((t) => { tagCount[t] = (tagCount[t] || 0) + 1; });
-        if (v.gender && v.gender !== "all") genderCount[v.gender] = (genderCount[v.gender] || 0) + 1;
-      });
-      const topTag = Object.keys(tagCount).sort((a, b) => tagCount[b] - tagCount[a])[0];
-      const topGender = Object.keys(genderCount).sort((a, b) => genderCount[b] - genderCount[a])[0];
-      setForYouFilter({ tag: topTag, gender: topGender });
+      // Most recent views first — used as recommendation seeds server-side.
+      setViewedIds(views.slice(0, 20).map((v) => v.id));
     }).catch(() => {});
   }, [isForYou]);
 
-  const activeFilter = isForYou ? forYouFilter : getTabFilter(activeTab ?? DEFAULT_TABS[0]);
+  const activeFilter = isForYou ? {} : getTabFilter(activeTab ?? DEFAULT_TABS[0]);
 
   const PAGE_SIZE = 20;
   const {
@@ -469,9 +461,13 @@ export default function HomeScreen() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["products", categoryKey, JSON.stringify(activeFilter)],
+    queryKey: isForYou
+      ? ["products-foryou", viewedIds.join(",")]
+      : ["products", categoryKey, JSON.stringify(activeFilter)],
     queryFn: ({ pageParam = 1 }: { pageParam?: number }) =>
-      fetchProducts({ ...activeFilter, limit: PAGE_SIZE, page: pageParam }),
+      isForYou
+        ? fetchForYouProducts({ viewed: viewedIds, limit: PAGE_SIZE, page: pageParam })
+        : fetchProducts({ ...activeFilter, limit: PAGE_SIZE, page: pageParam }),
     getNextPageParam: (lastPage) => {
       const totalPages = Math.ceil(lastPage.total / lastPage.limit);
       return lastPage.page < totalPages ? lastPage.page + 1 : undefined;

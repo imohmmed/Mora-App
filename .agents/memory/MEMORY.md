@@ -9,7 +9,8 @@
 - [pnpm override semver majors](pnpm-override-semver-majors.md) — CVE overrides must use caret (^), not >=; >= pulled @babel/core 8 / js-yaml 5 and broke EAS pod install
 - [Live Activities Architecture](live-activities.md) — Full LA + Dynamic Island stack; widget now built by hand-written withMoraLiveActivity config plugin (dropped @bacons), Expo module kept
 - [Mora package.json dup deps](mora-package-json-dup-deps.md) — expo/react/react-native duplicated in deps+devDeps with conflicting versions; latent EAS landmine, builds for now
-- [Products Gender Field](products-gender.md) — gender column added to products table; WOMEN/MEN home tabs use gender filter; FOR YOU tab uses AsyncStorage view tracking
+- [Products Gender Field](products-gender.md) — gender column added to products table; WOMEN/MEN home tabs use gender filter
+- [FOR YOU recommendations](foryou-recommendations.md) — server-side multi-seed scoring endpoint; random+rating fallback for new users; route-order gotcha with Express `/:id`
 - [Admin JWT secret rotation](admin-jwt-secret-rotation.md) — rotating/dropping ADMIN_JWT_SECRET strands admins (gate checks exp not signature); 401→auto-relogin in admin App.tsx
 - [Admin notifications auth](admin-notifications-auth.md) — requireAdmin only accepts Authorization: Bearer JWT; dead x-admin-token scheme caused "Unauthorized" on push send; always use getAdminToken()
 - [Push token registration](push-token-registration.md) — "0 devices" because tokens only register for logged-in customers AND login must wire NotificationContext.onUserLogin; web never gets a token
