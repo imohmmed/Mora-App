@@ -182,7 +182,7 @@ function RelatedCard({
         />
         {/* Discount badge — top opposite corner from heart */}
         {discountPct > 0 && (
-          <View style={[styles.relatedDisc, isAr ? styles.relatedDiscEn : styles.relatedDiscEn]}>
+          <View style={[styles.relatedDisc, isAr ? styles.relatedDiscAr : styles.relatedDiscLtr]}>
             <Text style={styles.relatedDiscText}>▼ {discountPct}%</Text>
           </View>
         )}
@@ -284,6 +284,7 @@ export default function ProductDetailScreen() {
   const [relatedPage, setRelatedPage]   = useState(0);
   const [relatedTotal, setRelatedTotal] = useState(0);
   const [loadingMore, setLoadingMore]   = useState(false);
+  const [relatedTab, setRelatedTab]     = useState<string | null>(null);
   const relatedReady = useRef(false);
 
   const loadRelatedPage = useCallback(async (pageNum: number) => {
@@ -551,46 +552,45 @@ export default function ProductDetailScreen() {
 
           {/* ── Info ── */}
           <View style={styles.infoSection}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              {(product as any).rating > 0 && (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <View style={[styles.titlePriceRow, lang === "ar" && { flexDirection: "row-reverse" }]}>
+              <Text style={[styles.title, { color: colors.foreground, flex: 1 }, lang === "ar" && { textAlign: "right" }]}>
+                {product.title}
+              </Text>
+              <View style={[styles.priceRow, lang === "ar" && { flexDirection: "row-reverse" }]}>
+                {hasDiscount && (
+                  <Text style={[styles.comparePrice, { color: colors.mutedForeground }]}>
+                    {formatIQD(comparePrice!)}
+                  </Text>
+                )}
+                <Text style={[styles.price, { color: hasDiscount ? "#E53935" : colors.foreground }]}>
+                  {formatIQD(price)}
+                </Text>
+              </View>
+            </View>
+
+            <View style={[styles.ratingDiscRow, lang === "ar" && { flexDirection: "row-reverse" }]}>
+              {(product as any).rating > 0 ? (
+                <View style={{ flexDirection: lang === "ar" ? "row-reverse" : "row", alignItems: "center", gap: 4 }}>
                   <Text style={{ color: "#F59E0B", fontSize: 13, letterSpacing: 1 }}>
                     {"★".repeat(Math.round((product as any).rating))}{"☆".repeat(5 - Math.round((product as any).rating))}
                   </Text>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: "#F59E0B" }}>
-                    {((product as any).rating as number).toFixed(1)}
-                  </Text>
                   {(product as any).ratingCount > 0 && (
-                    <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
-                      ({((product as any).ratingCount as number).toLocaleString()})
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground, textDecorationLine: "underline" }}>
+                      {((product as any).ratingCount as number).toLocaleString()} {lang === "ar" ? "تقييم" : "Reviews"}
                     </Text>
                   )}
-                  <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>·</Text>
                 </View>
+              ) : (
+                <Text style={[styles.vendor, { color: colors.mutedForeground }]}>
+                  {product.vendor ?? "Mora"}
+                </Text>
               )}
-              <Text style={[styles.vendor, { color: colors.mutedForeground }]}>
-                {product.vendor ?? "Mora"}
-              </Text>
-            </View>
-            <Text style={[styles.title, { color: colors.foreground }]}>
-              {product.title}
-            </Text>
-            <View style={styles.priceRow}>
-              <Text style={[styles.price, { color: colors.foreground }]}>
-                {formatIQD(price)}
-              </Text>
               {hasDiscount && (
-                <>
-                  <Text style={[styles.comparePrice, { color: "#E53935" }]}>
-                    {formatIQD(comparePrice!)}
-                  </Text>
-                  <View style={[styles.saleBadge, { backgroundColor: "#E53935" }]}>
-                    <Text style={styles.saleBadgeText}>SALE</Text>
-                  </View>
-                </>
+                <Text style={{ color: "#E53935", fontFamily: "Cairo_700Bold", fontSize: 12 }}>
+                  ▼ {Math.round(((comparePrice! - price) / comparePrice!) * 100)}% {lang === "ar" ? "خصم" : "OFF"} · {lang === "ar" ? "توفر" : "SAVE"} {formatIQD(comparePrice! - price)}
+                </Text>
               )}
             </View>
-
           </View>
 
           {/* ── Variants / SIZE / COLOR ── */}
@@ -799,52 +799,16 @@ export default function ProductDetailScreen() {
             <ShippingRulesNote style={[styles.deliveryRow, { borderTopColor: colors.border }]} />
           </View>
 
-          {/* ── Complete the Set ── */}
+          {/* ── Style With (Complete the Set) ── */}
           {(product.completeTheSet?.length ?? 0) > 0 && (
             <View style={[styles.sectionWrap, { borderTopColor: colors.border }]}>
-              <Text style={[styles.sectionLabel, { color: colors.foreground }, lang === "ar" && { textAlign: "right" }]}>
-                {lang === "ar" ? "اشتري الاوتفت كامل" : "COMPLETE THE SET"}
+              <Text style={[styles.sectionLabelCenter, { color: colors.foreground }]}>
+                {lang === "ar" ? "أكمل الإطلالة" : "STYLE WITH"}
               </Text>
-              <View style={{ gap: 10, paddingHorizontal: 16 }}>
-                {product.completeTheSet!.map((item) => {
-                  const hasDiscount = item.comparePrice != null && item.comparePrice > item.price;
-                  return (
-                    <Pressable
-                      key={item.id}
-                      style={[styles.ctsRow, { borderColor: colors.border, backgroundColor: colors.background }, lang === "ar" && { flexDirection: "row-reverse" }]}
-                      onPress={() => router.push(`/product/${item.id}`)}
-                    >
-                      <View style={[styles.ctsImg, { backgroundColor: cardColor(item.id) }]}>
-                        <Image
-                          source={{ uri: item.images?.[0] }}
-                          style={StyleSheet.absoluteFill}
-                          contentFit="cover"
-                        />
-                      </View>
-                      <View style={styles.ctsInfo}>
-                        <Text style={[styles.ctsTitle, { color: colors.foreground }, lang === "ar" && { textAlign: "right" }]} numberOfLines={2}>
-                          {item.title}
-                        </Text>
-                        <View style={{ flexDirection: lang === "ar" ? "row-reverse" : "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                          <Text style={[styles.ctsPrice, { color: PRIMARY }]}>
-                            {formatIQD(item.price)}
-                          </Text>
-                          {hasDiscount && (
-                            <Text style={{ fontFamily: "Cairo_400Regular", fontSize: 11, color: "#E53935", textDecorationLine: "line-through" }}>
-                              {formatIQD(item.comparePrice!)}
-                            </Text>
-                          )}
-                        </View>
-                      </View>
-                      <Pressable
-                        style={styles.ctsAddBtn}
-                        onPress={(e) => { e.stopPropagation?.(); setQuickAddRelated(item); }}
-                      >
-                        <Text style={styles.ctsAddText}>{lang === "ar" ? "أضف" : "Add"}</Text>
-                      </Pressable>
-                    </Pressable>
-                  );
-                })}
+              <View style={styles.relatedGrid}>
+                {product.completeTheSet!.map((item) => (
+                  <RelatedCard key={item.id} product={item} colors={colors} cardWidth={cardWidth} onQuickAdd={setQuickAddRelated} />
+                ))}
               </View>
             </View>
           )}
@@ -898,24 +862,59 @@ export default function ProductDetailScreen() {
             </AccordionSection>
           )}
 
-          {/* ── Related Products ── */}
-          {(relatedItems.length > 0 || loadingMore) && (
-            <View style={[styles.sectionWrap, { borderTopColor: colors.border }]}>
-              <Text style={[styles.sectionLabel, { color: colors.foreground }, lang === "ar" && { textAlign: "right" }]}>
-                {lang === "ar" ? "منتجات ذات صلة" : "RELATED PRODUCTS"}
-              </Text>
-              <View style={styles.relatedGrid}>
-                {relatedItems.map((p) => (
-                  <RelatedCard key={p.id} product={p} colors={colors} cardWidth={cardWidth} onQuickAdd={setQuickAddRelated} />
-                ))}
-              </View>
-              {loadingMore && (
-                <View style={{ paddingVertical: 20, alignItems: "center" }}>
-                  <ActivityIndicator color={PRIMARY} size="small" />
+          {/* ── You May Also Like ── */}
+          {(relatedItems.length > 0 || loadingMore) && (() => {
+            const categories = [...new Set(relatedItems.map((p) => p.category).filter(Boolean))];
+            const suggestedLabel = lang === "ar" ? "مقترح" : "SUGGESTED";
+            const tabs = [suggestedLabel, ...categories];
+            const shown = relatedTab === suggestedLabel
+              ? relatedItems
+              : relatedItems.filter((p) => p.category === relatedTab);
+            return (
+              <View style={[styles.sectionWrap, { borderTopColor: colors.border }]}>
+                <Text style={styles.sectionLabelCenter}>
+                  <Text style={{ color: colors.foreground }}>
+                    {lang === "ar" ? "قد يعجبك أيضاً" : "YOU MAY ALSO LIKE"}
+                  </Text>
+                </Text>
+                {tabs.length > 1 && (
+                  <View style={[styles.subTabsRow, { borderBottomColor: colors.border }]}>
+                    {tabs.map((t) => {
+                      const active = (relatedTab ?? suggestedLabel) === t;
+                      return (
+                        <Pressable
+                          key={t}
+                          style={styles.subTabBtn}
+                          onPress={() => setRelatedTab(t)}
+                        >
+                          <Text
+                            style={[
+                              styles.subTabText,
+                              { color: active ? colors.foreground : colors.mutedForeground },
+                              active && styles.subTabTextActive,
+                            ]}
+                          >
+                            {t}
+                          </Text>
+                          {active && <View style={[styles.subTabUnderline, { backgroundColor: colors.foreground }]} />}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )}
+                <View style={styles.relatedGrid}>
+                  {shown.map((p) => (
+                    <RelatedCard key={p.id} product={p} colors={colors} cardWidth={cardWidth} onQuickAdd={setQuickAddRelated} />
+                  ))}
                 </View>
-              )}
-            </View>
-          )}
+                {loadingMore && (
+                  <View style={{ paddingVertical: 20, alignItems: "center" }}>
+                    <ActivityIndicator color={PRIMARY} size="small" />
+                  </View>
+                )}
+              </View>
+            );
+          })()}
         </ScrollView>
       ) : null}
 
@@ -1039,12 +1038,14 @@ const styles = StyleSheet.create({
   },
 
   /* Info */
-  infoSection: { padding: 20, gap: 10 },
+  infoSection: { padding: 20, gap: 8 },
   vendor: { fontFamily: "Cairo_500Medium", fontSize: 12, letterSpacing: 1, textTransform: "uppercase" },
-  title: { fontFamily: "Cairo_700Bold", fontSize: 22, lineHeight: 28 },
-  priceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 2 },
-  price: { fontFamily: "Cairo_700Bold", fontSize: 22 },
-  comparePrice: { fontFamily: "Cairo_400Regular", fontSize: 16, textDecorationLine: "line-through" },
+  titlePriceRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  title: { fontFamily: "Cairo_700Bold", fontSize: 17, lineHeight: 22 },
+  ratingDiscRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 },
+  priceRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  price: { fontFamily: "Cairo_700Bold", fontSize: 17 },
+  comparePrice: { fontFamily: "Cairo_400Regular", fontSize: 13, textDecorationLine: "line-through" },
   saleBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 2 },
   saleBadgeText: { color: "#FFFFFF", fontFamily: "Cairo_700Bold", fontSize: 11, letterSpacing: 0.5 },
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 2 },
@@ -1123,14 +1124,27 @@ const styles = StyleSheet.create({
   /* Section wrapper */
   sectionWrap: { paddingVertical: 16, borderTopWidth: 1, gap: 12 },
   sectionLabel: { fontFamily: "Cairo_700Bold", fontSize: 13, letterSpacing: 0.8, paddingHorizontal: 20 },
+  sectionLabelCenter: { fontFamily: "Cairo_700Bold", fontSize: 13, letterSpacing: 0.8, textAlign: "center" },
+
+  /* Sub-tabs (You May Also Like) */
+  subTabsRow: {
+    flexDirection: "row", justifyContent: "center", gap: 24,
+    paddingHorizontal: 20, borderBottomWidth: 1, paddingBottom: 10,
+  },
+  subTabBtn: { alignItems: "center", gap: 6 },
+  subTabText: { fontFamily: "Cairo_600SemiBold", fontSize: 12, letterSpacing: 0.4, textTransform: "uppercase" },
+  subTabTextActive: { fontFamily: "Cairo_700Bold" },
+  subTabUnderline: { height: 2, width: "100%", borderRadius: 1 },
 
   /* Related Products grid */
   relatedGrid: {
     flexDirection: "row", flexWrap: "wrap", gap: 1, paddingHorizontal: 0,
   },
   relatedDisc: {
-    position: "absolute", top: 8, left: 8, zIndex: 2,
+    position: "absolute", top: 8, zIndex: 2,
   },
+  relatedDiscLtr: { left: 8 },
+  relatedDiscAr: { right: 8 },
   relatedDiscText: { color: "#E53935", fontFamily: "Cairo_700Bold", fontSize: 10 },
   relatedHeart: { position: "absolute", top: 8, zIndex: 2 },
   relatedHeartEn: { right: 8 },
