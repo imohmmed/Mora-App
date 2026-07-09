@@ -115,10 +115,10 @@ const fs = StyleSheet.create({
 // ─── Cart Item Row ────────────────────────────────────────────────────────────
 
 function CartItemRow({
-  item, isDark, onRemove, onInc, onDec, lang,
+  item, isDark, onRemove, onInc, onDec, lang, isLast,
 }: {
   item: CartItem; isDark: boolean;
-  onRemove: () => void; onInc: () => void; onDec: () => void; lang: string;
+  onRemove: () => void; onInc: () => void; onDec: () => void; lang: string; isLast?: boolean;
 }) {
   const isAr = lang === "ar";
   const swipeRef = useRef<SwipeableMethods>(null);
@@ -159,7 +159,7 @@ function CartItemRow({
       overshootRight={false}
       overshootLeft={false}
     >
-      <View style={[ci.row, { borderBottomColor: divClr }, isAr && { flexDirection: "row-reverse" }]}>
+      <View style={[ci.row, { borderBottomColor: divClr }, isLast && { borderBottomWidth: 0 }, isAr && { flexDirection: "row-reverse" }]}>
         {/* Product image */}
         <View style={ci.imgWrap}>
           {item.image
@@ -528,12 +528,13 @@ export default function CartScreen() {
         <View style={{ height: 1, backgroundColor: divider }} />
 
         {/* Cart items */}
-        {items.map((item) => (
+        {items.map((item, index) => (
           <CartItemRow
             key={`${item.productId}-${item.variantId}`}
             item={item}
             isDark={isDark}
             lang={lang}
+            isLast={index === items.length - 1}
             onRemove={() => handleRemove(item.productId, item.variantId)}
             onInc={() => handleInc(item.productId, item.variantId)}
             onDec={() => handleDec(item.productId, item.variantId, item.quantity)}
