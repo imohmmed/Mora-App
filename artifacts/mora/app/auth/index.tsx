@@ -247,27 +247,29 @@ export default function AuthScreen() {
             }
           </Pressable>
 
-          {/* ── Apple ── */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.socialBtn,
-              styles.appleBtn,
-              {
-                borderColor: isDark ? "rgba(255,255,255,0.55)" : "#000",
-                opacity: pressed || aLoading ? 0.75 : 1,
-              },
-            ]}
-            onPress={handleApple}
-            disabled={aLoading}
-          >
-            {aLoading
-              ? <ActivityIndicator color="#fff" size="small" />
-              : <>
-                  <Ionicons name="logo-apple" size={22} color="#fff" />
-                  <Text style={[styles.socialTxt, { color: "#fff" }]}>{t.apple}</Text>
-                </>
-            }
-          </Pressable>
+          {/* ── Apple (native iOS only — hidden on web and Android) ── */}
+          {IS_NATIVE_IOS && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.socialBtn,
+                styles.appleBtn,
+                {
+                  borderColor: isDark ? "rgba(255,255,255,0.55)" : "#000",
+                  opacity: pressed || aLoading ? 0.75 : 1,
+                },
+              ]}
+              onPress={handleApple}
+              disabled={aLoading}
+            >
+              {aLoading
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <>
+                    <Ionicons name="logo-apple" size={22} color="#fff" />
+                    <Text style={[styles.socialTxt, { color: "#fff" }]}>{t.apple}</Text>
+                  </>
+              }
+            </Pressable>
+          )}
 
           {/* ── Terms ── */}
           <Text style={[styles.termsTxt, { color: muted }]}>
@@ -323,7 +325,7 @@ const styles = StyleSheet.create({
 
   errorBox: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    padding: 12, borderWidth: 1, borderRadius: 12, marginBottom: 16,
+    padding: 12, borderWidth: 1, borderRadius: 0, marginBottom: 16,
   },
   errorTxt: { fontFamily: "Cairo_400Regular", fontSize: 13, color: "#DC2626", flex: 1 },
 
@@ -333,7 +335,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 12,
     height: 54,
-    borderRadius: 27,
+    borderRadius: 0,
     borderWidth: 1.5,
     marginBottom: 14,
   },
@@ -348,7 +350,7 @@ const styles = StyleSheet.create({
   langBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 6, paddingVertical: 10, paddingHorizontal: 18,
-    borderRadius: 20, alignSelf: "center", borderWidth: 1,
+    borderRadius: 0, alignSelf: "center", borderWidth: 1,
     marginTop: 4, marginBottom: 8,
   },
   langTxt: { fontFamily: "Cairo_500Medium", fontSize: 13 },
