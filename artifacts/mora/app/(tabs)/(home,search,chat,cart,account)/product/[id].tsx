@@ -26,7 +26,7 @@ import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
 import { MoraLogo } from "@/components/MoraLogo";
 import { GlassBackButton } from "@/components/GlassBackButton";
-import { fetchProduct, fetchRelatedProducts, fetchContentSections } from "@/lib/api";
+import { fetchProduct, fetchRelatedProducts, fetchContentSections, fetchProducts } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
@@ -284,7 +284,9 @@ export default function ProductDetailScreen() {
   const [relatedPage, setRelatedPage]   = useState(0);
   const [relatedTotal, setRelatedTotal] = useState(0);
   const [loadingMore, setLoadingMore]   = useState(false);
-  const [relatedTab, setRelatedTab]     = useState<string | null>(null);
+  const [relatedTab, setRelatedTab]     = useState<string>("SUGGESTED");
+  const [tabItems, setTabItems] = useState<Record<string, Product[]>>({});
+  const [tabLoading, setTabLoading] = useState<Record<string, boolean>>({});
   const relatedReady = useRef(false);
 
   const loadRelatedPage = useCallback(async (pageNum: number) => {
@@ -306,6 +308,32 @@ export default function ProductDetailScreen() {
   }, [id]);
 
   const hasMoreRelated = relatedItems.length < relatedTotal;
+
+  const TAB_FILTERS: Record<string, { gender?: string; category?: string; sort?: string } | null> = {
+    SUGGESTED: null,
+    WOMEN: { gender: "women", sort: "newest" },
+    MEN: { gender: "men", sort: "newest" },
+    "NEW IN": { category: "new_in", sort: "newest" },
+    SALE: { category: "sale", sort: "newest" },
+  };
+
+  const loadTab = useCallback(async (tab: string) => {
+    if (tab === "SUGGESTED" || tabItems[tab] || tabLoading[tab]) return;
+    const filter = TAB_FILTERS[tab];
+    if (!filter) return;
+    setTabLoading((p) => ({ ...p, [tab]: true }));
+    try {
+      const res = await fetchProducts({ ...filter, limit: 8 });
+      setTabItems((p) => ({ ...p, [tab]: res.products.filter((p2) => p2.id !== product?.id) }));
+    } catch {
+      setTabItems((p) => ({ ...p, [tab]: [] }));
+    }
+    setTabLoading((p) => ({ ...p, [tab]: false }));
+  }, [tabItems, tabLoading, product?.id]);
+
+  useEffect(() => {
+    if (relatedTab !== "SUGGESTED") loadTab(relatedTab);
+  }, [relatedTab]);
 
   // Header hide-on-scroll (same behaviour as home screen)
   const headerTranslateY = useRef(new Animated.Value(0)).current;
@@ -864,19 +892,19 @@ export default function ProductDetailScreen() {
 
           {/* ── You May Also Like ── */}
           {(relatedItems.length > 0 || loadingMore) && (() => {
-            const categories = [...new Set(
-              relatedItems
-                .map((p) => p.category)
-                .filter((c): c is string => !!c && c.toLowerCase() !== "beauty")
-            )];
-            const suggestedLabel = lang === "ar" ? "مقترح" : "SUGGESTED";
-            const tabLabel = (c: string) =>
-              c === suggestedLabel ? c : c.replace(/[_-]+/g, " ").toUpperCase();
-            const tabs = [suggestedLabel, ...categories];
-            const activeTab = relatedTab ?? suggestedLabel;
-            const shown = activeTab === suggestedLabel
+            const TAB_LABELS: Record<string, string> = {
+              SUGGESTED: lang === "ar" ? "مقترح" : "SUGGESTED",
+              WOMEN: lang === "ar" ? "نساء" : "WOMEN",
+              MEN: lang === "ar" ? "رجال" : "MEN",
+              "NEW IN": lang === "ar" ? "جديد" : "NEW IN",
+              SALE: lang === "ar" ? "تخفيضات" : "SALE",
+            };
+            const tabs = Object.keys(TAB_LABELS);
+            const activeTab = relatedTab;
+            const shown = activeTab === "SUGGESTED"
               ? relatedItems
-              : relatedItems.filter((p) => p.category === activeTab);
+              : (tabItems[activeTab] ?? []);
+            const activeLoading = activeTab !== "SUGGESTED" && !!tabLoading[activeTab];
             return (
               <View style={[styles.sectionWrap, { borderTopColor: colors.border }]}>
                 <Text style={styles.sectionLabelCenter}>
@@ -884,37 +912,41 @@ export default function ProductDetailScreen() {
                     {lang === "ar" ? "قد يعجبك أيضاً" : "YOU MAY ALSO LIKE"}
                   </Text>
                 </Text>
-                {tabs.length > 1 && (
-                  <View style={[styles.subTabsRow, { borderBottomColor: colors.border }]}>
-                    {tabs.map((t) => {
-                      const active = activeTab === t;
-                      return (
-                        <Pressable
-                          key={t}
-                          style={styles.subTabBtn}
-                          onPress={() => setRelatedTab(t)}
+                <View style={[styles.subTabsRow, { borderBottomColor: colors.border }]}>
+                  {tabs.map((t) => {
+                    const active = activeTab === t;
+                    return (
+                      <Pressable
+                        key={t}
+                        style={styles.subTabBtn}
+                        onPress={() => setRelatedTab(t)}
+                      >
+                        <Text
+                          style={[
+                            styles.subTabText,
+                            { color: active ? colors.foreground : colors.mutedForeground },
+                            active && styles.subTabTextActive,
+                          ]}
                         >
-                          <Text
-                            style={[
-                              styles.subTabText,
-                              { color: active ? colors.foreground : colors.mutedForeground },
-                              active && styles.subTabTextActive,
-                            ]}
-                          >
-                            {tabLabel(t)}
-                          </Text>
-                          {active && <View style={[styles.subTabUnderline, { backgroundColor: colors.foreground }]} />}
-                        </Pressable>
-                      );
-                    })}
+                          {TAB_LABELS[t]}
+                        </Text>
+                        {active && <View style={[styles.subTabUnderline, { backgroundColor: colors.foreground }]} />}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                {activeLoading ? (
+                  <View style={{ paddingVertical: 30, alignItems: "center" }}>
+                    <ActivityIndicator color={PRIMARY} size="small" />
+                  </View>
+                ) : (
+                  <View style={styles.relatedGrid}>
+                    {shown.map((p) => (
+                      <RelatedCard key={p.id} product={p} colors={colors} cardWidth={cardWidth} onQuickAdd={setQuickAddRelated} />
+                    ))}
                   </View>
                 )}
-                <View style={styles.relatedGrid}>
-                  {shown.map((p) => (
-                    <RelatedCard key={p.id} product={p} colors={colors} cardWidth={cardWidth} onQuickAdd={setQuickAddRelated} />
-                  ))}
-                </View>
-                {loadingMore && (
+                {activeTab === "SUGGESTED" && loadingMore && (
                   <View style={{ paddingVertical: 20, alignItems: "center" }}>
                     <ActivityIndicator color={PRIMARY} size="small" />
                   </View>
