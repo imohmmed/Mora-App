@@ -549,7 +549,7 @@ export default function CheckoutScreen() {
 
         {/* ── PROMO CODE ── */}
         <SectionHeader label={isAr ? "رمز الخصم" : "PROMO CODE"} isDark={isDark} />
-        <View style={{ borderTopWidth: 1, borderTopColor: divider, borderBottomWidth: 1, borderBottomColor: divider, padding: 14 }}>
+        <View style={{ padding: 14 }}>
           {discount ? (
             <View style={[dc.applied, isAr && { flexDirection: "row-reverse" }]}>
               <View style={dc.checkCircle}>
@@ -595,9 +595,9 @@ export default function CheckoutScreen() {
 
         {/* ── ORDER SUMMARY ── */}
         <SectionHeader label={isAr ? "ملخص الطلب" : "ORDER SUMMARY"} isDark={isDark} />
-        <View style={{ borderTopWidth: 1, borderTopColor: divider }}>
+        <View>
           {items.map((item) => (
-            <View key={`${item.productId}-${item.variantId}`} style={[st.summaryRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
+            <View key={`${item.productId}-${item.variantId}`} style={[st.summaryRow, isAr && { flexDirection: "row-reverse" }]}>
               {item.image && <Image source={{ uri: item.image }} style={st.summaryImg} contentFit="cover" />}
               <View style={{ flex: 1 }}>
                 <Text style={[st.summaryTitle, { color: textCol }, isAr && { textAlign: "right" }]} numberOfLines={1}>{item.title}</Text>
@@ -615,42 +615,44 @@ export default function CheckoutScreen() {
           ))}
 
           {/* Totals */}
-          <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
-            <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "المجموع الفرعي" : "Subtotal"}</Text>
-            <Text style={[st.totalVal, { color: textCol }]}>{formatIQD(itemDiscount > 0 ? originalSubtotal : subtotal)}</Text>
-          </View>
-          {itemDiscount > 0 && (
+          <View style={{ borderTopWidth: 1, borderTopColor: divider }}>
             <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
-              <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "الخصم" : "Discount"}</Text>
-              <Text style={[st.totalVal, { color: "#EF4444" }]}>−{formatIQD(itemDiscount)}</Text>
+              <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "المجموع الفرعي" : "Subtotal"}</Text>
+              <Text style={[st.totalVal, { color: textCol }]}>{formatIQD(itemDiscount > 0 ? originalSubtotal : subtotal)}</Text>
             </View>
-          )}
-          {discount && (
-            <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
-              <Text style={[st.totalLbl, { color: sub }]}>{isAr ? `كود الخصم (${discount.code})` : `Discount (${discount.code})`}</Text>
-              <Text style={[st.totalVal, { color: "#EF4444" }]}>−{formatIQD(discountAmount)}</Text>
-            </View>
-          )}
-          <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
-            <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "الشحن" : "Shipping"}</Text>
-            {freeShipping && selectedZone && selectedZone.price > 0 ? (
-              <View style={[{ flexDirection: "row", alignItems: "center", gap: 6 }, isAr && { flexDirection: "row-reverse" }]}>
-                <Text style={[st.totalVal, { color: "#EF4444", textDecorationLine: "line-through" }]}>
-                  {formatIQD(selectedZone.price)}
-                </Text>
-                <Text style={[st.totalVal, { color: PRIMARY, fontWeight: "800" }]}>
-                  {isAr ? "مجاني" : "FREE"}
-                </Text>
+            {itemDiscount > 0 && (
+              <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
+                <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "الخصم" : "Discount"}</Text>
+                <Text style={[st.totalVal, { color: "#EF4444" }]}>−{formatIQD(itemDiscount)}</Text>
               </View>
-            ) : (
-              <Text style={[st.totalVal, { color: shipping === 0 ? PRIMARY : textCol }]}>
-                {shipping === 0 ? (isAr ? "مجاني" : "FREE") : formatIQD(shipping)}
-              </Text>
             )}
-          </View>
-          <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider, borderBottomWidth: 0, paddingVertical: 16 }]}>
-            <Text style={[st.totalLblBold, { color: textCol }]}>{isAr ? "المجموع الكلي" : "TOTAL"}</Text>
-            <Text style={[st.totalBold, { color: PRIMARY }]}>{formatIQD(grandTotal)}</Text>
+            {discount && (
+              <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
+                <Text style={[st.totalLbl, { color: sub }]}>{isAr ? `كود الخصم (${discount.code})` : `Discount (${discount.code})`}</Text>
+                <Text style={[st.totalVal, { color: "#EF4444" }]}>−{formatIQD(discountAmount)}</Text>
+              </View>
+            )}
+            <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
+              <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "الشحن" : "Shipping"}</Text>
+              {shipping === 0 && selectedZone && selectedZone.price > 0 ? (
+                <View style={[{ flexDirection: "row", alignItems: "center", gap: 6 }, isAr && { flexDirection: "row-reverse" }]}>
+                  <Text style={[st.totalVal, { color: "#EF4444", textDecorationLine: "line-through" }]}>
+                    {formatIQD(selectedZone.price)}
+                  </Text>
+                  <Text style={[st.totalVal, { color: PRIMARY, fontWeight: "800" }]}>
+                    {isAr ? "مجاني" : "FREE"}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={[st.totalVal, { color: shipping === 0 ? PRIMARY : textCol }]}>
+                  {shipping === 0 ? (isAr ? "مجاني" : "FREE") : formatIQD(shipping)}
+                </Text>
+              )}
+            </View>
+            <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider, borderBottomWidth: 0, paddingVertical: 16 }]}>
+              <Text style={[st.totalLblBold, { color: textCol }]}>{isAr ? "المجموع الكلي" : "TOTAL"}</Text>
+              <Text style={[st.totalBold, { color: PRIMARY }]}>{formatIQD(grandTotal)}</Text>
+            </View>
           </View>
         </View>
 
@@ -708,7 +710,7 @@ const st = StyleSheet.create({
   payIcon:      { width: 42, height: 42, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   radio:        { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   radioDot:     { width: 10, height: 10, borderRadius: 5 },
-  summaryRow:   { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
+  summaryRow:   { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
   summaryImg:   { width: 44, height: 54, borderRadius: 4 },
   summaryTitle: { fontSize: 13, fontWeight: "600" },
   summarySub:   { fontSize: 11, marginTop: 2 },
