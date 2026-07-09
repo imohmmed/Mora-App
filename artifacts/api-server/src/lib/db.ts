@@ -484,8 +484,16 @@ const insertCollection = db.prepare(`
   { id: "col3", title: "Men's Essentials",     description: "Wardrobe staples for modern men.",       products_count: 6,  days: 60 },
   { id: "col4", title: "Beauty Favourites",    description: "Top-rated skincare and makeup.",         products_count: 4,  days: 20 },
   { id: "col5", title: "Sale Picks",           description: "Up to 50% off selected styles.",         products_count: 6,  days: 10 },
+  { id: "col_mora-perfumes", title: "Mora Perfumes", description: "Signature scents, curated.",       products_count: 12, days: 5 },
 ].forEach(({ days, ...c }) =>
   insertCollection.run({ ...c, image: `https://picsum.photos/seed/${c.id}/800/400`, created_at: iso(days) })
+);
+
+const insertProductCollection = db.prepare(`
+  INSERT OR IGNORE INTO product_collections (product_id, collection_id) VALUES (?, ?)
+`);
+["p001","p002","p003","p004","p005","p006","p007","p008","p009","p010","p011","p012"].forEach((pid) =>
+  insertProductCollection.run(pid, "col_mora-perfumes")
 );
 
 // ─── Seed: Customers ──────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import {
-  Dimensions, FlatList, Pressable, StyleSheet, Text, View,
+  Dimensions, Pressable, StyleSheet, Text, View,
 } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -117,7 +117,9 @@ function PerfumeCard({
   );
 }
 
-export function MoraPerfumesSection() {
+export type MoraPerfumesSectionHandle = { loadMore: () => void };
+
+export const MoraPerfumesSection = forwardRef<MoraPerfumesSectionHandle, {}>(function MoraPerfumesSection(_props, ref) {
   const colors = useColors();
   const { lang } = useLanguage();
   const { addItem } = useCart();
@@ -179,9 +181,11 @@ export function MoraPerfumesSection() {
 
   const visibleProducts = filteredProducts.slice(0, visibleCount);
 
-  const handleEndReached = useCallback(() => {
+  const loadMore = useCallback(() => {
     setVisibleCount((c) => Math.min(c + PAGE_SIZE, filteredProducts.length));
   }, [filteredProducts.length]);
+
+  useImperativeHandle(ref, () => ({ loadMore }), [loadMore]);
 
   if (products.length === 0) return null;
 
@@ -236,17 +240,11 @@ export function MoraPerfumesSection() {
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={visibleProducts}
-          keyExtractor={(p) => p.id}
-          renderItem={({ item }) => (
-            <PerfumeCard product={item} onQuickAdd={setQuickAddProduct} />
-          )}
-          scrollEnabled={false}
-          contentContainerStyle={{ paddingHorizontal: 14, gap: 18 }}
-          onEndReachedThreshold={0.5}
-          onEndReached={handleEndReached}
-        />
+        <View style={{ paddingHorizontal: 14, gap: 18 }}>
+          {visibleProducts.map((item) => (
+            <PerfumeCard key={item.id} product={item} onQuickAdd={setQuickAddProduct} />
+          ))}
+        </View>
       )}
 
       <QuickAddSheet
@@ -271,7 +269,7 @@ export function MoraPerfumesSection() {
       />
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: { marginTop: 24, marginBottom: 16 },

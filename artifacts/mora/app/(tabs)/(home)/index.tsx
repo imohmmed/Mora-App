@@ -39,7 +39,7 @@ import { fetchProducts, fetchSpecialCollections, fetchBanners, fetchStories, fet
 import { formatIQD } from "@/lib/format";
 import { StoriesSection } from "@/components/StoriesSection";
 import { HomeSaleCollections } from "@/components/HomeSaleCollections";
-import { MoraPerfumesSection } from "@/components/MoraPerfumesSection";
+import { MoraPerfumesSection, MoraPerfumesSectionHandle } from "@/components/MoraPerfumesSection";
 import type { Product, Banner, Variant } from "@/lib/types";
 
 // Enable LayoutAnimation on Android (always-on on iOS)
@@ -316,11 +316,20 @@ export default function HomeScreen() {
   const headerTranslateY = useRef(new Animated.Value(0)).current;
   const lastScrollY = useRef(0);
   const headerShown = useRef(true);
+  const perfumeSectionRef = useRef<MoraPerfumesSectionHandle>(null);
 
   const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const y = e.nativeEvent.contentOffset.y;
+    const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+    const y = contentOffset.y;
     const dy = y - lastScrollY.current;
     lastScrollY.current = y;
+
+    // MoraPerfumesSection is the last block on the page — nearing the bottom
+    // of the whole page means the user is scrolling through it, so load more.
+    const distanceFromBottom = contentSize.height - (y + layoutMeasurement.height);
+    if (distanceFromBottom < 600) {
+      perfumeSectionRef.current?.loadMore();
+    }
 
     // Always show near the top
     if (y < 60) {
@@ -640,7 +649,7 @@ export default function HomeScreen() {
 
       <HomeSaleCollections />
 
-      <MoraPerfumesSection />
+      <MoraPerfumesSection ref={perfumeSectionRef} />
     </View>
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [
