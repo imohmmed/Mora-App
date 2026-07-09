@@ -1,10 +1,8 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import {
-  Dimensions, Pressable, StyleSheet, Text, View,
+  Dimensions, Pressable, ScrollView, StyleSheet, Text, View,
 } from "react-native";
-import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
@@ -20,16 +18,8 @@ import type { Product, Variant } from "@/lib/types";
 
 const COLLECTION_ID = "col_mora-perfumes";
 const { width: SCREEN_W } = Dimensions.get("window");
-const CARD_H = SCREEN_W * 1.05;
-const PAGE_SIZE = 6;
-
-type FilterKey = "all" | "men" | "women" | "foryou";
-const FILTERS: { key: FilterKey; en: string; ar: string }[] = [
-  { key: "all",    en: "ALL",     ar: "الكل" },
-  { key: "men",    en: "MEN",     ar: "رجالي" },
-  { key: "women",  en: "WOMEN",   ar: "نسائي" },
-  { key: "foryou", en: "FOR YOU", ar: "مخصص لك" },
-];
+const CARD_W = (SCREEN_W - 48) / 2;
+const CARD_H = CARD_W * 1.4;
 
 const CARD_COLORS = [
   "#E8EDF5", "#F0EBE3", "#E8F0E8", "#F5EDEB",
@@ -69,38 +59,26 @@ function PerfumeCard({
         style={[styles.cardImage, { backgroundColor: cardColor(product.id) }]}
       >
         {discountPct > 0 && (
-          <View style={[styles.discBadge, isAr ? { left: 10, right: undefined } : { right: 10 }]}>
+          <View style={[styles.discBadge, isAr ? { left: 8, right: undefined } : { right: 8 }]}>
             <Text style={styles.discText}>▼ {discountPct}%</Text>
           </View>
         )}
         <Pressable
-          style={[styles.heartBtn, isAr ? { left: 10 } : { right: 10 }]}
+          style={[styles.heartBtn, isAr ? { left: 8 } : { right: 8 }]}
           onPress={() => { toggle(product.id); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
           hitSlop={10}
         >
-          <Ionicons name={liked ? "heart" : "heart-outline"} size={22} color={liked ? "#0274C1" : "#FFF"} />
+          <Ionicons name={liked ? "heart" : "heart-outline"} size={20} color={liked ? "#0274C1" : "#FFF"} />
         </Pressable>
         <Pressable
-          style={[styles.plusBtn, { right: 10 }]}
+          style={[styles.plusBtn, isAr ? { left: 8 } : { right: 8 }]}
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onQuickAdd(product); }}
           hitSlop={10}
         >
-          <Feather name="plus" size={22} color="#FFF" />
+          <Feather name="plus" size={20} color="#FFF" />
         </Pressable>
       </ProductImageCarousel>
       <View style={[styles.info, isAr && { alignItems: "flex-end" }]}>
-        {(() => {
-          const colorDef = product.optionDefinitions?.find((d) => d.type === "color");
-          const hexes = colorDef?.colorEntries?.map((e) => e.hex).filter(Boolean) ?? [];
-          if (!hexes.length) return null;
-          return (
-            <View style={{ flexDirection: isAr ? "row-reverse" : "row", gap: 4, marginBottom: 2 }}>
-              {hexes.slice(0, 7).map((hex, i) => (
-                <View key={i} style={{ width: 11, height: 11, borderRadius: 6, backgroundColor: hex, borderWidth: 0.5, borderColor: "rgba(0,0,0,0.15)" }} />
-              ))}
-            </View>
-          );
-        })()}
         <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
           {product.title}
         </Text>
@@ -121,13 +99,11 @@ export type MoraPerfumesSectionHandle = { loadMore: () => void };
 
 export const MoraPerfumesSection = forwardRef<MoraPerfumesSectionHandle, {}>(function MoraPerfumesSection(_props, ref) {
   const colors = useColors();
+  const router = useRouter();
   const { lang } = useLanguage();
   const { addItem } = useCart();
   const isAr = lang === "ar";
   const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
-  const [filter, setFilter] = useState<FilterKey>("all");
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [forYouSignal, setForYouSignal] = useState<{ tag?: string; gender?: string }>({});
 
   const { data: collection } = useQuery({
     queryKey: ["collection", COLLECTION_ID],
@@ -137,55 +113,9 @@ export const MoraPerfumesSection = forwardRef<MoraPerfumesSectionHandle, {}>(fun
 
   const products = collection?.products ?? [];
 
-  useEffect(() => {
-    if (filter !== "foryou") return;
-    AsyncStorage.getItem("mora_views").then((raw) => {
-      const views = JSON.parse(raw || "[]") as { id: string; tags: string[]; gender: string }[];
-      if (views.length === 0) { setForYouSignal({}); return; }
-      const tagCount: Record<string, number> = {};
-      const genderCount: Record<string, number> = {};
-      views.slice(0, 15).forEach((v) => {
-        v.tags?.forEach((t) => { tagCount[t] = (tagCount[t] || 0) + 1; });
-        if (v.gender && v.gender !== "all") genderCount[v.gender] = (genderCount[v.gender] || 0) + 1;
-      });
-      const topTag = Object.keys(tagCount).sort((a, b) => tagCount[b] - tagCount[a])[0];
-      const topGender = Object.keys(genderCount).sort((a, b) => genderCount[b] - genderCount[a])[0];
-      setForYouSignal({ tag: topTag, gender: topGender });
-    }).catch(() => {});
-  }, [filter]);
-
-  const filteredProducts = useMemo(() => {
-    switch (filter) {
-      case "men":
-        return products.filter((p) => p.gender === "men");
-      case "women":
-        return products.filter((p) => p.gender === "women");
-      case "foryou": {
-        const { tag, gender } = forYouSignal;
-        if (!tag && !gender) return products;
-        const matched = products.filter((p) => {
-          const genderMatch = gender ? p.gender === gender : false;
-          const tagMatch = tag ? (p.tags ?? []).includes(tag) : false;
-          return genderMatch || tagMatch;
-        });
-        return matched.length > 0 ? matched : products;
-      }
-      default:
-        return products;
-    }
-  }, [products, filter, forYouSignal]);
-
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [filter]);
-
-  const visibleProducts = filteredProducts.slice(0, visibleCount);
-
-  const loadMore = useCallback(() => {
-    setVisibleCount((c) => Math.min(c + PAGE_SIZE, filteredProducts.length));
-  }, [filteredProducts.length]);
-
-  useImperativeHandle(ref, () => ({ loadMore }), [loadMore]);
+  // No-op — this section is now a self-contained horizontal carousel with no
+  // pagination-on-scroll behavior; kept so the parent's ref call is harmless.
+  useImperativeHandle(ref, () => ({ loadMore: () => {} }), []);
 
   if (products.length === 0) return null;
 
@@ -194,58 +124,30 @@ export const MoraPerfumesSection = forwardRef<MoraPerfumesSectionHandle, {}>(fun
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, isAr && { flexDirection: "row-reverse" }]}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{label}</Text>
-      </View>
-
-      {/* Filter tabs */}
-      <View style={[styles.filterRow, isAr && { flexDirection: "row-reverse" }]}>
-        {FILTERS.map((f) => {
-          const active = filter === f.key;
-          return (
-            <Pressable
-              key={f.key}
-              onPress={() => {
-                if (filter !== f.key) {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setFilter(f.key);
-                }
-              }}
-              style={[
-                styles.filterPill,
-                {
-                  backgroundColor: active ? colors.primary : "transparent",
-                  borderColor: active ? colors.primary : colors.border,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.filterPillText,
-                  { color: active ? "#FFFFFF" : colors.foreground },
-                ]}
-              >
-                {isAr ? f.ar : f.en}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {/* Vertical stacked list — loads more as the user scrolls down */}
-      {visibleProducts.length === 0 ? (
-        <View style={styles.emptyBox}>
-          <Text style={{ color: colors.mutedForeground, fontFamily: "Cairo_500Medium", fontSize: 13 }}>
-            {isAr ? "لا توجد منتجات" : "No products"}
+        <Pressable
+          onPress={() => router.push(`/collection/${COLLECTION_ID}` as any)}
+          hitSlop={8}
+        >
+          <Text style={[styles.seeAll, { color: colors.mutedForeground }]}>
+            {isAr ? "عرض الكل" : "See all"}
           </Text>
-        </View>
-      ) : (
-        <View style={{ paddingHorizontal: 1, gap: 18 }}>
-          {visibleProducts.map((item) => (
-            <PerfumeCard key={item.id} product={item} onQuickAdd={setQuickAddProduct} />
-          ))}
-        </View>
-      )}
+        </Pressable>
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        snapToInterval={CARD_W + 1}
+        decelerationRate="fast"
+        inverted={isAr}
+      >
+        {products.map((product) => (
+          <PerfumeCard key={product.id} product={product} onQuickAdd={setQuickAddProduct} />
+        ))}
+      </ScrollView>
 
       <QuickAddSheet
         visible={!!quickAddProduct}
@@ -272,13 +174,13 @@ export const MoraPerfumesSection = forwardRef<MoraPerfumesSectionHandle, {}>(fun
 });
 
 const styles = StyleSheet.create({
-  container: { marginTop: 24, marginBottom: 16 },
+  container: { marginTop: 24, marginBottom: 0 },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 1,
-    paddingBottom: 10,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontFamily: "Cairo_700Bold",
@@ -286,33 +188,20 @@ const styles = StyleSheet.create({
     letterSpacing: 1.4,
     textTransform: "uppercase",
   },
-  filterRow: {
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 1,
-    paddingBottom: 16,
-  },
-  filterPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  filterPillText: {
-    fontFamily: "Cairo_600SemiBold",
+  seeAll: {
+    fontFamily: "Cairo_500Medium",
     fontSize: 12,
-    letterSpacing: 0.3,
   },
-  emptyBox: { paddingVertical: 40, alignItems: "center" },
-  card: { width: "100%" },
-  cardImage: { width: "100%", height: CARD_H, borderRadius: 0 },
-  info: { paddingTop: 10, gap: 4, paddingHorizontal: 2 },
-  title: { fontFamily: "Cairo_500Medium", fontSize: 14, lineHeight: 19 },
-  priceRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  price: { fontFamily: "Cairo_700Bold", fontSize: 15 },
-  comparePrice: { fontFamily: "Cairo_400Regular", fontSize: 12, textDecorationLine: "line-through" },
-  discBadge: { position: "absolute", top: 10, backgroundColor: "rgba(0,0,0,0.55)", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  scroll: { gap: 1, paddingHorizontal: 1 },
+  card: { width: CARD_W },
+  cardImage: { width: CARD_W, height: CARD_H, borderRadius: 0, overflow: "hidden", position: "relative" },
+  info: { paddingTop: 8, gap: 3 },
+  title: { fontFamily: "Cairo_500Medium", fontSize: 12, lineHeight: 16 },
+  priceRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+  price: { fontFamily: "Cairo_700Bold", fontSize: 13 },
+  comparePrice: { fontFamily: "Cairo_400Regular", fontSize: 11, textDecorationLine: "line-through" },
+  discBadge: { position: "absolute", top: 8, backgroundColor: "rgba(0,0,0,0.55)", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, zIndex: 2 },
   discText: { fontFamily: "Cairo_600SemiBold", fontSize: 10, color: "#FFF" },
-  heartBtn: { position: "absolute", top: 10 },
-  plusBtn: { position: "absolute", bottom: 12 },
+  heartBtn: { position: "absolute", top: 8, zIndex: 2 },
+  plusBtn: { position: "absolute", bottom: 8, zIndex: 2 },
 });

@@ -565,19 +565,25 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* ── Category Tabs (below banner) ── */}
+      <SpecialCollectionsGrid
+        collections={specialCollections ?? []}
+        loading={isCollectionsLoading}
+      />
+
+      <StoriesSection rows={storyRows ?? []} activeFilter={activeFilter} />
+
+      <HomeSaleCollections />
+
+      <MoraPerfumesSection ref={perfumeSectionRef} />
+
+      {/* ── Category Tabs — full catalog browser, always the last block ── */}
       <CategoryTabs
         categories={menuTabs.map((t) => lang === "ar" && (t as TabConfig).arabicLabel ? (t as TabConfig).arabicLabel! : t.label)}
         activeIndex={safeActiveCategory}
         onChange={setActiveCategory}
       />
 
-      <SpecialCollectionsGrid
-        collections={specialCollections ?? []}
-        loading={isCollectionsLoading}
-      />
-
-      {/* ── New In / section header ── */}
+      {/* ── section header ── */}
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
           {activeTab?.filterType === "all"
@@ -644,12 +650,6 @@ export default function HomeScreen() {
           </Text>
         </View>
       )}
-
-      <StoriesSection rows={storyRows ?? []} activeFilter={activeFilter} />
-
-      <HomeSaleCollections />
-
-      <MoraPerfumesSection ref={perfumeSectionRef} />
     </View>
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [
