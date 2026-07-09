@@ -475,6 +475,14 @@ export default function HomeScreen() {
     initialPageParam: 1,
   });
 
+  // ── NEW IN — fixed, independent of the ALL/WOMEN/MEN/FOR YOU tabs below ──
+  const { data: newInData, isLoading: isNewInLoading, isError: isNewInError } = useQuery({
+    queryKey: ["new-in-products"],
+    queryFn: () => fetchProducts({ sort: "newest", limit: 20, page: 1 }),
+    staleTime: 60_000,
+  });
+  const newInProducts = newInData?.products ?? [];
+
   const { data: specialCollections, isLoading: isCollectionsLoading } = useQuery({
     queryKey: ["special-collections"],
     queryFn: fetchSpecialCollections,
@@ -566,14 +574,65 @@ export default function HomeScreen() {
         loading={isCollectionsLoading}
       />
 
-      {/* ── section header ── */}
+      {/* ── NEW IN — fixed section, always shows newest arrivals ── */}
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-          {activeTab?.filterType === "all"
-            ? (lang === "ar" ? "جديد" : "NEW IN")
-            : isForYou
-              ? "FOR YOU ✦"
-              : categoryKey}
+          {lang === "ar" ? "جديد" : "NEW IN"}
+        </Text>
+      </View>
+
+      {isNewInError && (
+        <View style={styles.errorBox}>
+          <Feather name="wifi-off" size={32} color={colors.mutedForeground} />
+          <Text style={[styles.errorText, { color: colors.mutedForeground }]}>
+            Could not load products
+          </Text>
+        </View>
+      )}
+
+      {/* Skeleton rows (2 per row) when loading */}
+      {isNewInLoading && (
+        <View style={styles.skeletonRow}>
+          {Array.from({ length: 4 }).map((_, i) => <ProductSkeleton key={i} />)}
+        </View>
+      )}
+
+      {/* ── Horizontal product slide ── */}
+      {!isNewInLoading && !isNewInError && (
+        <FlatList
+          horizontal
+          data={newInProducts}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.slideCard}>
+              <ProductCard item={item} onAddToBag={handleAddToBag} onLongPress={handleLongPress} />
+            </View>
+          )}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 1, paddingBottom: bottomPadding + 80, gap: 1 }}
+          snapToInterval={CARD_WIDTH + 1}
+          decelerationRate="fast"
+          inverted={isAr}
+        />
+      )}
+
+      <StoriesSection rows={storyRows ?? []} activeFilter={activeFilter} />
+
+      <HomeSaleCollections />
+
+      <MoraPerfumesSection ref={perfumeSectionRef} />
+
+      {/* ── Category Tabs — full catalog browser, stays last ── */}
+      <CategoryTabs
+        categories={menuTabs.map((t) => lang === "ar" && (t as TabConfig).arabicLabel ? (t as TabConfig).arabicLabel! : t.label)}
+        activeIndex={safeActiveCategory}
+        onChange={setActiveCategory}
+      />
+
+      {/* ── Active category section header — grid below is rendered by the outer FlatList ── */}
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+          {isForYou ? "FOR YOU ✦" : categoryKey}
         </Text>
         {!isLoading && totalCount > 0 && (
           <Text style={[styles.seeAll, { color: colors.mutedForeground }]}>
@@ -601,30 +660,6 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* ── Horizontal product slide ── */}
-      {!isLoading && !isError && (
-        <FlatList
-          horizontal
-          data={products}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.slideCard}>
-              <ProductCard item={item} onAddToBag={handleAddToBag} onLongPress={handleLongPress} />
-            </View>
-          )}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 1, paddingBottom: bottomPadding + 80, gap: 1 }}
-          snapToInterval={CARD_WIDTH + 1}
-          decelerationRate="fast"
-          onEndReached={handleEndReached}
-          onEndReachedThreshold={0.4}
-          inverted={isAr}
-          ListFooterComponent={isFetchingNextPage ? (
-            <ActivityIndicator size="small" color={colors.primary} style={{ paddingHorizontal: 20, alignSelf: "center" }} />
-          ) : null}
-        />
-      )}
-
       {!isLoading && products.length === 0 && !isError && (
         <View style={styles.emptyBox}>
           <Feather name="inbox" size={40} color={colors.border} />
@@ -633,19 +668,6 @@ export default function HomeScreen() {
           </Text>
         </View>
       )}
-
-      <StoriesSection rows={storyRows ?? []} activeFilter={activeFilter} />
-
-      <HomeSaleCollections />
-
-      <MoraPerfumesSection ref={perfumeSectionRef} />
-
-      {/* ── Category Tabs — full catalog browser, stays last ── */}
-      <CategoryTabs
-        categories={menuTabs.map((t) => lang === "ar" && (t as TabConfig).arabicLabel ? (t as TabConfig).arabicLabel! : t.label)}
-        activeIndex={safeActiveCategory}
-        onChange={setActiveCategory}
-      />
     </View>
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [
@@ -653,19 +675,32 @@ export default function HomeScreen() {
     isCollectionsLoading, isError, isBannersLoading, isLoading, isRefetching,
     specialCollections, storyRows, totalCount, activeFilter, bannerHeight,
     products, isFetchingNextPage, handleEndReached, bottomPadding, isAr,
-    handleAddToBag, handleLongPress,
+    handleAddToBag, handleLongPress, newInProducts, isNewInLoading, isNewInError, lang,
   ]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         ref={flatListRef}
-        data={[]}
-        renderItem={null}
+        data={!isLoading && !isError ? products : []}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        columnWrapperStyle={styles.gridRow}
+        renderItem={({ item }) => (
+          <View style={styles.gridCard}>
+            <ProductCard item={item} onAddToBag={handleAddToBag} onLongPress={handleLongPress} />
+          </View>
+        )}
         ListHeaderComponent={ListHeader}
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.4}
+        contentContainerStyle={{ paddingBottom: bottomPadding + 80 }}
+        ListFooterComponent={isFetchingNextPage ? (
+          <ActivityIndicator size="small" color={colors.primary} style={{ paddingVertical: 20 }} />
+        ) : null}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -769,6 +804,10 @@ const styles = StyleSheet.create({
 
   /* ── Horizontal slide card wrapper ── */
   slideCard: { width: CARD_WIDTH },
+
+  /* ── Bottom category grid (2 per row) ── */
+  gridRow: { justifyContent: "space-between", paddingHorizontal: 16 },
+  gridCard: { width: CARD_WIDTH, marginBottom: 20 },
 
   /* ── Product card ── */
   productCard: { width: CARD_WIDTH, flex: 1 },
