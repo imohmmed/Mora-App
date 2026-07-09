@@ -256,6 +256,7 @@ function AlsoBoughtSection({ lang, isDark }: { lang: string; isDark: boolean }) 
       title:     p.title,
       vendor:    p.vendor ?? "",
       price:     variant.price,
+      comparePrice: p.comparePrice,
       quantity:  qty,
       image:     p.images?.[0],
       size:      variant.size,
@@ -359,7 +360,7 @@ function GiftSection({ lang, isDark }: { lang: string; isDark: boolean }) {
     if (!p) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    addItem({ productId: p.id, variantId: variant.id, title: p.title, vendor: p.vendor ?? "", price: variant.price, quantity: qty, image: p.images?.[0], size: variant.size, color: variant.color });
+    addItem({ productId: p.id, variantId: variant.id, title: p.title, vendor: p.vendor ?? "", price: variant.price, comparePrice: p.comparePrice, quantity: qty, image: p.images?.[0], size: variant.size, color: variant.color });
     setSheetProduct(null);
   };
 

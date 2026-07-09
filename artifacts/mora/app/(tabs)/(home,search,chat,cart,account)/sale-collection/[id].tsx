@@ -188,6 +188,7 @@ export default function SaleCollectionScreen() {
             title: quickAddProduct.title,
             vendor: quickAddProduct.vendor ?? "",
             price: variant.price ?? quickAddProduct.price,
+            comparePrice: quickAddProduct.comparePrice,
             quantity: qty,
             size: variant.option1 ?? undefined,
             color: variant.option2 ?? undefined,

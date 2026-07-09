@@ -199,6 +199,7 @@ function StoryRowSection({
       title: quickAddProduct.title,
       vendor: quickAddProduct.vendor ?? "",
       price: variant.price ?? quickAddProduct.price,
+      comparePrice: quickAddProduct.comparePrice,
       quantity: 1,
       size: variant.option1 ?? undefined,
       color: variant.option2 ?? undefined,

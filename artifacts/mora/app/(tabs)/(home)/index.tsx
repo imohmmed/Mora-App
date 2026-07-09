@@ -368,6 +368,7 @@ export default function HomeScreen() {
       title: quickAddProduct.title,
       vendor: quickAddProduct.vendor ?? "Mora",
       price: variant.price,
+      comparePrice: quickAddProduct.comparePrice,
       quantity: qty,
       size: variant.option1,
       color: variant.option2,

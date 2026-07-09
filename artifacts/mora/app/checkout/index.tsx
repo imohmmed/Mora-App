@@ -622,14 +622,14 @@ export default function CheckoutScreen() {
             </View>
             {itemDiscount > 0 && (
               <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
-                <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "الخصم" : "Discount"}</Text>
-                <Text style={[st.totalVal, { color: "#EF4444" }]}>−{formatIQD(itemDiscount)}</Text>
+                <Text style={[st.totalLbl, { color: PRIMARY }]}>{isAr ? "الخصم" : "Discount"}</Text>
+                <Text style={[st.totalVal, { color: PRIMARY }]}>−{formatIQD(itemDiscount)}</Text>
               </View>
             )}
             {discount && (
               <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
-                <Text style={[st.totalLbl, { color: sub }]}>{isAr ? `كود الخصم (${discount.code})` : `Discount (${discount.code})`}</Text>
-                <Text style={[st.totalVal, { color: "#EF4444" }]}>−{formatIQD(discountAmount)}</Text>
+                <Text style={[st.totalLbl, { color: PRIMARY }]}>{isAr ? `كود الخصم (${discount.code})` : `Discount (${discount.code})`}</Text>
+                <Text style={[st.totalVal, { color: PRIMARY }]}>−{formatIQD(discountAmount)}</Text>
               </View>
             )}
             <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>

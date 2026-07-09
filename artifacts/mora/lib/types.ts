@@ -138,6 +138,7 @@ export type CartItem = {
   title: string;
   vendor: string;
   price: number;
+  comparePrice?: number;
   quantity: number;
   size?: string;
   color?: string;
