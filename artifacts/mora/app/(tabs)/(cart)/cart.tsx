@@ -327,7 +327,7 @@ const ab = StyleSheet.create({
   hdrRow:   { borderTopWidth: 1, borderBottomWidth: 1, paddingHorizontal: 16, paddingVertical: 12 },
   hdr:      { fontSize: 12, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase" },
   scroll:   { paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
-  card:     { width: 118, borderRadius: 4, overflow: "hidden" },
+  card:     { width: 118, borderRadius: 0, overflow: "hidden" },
   cardImg:  { width: 118, height: 140 },
   cardBody: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 8, paddingVertical: 8 },
   cardPrice:{ fontSize: 12, fontWeight: "700" },
