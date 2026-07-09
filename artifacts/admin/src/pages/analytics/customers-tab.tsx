@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Heart, Palette, AlertTriangle, ShoppingCart, Search, Tag } from "lucide-react";
 import { useT } from "@/i18n/LanguageContext";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
+} from "recharts";
 
 // ─── Types (mirror api-server getCustomersAnalytics) ─────────────────────────
 
@@ -117,19 +120,52 @@ function MiniTable({ headers, rows }: { headers: string[]; rows: (string | numbe
   );
 }
 
-function BarList({ items, unitLabel }: { items: { label: string; value: number }[]; unitLabel: (n: number) => string }) {
-  const max = Math.max(...items.map(i => i.value), 1);
+
+// Horizontal recharts bar chart, matching the analytics page style
+function HBarChart({
+  data, color = "#2196F3", unit, height,
+}: {
+  data: { name: string; value: number }[]; color?: string; unit?: string; height?: number;
+}) {
+  const h = height ?? Math.max(120, data.length * 34 + 20);
   return (
-    <div className="space-y-2">
-      {items.map(it => (
-        <div key={it.label} className="flex items-center gap-2 text-xs">
-          <span className="w-20 shrink-0 truncate font-medium">{it.label}</span>
-          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-            <div style={{ width: `${(it.value / max) * 100}%`, backgroundColor: "#38bdf8", height: "100%", borderRadius: "inherit" }} />
-          </div>
-          <span className="w-20 text-end text-muted-foreground shrink-0">{unitLabel(it.value)}</span>
-        </div>
-      ))}
+    <div style={{ height: h }} dir="ltr">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+          <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} allowDecimals={false} />
+          <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
+          <Tooltip
+            formatter={(v: number) => [unit ? `${v}${unit}` : String(v), ""]}
+            contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", fontSize: 12 }}
+          />
+          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
+            {data.map((_, i) => <Cell key={i} fill={color} fillOpacity={1 - i * 0.06} />)}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// Vertical grouped bar chart (e.g. sales with vs without discount)
+function VBarChart({ data, color = "#2196F3", height = 160, tickFormatter }: {
+  data: { name: string; value: number }[]; color?: string; height?: number; tickFormatter?: (v: number) => string;
+}) {
+  return (
+    <div style={{ height }} dir="ltr">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+          <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
+          <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={tickFormatter} allowDecimals={false} />
+          <Tooltip
+            formatter={(v: number) => [tickFormatter ? tickFormatter(v) : String(v), ""]}
+            contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", fontSize: 12 }}
+          />
+          <Bar dataKey="value" fill={color} radius={[4, 4, 0, 0]} barSize={40} />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -164,6 +200,16 @@ export function CustomersTab() {
         {d.wishlist.topWishlisted.length === 0 ? <EmptyNote /> : (
           <div>
             <p className="text-xs font-semibold mb-2">{t("analytics.cust.wishlist.top")}</p>
+            <HBarChart
+              data={d.wishlist.topWishlisted.slice(0, 6).map(w => ({ name: w.title, value: w.adds }))}
+              color="#38bdf8"
+            />
+            <p className="text-xs font-semibold mb-2 mt-4">{t("analytics.cust.wishlist.col.conv")}</p>
+            <HBarChart
+              data={d.wishlist.topWishlisted.slice(0, 6).map(w => ({ name: w.title, value: w.conversionRate }))}
+              color="#818cf8"
+              unit="%"
+            />
             <MiniTable
               headers={[t("analytics.col.product"), t("analytics.cust.wishlist.col.adds"), t("analytics.cust.wishlist.col.users"), t("analytics.cust.wishlist.col.purchases"), t("analytics.cust.wishlist.col.conv")]}
               rows={d.wishlist.topWishlisted.map(w => [w.title, w.adds, w.uniqueUsers, w.purchases, `${w.conversionRate}%`])}
@@ -183,13 +229,19 @@ export function CustomersTab() {
         {d.sizeColor.sizesSold.length > 0 && (
           <div>
             <p className="text-xs font-semibold mb-2">{t("analytics.cust.sizeColor.sizesSold")}</p>
-            <BarList items={d.sizeColor.sizesSold.map(s => ({ label: s.size, value: s.units }))} unitLabel={n => t("analytics.cust.units", { n })} />
+            <HBarChart data={d.sizeColor.sizesSold.slice(0, 8).map(s => ({ name: s.size, value: s.units }))} color="#38bdf8" />
           </div>
         )}
         {d.sizeColor.colorsSold.length > 0 && (
           <div>
             <p className="text-xs font-semibold mb-2">{t("analytics.cust.sizeColor.colorsSold")}</p>
-            <BarList items={d.sizeColor.colorsSold.map(c => ({ label: c.color, value: c.units }))} unitLabel={n => t("analytics.cust.units", { n })} />
+            <HBarChart data={d.sizeColor.colorsSold.slice(0, 8).map(c => ({ name: c.color, value: c.units }))} color="#818cf8" />
+          </div>
+        )}
+        {d.sizeColor.colorsViewed.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold mb-2">{t("analytics.cust.sizeColor.mostViewedColor")}</p>
+            <HBarChart data={d.sizeColor.colorsViewed.slice(0, 8).map(c => ({ name: c.color, value: c.views }))} color="#34d399" />
           </div>
         )}
         {d.sizeColor.sizesSold.length === 0 && d.sizeColor.colorsSold.length === 0 && <EmptyNote />}
@@ -240,13 +292,23 @@ export function CustomersTab() {
           <StatBox label={t("analytics.cust.cart.abandonRate")} value={`${d.cart.abandonmentRate}%`} />
         </div>
         <StatBox label={t("analytics.cust.cart.avgValue")} value={fmtIQD(d.cart.avgCartValue)} accent />
+        {d.cart.cartsCreated > 0 && (
+          <div>
+            <p className="text-xs font-semibold mb-2">{t("analytics.cust.cart.abandonRate")}</p>
+            <VBarChart
+              data={[
+                { name: t("analytics.cust.cart.created"), value: d.cart.cartsCreated },
+                { name: t("analytics.cust.cart.abandoned"), value: d.cart.cartsAbandoned },
+                { name: t("analytics.cust.cart.purchased"), value: d.cart.cartsPurchased },
+              ]}
+              color="#38bdf8"
+            />
+          </div>
+        )}
         {d.cart.mostAbandoned.length === 0 ? <EmptyNote /> : (
           <div>
             <p className="text-xs font-semibold mb-2">{t("analytics.cust.cart.mostAbandoned")}</p>
-            <MiniTable
-              headers={[t("analytics.col.product"), t("analytics.cust.cart.col.times")]}
-              rows={d.cart.mostAbandoned.map(p => [p.title, p.count])}
-            />
+            <HBarChart data={d.cart.mostAbandoned.slice(0, 6).map(p => ({ name: p.title, value: p.count }))} color="#f87171" />
           </div>
         )}
       </SectionCard>
@@ -261,6 +323,7 @@ export function CustomersTab() {
         {d.search.topSearches.length === 0 ? <EmptyNote /> : (
           <div>
             <p className="text-xs font-semibold mb-2">{t("analytics.cust.search.top")}</p>
+            <HBarChart data={d.search.topSearches.slice(0, 8).map(s => ({ name: s.query, value: s.count }))} color="#38bdf8" />
             <MiniTable
               headers={["", t("analytics.cust.search.col.count"), t("analytics.cust.search.col.results")]}
               rows={d.search.topSearches.map(s => [s.query, s.count, s.results])}
@@ -295,9 +358,23 @@ export function CustomersTab() {
           <StatBox label={t("analytics.cust.coupons.salesWith")} value={fmtIQD(d.coupons.salesWithDiscount)} />
           <StatBox label={t("analytics.cust.coupons.salesWithout")} value={fmtIQD(d.coupons.salesWithoutDiscount)} />
         </div>
+        {(d.coupons.salesWithDiscount > 0 || d.coupons.salesWithoutDiscount > 0) && (
+          <div>
+            <p className="text-xs font-semibold mb-2">{t("analytics.cust.coupons.usageRate")}</p>
+            <VBarChart
+              data={[
+                { name: t("analytics.cust.coupons.salesWith"), value: d.coupons.salesWithDiscount },
+                { name: t("analytics.cust.coupons.salesWithout"), value: d.coupons.salesWithoutDiscount },
+              ]}
+              color="#818cf8"
+              tickFormatter={v => `${Math.round(v / 1000)}k`}
+            />
+          </div>
+        )}
         {d.coupons.couponImpact.length === 0 ? <EmptyNote /> : (
           <div>
             <p className="text-xs font-semibold mb-2">{t("analytics.cust.coupons.impact")}</p>
+            <HBarChart data={d.coupons.couponImpact.slice(0, 6).map(c => ({ name: c.code, value: c.orders }))} color="#38bdf8" />
             <MiniTable
               headers={[t("analytics.cust.coupons.col.code"), t("analytics.cust.coupons.col.uses"), t("analytics.cust.coupons.col.orders"), t("analytics.cust.coupons.col.revenue")]}
               rows={d.coupons.couponImpact.map(c => [c.code, c.usageCount, c.orders, fmtIQD(c.revenue)])}

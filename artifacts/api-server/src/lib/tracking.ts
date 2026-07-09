@@ -219,25 +219,53 @@ export function getCustomersAnalytics() {
   }
 
   // ── Wishlist ────────────────────────────────────────────────────────────────
+  // Sessions that purchased each product (from tracked purchase events)
+  const purchaseSessionsByProduct = new Map<string, Set<string>>();
+  const purchaseEvents = db.prepare(
+    `SELECT session_id, items FROM cart_events WHERE event='purchased' AND session_id != ''`
+  ).all() as Row[];
+  for (const ev of purchaseEvents) {
+    let items: LineItem[] = [];
+    try { items = JSON.parse((ev["items"] as string) || "[]") as LineItem[]; } catch { /* skip */ }
+    for (const it of items) {
+      if (!it.productId) continue;
+      let set = purchaseSessionsByProduct.get(it.productId);
+      if (!set) { set = new Set(); purchaseSessionsByProduct.set(it.productId, set); }
+      set.add(ev["session_id"] as string);
+    }
+  }
+
   const wlRows = db.prepare(`
     SELECT product_id,
            SUM(CASE WHEN action='add' THEN 1 ELSE -1 END) AS net,
-           SUM(CASE WHEN action='add' THEN 1 ELSE 0 END)  AS adds,
-           COUNT(DISTINCT CASE WHEN action='add' THEN COALESCE(NULLIF(customer_id,''), session_id) END) AS users
+           SUM(CASE WHEN action='add' THEN 1 ELSE 0 END)  AS adds
     FROM wishlist_events GROUP BY product_id ORDER BY adds DESC LIMIT 10
   `).all() as Row[];
+  const wlSessionRows = db.prepare(
+    `SELECT DISTINCT product_id, session_id FROM wishlist_events WHERE action='add' AND session_id != ''`
+  ).all() as Row[];
+  const wlSessionsByProduct = new Map<string, Set<string>>();
+  for (const r of wlSessionRows) {
+    const pid = r["product_id"] as string;
+    let set = wlSessionsByProduct.get(pid);
+    if (!set) { set = new Set(); wlSessionsByProduct.set(pid, set); }
+    set.add(r["session_id"] as string);
+  }
   const topWishlisted = wlRows.map((r) => {
     const pid = r["product_id"] as string;
     const adds = (r["adds"] as number) || 0;
-    const bought = purchasedUnits.get(pid) || 0;
+    const wlSessions = wlSessionsByProduct.get(pid) ?? new Set<string>();
+    const buyerSessions = purchaseSessionsByProduct.get(pid) ?? new Set<string>();
+    let converted = 0;
+    for (const s of wlSessions) if (buyerSessions.has(s)) converted += 1;
     return {
       productId: pid,
       title: titles.get(pid) ?? pid,
       wishlistCount: Math.max(0, (r["net"] as number) || 0),
       adds,
-      uniqueUsers: (r["users"] as number) || 0,
-      purchases: bought,
-      conversionRate: adds > 0 ? +(Math.min(100, (bought / adds) * 100)).toFixed(1) : 0,
+      uniqueUsers: wlSessions.size,
+      purchases: converted,
+      conversionRate: wlSessions.size > 0 ? +((converted / wlSessions.size) * 100).toFixed(1) : 0,
     };
   });
   const wlTotals = db.prepare(`
