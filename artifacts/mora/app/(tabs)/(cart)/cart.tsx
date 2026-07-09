@@ -115,10 +115,10 @@ const fs = StyleSheet.create({
 // ─── Cart Item Row ────────────────────────────────────────────────────────────
 
 function CartItemRow({
-  item, isDark, onRemove, onInc, onDec, lang, isLast,
+  item, isDark, onRemove, onInc, onDec, onPress, lang, isLast,
 }: {
   item: CartItem; isDark: boolean;
-  onRemove: () => void; onInc: () => void; onDec: () => void; lang: string; isLast?: boolean;
+  onRemove: () => void; onInc: () => void; onDec: () => void; onPress: () => void; lang: string; isLast?: boolean;
 }) {
   const atMaxStock = item.maxStock != null && item.quantity >= item.maxStock;
   const isAr = lang === "ar";
@@ -161,30 +161,36 @@ function CartItemRow({
       overshootLeft={false}
     >
       <View style={[ci.row, isAr && { flexDirection: "row-reverse" }]}>
-        {/* Product image */}
-        <View style={ci.imgWrap}>
-          {item.image
-            ? <Image source={{ uri: item.image }} style={ci.img} contentFit="cover" />
-            : <View style={[ci.img, { backgroundColor: isDark ? "#222" : "#F0F0F0", alignItems: "center", justifyContent: "center" }]}>
-                <Feather name="image" size={20} color={sub} />
-              </View>}
-        </View>
-
-        {/* Info */}
-        <View style={{ flex: 1, alignItems: isAr ? "flex-end" : "flex-start", gap: 4 }}>
-          <Text style={[ci.title, { color: textCol }]} numberOfLines={2}>{item.title}</Text>
-          {(item.size || item.color) && (
-            <Text style={[ci.variant, { color: sub }]}>
-              {[item.size, item.color].filter(Boolean).join("   ")}
-            </Text>
-          )}
-          <View style={[ci.priceRow, isAr && { flexDirection: "row-reverse" }]}>
-            <Text style={[ci.price, { color: textCol }]}>{formatIQD(item.price)}</Text>
-            {hasDiscount && (
-              <Text style={[ci.comparePrice, { color: sub }]}>{formatIQD(item.comparePrice!)}</Text>
-            )}
+        <Pressable
+          style={[{ flexDirection: "row", flex: 1, gap: 12 }, isAr && { flexDirection: "row-reverse" }]}
+          onPress={onPress}
+          hitSlop={4}
+        >
+          {/* Product image */}
+          <View style={ci.imgWrap}>
+            {item.image
+              ? <Image source={{ uri: item.image }} style={ci.img} contentFit="cover" />
+              : <View style={[ci.img, { backgroundColor: isDark ? "#222" : "#F0F0F0", alignItems: "center", justifyContent: "center" }]}>
+                  <Feather name="image" size={20} color={sub} />
+                </View>}
           </View>
-        </View>
+
+          {/* Info */}
+          <View style={{ flex: 1, alignItems: isAr ? "flex-end" : "flex-start", gap: 4 }}>
+            <Text style={[ci.title, { color: textCol }]} numberOfLines={2}>{item.title}</Text>
+            {(item.size || item.color) && (
+              <Text style={[ci.variant, { color: sub }]}>
+                {[item.size, item.color].filter(Boolean).join("   ")}
+              </Text>
+            )}
+            <View style={[ci.priceRow, isAr && { flexDirection: "row-reverse" }]}>
+              <Text style={[ci.price, { color: textCol }]}>{formatIQD(item.price)}</Text>
+              {hasDiscount && (
+                <Text style={[ci.comparePrice, { color: sub }]}>{formatIQD(item.comparePrice!)}</Text>
+              )}
+            </View>
+          </View>
+        </Pressable>
 
         {/* Qty controls — vertical column on the right */}
         <View style={ci.qtyCol}>
@@ -607,6 +613,7 @@ export default function CartScreen() {
             onRemove={() => handleRemove(item.productId, item.variantId)}
             onInc={() => handleInc(item.productId, item.variantId)}
             onDec={() => handleDec(item.productId, item.variantId, item.quantity)}
+            onPress={() => router.push(`/product/${item.productId}`)}
           />
         ))}
 
