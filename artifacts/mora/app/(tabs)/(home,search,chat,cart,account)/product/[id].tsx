@@ -864,12 +864,19 @@ export default function ProductDetailScreen() {
 
           {/* ── You May Also Like ── */}
           {(relatedItems.length > 0 || loadingMore) && (() => {
-            const categories = [...new Set(relatedItems.map((p) => p.category).filter(Boolean))];
+            const categories = [...new Set(
+              relatedItems
+                .map((p) => p.category)
+                .filter((c): c is string => !!c && c.toLowerCase() !== "beauty")
+            )];
             const suggestedLabel = lang === "ar" ? "مقترح" : "SUGGESTED";
+            const tabLabel = (c: string) =>
+              c === suggestedLabel ? c : c.replace(/[_-]+/g, " ").toUpperCase();
             const tabs = [suggestedLabel, ...categories];
-            const shown = relatedTab === suggestedLabel
+            const activeTab = relatedTab ?? suggestedLabel;
+            const shown = activeTab === suggestedLabel
               ? relatedItems
-              : relatedItems.filter((p) => p.category === relatedTab);
+              : relatedItems.filter((p) => p.category === activeTab);
             return (
               <View style={[styles.sectionWrap, { borderTopColor: colors.border }]}>
                 <Text style={styles.sectionLabelCenter}>
@@ -880,7 +887,7 @@ export default function ProductDetailScreen() {
                 {tabs.length > 1 && (
                   <View style={[styles.subTabsRow, { borderBottomColor: colors.border }]}>
                     {tabs.map((t) => {
-                      const active = (relatedTab ?? suggestedLabel) === t;
+                      const active = activeTab === t;
                       return (
                         <Pressable
                           key={t}
@@ -894,7 +901,7 @@ export default function ProductDetailScreen() {
                               active && styles.subTabTextActive,
                             ]}
                           >
-                            {t}
+                            {tabLabel(t)}
                           </Text>
                           {active && <View style={[styles.subTabUnderline, { backgroundColor: colors.foreground }]} />}
                         </Pressable>
