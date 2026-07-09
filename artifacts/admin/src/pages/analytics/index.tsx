@@ -1296,6 +1296,261 @@ function ReportsTab() {
   );
 }
 
+// ─── Deep Sales Analytics ──────────────────────────────────────────────────
+
+type SalesDeep = {
+  today: { sales: number; orders: number; changePct: number | null };
+  week: { sales: number; orders: number; changePct: number | null };
+  month: { sales: number; orders: number; changePct: number | null };
+  year: { sales: number; orders: number; changePct: number | null };
+  grossProfit: number | null;
+  netProfit: number | null;
+  hasCostData: boolean;
+  bestHour: { hour: number; orders: number; revenue: number } | null;
+  bestDow: { day: string; orders: number; revenue: number } | null;
+};
+
+function ChangeBadge({ pct }: { pct: number | null }) {
+  if (pct === null) return <span className="text-xs text-muted-foreground">—</span>;
+  const isUp = pct >= 0;
+  return (
+    <span className={cn("text-xs font-medium flex items-center gap-0.5", isUp ? "text-green-600" : "text-red-600")}>
+      {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+      {Math.abs(pct)}%
+    </span>
+  );
+}
+
+function SalesPeriodCard({ label, sales, orders, changePct }: { label: string; sales: number; orders: number; changePct: number | null }) {
+  const { t } = useT();
+  return (
+    <div className="flex flex-col gap-1 p-3 border rounded-lg">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-lg font-semibold">{fmtIQDShort(sales)}</span>
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">{t("analytics.deep.sales.orders", { n: orders })}</span>
+        <ChangeBadge pct={changePct} />
+      </div>
+    </div>
+  );
+}
+
+function SalesDeepSection() {
+  const { t } = useT();
+  const { data, isLoading } = useQuery({
+    queryKey: ["analytics-sales-deep"],
+    queryFn: () => adminFetch<SalesDeep>(`/admin/analytics/sales-deep`).then(r => r.data),
+    staleTime: 60_000,
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">{t("analytics.deep.sales.title")}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading || !data ? (
+          <Skeleton className="h-40 w-full" />
+        ) : (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <SalesPeriodCard label={t("analytics.deep.sales.today")} sales={data.today.sales} orders={data.today.orders} changePct={data.today.changePct} />
+              <SalesPeriodCard label={t("analytics.deep.sales.week")} sales={data.week.sales} orders={data.week.orders} changePct={data.week.changePct} />
+              <SalesPeriodCard label={t("analytics.deep.sales.month")} sales={data.month.sales} orders={data.month.orders} changePct={data.month.changePct} />
+              <SalesPeriodCard label={t("analytics.deep.sales.year")} sales={data.year.sales} orders={data.year.orders} changePct={data.year.changePct} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-3 border rounded-lg">
+                <p className="text-xs text-muted-foreground">{t("analytics.deep.sales.grossProfit")}</p>
+                <p className="text-lg font-semibold mt-0.5">
+                  {data.hasCostData ? fmtIQDShort(data.grossProfit ?? 0) : <span className="text-xs text-muted-foreground font-normal">{t("analytics.deep.sales.noCostData")}</span>}
+                </p>
+              </div>
+              <div className="p-3 border rounded-lg">
+                <p className="text-xs text-muted-foreground">{t("analytics.deep.sales.netProfit")}</p>
+                <p className="text-lg font-semibold mt-0.5">
+                  {data.hasCostData ? fmtIQDShort(data.netProfit ?? 0) : <span className="text-xs text-muted-foreground font-normal">{t("analytics.deep.sales.noCostData")}</span>}
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-3 border rounded-lg">
+                <p className="text-xs text-muted-foreground">{t("analytics.deep.sales.bestHour")}</p>
+                {data.bestHour ? (
+                  <p className="text-base font-semibold mt-0.5">{t("analytics.deep.sales.hourFmt", { n: data.bestHour.hour })}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-0.5">{t("analytics.deep.sales.noOrders")}</p>
+                )}
+              </div>
+              <div className="p-3 border rounded-lg">
+                <p className="text-xs text-muted-foreground">{t("analytics.deep.sales.bestDay")}</p>
+                {data.bestDow ? (
+                  <p className="text-base font-semibold mt-0.5">{t(`analytics.deep.day.${data.bestDow.day}`)}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-0.5">{t("analytics.deep.sales.noOrders")}</p>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Deep Products Analytics ───────────────────────────────────────────────
+
+type ProductsDeep = {
+  bestSelling: { productId: string; title: string; units: number; revenue: number }[];
+  leastSelling: { productId: string; title: string; units: number }[];
+  mostViewed: { productId: string; title: string; views: number }[];
+  mostAddedToCart: { productId: string; title: string; count: number }[];
+  mostWishlisted: { productId: string; title: string; count: number }[];
+  viewedNotPurchased: { productId: string; title: string; views: number }[];
+  conversionByProduct: { productId: string; title: string; views: number; purchases: number; conversionRate: number }[];
+  nearSoldOut: { productId: string; title: string; stock: number }[];
+  stagnant: { productId: string; title: string; totalUnitsEver: number }[];
+};
+
+function ProductListCard({ title, empty, items }: { title: string; empty: string; items: { title: string; right: string }[] }) {
+  return (
+    <div className="p-3 border rounded-lg">
+      <p className="text-xs font-medium text-muted-foreground mb-2">{title}</p>
+      {items.length === 0 ? (
+        <p className="text-xs text-muted-foreground">{empty}</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {items.slice(0, 5).map((it, i) => (
+            <li key={i} className="flex items-center justify-between text-sm">
+              <span className="truncate max-w-[65%]">{it.title}</span>
+              <span className="text-xs text-muted-foreground">{it.right}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ProductsDeepSection() {
+  const { t } = useT();
+  const { data, isLoading } = useQuery({
+    queryKey: ["analytics-products-deep"],
+    queryFn: () => adminFetch<ProductsDeep>(`/admin/analytics/products-deep`).then(r => r.data),
+    staleTime: 60_000,
+  });
+  const noData = t("analytics.deep.products.noData");
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">{t("analytics.deep.products.title")}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading || !data ? (
+          <Skeleton className="h-64 w-full" />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <ProductListCard title={t("analytics.deep.products.bestSelling")} empty={noData}
+              items={data.bestSelling.map(p => ({ title: p.title, right: t("analytics.deep.products.units", { n: p.units }) }))} />
+            <ProductListCard title={t("analytics.deep.products.leastSelling")} empty={noData}
+              items={data.leastSelling.map(p => ({ title: p.title, right: t("analytics.deep.products.units", { n: p.units }) }))} />
+            <ProductListCard title={t("analytics.deep.products.mostViewed")} empty={noData}
+              items={data.mostViewed.map(p => ({ title: p.title, right: t("analytics.deep.products.views", { n: p.views }) }))} />
+            <ProductListCard title={t("analytics.deep.products.mostAddedToCart")} empty={noData}
+              items={data.mostAddedToCart.map(p => ({ title: p.title, right: String(p.count) }))} />
+            <ProductListCard title={t("analytics.deep.products.mostWishlisted")} empty={noData}
+              items={data.mostWishlisted.map(p => ({ title: p.title, right: String(p.count) }))} />
+            <ProductListCard title={t("analytics.deep.products.viewedNotPurchased")} empty={noData}
+              items={data.viewedNotPurchased.map(p => ({ title: p.title, right: t("analytics.deep.products.views", { n: p.views }) }))} />
+            <ProductListCard title={t("analytics.deep.products.conversion")} empty={noData}
+              items={data.conversionByProduct.map(p => ({ title: p.title, right: `${p.conversionRate}%` }))} />
+            <ProductListCard title={t("analytics.deep.products.nearSoldOut")} empty={noData}
+              items={data.nearSoldOut.map(p => ({ title: p.title, right: t("analytics.deep.products.stock", { n: p.stock }) }))} />
+            <ProductListCard title={t("analytics.deep.products.stagnant")} empty={noData}
+              items={data.stagnant.map(p => ({ title: p.title, right: t("analytics.deep.products.units", { n: p.totalUnitsEver }) }))} />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Customer Insights ──────────────────────────────────────────────────────
+
+type CustomerInsights = {
+  newCustomersThisMonth: number;
+  returningCount: number;
+  returningRate: number;
+  totalCustomers: number;
+  topSpenders: { id: string; name: string; email: string; ordersCount: number; totalSpent: number }[];
+  avgOrdersPerCustomer: number;
+  avgSpendPerCustomer: number;
+  topCities: { city: string; orders: number }[];
+  genderBreakdown: { gender: string; count: number }[];
+  topAges: { bucket: string; count: number }[];
+  hasDemographicData: boolean;
+};
+
+function StatBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="p-3 border rounded-lg">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-lg font-semibold mt-0.5">{value}</p>
+    </div>
+  );
+}
+
+function CustomerInsightsSection() {
+  const { t } = useT();
+  const { data, isLoading } = useQuery({
+    queryKey: ["analytics-customer-insights"],
+    queryFn: () => adminFetch<CustomerInsights>(`/admin/analytics/customer-insights`).then(r => r.data),
+    staleTime: 60_000,
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">{t("analytics.deep.customers.title")}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading || !data ? (
+          <Skeleton className="h-64 w-full" />
+        ) : (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <StatBox label={t("analytics.deep.customers.newThisMonth")} value={String(data.newCustomersThisMonth)} />
+              <StatBox label={t("analytics.deep.customers.returning")} value={String(data.returningCount)} />
+              <StatBox label={t("analytics.deep.customers.returningRate")} value={`${data.returningRate}%`} />
+              <StatBox label={t("analytics.deep.customers.total")} value={String(data.totalCustomers)} />
+              <StatBox label={t("analytics.deep.customers.avgOrders")} value={String(data.avgOrdersPerCustomer)} />
+              <StatBox label={t("analytics.deep.customers.avgSpend")} value={fmtIQDShort(data.avgSpendPerCustomer)} />
+            </div>
+
+            <ProductListCard title={t("analytics.deep.customers.topSpenders")} empty={t("analytics.deep.products.noData")}
+              items={data.topSpenders.map(c => ({ title: c.name || c.email, right: fmtIQDShort(c.totalSpent) }))} />
+
+            <ProductListCard title={t("analytics.deep.customers.topCities")} empty={t("analytics.deep.products.noData")}
+              items={data.topCities.map(c => ({ title: c.city, right: t("analytics.deep.customers.orders", { n: c.orders }) }))} />
+
+            {data.hasDemographicData ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <ProductListCard title={t("analytics.deep.customers.gender")} empty={t("analytics.deep.products.noData")}
+                  items={data.genderBreakdown.map(g => ({ title: g.gender, right: String(g.count) }))} />
+                <ProductListCard title={t("analytics.deep.customers.age")} empty={t("analytics.deep.products.noData")}
+                  items={data.topAges.map(a => ({ title: a.bucket, right: String(a.count) }))} />
+              </div>
+            ) : (
+              <NoTracking label={`${t("analytics.deep.customers.gender")} / ${t("analytics.deep.customers.age")}`} />
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main Analytics Page ──────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
@@ -1516,6 +1771,11 @@ export default function AnalyticsPage() {
 
           {/* Conversion rate breakdown */}
           <ConversionBreakdown />
+
+          {/* ─── Deep Sales / Products / Customer Insights ─────────── */}
+          <SalesDeepSection />
+          <ProductsDeepSection />
+          <CustomerInsightsSection />
         </div>
       )}
 

@@ -270,6 +270,8 @@ ensureColumn("story_rows",  "background_image","TEXT NOT NULL DEFAULT ''");
 ensureColumn("story_rows",  "image",           "TEXT NOT NULL DEFAULT ''");
 ensureColumn("story_rows",  "condition_type",  "TEXT NOT NULL DEFAULT 'manual'");
 ensureColumn("story_rows",  "condition_value", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("customers",   "gender",          "TEXT");
+ensureColumn("customers",   "birth_year",      "INTEGER");
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS product_collections (

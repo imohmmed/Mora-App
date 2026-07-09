@@ -1,5 +1,6 @@
 import { Router } from "express";
 import db, { parseRows, getAnalyticsSummary, getRevenueByDay, getTopProducts, getAnalyticsForRange, getActivityLog } from "../lib/db.js";
+import { getSalesAnalytics, getProductsAnalytics, getCustomerInsights } from "../lib/analytics2.js";
 import { requireAdmin } from "../middlewares/auth.js";
 import type { Row } from "../lib/types.js";
 
@@ -65,6 +66,18 @@ router.get("/admin/analytics/reports", (_req, res) => {
     { name: "Total Active Products",            value: String(totalProducts),                    change: "—" },
   ];
   res.json({ data: reports, meta: {}, error: null });
+});
+
+router.get("/admin/analytics/sales-deep", (_req, res) => {
+  res.json({ data: getSalesAnalytics(), meta: {}, error: null });
+});
+
+router.get("/admin/analytics/products-deep", (_req, res) => {
+  res.json({ data: getProductsAnalytics(), meta: {}, error: null });
+});
+
+router.get("/admin/analytics/customer-insights", (_req, res) => {
+  res.json({ data: getCustomerInsights(), meta: {}, error: null });
 });
 
 router.get("/admin/analytics/live", (_req, res) => {
