@@ -137,7 +137,7 @@ function CartItemRow({
         <View style={ci.swipeOuter}>
           <Pressable style={ci.swipeBtn} onPress={() => { swipeRef.current?.close(); onRemove(); }}>
             <Animated.View style={style}>
-              <Feather name="trash-2" size={18} color="#fff" />
+              <Feather name="x" size={18} color="#fff" />
               <Text style={ci.swipeLbl}>{isAr ? "حذف" : "REMOVE"}</Text>
             </Animated.View>
           </Pressable>
@@ -178,7 +178,7 @@ function CartItemRow({
             </Text>
           )}
           <View style={[ci.priceRow, isAr && { flexDirection: "row-reverse" }]}>
-            <Text style={ci.price}>{formatIQD(item.price)}</Text>
+            <Text style={[ci.price, { color: textCol }]}>{formatIQD(item.price)}</Text>
             {hasDiscount && (
               <Text style={[ci.comparePrice, { color: sub }]}>{formatIQD(item.comparePrice!)}</Text>
             )}
@@ -193,9 +193,9 @@ function CartItemRow({
           <Text style={[ci.qColNum, { color: textCol }]}>{item.quantity}</Text>
           <Pressable onPress={onDec} style={ci.qColBtn} hitSlop={8}>
             <Feather
-              name={item.quantity === 1 ? "trash-2" : "minus"}
+              name={item.quantity === 1 ? "x" : "minus"}
               size={13}
-              color={item.quantity === 1 ? "#EF4444" : textCol}
+              color={textCol}
             />
           </Pressable>
         </View>
@@ -211,13 +211,13 @@ const ci = StyleSheet.create({
   title:       { fontSize: 13, fontWeight: "700", lineHeight: 18, letterSpacing: -0.1 },
   variant:     { fontSize: 11, fontWeight: "500", letterSpacing: 0.2 },
   priceRow:    { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
-  price:       { fontSize: 14, fontWeight: "800", color: PRIMARY },
+  price:       { fontSize: 14, fontWeight: "800" },
   comparePrice:{ fontSize: 12, fontWeight: "500", textDecorationLine: "line-through" },
   qtyCol:      { alignItems: "center", justifyContent: "space-between", paddingVertical: 4, gap: 6, minWidth: 32 },
   qColBtn:     { width: 30, height: 30, alignItems: "center", justifyContent: "center" },
   qColNum:     { fontSize: 14, fontWeight: "800", textAlign: "center", minWidth: 24 },
   swipeOuter:  { width: 76, marginBottom: 1 },
-  swipeBtn:    { flex: 1, backgroundColor: "#EF4444", borderRadius: 0, alignItems: "center", justifyContent: "center" },
+  swipeBtn:    { flex: 1, backgroundColor: "#000000", borderRadius: 0, alignItems: "center", justifyContent: "center" },
   swipeLbl:    { color: "#fff", fontSize: 9, fontWeight: "700", letterSpacing: 0.5, marginTop: 4 },
 });
 
@@ -519,7 +519,7 @@ export default function CartScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: isWeb ? 150 : insets.bottom + 90 }}
+        contentContainerStyle={{ paddingBottom: isWeb ? 230 : insets.bottom + 170 }}
       >
         {/* Free shipping progress */}
         <FreeShippingBar subtotal={subtotal} isDark={isDark} lang={lang} />
@@ -595,6 +595,6 @@ const s = StyleSheet.create({
   totalRow:     { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   totalLbl:     { fontSize: 14, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase" },
   totalAmt:     { fontSize: 18, fontWeight: "900", letterSpacing: -0.4 },
-  checkBtn:     { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: PRIMARY, paddingVertical: 15, borderRadius: 4 },
+  checkBtn:     { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#000000", paddingVertical: 15, borderRadius: 4 },
   checkTxt:     { color: "#fff", fontSize: 14, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" },
 });
