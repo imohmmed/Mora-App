@@ -159,7 +159,7 @@ function CartItemRow({
       overshootRight={false}
       overshootLeft={false}
     >
-      <View style={[ci.row, { borderBottomColor: divClr }, isLast && { borderBottomWidth: 0 }, isAr && { flexDirection: "row-reverse" }]}>
+      <View style={[ci.row, isAr && { flexDirection: "row-reverse" }]}>
         {/* Product image */}
         <View style={ci.imgWrap}>
           {item.image
@@ -205,7 +205,7 @@ function CartItemRow({
 }
 
 const ci = StyleSheet.create({
-  row:         { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingHorizontal: 16, paddingVertical: 16, borderBottomWidth: 1 },
+  row:         { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingHorizontal: 16, paddingVertical: 16 },
   imgWrap:     { width: 80, height: 100, borderRadius: 0, overflow: "hidden", flexShrink: 0 },
   img:         { width: "100%", height: "100%" },
   title:       { fontSize: 13, fontWeight: "700", lineHeight: 18, letterSpacing: -0.1 },
