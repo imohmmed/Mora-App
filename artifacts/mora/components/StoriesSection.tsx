@@ -210,7 +210,7 @@ function StoryRowSection({
   return (
     <View style={[styles.rowWrap, !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
       {(row.title || row.titleAr) ? (
-        <Text style={[styles.rowTitle, { color: colors.mutedForeground }]}>
+        <Text style={[styles.rowTitle, { color: colors.foreground }, lang === "ar" && { letterSpacing: 0 }]}>
           {lang === "ar" && row.titleAr ? row.titleAr : row.title}
         </Text>
       ) : null}

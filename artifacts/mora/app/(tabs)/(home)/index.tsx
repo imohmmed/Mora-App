@@ -570,12 +570,6 @@ export default function HomeScreen() {
         loading={isCollectionsLoading}
       />
 
-      <StoriesSection rows={storyRows ?? []} activeFilter={activeFilter} />
-
-      <HomeSaleCollections />
-
-      <MoraPerfumesSection ref={perfumeSectionRef} />
-
       {/* ── section header ── */}
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -643,6 +637,12 @@ export default function HomeScreen() {
           </Text>
         </View>
       )}
+
+      <StoriesSection rows={storyRows ?? []} activeFilter={activeFilter} />
+
+      <HomeSaleCollections />
+
+      <MoraPerfumesSection ref={perfumeSectionRef} />
 
       {/* ── Category Tabs — full catalog browser, stays last ── */}
       <CategoryTabs
