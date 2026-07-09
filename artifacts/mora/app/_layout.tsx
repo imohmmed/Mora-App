@@ -7,7 +7,7 @@ import {
   useFonts,
 } from "@expo-google-fonts/cairo";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { Alert, Platform } from "react-native";
@@ -21,6 +21,7 @@ import { useLanguage, LanguageProvider } from "@/context/LanguageContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { WishlistProvider } from "@/context/WishlistContext";
+import { trackSessionStart, trackPing, trackPageView } from "@/lib/tracking";
 
 try { SplashScreen.preventAutoHideAsync(); } catch {}
 
@@ -181,6 +182,27 @@ const queryClient = new QueryClient({
   },
 });
 
+// ─── Session + page-view tracking ─────────────────────────────────────────────
+function SessionTracking() {
+  const pathname = usePathname();
+  const { user } = useAuth();
+  const started = React.useRef(false);
+
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    trackSessionStart(user?.id);
+    const interval = setInterval(() => trackPing(), 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    trackPageView();
+  }, [pathname]);
+
+  return null;
+}
+
 function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
@@ -219,6 +241,7 @@ export default function RootLayout() {
             <QueryClientProvider client={queryClient}>
               <AuthProvider>
                 <ChatwootIdentity />
+                <SessionTracking />
                 <NotificationProvider>
                   <CartProvider>
                     <WishlistProvider>

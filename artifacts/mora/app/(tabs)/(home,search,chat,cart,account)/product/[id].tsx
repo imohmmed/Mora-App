@@ -28,6 +28,7 @@ import { MoraLogo } from "@/components/MoraLogo";
 import { GlassBackButton } from "@/components/GlassBackButton";
 import { fetchProduct, fetchRelatedProducts, fetchContentSections, fetchProducts } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
+import { trackProductView } from "@/lib/tracking";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
@@ -264,6 +265,14 @@ export default function ProductDetailScreen() {
   const [locallyNotified, setLocallyNotified] = useState<string[]>([]);
 
   useEffect(() => { setQty(1); }, [selectedVariant?.id]);
+
+  // Track product view (once per product id)
+  const trackedViewId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!id || trackedViewId.current === id) return;
+    trackedViewId.current = id;
+    trackProductView(id);
+  }, [id]);
 
   const topPadding = isWeb ? 0 : insets.top;
   const bottomPadding = isWeb ? 0 : insets.bottom;

@@ -25,6 +25,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { formatIQD } from "@/lib/format";
+import { trackSearch, trackSearchClick } from "@/lib/tracking";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import { ProductPreviewModal } from "@/components/ProductPreviewModal";
@@ -91,10 +92,12 @@ function ResultSkeleton() {
 
 function SearchResultCard({
   item,
+  query,
   onAddToBag,
   onLongPress,
 }: {
   item: Product;
+  query: string;
   onAddToBag: (product: Product) => void;
   onLongPress: (product: Product) => void;
 }) {
@@ -113,7 +116,10 @@ function SearchResultCard({
       {/* ── Navigate / long-press area ── */}
       <Pressable
         style={({ pressed }) => [{ opacity: pressed ? 0.93 : 1 }]}
-        onPress={() => router.push(`/product/${item.id}`)}
+        onPress={() => {
+          trackSearchClick(query, item.id);
+          router.push(`/product/${item.id}`);
+        }}
         onLongPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           onLongPress(item);
@@ -295,6 +301,16 @@ export default function SearchScreen() {
     queryFn: () => searchProducts(debouncedQuery),
     enabled: debouncedQuery.trim().length > 0,
   });
+
+  // Log completed searches (once per debounced query when results resolve)
+  const lastLoggedSearch = useRef("");
+  useEffect(() => {
+    const q = debouncedQuery.trim();
+    if (!q || isLoading || isFetching || results === undefined) return;
+    if (lastLoggedSearch.current === q) return;
+    lastLoggedSearch.current = q;
+    trackSearch(q, results.length);
+  }, [debouncedQuery, results, isLoading, isFetching]);
 
   const showResults = query.trim().length > 0;
   const isSearching = (isLoading || isFetching) && debouncedQuery.trim().length > 0;
@@ -494,6 +510,7 @@ export default function SearchScreen() {
                 <SearchResultCard
                   key={product.id}
                   item={product}
+                  query={debouncedQuery}
                   onAddToBag={handleAddToBag}
                   onLongPress={handleLongPress}
                 />

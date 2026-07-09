@@ -23,6 +23,7 @@ import { useNotification } from "@/context/NotificationContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { formatIQD } from "@/lib/format";
 import { deliveryMessage } from "@/lib/deliveryMessage";
+import { trackCartEvent } from "@/lib/tracking";
 import { fetchShippingZones, fetchShippingRules, type ShippingZone, type ShippingRule } from "@/lib/api";
 import { GlassBackButton } from "@/components/GlassBackButton";
 
@@ -270,6 +271,11 @@ export default function CheckoutScreen() {
     });
     const json = await orderRes.json() as { data: { id?: string; order_number?: string; orderNumber?: string; total?: number } | null; error?: string };
     if (!orderRes.ok) throw new Error(json.error || "Order failed");
+    trackCartEvent(
+      "checkout",
+      json.data?.total ?? subtotal,
+      items.map((i) => ({ productId: i.productId, title: i.title, quantity: i.quantity, price: i.price, size: i.size, color: i.color })),
+    );
     return {
       orderId:     (json.data as any)?.id ?? "",
       orderNumber: json.data?.order_number || json.data?.orderNumber || "#—",
@@ -324,6 +330,7 @@ export default function CheckoutScreen() {
           const wayl = await createWaylLink(base, info.orderNumber, info.orderTotal);
           if (wayl.paid) {
             startOrderActivity({ orderId: info.orderId, orderNumber: info.orderNumber, customerName: form.name || user?.firstName || "Customer", stage: "confirmed", message: deliveryMessage(deliveryType, "confirmed"), deliveryType, priceText: formatIQD(info.orderTotal), isPaid: true });
+            trackCartEvent("purchased", info.orderTotal, items.map((i) => ({ productId: i.productId, title: i.title, quantity: i.quantity, price: i.price, size: i.size, color: i.color })));
             clearCart(); setPendingOnline(null);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             router.replace({ pathname: "/checkout/complete", params: { orderNumber: info.orderNumber, total: String(info.orderTotal), name: form.name, city: form.city, district: form.district, phone: form.phone, items: info.snapshot, paymentMethod: "online", paid: "1", waylUrl: "" } } as any);
@@ -356,6 +363,7 @@ export default function CheckoutScreen() {
           return;
         }
         startOrderActivity({ orderId: info.orderId, orderNumber: info.orderNumber, customerName: form.name || user?.firstName || "Customer", stage: "confirmed", message: deliveryMessage(deliveryType, "confirmed"), deliveryType, priceText: formatIQD(info.orderTotal), isPaid: true });
+        trackCartEvent("purchased", info.orderTotal, items.map((i) => ({ productId: i.productId, title: i.title, quantity: i.quantity, price: i.price, size: i.size, color: i.color })));
         clearCart(); setPendingOnline(null);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         router.replace({ pathname: "/checkout/complete", params: { orderNumber: info.orderNumber, total: String(info.orderTotal), name: form.name, city: form.city, district: form.district, phone: form.phone, items: info.snapshot, paymentMethod: "online", paid: "1", waylUrl: "" } } as any);
@@ -365,6 +373,7 @@ export default function CheckoutScreen() {
       // COD
       const created = await createOrder(base);
       startOrderActivity({ orderId: created.orderId, orderNumber: created.orderNumber, customerName: form.name || user?.firstName || "Customer", stage: "confirmed", message: deliveryMessage(deliveryType, "confirmed"), deliveryType, priceText: formatIQD(created.orderTotal), isPaid: false });
+      trackCartEvent("purchased", created.orderTotal, items.map((i) => ({ productId: i.productId, title: i.title, quantity: i.quantity, price: i.price, size: i.size, color: i.color })));
       clearCart();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       saveAddressToProfile(base);

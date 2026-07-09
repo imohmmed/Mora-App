@@ -9,6 +9,7 @@ import React, {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { CartItem } from "@/lib/types";
 import { useNotification } from "@/context/NotificationContext";
+import { trackCartEvent } from "@/lib/tracking";
 
 const CART_KEY = "mora_cart_v1";
 const SESSION_KEY = "mora_cart_session_v1";
@@ -137,6 +138,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           added = cappedQty;
           if (cappedQty <= 0) return prev;
           next = [...prev, { ...item, quantity: cappedQty }];
+        }
+        if (prev.length === 0 && next.length > 0) {
+          trackCartEvent(
+            "created",
+            next.reduce((s, i) => s + i.price * i.quantity, 0),
+            next.map((i) => ({
+              productId: i.productId,
+              title: i.title,
+              quantity: i.quantity,
+              price: i.price,
+              size: i.size,
+              color: i.color,
+            })),
+          );
         }
         persist(next, sessionId);
         return next;

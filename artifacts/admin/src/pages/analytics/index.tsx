@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n/LanguageContext";
 import { PageContainer, PageHeader, EmptyState } from "@/components/ui/page-primitives";
+import { CustomersTab } from "./customers-tab";
 
 type TFunc = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -652,22 +653,49 @@ function LiveStatCard({ label, value, accent }: { label: string; value: string; 
 
 // ─── Live View ─────────────────────────────────────────────────────────────────
 
+type LiveStatsData = {
+  visitorsNow: number;
+  sessionsToday: number;
+  purchasesToday: number;
+  conversionRate: number;
+  bounceRate: number;
+  avgLoadMs: number;
+  dau: number;
+  mau: number;
+  avgSessionSec: number;
+  pagesPerVisit: number;
+  sourceBreakdown: { source: string; sessions: number }[];
+  deviceBreakdown: { device: string; sessions: number }[];
+  cartsActiveToday: number;
+  checkingOutToday: number;
+  newToday: number;
+  returningToday: number;
+};
+
+function fmtDuration(sec: number) {
+  if (!sec) return "0s";
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
 function LiveView() {
   const { t } = useT();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: liveRes, isLoading, dataUpdatedAt } = useAdminGetLiveOrders({ query: { refetchInterval: 30_000 } as any });
+  const { data: statsRes } = useQuery({
+    queryKey: ["analytics-live-stats"],
+    queryFn: () => adminFetch<LiveStatsData>("/admin/analytics/live-stats"),
+    refetchInterval: 30_000,
+  });
+  const stats = statsRes?.data;
   const orders = (liveRes?.data ?? []) as Array<{
     id: string; orderNumber: string; email: string; total: number; status: string; createdAt: string;
   }>;
   const now = new Date();
 
   const totalSales  = orders.reduce((s, o) => s + (o.total || 0), 0);
-  const fulfilled   = orders.filter(o => o.status === "fulfilled").length;
-  const pending     = orders.filter(o => o.status === "pending").length;
 
-  // Product sales aggregation from recent orders (best effort without line_items here)
-  const productMap = new Map<string, number>();
-  // For live view, just show order count per status
   const statusColor: Record<string, string> = {
     pending:    "bg-amber-100 text-amber-700",
     processing: "bg-blue-100 text-blue-700",
@@ -725,10 +753,66 @@ function LiveView() {
 
       {/* ── Stats 2×2 ─────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3">
-        <LiveStatCard label={t("analytics.live.visitorsNow")} value="0" />
+        <LiveStatCard label={t("analytics.live.visitorsNow")} value={String(stats?.visitorsNow ?? 0)} />
         <LiveStatCard label={t("analytics.live.totalSales")} value={fmtIQD(totalSales)} accent />
-        <LiveStatCard label={t("analytics.live.sessions")} value="0" />
+        <LiveStatCard label={t("analytics.live.sessions")} value={String(stats?.sessionsToday ?? 0)} />
         <LiveStatCard label={t("analytics.live.orders")} value={String(orders.length)} accent />
+      </div>
+
+      {/* ── Tracking stats ────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3">
+        <LiveStatCard label={t("analytics.live.conversionRate")} value={`${stats?.conversionRate ?? 0}%`} accent />
+        <LiveStatCard label={t("analytics.live.bounceRate")} value={`${stats?.bounceRate ?? 0}%`} />
+        <LiveStatCard label={t("analytics.live.purchasesToday")} value={String(stats?.purchasesToday ?? 0)} accent />
+        <LiveStatCard label={t("analytics.live.avgLoad")} value={stats?.avgLoadMs ? `${(stats.avgLoadMs / 1000).toFixed(1)}s` : "—"} />
+        <LiveStatCard label={t("analytics.live.dau")} value={String(stats?.dau ?? 0)} />
+        <LiveStatCard label={t("analytics.live.mau")} value={String(stats?.mau ?? 0)} />
+        <LiveStatCard label={t("analytics.live.avgSession")} value={fmtDuration(stats?.avgSessionSec ?? 0)} />
+        <LiveStatCard label={t("analytics.live.pagesPerVisit")} value={String(stats?.pagesPerVisit ?? 0)} />
+      </div>
+
+      {/* ── Sessions by source / device ───────────────────── */}
+      <div className="bg-background rounded-xl border p-4 shadow-sm">
+        <p className="text-sm font-semibold mb-3">{t("analytics.live.bySource")}</p>
+        {!stats || stats.sourceBreakdown.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-6">{t("analytics.noDataRange")}</p>
+        ) : (
+          <div className="space-y-2">
+            {stats.sourceBreakdown.map(s => {
+              const max = Math.max(...stats.sourceBreakdown.map(x => x.sessions), 1);
+              return (
+                <div key={s.source} className="flex items-center gap-2 text-xs">
+                  <span className="w-20 shrink-0 capitalize font-medium">{s.source}</span>
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div style={{ width: `${(s.sessions / max) * 100}%`, backgroundColor: "#818cf8", height: "100%", borderRadius: "inherit" }} />
+                  </div>
+                  <span className="w-10 text-end text-muted-foreground">{s.sessions}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      <div className="bg-background rounded-xl border p-4 shadow-sm">
+        <p className="text-sm font-semibold mb-3">{t("analytics.live.byDevice")}</p>
+        {!stats || stats.deviceBreakdown.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-6">{t("analytics.noDataRange")}</p>
+        ) : (
+          <div className="space-y-2">
+            {stats.deviceBreakdown.map(s => {
+              const max = Math.max(...stats.deviceBreakdown.map(x => x.sessions), 1);
+              return (
+                <div key={s.device} className="flex items-center gap-2 text-xs">
+                  <span className="w-20 shrink-0 capitalize font-medium">{s.device}</span>
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div style={{ width: `${(s.sessions / max) * 100}%`, backgroundColor: "#38bdf8", height: "100%", borderRadius: "inherit" }} />
+                  </div>
+                  <span className="w-10 text-end text-muted-foreground">{s.sessions}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── Customer behavior ─────────────────────────────── */}
@@ -736,9 +820,9 @@ function LiveView() {
         <p className="text-sm font-semibold mb-4">{t("analytics.live.customerBehavior")}</p>
         <div className="grid grid-cols-3 divide-x">
           {[
-            { label: t("analytics.live.activeCarts"), value: pending },
-            { label: t("analytics.live.checkingOut"), value: 0 },
-            { label: t("analytics.live.purchased"),   value: fulfilled },
+            { label: t("analytics.live.activeCarts"), value: stats?.cartsActiveToday ?? 0 },
+            { label: t("analytics.live.checkingOut"), value: stats?.checkingOutToday ?? 0 },
+            { label: t("analytics.live.purchased"),   value: stats?.purchasesToday ?? 0 },
           ].map(({ label, value }) => (
             <div key={label} className="text-center px-3">
               <p className="text-xs text-muted-foreground mb-1">{label}</p>
@@ -749,9 +833,9 @@ function LiveView() {
         {/* Mini funnel bar */}
         <div className="mt-4 space-y-2">
           {[
-            { label: t("analytics.live.activeCarts"), pct: 100, color: "#e0f2fe" },
-            { label: t("analytics.live.checkingOut"), pct: 0,   color: "#bae6fd" },
-            { label: t("analytics.live.purchased"),   pct: orders.length > 0 ? Math.round((fulfilled / orders.length) * 100) : 0, color: "#38bdf8" },
+            { label: t("analytics.live.activeCarts"), pct: (stats?.cartsActiveToday ?? 0) > 0 ? 100 : 0, color: "#e0f2fe" },
+            { label: t("analytics.live.checkingOut"), pct: (stats?.cartsActiveToday ?? 0) > 0 ? Math.round(((stats?.checkingOutToday ?? 0) / stats!.cartsActiveToday) * 100) : 0, color: "#bae6fd" },
+            { label: t("analytics.live.purchased"),   pct: (stats?.cartsActiveToday ?? 0) > 0 ? Math.round(((stats?.purchasesToday ?? 0) / stats!.cartsActiveToday) * 100) : 0, color: "#38bdf8" },
           ].map(bar => (
             <div key={bar.label} className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="w-24 shrink-0">{bar.label}</span>
@@ -773,13 +857,13 @@ function LiveView() {
       {/* ── New vs returning customers ────────────────────── */}
       <div className="bg-background rounded-xl border p-4 shadow-sm">
         <p className="text-sm font-semibold mb-3">{t("analytics.live.newVsReturning")}</p>
-        {orders.length === 0 ? (
+        {!stats || stats.dau === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-6">{t("analytics.noDataRange")}</p>
         ) : (
           <div className="grid grid-cols-2 gap-4">
             {[
-              { label: t("analytics.live.new"),       value: orders.length - Math.min(2, orders.length), color: "#38bdf8" },
-              { label: t("analytics.live.returning"), value: Math.min(2, orders.length),                 color: "#818cf8" },
+              { label: t("analytics.live.new"),       value: stats.newToday,       color: "#38bdf8" },
+              { label: t("analytics.live.returning"), value: stats.returningToday, color: "#818cf8" },
             ].map(({ label, value, color }) => (
               <div key={label} className="text-center">
                 <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-2" style={{ background: `${color}30`, border: `2px solid ${color}` }}>
@@ -1217,7 +1301,7 @@ function ReportsTab() {
 export default function AnalyticsPage() {
   const { t } = useT();
   const PRESETS = useMemo(() => buildPresets(t), [t]);
-  const [activeTab, setActiveTab] = useState<"analytics" | "reports" | "live">("analytics");
+  const [activeTab, setActiveTab] = useState<"analytics" | "customers" | "reports" | "live">("analytics");
   const [selectedPreset, setSelectedPreset] = useState(0); // "Today"
   const [showPresets, setShowPresets] = useState(false);
 
@@ -1307,7 +1391,7 @@ export default function AnalyticsPage() {
 
       {/* Tab nav */}
       <div className="flex border-b mb-4">
-        {(["analytics", "reports", "live"] as const).map(tab => (
+        {(["analytics", "customers", "reports", "live"] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -1326,7 +1410,9 @@ export default function AnalyticsPage() {
                 </span>
                 {t("analytics.tab.live")}
               </span>
-            ) : tab === "analytics" ? t("analytics.tab.analytics") : t("analytics.tab.reports")}
+            ) : tab === "analytics" ? t("analytics.tab.analytics")
+              : tab === "customers" ? t("analytics.tab.customers")
+              : t("analytics.tab.reports")}
           </button>
         ))}
       </div>
@@ -1432,6 +1518,9 @@ export default function AnalyticsPage() {
           <ConversionBreakdown />
         </div>
       )}
+
+      {/* ─── Mora Customers Tab ────────────────────────────── */}
+      {activeTab === "customers" && <CustomersTab />}
 
       {/* ─── Reports Tab ───────────────────────────────────── */}
       {activeTab === "reports" && <ReportsTab />}

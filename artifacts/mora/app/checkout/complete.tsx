@@ -17,6 +17,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { formatIQD } from "@/lib/format";
+import { trackCartEvent } from "@/lib/tracking";
 
 const WEB_TAB_BAR_OFFSET = Platform.OS === "web" ? 80 : 0;
 const PRIMARY   = "#0274C1";
@@ -143,6 +144,19 @@ export default function OrderCompleteScreen() {
       ).start();
     }
   }, []);
+
+  // Track purchase for the web Wayl-redirect flow (native flows track before navigating here)
+  const trackedPurchase = useRef(false);
+  useEffect(() => {
+    if (payStatus === "paid" && params.fromWayl === "1" && !trackedPurchase.current) {
+      trackedPurchase.current = true;
+      trackCartEvent(
+        "purchased",
+        totalNum,
+        parsedItems.map((i) => ({ title: i.title, quantity: i.quantity, price: i.price, size: i.size, color: i.color })),
+      );
+    }
+  }, [payStatus]);
 
   const verifyPayment = async (forceOrderNumber?: string) => {
     const num = forceOrderNumber || orderNumber;

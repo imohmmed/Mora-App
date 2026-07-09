@@ -7,6 +7,7 @@ import React, {
   useState,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { trackWishlist } from "@/lib/tracking";
 
 const WISHLIST_KEY = "mora_wishlist_v1";
 
@@ -45,8 +46,10 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         const next = new Set(prev);
         if (next.has(productId)) {
           next.delete(productId);
+          trackWishlist(productId, "remove");
         } else {
           next.add(productId);
+          trackWishlist(productId, "add");
         }
         persist(next);
         return next;

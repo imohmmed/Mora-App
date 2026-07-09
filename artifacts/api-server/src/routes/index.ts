@@ -21,6 +21,7 @@ import chatAdminRouter from "./chat-admin.js";
 import chatPublicRouter from "./chat-public.js";
 import browseCollectionsRouter from "./browseCollections.js";
 import saleCollectionsRouter from "./saleCollections.js";
+import trackingRouter from "./tracking.js";
 
 const router: IRouter = Router();
 
@@ -33,6 +34,7 @@ router.use(adminAuthRouter);
 router.use(customersRouter);
 router.use(marketingRouter);
 router.use(analyticsRouter);
+router.use(trackingRouter);
 router.use(cartRouter);
 router.use(specialCollectionsRouter);
 router.use(browseCollectionsRouter);
