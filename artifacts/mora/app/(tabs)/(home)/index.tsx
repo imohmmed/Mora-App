@@ -48,7 +48,7 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
+const CARD_WIDTH = (SCREEN_WIDTH - 3) / 2;
 const IS_IOS = Platform.OS === "ios";
 
 type TabFilter = { category?: string; gender?: string; tag?: string; sort?: string };
@@ -807,8 +807,8 @@ const styles = StyleSheet.create({
   slideCard: { width: CARD_WIDTH },
 
   /* ── Bottom category grid (2 per row) ── */
-  gridRow: { justifyContent: "space-between", paddingHorizontal: 16 },
-  gridCard: { width: CARD_WIDTH, marginBottom: 20 },
+  gridRow: { justifyContent: "space-between", paddingHorizontal: 1 },
+  gridCard: { width: CARD_WIDTH, marginBottom: 1 },
 
   /* ── Product card ── */
   productCard: { width: CARD_WIDTH, flex: 1 },
