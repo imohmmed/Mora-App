@@ -16,7 +16,6 @@ import { useTheme, type ThemeMode } from "@/context/ThemeContext";
 import { useLanguage, LANGUAGES } from "@/context/LanguageContext";
 import { AppleActionSheet } from "@/components/AppleActionSheet";
 import { GlassBackButton } from "@/components/GlassBackButton";
-import { MoraLiveActivity } from "@/modules/MoraLiveActivity";
 import { BlurView } from "expo-blur";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 
@@ -66,29 +65,6 @@ export default function SettingsScreen() {
     sublabel: l.label,
     flag: l.flag,
   }));
-
-  async function runLiveActivityDiagnostic() {
-    const d = MoraLiveActivity.diagnose();
-    if (!d.moduleLoaded) {
-      Alert.alert(
-        "Live Activity",
-        "Native module NOT in this build (web, Expo Go, or an old build that predates the widget). Install a fresh native build to enable Live Activities.",
-      );
-      return;
-    }
-    const lines = [
-      `iOS: ${d.iosVersion ?? "?"}`,
-      `ActivityKit: ${d.activityKitAvailable ? "yes" : "no"}`,
-      `Enabled in Settings: ${d.areActivitiesEnabled ? "YES" : "NO — turn ON in Settings → Mora"}`,
-      `Push-to-start: ${d.pushToStartSupported ? "supported" : "needs iOS 17.2+"}`,
-      `Active now: ${d.activeActivities ?? 0}`,
-    ];
-    const res = await MoraLiveActivity.startTestActivity();
-    lines.push("", res.ok
-      ? "✅ Test Live Activity started — check your Dynamic Island / Lock Screen."
-      : `❌ Could not start: ${res.error ?? "unknown error"}`);
-    Alert.alert("Live Activity Diagnostic", lines.join("\n"));
-  }
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
@@ -223,29 +199,6 @@ export default function SettingsScreen() {
             {useGlassSurface && <GlassBase isDark={isDark} />}
             {useGlassSurface && (
               <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? SURFACE_TINT_DARK : SURFACE_TINT_LIGHT }]} />
-            )}
-
-            {Platform.OS === "ios" && (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.settingsRow,
-                  { borderBottomColor: colors.border },
-                  pressed && { backgroundColor: colors.secondary },
-                  isAr && { flexDirection: "row-reverse" },
-                ]}
-                onPress={runLiveActivityDiagnostic}
-                accessibilityRole="button"
-              >
-                <View style={[styles.settingsLeft, isAr && { flexDirection: "row-reverse" }]}>
-                  <View style={[styles.settingsIcon, { backgroundColor: isDark ? "#1C1C1E" : "#EBF5FF" }]}>
-                    <Feather name="activity" size={16} color={PRIMARY} />
-                  </View>
-                  <Text style={[styles.settingsLabel, { color: colors.foreground }]}>
-                    {isAr ? "اختبار Live Activity" : "Test Live Activity"}
-                  </Text>
-                </View>
-                <Feather name={isAr ? "chevron-left" : "chevron-right"} size={16} color={colors.mutedForeground} />
-              </Pressable>
             )}
 
             <Pressable
