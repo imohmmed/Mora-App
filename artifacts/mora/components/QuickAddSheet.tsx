@@ -13,6 +13,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Dimensions,
   Modal,
@@ -34,6 +35,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 import { requestRestockNotify } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import type { ColorEntry, Product, Variant } from "@/lib/types";
@@ -73,6 +75,7 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   const { isWishlisted, toggle } = useWishlist();
   const { lang } = useLanguage();
   const { token } = useAuth();
+  const { getCartQty } = useCart();
   const router = useRouter();
   const isWeb = Platform.OS === "web";
 
@@ -162,15 +165,29 @@ export function QuickAddSheet({ visible, product, onClose, onConfirm }: Props) {
   // Whole product sold out → offer "Notify me" instead of "Add to bag".
   const fullyOOS = variants.length > 0 && variants.every((v) => (v.inventory ?? 0) <= 0);
 
-  const maxStock = selectedVariant
+  const pickedVariant = selectedVariant ?? (variants.length === 1 ? variants[0] : null);
+  const inventoryForPicked = selectedVariant
     ? (selectedVariant.inventory ?? 0)
     : (variants.find((v) => (v.inventory ?? 0) > 0)?.inventory ?? 99);
+  const alreadyInCart = pickedVariant ? getCartQty(product.id, pickedVariant.id) : 0;
+  const maxStock = Math.max(0, inventoryForPicked - alreadyInCart);
 
   const handleAdd = () => {
-    const toAdd = selectedVariant ?? variants[0];
-    if (!toAdd) return;
+    const toAddVariant = selectedVariant ?? variants[0];
+    if (!toAddVariant) return;
+    const inventory = toAddVariant.inventory ?? 0;
+    const existingQty = getCartQty(product.id, toAddVariant.id);
+    const room = Math.max(0, inventory - existingQty);
+    if (room <= 0) {
+      const msg = lang === "ar"
+        ? "وصلت للحد الأقصى من الكمية المتوفرة لهذا المنتج في سلتك"
+        : "You've already got the max available stock of this item in your cart";
+      if (isWeb) window.alert(msg); else Alert.alert(lang === "ar" ? "الكمية غير متوفرة" : "Not enough stock", msg);
+      return;
+    }
+    const toAdd = Math.min(quantity, room);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onConfirm(toAdd, quantity);
+    onConfirm({ ...toAddVariant, inventory }, toAdd);
     onClose();
   };
 

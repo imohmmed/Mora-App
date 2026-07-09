@@ -252,7 +252,7 @@ export default function ProductDetailScreen() {
   const isDark = resolvedScheme === "dark";
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
-  const { addItem, totalItems } = useCart();
+  const { addItem, totalItems, getCartQty } = useCart();
   const { isWishlisted, toggle } = useWishlist();
   const { token } = useAuth();
   const { lang } = useLanguage();
@@ -391,6 +391,8 @@ export default function ProductDetailScreen() {
   const liked = product ? isWishlisted(product.id) : false;
   const activeVariant = selectedVariant ?? (product?.variants?.[0] ?? null);
   const activeOOS = !!activeVariant && (activeVariant.inventory ?? 0) <= 0;
+  const activeAlreadyInCart = product && activeVariant ? getCartQty(product.id, activeVariant.id) : 0;
+  const qtyRoom = Math.max(0, (activeVariant?.inventory ?? 99) - activeAlreadyInCart);
   const isSubscribed =
     !!activeVariant &&
     (subscribedVariantIds.includes(activeVariant.id) || locallyNotified.includes(activeVariant.id));
@@ -410,18 +412,41 @@ export default function ProductDetailScreen() {
   const handleAddToCart = () => {
     if (!product) return;
     const variant = activeVariant ?? product.variants?.[0];
+    if (!variant) return;
+    const inventory = variant.inventory ?? 99;
+    const alreadyInCart = getCartQty(product.id, variant.id);
+    const room = Math.max(0, inventory - alreadyInCart);
+    if (room <= 0) {
+      Alert.alert(
+        lang === "ar" ? "الكمية غير متوفرة" : "Not enough stock",
+        lang === "ar"
+          ? "وصلت للحد الأقصى من الكمية المتوفرة لهذا المنتج في سلتك"
+          : "You've already got the max available stock of this item in your cart",
+      );
+      return;
+    }
+    const toAdd = Math.min(qty, room);
     addItem({
       productId: product.id,
-      variantId: variant?.id ?? product.id,
+      variantId: variant.id,
       title: product.title,
       vendor: product.vendor ?? "Mora",
-      price: variant?.price ?? product.price,
+      price: variant.price ?? product.price,
       comparePrice: product.comparePrice,
-      quantity: qty,
-      size: variant?.option1,
-      color: variant?.option2,
+      quantity: toAdd,
+      size: variant.option1,
+      color: variant.option2,
       image: imageUri,
+      maxStock: inventory,
     });
+    if (toAdd < qty) {
+      Alert.alert(
+        lang === "ar" ? "تنبيه الكمية" : "Quantity adjusted",
+        lang === "ar"
+          ? `تمت إضافة ${toAdd} فقط لأن هذا هو الحد الأقصى المتوفر`
+          : `Only ${toAdd} added — that's the max available stock`,
+      );
+    }
     setQty(1);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setAdded(true);
@@ -766,9 +791,9 @@ export default function ProductDetailScreen() {
                   </Pressable>
                   <Text style={[styles.qtyNum, { color: colors.foreground }]}>{qty}</Text>
                   <Pressable
-                    style={[styles.qtyBtn, qty >= (activeVariant?.inventory ?? 99) && { opacity: 0.3 }]}
-                    onPress={() => setQty((q) => Math.min(activeVariant?.inventory ?? 99, q + 1))}
-                    disabled={qty >= (activeVariant?.inventory ?? 99)}
+                    style={[styles.qtyBtn, qty >= qtyRoom && { opacity: 0.3 }]}
+                    onPress={() => setQty((q) => Math.min(qtyRoom, q + 1))}
+                    disabled={qty >= qtyRoom}
                     hitSlop={4}
                   >
                     <Feather name="plus" size={14} color={colors.foreground} />
@@ -977,6 +1002,7 @@ export default function ProductDetailScreen() {
             size: variant.option1,
             color: variant.option2,
             image: quickAddRelated.images?.[0],
+            maxStock: variant.inventory,
           });
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           setQuickAddRelated(null);

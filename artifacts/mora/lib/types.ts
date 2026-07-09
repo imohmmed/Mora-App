@@ -143,4 +143,5 @@ export type CartItem = {
   size?: string;
   color?: string;
   image?: string;
+  maxStock?: number;
 };

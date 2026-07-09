@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   LayoutAnimation,
@@ -17,12 +17,12 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import ReanimatedSwipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, { interpolate, useAnimatedStyle, type SharedValue } from "react-native-reanimated";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { fetchStories, fetchSpecialCollection } from "@/lib/api";
+import { fetchProduct, fetchStories, fetchSpecialCollection } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { StoriesSection } from "@/components/StoriesSection";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
@@ -120,6 +120,7 @@ function CartItemRow({
   item: CartItem; isDark: boolean;
   onRemove: () => void; onInc: () => void; onDec: () => void; lang: string; isLast?: boolean;
 }) {
+  const atMaxStock = item.maxStock != null && item.quantity >= item.maxStock;
   const isAr = lang === "ar";
   const swipeRef = useRef<SwipeableMethods>(null);
   const textCol = isDark ? "#FFFFFF" : "#111111";
@@ -187,7 +188,7 @@ function CartItemRow({
 
         {/* Qty controls — vertical column on the right */}
         <View style={ci.qtyCol}>
-          <Pressable onPress={onInc} style={ci.qColBtn} hitSlop={8}>
+          <Pressable onPress={onInc} style={[ci.qColBtn, atMaxStock && { opacity: 0.3 }]} disabled={atMaxStock} hitSlop={8}>
             <Feather name="plus" size={13} color={textCol} />
           </Pressable>
           <Text style={[ci.qColNum, { color: textCol }]}>{item.quantity}</Text>
@@ -360,7 +361,7 @@ function GiftSection({ lang, isDark }: { lang: string; isDark: boolean }) {
     if (!p) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    addItem({ productId: p.id, variantId: variant.id, title: p.title, vendor: p.vendor ?? "", price: variant.price, comparePrice: p.comparePrice, quantity: qty, image: p.images?.[0], size: variant.size, color: variant.color });
+    addItem({ productId: p.id, variantId: variant.id, title: p.title, vendor: p.vendor ?? "", price: variant.price, comparePrice: p.comparePrice, quantity: qty, image: p.images?.[0], size: variant.size, color: variant.color, maxStock: variant.inventory });
     setSheetProduct(null);
   };
 
@@ -403,13 +404,15 @@ function GiftSection({ lang, isDark }: { lang: string; isDark: boolean }) {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function CartScreen() {
-  const { items, subtotal, removeItem, updateQty } = useCart();
+  const { items, subtotal, removeItem, updateQty, setMaxStock } = useCart();
   const { user }    = useAuth();
   const { lang }    = useLanguage();
   const router      = useRouter();
   const insets      = useSafeAreaInsets();
   const { resolvedScheme } = useTheme();
   const isDark      = resolvedScheme === "dark";
+  const [stockNotice, setStockNotice] = useState<string | null>(null);
+  const noticeShownFor = useRef<Set<string>>(new Set());
 
   const { data: storyData, isLoading: storiesLoading } = useQuery({
     queryKey: ["cart-stories"],
@@ -418,6 +421,63 @@ export default function CartScreen() {
     staleTime: 120_000,
   });
   const storyRows = storyData ?? [];
+
+  // ── Live stock revalidation ─────────────────────────────────────────────
+  // Poll each product currently in the cart so quantities stay in sync with
+  // real inventory — if someone else buys the last unit while it's sitting
+  // in this cart, we clamp the quantity down and tell the user why.
+  const cartProductIds = useMemo(
+    () => [...new Set(items.map((i) => i.productId))],
+    [items.map((i) => i.productId).sort().join(",")]
+  );
+
+  const stockQueries = useQueries({
+    queries: cartProductIds.map((id) => ({
+      queryKey: ["cart-stock", id],
+      queryFn: () => fetchProduct(id),
+      enabled: items.length > 0,
+      refetchInterval: 15_000,
+      staleTime: 10_000,
+    })),
+  });
+
+  useEffect(() => {
+    for (const q of stockQueries) {
+      const product = q.data;
+      if (!product) continue;
+      for (const variant of product.variants ?? []) {
+        const cartItem = items.find(
+          (i) => i.productId === product.id && i.variantId === variant.id
+        );
+        if (!cartItem) continue;
+        const inventory = variant.inventory ?? 0;
+        if (inventory < cartItem.quantity) {
+          const noticeKey = `${product.id}:${variant.id}:${inventory}`;
+          if (!noticeShownFor.current.has(noticeKey)) {
+            noticeShownFor.current.add(noticeKey);
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setStockNotice(
+              inventory <= 0
+                ? (lang === "ar"
+                    ? `عذرًا، "${cartItem.title}" خلص من المخزون وتمت إزالته من سلتك`
+                    : `Sorry, "${cartItem.title}" just sold out and was removed from your cart`)
+                : (lang === "ar"
+                    ? `الكمية المتوفرة من "${cartItem.title}" أصبحت ${inventory} فقط، تم تعديل سلتك`
+                    : `Only ${inventory} left of "${cartItem.title}" — your cart was updated`)
+            );
+          }
+        }
+        setMaxStock(product.id, variant.id, inventory);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stockQueries.map((q) => q.dataUpdatedAt).join(","), lang]);
+
+  useEffect(() => {
+    if (!stockNotice) return;
+    const t = setTimeout(() => setStockNotice(null), 5000);
+    return () => clearTimeout(t);
+  }, [stockNotice]);
 
   const bg      = isDark ? "#0A0A0A" : "#FFFFFF";
   const textCol = isDark ? "#FFFFFF" : "#111111";
@@ -518,6 +578,14 @@ export default function CartScreen() {
       {/* Step indicator */}
       <StepBar current={1} isDark={isDark} lang={lang} />
 
+      {/* Live stock notice */}
+      {stockNotice && (
+        <View style={[s.stockNotice, { backgroundColor: isDark ? "#2A1F00" : "#FFF7E0", borderColor: isDark ? "#4A3900" : "#F5D98B" }]}>
+          <Feather name="alert-triangle" size={14} color="#B45309" />
+          <Text style={[s.stockNoticeTxt, { color: isDark ? "#F5D98B" : "#8A5A00" }]}>{stockNotice}</Text>
+        </View>
+      )}
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: isWeb ? 230 : insets.bottom + 170 }}
@@ -584,6 +652,8 @@ export default function CartScreen() {
 const s = StyleSheet.create({
   root:         { flex: 1 },
   header:       { borderBottomWidth: 1, paddingHorizontal: 16, paddingBottom: 12 },
+  stockNotice:  { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 16, marginTop: 10, padding: 10, borderWidth: 1 },
+  stockNoticeTxt: { flex: 1, fontSize: 12, fontWeight: "600", lineHeight: 16 },
   headerInner:  { flexDirection: "row", alignItems: "center" },
   pageTitle:    { fontSize: 20, fontWeight: "900", letterSpacing: -0.3, textTransform: "uppercase" },
   superscript:  { fontSize: 13, fontWeight: "700", lineHeight: 24 },

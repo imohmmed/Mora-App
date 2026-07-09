@@ -51,9 +51,11 @@ type CartContextValue = {
   totalItems: number;
   subtotal: number;
   sessionId: string;
-  addItem: (item: CartItem) => void;
+  addItem: (item: CartItem) => number;
   removeItem: (productId: string, variantId: string) => void;
   updateQty: (productId: string, variantId: string, delta: number) => void;
+  setMaxStock: (productId: string, variantId: string, maxStock: number) => void;
+  getCartQty: (productId: string, variantId: string) => number;
   clearCart: () => void;
   isLoaded: boolean;
 };
@@ -108,20 +110,63 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }, 600);
   }, []);
 
+  // Returns the quantity actually added (may be less than requested if it
+  // would exceed the known stock ceiling for that variant).
   const addItem = useCallback(
-    (item: CartItem) => {
+    (item: CartItem): number => {
+      let added = item.quantity;
       setItems((prev) => {
         const idx = prev.findIndex(
           (i) => i.productId === item.productId && i.variantId === item.variantId
         );
         let next: CartItem[];
         if (idx >= 0) {
+          const existing = prev[idx];
+          const cap = item.maxStock ?? existing.maxStock;
+          const desiredTotal = existing.quantity + item.quantity;
+          const cappedTotal = cap != null ? Math.min(desiredTotal, cap) : desiredTotal;
+          added = Math.max(0, cappedTotal - existing.quantity);
           next = prev.map((i, index) =>
-            index === idx ? { ...i, quantity: i.quantity + item.quantity } : i
+            index === idx
+              ? { ...i, quantity: cappedTotal, maxStock: cap ?? i.maxStock }
+              : i
           );
         } else {
-          next = [...prev, item];
+          const cap = item.maxStock;
+          const cappedQty = cap != null ? Math.min(item.quantity, cap) : item.quantity;
+          added = cappedQty;
+          if (cappedQty <= 0) return prev;
+          next = [...prev, { ...item, quantity: cappedQty }];
         }
+        persist(next, sessionId);
+        return next;
+      });
+      return added;
+    },
+    [persist, sessionId]
+  );
+
+  const getCartQty = useCallback(
+    (productId: string, variantId: string): number => {
+      const found = items.find((i) => i.productId === productId && i.variantId === variantId);
+      return found?.quantity ?? 0;
+    },
+    [items]
+  );
+
+  const setMaxStock = useCallback(
+    (productId: string, variantId: string, maxStock: number) => {
+      setItems((prev) => {
+        let changed = false;
+        const next = prev
+          .map((i) => {
+            if (i.productId !== productId || i.variantId !== variantId) return i;
+            if (i.maxStock === maxStock && i.quantity <= maxStock) return i;
+            changed = true;
+            return { ...i, maxStock, quantity: Math.min(i.quantity, Math.max(0, maxStock)) };
+          })
+          .filter((i) => i.quantity > 0);
+        if (!changed) return prev;
         persist(next, sessionId);
         return next;
       });
@@ -146,11 +191,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     (productId: string, variantId: string, delta: number) => {
       setItems((prev) => {
         const next = prev
-          .map((i) =>
-            i.productId === productId && i.variantId === variantId
-              ? { ...i, quantity: i.quantity + delta }
-              : i
-          )
+          .map((i) => {
+            if (i.productId !== productId || i.variantId !== variantId) return i;
+            const desired = i.quantity + delta;
+            const capped = i.maxStock != null ? Math.min(desired, i.maxStock) : desired;
+            return { ...i, quantity: capped };
+          })
           .filter((i) => i.quantity > 0);
         persist(next, sessionId);
         return next;
@@ -176,7 +222,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <CartContext.Provider
-      value={{ items, totalItems, subtotal, sessionId, addItem, removeItem, updateQty, clearCart, isLoaded }}
+      value={{ items, totalItems, subtotal, sessionId, addItem, removeItem, updateQty, setMaxStock, getCartQty, clearCart, isLoaded }}
     >
       {children}
     </CartContext.Provider>
