@@ -70,7 +70,7 @@ function SiblingStories({ siblings }: { siblings: StorySibling[] }) {
 
 const { width } = Dimensions.get("window");
 const HERO_H = 260;
-const CARD_W = (width - 9) / 2;
+const CARD_W = (width - 3) / 2;
 const CARD_COLORS = [
   "#E8EDF5", "#F0EBE3", "#E8F0E8", "#F5EDEB",
   "#EBF0F5", "#F5EBF5", "#FFF3E0", "#F0F0F0",
@@ -319,14 +319,18 @@ export default function CollectionScreen() {
         pointerEvents="box-none"
       >
         {/* Back button */}
-        <GlassBackButton
-          noBackground
-          onPress={() => router.back()}
-          color={iconColor}
-        />
+        <View style={{ width: 44, alignItems: "flex-start" }}>
+          <GlassBackButton
+            noBackground
+            onPress={() => router.back()}
+            color={iconColor}
+          />
+        </View>
 
         {/* Logo centered */}
-        <MoraLogo size="small" />
+        <View style={{ flex: 1, alignItems: "center" }}>
+          <MoraLogo size="small" />
+        </View>
 
         {/* Spacer to balance back button */}
         <View style={{ width: 44 }} />
@@ -617,7 +621,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 1,
-    paddingHorizontal: 4,
+    paddingHorizontal: 1,
   },
   productCard: {
     width: CARD_W,
