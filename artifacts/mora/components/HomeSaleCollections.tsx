@@ -89,17 +89,18 @@ export function HomeSaleCollections() {
 }
 
 const styles = StyleSheet.create({
-  container: { marginTop: 24, marginBottom: 0 },
+  container: { marginTop: 0, marginBottom: 0 },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 12,
   },
   sectionTitle: {
     fontFamily: "Cairo_700Bold",
     fontSize: 14,
-    letterSpacing: 1.2,
+    letterSpacing: 1,
   },
   scroll: { gap: 1, paddingHorizontal: 1 },
   card: {

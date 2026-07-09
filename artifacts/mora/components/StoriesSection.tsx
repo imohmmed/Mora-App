@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   },
   rowTitle: {
     fontFamily: "Cairo_600SemiBold",
-    fontSize: 11,
+    fontSize: 14,
     letterSpacing: 1.2,
     textTransform: "uppercase",
     textAlign: "center",

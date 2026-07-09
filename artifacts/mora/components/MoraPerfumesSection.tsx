@@ -174,18 +174,19 @@ export const MoraPerfumesSection = forwardRef<MoraPerfumesSectionHandle, {}>(fun
 });
 
 const styles = StyleSheet.create({
-  container: { marginTop: 24, marginBottom: 0 },
+  container: { marginTop: 0, marginBottom: 0 },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 1,
-    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 12,
   },
   sectionTitle: {
     fontFamily: "Cairo_700Bold",
-    fontSize: 13,
-    letterSpacing: 1.4,
+    fontSize: 14,
+    letterSpacing: 1,
     textTransform: "uppercase",
   },
   seeAll: {

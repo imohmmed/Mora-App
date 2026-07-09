@@ -824,7 +824,7 @@ const styles = StyleSheet.create({
   /* Product info */
   productInfo: { paddingTop: 8, gap: 3 },
   productInfoAr: { alignItems: "flex-end" },
-  productTitle: { fontFamily: "Cairo_700Bold", fontSize: 13, lineHeight: 18 },
+  productTitle: { fontFamily: "Cairo_500Medium", fontSize: 12, lineHeight: 16 },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
   priceRowAr: { flexDirection: "row-reverse" },
   productPrice: { fontFamily: "Cairo_700Bold", fontSize: 13 },
