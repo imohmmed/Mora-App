@@ -576,13 +576,6 @@ export default function HomeScreen() {
 
       <MoraPerfumesSection ref={perfumeSectionRef} />
 
-      {/* ── Category Tabs — full catalog browser ── */}
-      <CategoryTabs
-        categories={menuTabs.map((t) => lang === "ar" && (t as TabConfig).arabicLabel ? (t as TabConfig).arabicLabel! : t.label)}
-        activeIndex={safeActiveCategory}
-        onChange={setActiveCategory}
-      />
-
       {/* ── section header ── */}
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -650,6 +643,13 @@ export default function HomeScreen() {
           </Text>
         </View>
       )}
+
+      {/* ── Category Tabs — full catalog browser, stays last ── */}
+      <CategoryTabs
+        categories={menuTabs.map((t) => lang === "ar" && (t as TabConfig).arabicLabel ? (t as TabConfig).arabicLabel! : t.label)}
+        activeIndex={safeActiveCategory}
+        onChange={setActiveCategory}
+      />
     </View>
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [
