@@ -36,6 +36,7 @@ import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { fetchProducts, fetchForYouProducts, fetchSpecialCollections, fetchBanners, fetchStories, fetchContentSections } from "@/lib/api";
+import { useRtlScrollToEnd } from "@/lib/rtlScroll";
 import { formatIQD } from "@/lib/format";
 import { StoriesSection } from "@/components/StoriesSection";
 import { HomeSaleCollections } from "@/components/HomeSaleCollections";
@@ -381,6 +382,7 @@ export default function HomeScreen() {
 
   const flatListRef  = useRef<FlatList>(null);
   const bannerRef    = useRef<FlatList>(null);
+  const newInScroll  = useRtlScrollToEnd(isAr);
   useEffect(() => {
     const scrollTop = () => flatListRef.current?.scrollToOffset?.({ offset: 0, animated: true });
     // Native: TabEvents bus
@@ -601,6 +603,7 @@ export default function HomeScreen() {
       {/* ── Horizontal product slide ── */}
       {!isNewInLoading && !isNewInError && (
         <FlatList
+          ref={newInScroll.ref as any}
           horizontal
           data={newInProducts}
           keyExtractor={(item) => item.id}
@@ -610,10 +613,13 @@ export default function HomeScreen() {
             </View>
           )}
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 1, paddingBottom: bottomPadding + 80, gap: 1 }}
+          contentContainerStyle={[
+            { paddingHorizontal: 1, paddingBottom: bottomPadding + 80, gap: 1 },
+            isAr && { flexDirection: "row-reverse" },
+          ]}
           snapToInterval={CARD_WIDTH + 1}
           decelerationRate="fast"
-          inverted={isAr}
+          onContentSizeChange={newInScroll.onContentSizeChange}
         />
       )}
 

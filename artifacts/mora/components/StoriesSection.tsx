@@ -20,6 +20,7 @@ import { fetchCollectionProducts } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
+import { useRtlScrollToEnd } from "@/lib/rtlScroll";
 import type { Product, StoryRow, StoryItem, Variant } from "@/lib/types";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -174,8 +175,12 @@ function StoryRowSection({
 }) {
   const colors   = useColors();
   const { lang } = useLanguage();
+  const isAr = lang === "ar";
   const { addItem } = useCart();
   const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
+
+  const circlesScroll = useRtlScrollToEnd(isAr);
+  const productsScroll = useRtlScrollToEnd(isAr);
 
   const collectionIds = useMemo(
     () => row.items.filter((i) => i.collectionId).map((i) => i.collectionId as string),
@@ -218,11 +223,13 @@ function StoryRowSection({
 
       {/* Story circles */}
       <ScrollView
+        ref={circlesScroll.ref as any}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.rowScroll}
+        contentContainerStyle={[styles.rowScroll, isAr && { flexDirection: "row-reverse" }]}
         snapToInterval={ITEM_W + 8}
         decelerationRate="fast"
+        onContentSizeChange={circlesScroll.onContentSizeChange}
       >
         {row.items.map((item) => (
           <StoryCircle key={item.id} item={item} />
@@ -232,11 +239,13 @@ function StoryRowSection({
       {/* Products horizontal scroll — 2.5 visible */}
       {!circlesOnly && hasProducts && (
         <ScrollView
+          ref={productsScroll.ref as any}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.productsScroll}
+          contentContainerStyle={[styles.productsScroll, isAr && { flexDirection: "row-reverse" }]}
           decelerationRate="fast"
           snapToInterval={CARD_W + 10}
+          onContentSizeChange={productsScroll.onContentSizeChange}
         >
           {(products ?? []).map((product) => (
             <ProductMiniCard
