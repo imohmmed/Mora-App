@@ -20,7 +20,7 @@ import { fetchCollectionProducts } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
-import { useRtlScrollToEnd } from "@/lib/rtlScroll";
+import { useRtlScrollToEnd, rtlContentStyle } from "@/lib/rtlScroll";
 import type { Product, StoryRow, StoryItem, Variant } from "@/lib/types";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -226,7 +226,7 @@ function StoryRowSection({
         ref={circlesScroll.ref as any}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.rowScroll, isAr && { flexDirection: "row-reverse" }]}
+        contentContainerStyle={[styles.rowScroll, rtlContentStyle(isAr)]}
         snapToInterval={ITEM_W + 8}
         decelerationRate="fast"
         onContentSizeChange={circlesScroll.onContentSizeChange}
@@ -242,7 +242,7 @@ function StoryRowSection({
           ref={productsScroll.ref as any}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[styles.productsScroll, isAr && { flexDirection: "row-reverse" }]}
+          contentContainerStyle={[styles.productsScroll, rtlContentStyle(isAr)]}
           decelerationRate="fast"
           snapToInterval={CARD_W + 10}
           onContentSizeChange={productsScroll.onContentSizeChange}

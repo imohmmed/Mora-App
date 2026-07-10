@@ -36,7 +36,7 @@ import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { fetchProducts, fetchForYouProducts, fetchSpecialCollections, fetchBanners, fetchStories, fetchContentSections } from "@/lib/api";
-import { useRtlScrollToEnd } from "@/lib/rtlScroll";
+import { useRtlScrollToEnd, rtlContentStyle } from "@/lib/rtlScroll";
 import { formatIQD } from "@/lib/format";
 import { StoriesSection } from "@/components/StoriesSection";
 import { HomeSaleCollections } from "@/components/HomeSaleCollections";
@@ -615,7 +615,7 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={[
             { paddingHorizontal: 1, paddingBottom: bottomPadding + 80, gap: 1 },
-            isAr && { flexDirection: "row-reverse" },
+            rtlContentStyle(isAr),
           ]}
           snapToInterval={CARD_WIDTH + 1}
           decelerationRate="fast"

@@ -14,7 +14,7 @@ import { fetchCollection } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
-import { useRtlScrollToEnd } from "@/lib/rtlScroll";
+import { useRtlScrollToEnd, rtlContentStyle } from "@/lib/rtlScroll";
 import type { Product, Variant } from "@/lib/types";
 
 const COLLECTION_ID = "col_mora-perfumes";
@@ -142,7 +142,7 @@ export const MoraPerfumesSection = forwardRef<MoraPerfumesSectionHandle, {}>(fun
         ref={scroll.ref as any}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, isAr && { flexDirection: "row-reverse" }]}
+        contentContainerStyle={[styles.scroll, rtlContentStyle(isAr)]}
         snapToInterval={CARD_W + 1}
         decelerationRate="fast"
         onContentSizeChange={scroll.onContentSizeChange}

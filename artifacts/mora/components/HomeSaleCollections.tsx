@@ -6,7 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useColors } from "@/hooks/useColors";
 import { useLanguage } from "@/context/LanguageContext";
 import { fetchSaleCollections, type SaleCollection } from "@/lib/api";
-import { useRtlScrollToEnd } from "@/lib/rtlScroll";
+import { useRtlScrollToEnd, rtlContentStyle } from "@/lib/rtlScroll";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = (SCREEN_W - 21) / 2;
@@ -79,7 +79,7 @@ export function HomeSaleCollections() {
         ref={scroll.ref as any}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, isAr && { flexDirection: "row-reverse" }]}
+        contentContainerStyle={[styles.scroll, rtlContentStyle(isAr)]}
         snapToInterval={CARD_W + 1}
         contentInsetAdjustmentBehavior="never"
         decelerationRate="fast"
