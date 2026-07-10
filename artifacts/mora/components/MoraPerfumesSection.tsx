@@ -18,7 +18,7 @@ import type { Product, Variant } from "@/lib/types";
 
 const COLLECTION_ID = "col_mora-perfumes";
 const { width: SCREEN_W } = Dimensions.get("window");
-const CARD_W = (SCREEN_W - 48) / 2;
+const CARD_W = (SCREEN_W - 3) / 2;
 const CARD_H = CARD_W * 1.4;
 
 const CARD_COLORS = [

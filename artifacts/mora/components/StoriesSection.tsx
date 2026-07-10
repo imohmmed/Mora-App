@@ -26,7 +26,7 @@ const { width: SCREEN_W } = Dimensions.get("window");
 
 const CIRCLE  = 68;
 const ITEM_W  = CIRCLE + 12;
-const CARD_W  = (SCREEN_W - 48) / 2;
+const CARD_W  = (SCREEN_W - 3) / 2;
 const CARD_H  = CARD_W * 1.4;
 
 // ─── Story Circle ─────────────────────────────────────────────────────────────
