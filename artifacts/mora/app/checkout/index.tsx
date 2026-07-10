@@ -496,7 +496,7 @@ export default function CheckoutScreen() {
         </View>
 
         {/* ── PAYMENT METHOD ── */}
-        <SectionHeader label={isAr ? "طريقة الدفع" : "PAYMENT METHOD"} isDark={isDark} />
+        <SectionHeader label={isAr ? "شلون تكدر تدفع؟" : "PAYMENT METHOD"} isDark={isDark} />
         <View style={{ borderTopWidth: 1, borderTopColor: divider }}>
           {/* COD */}
           <Pressable
@@ -511,7 +511,7 @@ export default function CheckoutScreen() {
                 {isAr ? "الدفع عند الاستلام" : "Cash on Delivery"}
               </Text>
               <Text style={[st.optSub, { color: sub }, isAr && { textAlign: "right" }]}>
-                {isAr ? "ادفع نقداً عند وصول طلبك" : "Pay cash when your order arrives"}
+                {isAr ? "يوصلني الطلب وأكدره بعدين استلمه" : "Pay cash when your order arrives"}
               </Text>
             </View>
             <View style={[st.radio, { borderColor: payMethod === "cod" ? "#22C55E" : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
