@@ -24,7 +24,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { formatIQD } from "@/lib/format";
 import { deliveryMessage } from "@/lib/deliveryMessage";
 import { trackCartEvent } from "@/lib/tracking";
-import { fetchShippingZones, fetchShippingRules, type ShippingZone, type ShippingRule } from "@/lib/api";
+import { fetchShippingZones, fetchShippingRules, fetchDeliveryOptions, type ShippingZone, type ShippingRule, type DeliveryOptionsConfig } from "@/lib/api";
 import { GlassBackButton } from "@/components/GlassBackButton";
 
 const PRIMARY = "#0274C1";
@@ -160,6 +160,9 @@ export default function CheckoutScreen() {
   const [zones, setZones]             = useState<ShippingZone[]>([]);
   const [rules, setRules]             = useState<ShippingRule[]>([]);
   const [selectedZone, setSelectedZone] = useState<ShippingZone | null>(null);
+  const [deliveryOptionsConfig, setDeliveryOptionsConfig] = useState<DeliveryOptionsConfig>({
+    standard: { enabled: true }, express: { enabled: true, price: 9000 }, pickup: { enabled: true },
+  });
 
   const [discountInput, setDiscountInput]   = useState("");
   const [applyingDiscount, setApplyingDiscount] = useState(false);
@@ -170,8 +173,9 @@ export default function CheckoutScreen() {
   const discountAmount   = discount?.amount ?? 0;
   const enabledThresholds = rules.map((r) => r.threshold).filter((t): t is number => t != null);
   const freeShipThreshold = enabledThresholds.length ? Math.min(...enabledThresholds) : null;
-  const freeShipping = (discount?.freeShipping ?? false) || (freeShipThreshold != null && subtotal >= freeShipThreshold);
-  const shipping     = freeShipping ? 0 : (selectedZone?.price ?? 0);
+  const freeShipping = deliveryType !== "pickup" && ((discount?.freeShipping ?? false) || (freeShipThreshold != null && subtotal >= freeShipThreshold));
+  const baseShipping = deliveryType === "pickup" ? 0 : deliveryType === "express" ? deliveryOptionsConfig.express.price : (selectedZone?.price ?? 0);
+  const shipping     = freeShipping ? 0 : baseShipping;
   const grandTotal        = Math.max(0, subtotal + shipping - discountAmount);
   const originalSubtotal = items.reduce((s, i) => s + ((i.comparePrice && i.comparePrice > i.price ? i.comparePrice : i.price) * i.quantity), 0);
   const itemDiscount      = Math.max(0, originalSubtotal - subtotal);
@@ -204,7 +208,15 @@ export default function CheckoutScreen() {
   useEffect(() => {
     fetchShippingZones().then(setZones).catch(() => {});
     fetchShippingRules().then(setRules).catch(() => {});
+    fetchDeliveryOptions().then(setDeliveryOptionsConfig).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!deliveryOptionsConfig[deliveryType]?.enabled) {
+      const fallback = (["standard", "express", "pickup"] as DeliveryType[]).find((k) => deliveryOptionsConfig[k]?.enabled);
+      if (fallback) setDeliveryType(fallback);
+    }
+  }, [deliveryOptionsConfig]);
 
   const set = (key: keyof FormState) => (val: string) => setForm((f) => ({ ...f, [key]: val }));
 
@@ -313,7 +325,7 @@ export default function CheckoutScreen() {
   const handlePlaceOrder = async () => {
     if (!form.name.trim())     { Alert.alert(isAr ? "مطلوب" : "Required", isAr ? "يرجى إدخال اسمك" : "Please enter your name"); return; }
     if (!form.phone.trim())    { Alert.alert(isAr ? "مطلوب" : "Required", isAr ? "يرجى إدخال رقم هاتفك" : "Please enter your phone"); return; }
-    if (!selectedZone)         { Alert.alert(isAr ? "مطلوب" : "Required", isAr ? "يرجى اختيار المحافظة" : "Please select your governorate"); return; }
+    if (!selectedZone && deliveryType !== "pickup") { Alert.alert(isAr ? "مطلوب" : "Required", isAr ? "يرجى اختيار المحافظة" : "Please select your governorate"); return; }
     if (!form.district.trim()) { Alert.alert(isAr ? "مطلوب" : "Required", isAr ? "يرجى إدخال المنطقة" : "Please enter your district"); return; }
     if (items.length === 0)    { Alert.alert(isAr ? "السلة فارغة" : "Empty Cart", isAr ? "لا يوجد منتجات" : "Your cart is empty"); return; }
 
@@ -470,8 +482,12 @@ export default function CheckoutScreen() {
         {/* ── DELIVERY TYPE ── */}
         <SectionHeader label={isAr ? "خيارات التوصيل" : "DELIVERY TYPE"} isDark={isDark} />
         <View style={{ borderTopWidth: 1, borderTopColor: divider }}>
-          {DELIVERY_OPTIONS.map((opt, idx) => {
+          {DELIVERY_OPTIONS.filter((opt) => deliveryOptionsConfig[opt.key]?.enabled).map((opt, idx) => {
             const selected = deliveryType === opt.key;
+            const priceLabel =
+              opt.key === "pickup" ? (isAr ? "مجاني" : "FREE")
+              : opt.key === "express" ? formatIQD(deliveryOptionsConfig.express.price)
+              : selectedZone ? formatIQD(selectedZone.price) : null;
             return (
               <Pressable
                 key={opt.key}
@@ -484,7 +500,7 @@ export default function CheckoutScreen() {
                     {isAr ? opt.titleAr : opt.titleEn}
                   </Text>
                   <Text style={[st.optSub, { color: sub }, isAr && { textAlign: "right" }]}>
-                    {isAr ? opt.subAr : opt.subEn}
+                    {isAr ? opt.subAr : opt.subEn}{priceLabel ? ` · ${priceLabel}` : ""}
                   </Text>
                 </View>
                 <View style={[st.radio, { borderColor: selected ? PRIMARY : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)") }]}>
@@ -648,23 +664,25 @@ export default function CheckoutScreen() {
                 <Text style={[st.totalVal, { color: PRIMARY }]}>−{formatIQD(discountAmount)}</Text>
               </View>
             )}
-            <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
-              <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "الشحن" : "Shipping"}</Text>
-              {shipping === 0 && selectedZone && selectedZone.price > 0 ? (
-                <View style={[{ flexDirection: "row", alignItems: "center", gap: 6 }, isAr && { flexDirection: "row-reverse" }]}>
-                  <Text style={[st.totalVal, { color: "#EF4444", textDecorationLine: "line-through" }]}>
-                    {formatIQD(selectedZone.price)}
+            {deliveryType !== "pickup" && (
+              <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
+                <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "الشحن" : "Shipping"}</Text>
+                {shipping === 0 && selectedZone && selectedZone.price > 0 ? (
+                  <View style={[{ flexDirection: "row", alignItems: "center", gap: 6 }, isAr && { flexDirection: "row-reverse" }]}>
+                    <Text style={[st.totalVal, { color: "#EF4444", textDecorationLine: "line-through" }]}>
+                      {formatIQD(selectedZone.price)}
+                    </Text>
+                    <Text style={[st.totalVal, { color: PRIMARY, fontWeight: "800" }]}>
+                      {isAr ? "مجاني" : "FREE"}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={[st.totalVal, { color: shipping === 0 ? PRIMARY : textCol }]}>
+                    {shipping === 0 ? (isAr ? "مجاني" : "FREE") : formatIQD(shipping)}
                   </Text>
-                  <Text style={[st.totalVal, { color: PRIMARY, fontWeight: "800" }]}>
-                    {isAr ? "مجاني" : "FREE"}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={[st.totalVal, { color: shipping === 0 ? PRIMARY : textCol }]}>
-                  {shipping === 0 ? (isAr ? "مجاني" : "FREE") : formatIQD(shipping)}
-                </Text>
-              )}
-            </View>
+                )}
+              </View>
+            )}
             <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider, borderBottomWidth: 0, paddingVertical: 16 }]}>
               <Text style={[st.totalLblBold, { color: textCol }]}>{isAr ? "المجموع الكلي" : "TOTAL"}</Text>
               <Text style={[st.totalBold, { color: PRIMARY }]}>{formatIQD(grandTotal)}</Text>

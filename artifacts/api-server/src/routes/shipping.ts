@@ -1,5 +1,5 @@
 import { Router } from "express";
-import db, { parseRows, parseOne, logActivity } from "../lib/db.js";
+import db, { parseRows, parseOne, logActivity, getDeliveryOptions, setDeliveryOptions, type DeliveryOptionsConfig } from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
 import type { Row } from "../lib/types.js";
 
@@ -22,6 +22,10 @@ router.get("/store/shipping-rules", (_req, res) => {
     `SELECT * FROM shipping_rules WHERE enabled=1 ORDER BY sort_order, created_at`,
   ).all() as Row[];
   res.json({ data: parseRows(rows), meta: { total: rows.length }, error: null });
+});
+
+router.get("/store/delivery-options", (_req, res) => {
+  res.json({ data: getDeliveryOptions(), error: null });
 });
 
 // ─── Admin: shipping zones (per-governorate pricing) ──────────────────────────
@@ -155,6 +159,30 @@ router.put("/admin/shipping-rules/:id", (req, res) => {
 router.delete("/admin/shipping-rules/:id", (req, res) => {
   db.prepare(`DELETE FROM shipping_rules WHERE id=?`).run(req.params["id"]);
   res.json({ data: { deleted: true }, error: null });
+});
+
+// ─── Admin: delivery options (standard/express/pickup toggles + express price) ─
+
+router.use("/admin/delivery-options", requireAdmin);
+
+router.get("/admin/delivery-options", (_req, res) => {
+  res.json({ data: getDeliveryOptions(), error: null });
+});
+
+router.put("/admin/delivery-options", (req, res) => {
+  const b = req.body as Partial<DeliveryOptionsConfig>;
+  const current = getDeliveryOptions();
+  const config: DeliveryOptionsConfig = {
+    standard: { enabled: b.standard?.enabled !== undefined ? !!b.standard.enabled : current.standard.enabled },
+    express: {
+      enabled: b.express?.enabled !== undefined ? !!b.express.enabled : current.express.enabled,
+      price: b.express?.price !== undefined ? (Number(b.express.price) || 0) : current.express.price,
+    },
+    pickup: { enabled: b.pickup?.enabled !== undefined ? !!b.pickup.enabled : current.pickup.enabled },
+  };
+  setDeliveryOptions(config);
+  logActivity("shipping.delivery_options_updated", "Settings", "delivery_options", null, "Delivery options", "Admin", {});
+  res.json({ data: config, error: null });
 });
 
 export default router;

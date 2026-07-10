@@ -704,6 +704,40 @@ export function parseOne(row: Row | undefined): Row | null {
   return row ? parseRow(row) : null;
 }
 
+// ─── Delivery options config (standard/express/pickup toggles + express price) ─
+
+export type DeliveryOptionsConfig = {
+  standard: { enabled: boolean };
+  express: { enabled: boolean; price: number };
+  pickup: { enabled: boolean };
+};
+
+const DEFAULT_DELIVERY_OPTIONS: DeliveryOptionsConfig = {
+  standard: { enabled: true },
+  express: { enabled: true, price: 9000 },
+  pickup: { enabled: true },
+};
+
+export function getDeliveryOptions(): DeliveryOptionsConfig {
+  const row = db.prepare(`SELECT value FROM settings WHERE key='delivery_options'`).get() as { value: string } | undefined;
+  if (!row) return DEFAULT_DELIVERY_OPTIONS;
+  try {
+    const parsed = JSON.parse(row.value) as Partial<DeliveryOptionsConfig>;
+    return {
+      standard: { enabled: parsed.standard?.enabled !== false },
+      express: { enabled: parsed.express?.enabled !== false, price: Number(parsed.express?.price) || DEFAULT_DELIVERY_OPTIONS.express.price },
+      pickup: { enabled: parsed.pickup?.enabled !== false },
+    };
+  } catch { return DEFAULT_DELIVERY_OPTIONS; }
+}
+
+export function setDeliveryOptions(config: DeliveryOptionsConfig): void {
+  db.prepare(
+    `INSERT INTO settings (key,value) VALUES ('delivery_options',?)
+     ON CONFLICT(key) DO UPDATE SET value=excluded.value`,
+  ).run(JSON.stringify(config));
+}
+
 // ─── Analytics helpers ────────────────────────────────────────────────────────
 
 export function getAnalyticsSummary() {

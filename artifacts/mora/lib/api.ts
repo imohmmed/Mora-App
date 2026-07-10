@@ -291,6 +291,16 @@ export async function fetchShippingRules(): Promise<ShippingRule[]> {
   return apiFetch<ShippingRule[]>("/store/shipping-rules");
 }
 
+export type DeliveryOptionsConfig = {
+  standard: { enabled: boolean };
+  express: { enabled: boolean; price: number };
+  pickup: { enabled: boolean };
+};
+
+export async function fetchDeliveryOptions(): Promise<DeliveryOptionsConfig> {
+  return apiFetch<DeliveryOptionsConfig>("/store/delivery-options");
+}
+
 // ── Restock ("Notify me") ─────────────────────────────────────────────────────
 export async function requestRestockNotify(
   authToken: string,

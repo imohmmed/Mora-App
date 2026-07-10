@@ -1,5 +1,5 @@
 import { Router } from "express";
-import db, { parseRows, parseOne, logActivity } from "../lib/db.js";
+import db, { parseRows, parseOne, logActivity, getDeliveryOptions } from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
 import type { Row } from "../lib/types.js";
 import { sendLiveActivityPush, sendLiveActivityStartPush } from "../lib/apns.js";
@@ -161,22 +161,31 @@ router.post("/store/orders", (req, res) => {
   const lineItems = (b["lineItems"] as Array<{ quantity?: number }> | undefined) ?? [];
   const itemCount = lineItems.reduce((n, it) => n + (Number(it?.quantity) || 0), 0);
 
-  // ── Shipping: compute from the selected governorate (server-authoritative) ──
-  // The client-sent `shipping` is never trusted; price is derived only from the
-  // selected enabled zone. A valid governorate is required.
+  // ── Delivery type + shipping: compute server-authoritatively ────────────────
+  // The client-sent `shipping` is never trusted. Standard delivery uses the
+  // selected governorate's zone price; express uses the admin-configured flat
+  // price regardless of governorate; pickup is always free (no zone required).
+  const deliveryType = normalizeDeliveryType(b["deliveryType"]);
+  const deliveryOptions = getDeliveryOptions();
   const governorate = ((b["governorate"] as string) ?? "").trim();
-  if (!governorate) {
-    res.status(400).json({ data: null, meta: {}, error: "governorate is required" });
-    return;
+
+  let shipping = 0;
+  if (deliveryType === "pickup") {
+    shipping = 0;
+  } else {
+    if (!governorate) {
+      res.status(400).json({ data: null, meta: {}, error: "governorate is required" });
+      return;
+    }
+    const zone = db.prepare(
+      `SELECT price FROM shipping_zones WHERE enabled=1 AND lower(governorate)=lower(?)`,
+    ).get(governorate) as Row | undefined;
+    if (!zone) {
+      res.status(400).json({ data: null, meta: {}, error: "Invalid or unavailable governorate" });
+      return;
+    }
+    shipping = deliveryType === "express" ? deliveryOptions.express.price : (Number(zone["price"]) || 0);
   }
-  const zone = db.prepare(
-    `SELECT price FROM shipping_zones WHERE enabled=1 AND lower(governorate)=lower(?)`,
-  ).get(governorate) as Row | undefined;
-  if (!zone) {
-    res.status(400).json({ data: null, meta: {}, error: "Invalid or unavailable governorate" });
-    return;
-  }
-  let shipping = Number(zone["price"]) || 0;
 
   // ── Discount: re-validate server-side (never trust a client-sent amount) ──
   const discountCode = ((b["discountCode"] as string) ?? "").trim();
@@ -195,13 +204,16 @@ router.post("/store/orders", (req, res) => {
   }
 
   // ── Free-delivery rule: any enabled rule whose threshold is met zeroes shipping ──
-  if (!freeShipping) {
-    const rule = db.prepare(
-      `SELECT id FROM shipping_rules WHERE enabled=1 AND threshold IS NOT NULL AND threshold <= ? LIMIT 1`,
-    ).get(subtotal) as Row | undefined;
-    if (rule) freeShipping = true;
+  // (pickup is already free and has no zone to waive)
+  if (deliveryType !== "pickup") {
+    if (!freeShipping) {
+      const rule = db.prepare(
+        `SELECT id FROM shipping_rules WHERE enabled=1 AND threshold IS NOT NULL AND threshold <= ? LIMIT 1`,
+      ).get(subtotal) as Row | undefined;
+      if (rule) freeShipping = true;
+    }
+    if (freeShipping) shipping = 0;
   }
-  if (freeShipping) shipping = 0;
 
   const total = Math.max(0, subtotal + shipping - discountAmount);
 
@@ -221,7 +233,6 @@ router.post("/store/orders", (req, res) => {
   }
 
   const paymentMethod = (b["paymentMethod"] as string) ?? "cod";
-  const deliveryType = normalizeDeliveryType(b["deliveryType"]);
 
   // ── Stock check + order insert + inventory decrement (atomic) ──────────────
   type OLI = { variantId?: string; quantity?: number; title?: string };

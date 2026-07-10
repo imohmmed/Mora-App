@@ -9,9 +9,15 @@ import {
 } from "@/components/ui/table";
 import { PageContainer, PageHeader, SectionCard } from "@/components/ui/page-primitives";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Plus, MapPin, Tag } from "lucide-react";
+import { Trash2, Plus, MapPin, Tag, Truck } from "lucide-react";
 import { formatIQD } from "@/lib/format";
 import { useT } from "@/i18n/LanguageContext";
+
+type DeliveryOptionsConfig = {
+  standard: { enabled: boolean };
+  express: { enabled: boolean; price: number };
+  pickup: { enabled: boolean };
+};
 
 type ShippingZone = {
   id: string;
@@ -55,6 +61,11 @@ export default function ShippingSettings() {
   const [loading, setLoading] = useState(true);
   const [savingZones, setSavingZones] = useState(false);
 
+  const [deliveryOptions, setDeliveryOptionsState] = useState<DeliveryOptionsConfig>({
+    standard: { enabled: true }, express: { enabled: true, price: 9000 }, pickup: { enabled: true },
+  });
+  const [savingDeliveryOptions, setSavingDeliveryOptions] = useState(false);
+
   // New governorate form
   const [newGov, setNewGov] = useState({ governorate: "", governorateAr: "", price: "" });
   const [addingGov, setAddingGov] = useState(false);
@@ -66,12 +77,14 @@ export default function ShippingSettings() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [z, r] = await Promise.all([
+      const [z, r, d] = await Promise.all([
         api<ShippingZone[]>("/admin/shipping-zones"),
         api<ShippingRule[]>("/admin/shipping-rules"),
+        api<DeliveryOptionsConfig>("/admin/delivery-options"),
       ]);
       setZones((z.data ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder));
       setRules((r.data ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder));
+      if (d.data) setDeliveryOptionsState(d.data);
     } catch {
       toast({ title: t("toast.error"), description: t("shipping.toast.loadError"), variant: "destructive" });
     } finally {
@@ -144,6 +157,26 @@ export default function ShippingSettings() {
     }
   };
 
+  // ─── Delivery options ───────────────────────────────────────────────────────
+  const updateDeliveryOptions = (patch: Partial<DeliveryOptionsConfig>) =>
+    setDeliveryOptionsState((p) => ({ ...p, ...patch }));
+
+  const saveDeliveryOptions = async () => {
+    setSavingDeliveryOptions(true);
+    try {
+      const res = await api<DeliveryOptionsConfig>("/admin/delivery-options", {
+        method: "PUT",
+        body: JSON.stringify(deliveryOptions),
+      });
+      if (res.data) setDeliveryOptionsState(res.data);
+      toast({ title: t("toast.saved") });
+    } catch {
+      toast({ title: t("toast.error"), variant: "destructive" });
+    } finally {
+      setSavingDeliveryOptions(false);
+    }
+  };
+
   // ─── Rules ──────────────────────────────────────────────────────────────────
   const updateRule = (id: string, patch: Partial<ShippingRule>) =>
     setRules((p) => p.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -213,6 +246,74 @@ export default function ShippingSettings() {
   return (
     <PageContainer className="max-w-4xl">
       <PageHeader title={t("nav.shipping")} subtitle={t("shipping.subtitle")} />
+
+      {/* DELIVERY OPTIONS (express / standard / pickup toggles) */}
+      <SectionCard
+        title={
+          <span className="flex items-center gap-2">
+            <Truck className="w-5 h-5" />
+            خيارات التوصيل
+          </span>
+        }
+        description="فعّل أو أخفِ أي طريقة توصيل، وحدد سعر التوصيل السريع"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="p-4 border rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="font-medium">توصيل عادي</Label>
+                <Switch
+                  checked={deliveryOptions.standard.enabled}
+                  onCheckedChange={(v) => updateDeliveryOptions({ standard: { enabled: v } })}
+                  data-testid="switch-delivery-standard"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">حسب سعر المحافظة</p>
+            </div>
+
+            <div className="p-4 border rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="font-medium">توصيل سريع</Label>
+                <Switch
+                  checked={deliveryOptions.express.enabled}
+                  onCheckedChange={(v) => updateDeliveryOptions({ express: { ...deliveryOptions.express, enabled: v } })}
+                  data-testid="switch-delivery-express"
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-xs text-muted-foreground">السعر الثابت (دينار)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="500"
+                  value={deliveryOptions.express.price}
+                  onChange={(e) => updateDeliveryOptions({ express: { ...deliveryOptions.express, price: parseFloat(e.target.value) || 0 } })}
+                  className="tabular-nums"
+                  data-testid="input-delivery-express-price"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 border rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="font-medium">استلام من المحل</Label>
+                <Switch
+                  checked={deliveryOptions.pickup.enabled}
+                  onCheckedChange={(v) => updateDeliveryOptions({ pickup: { enabled: v } })}
+                  data-testid="switch-delivery-pickup"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">مجاني دائماً</p>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button onClick={saveDeliveryOptions} disabled={savingDeliveryOptions} data-testid="btn-save-delivery-options">
+              {savingDeliveryOptions ? t("action.saving") : t("action.save")}
+            </Button>
+          </div>
+        </div>
+      </SectionCard>
 
       {/* A) GOVERNORATE DELIVERY PRICES */}
       <SectionCard
