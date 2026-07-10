@@ -24,6 +24,7 @@ export type Product = {
   optionDefinitions?: OptionDefinition[];
   videoUrl?: string;
   completeTheSet?: Product[];
+  soldCount?: number;
 };
 
 export type Variant = {

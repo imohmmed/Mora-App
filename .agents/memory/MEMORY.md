@@ -34,6 +34,7 @@
 - [Checkout keyboard avoidance](checkout-keyboard-avoidance.md) — sticky-footer forms: plain ScrollView + automaticallyAdjustKeyboardInsets(iOS)+keyboardShouldPersistTaps, NOT screen-wrapping KeyboardAvoidingView
 - [Bilingual option names](option-definitions-bilingual.md) — option_definitions JSON stores {nameEn,nameAr,values} (passthrough); display by lang w/ fallback; admin 2 inputs + legacy name migration
 - [Search collections + trending](search-collections-trending.md) — search-page BROWSE grid + trending chips driven by content_sections keys; admin-edited; browse nav via collection/[slug] bt/bv/bttl params
+- [Collection filter/sort](collection-filter-sort.md) — price/color/tag filter + bestselling/price/newest sort done client-side over fetched product list; color chips use optionDefinitions colorEntries hex
 - [Analytics COGS & demographics gaps](analytics-cogs-demographics.md) — profit uses current cost retroactively (not point-in-time); gender/birth_year columns exist but stay NULL until an input UI writes them
 - [Home NEW IN vs category grid](home-newin-vs-category-grid.md) — NEW IN and bottom ALL/WOMEN/MEN/FOR YOU tabs must be independent queries/lists, never share one FlatList
 - [Checkout delivery options](delivery-options.md) — standard/express/pickup; deliveryMessage rules duplicated in mora lib + api-server (keep identical); deliveryType must ride ALL 4 APNs paths or pickup shows 4-step widget; pickup=3-step flow needs EAS rebuild

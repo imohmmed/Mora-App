@@ -4,6 +4,7 @@ import {
   Animated,
   Dimensions,
   Keyboard,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -141,7 +142,7 @@ function ProductCard({ product, onQuickAdd }: { product: Product; onQuickAdd: (p
           return (
             <View style={{ flexDirection: isAr ? "row-reverse" : "row", gap: 4, marginBottom: 2 }}>
               {hexes.slice(0, 7).map((hex, i) => (
-                <View key={i} style={{ width: 11, height: 11, borderRadius: 6, backgroundColor: hex, borderWidth: 0.5, borderColor: "rgba(0,0,0,0.15)" }} />
+                <View key={i} style={{ width: 11, height: 11, borderRadius: 3, backgroundColor: hex, borderWidth: 0.5, borderColor: "rgba(0,0,0,0.15)" }} />
               ))}
             </View>
           );
@@ -195,6 +196,17 @@ export default function CollectionScreen() {
   const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
   const { addItem } = useCart();
 
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [sortSheetOpen, setSortSheetOpen] = useState(false);
+  const [minPriceInput, setMinPriceInput] = useState("");
+  const [maxPriceInput, setMaxPriceInput] = useState("");
+  const [appliedMinPrice, setAppliedMinPrice] = useState<number | null>(null);
+  const [appliedMaxPrice, setAppliedMaxPrice] = useState<number | null>(null);
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<"default" | "bestselling" | "priceAsc" | "priceDesc" | "newest">("default");
+
   const scrollRef = useRef<any>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerBgAnim = useRef(new Animated.Value(0)).current;
@@ -239,13 +251,76 @@ export default function CollectionScreen() {
     : allProducts;
   // Keep in-stock products first; sold-out ones sink to the end (still tappable
   // so users can subscribe to a restock notification).
-  const displayProducts = useMemo(() => {
+  const stockSortedProducts = useMemo(() => {
     return [...rawProducts].sort((a, b) => {
       const aIn = isProductInStock(a) ? 0 : 1;
       const bIn = isProductInStock(b) ? 0 : 1;
       return aIn - bIn;
     });
   }, [rawProducts]);
+
+  const availableColors = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of allProducts) {
+      const colorDef = p.optionDefinitions?.find((d) => d.type === "color");
+      for (const e of colorDef?.colorEntries ?? []) {
+        if (e.hex) map.set(e.nameEn || e.hex, e.hex);
+      }
+    }
+    return Array.from(map.entries()).map(([name, hex]) => ({ name, hex }));
+  }, [allProducts]);
+
+  const availableTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of allProducts) {
+      for (const t of p.tags ?? []) set.add(t);
+    }
+    return Array.from(set).sort();
+  }, [allProducts]);
+
+  const filteredTagSuggestions = useMemo(() => {
+    const q = tagInput.trim().toLowerCase();
+    if (!q) return availableTags.slice(0, 12);
+    return availableTags.filter((t) => t.toLowerCase().includes(q)).slice(0, 12);
+  }, [tagInput, availableTags]);
+
+  const hasActiveFilters = appliedMinPrice != null || appliedMaxPrice != null || selectedColors.length > 0 || selectedTags.length > 0;
+
+  const displayProducts = useMemo(() => {
+    let list = stockSortedProducts;
+
+    if (appliedMinPrice != null) list = list.filter((p) => p.price >= appliedMinPrice);
+    if (appliedMaxPrice != null) list = list.filter((p) => p.price <= appliedMaxPrice);
+    if (selectedColors.length > 0) {
+      list = list.filter((p) => {
+        const colorDef = p.optionDefinitions?.find((d) => d.type === "color");
+        const names = (colorDef?.colorEntries ?? []).map((e) => e.nameEn || e.hex);
+        return selectedColors.some((c) => names.includes(c));
+      });
+    }
+    if (selectedTags.length > 0) {
+      list = list.filter((p) => selectedTags.every((t) => (p.tags ?? []).includes(t)));
+    }
+
+    if (sortBy !== "default") {
+      list = [...list].sort((a, b) => {
+        switch (sortBy) {
+          case "bestselling":
+            return (b.soldCount ?? 0) - (a.soldCount ?? 0);
+          case "priceAsc":
+            return a.price - b.price;
+          case "priceDesc":
+            return b.price - a.price;
+          case "newest":
+            return 0;
+          default:
+            return 0;
+        }
+      });
+    }
+
+    return list;
+  }, [stockSortedProducts, appliedMinPrice, appliedMaxPrice, selectedColors, selectedTags, sortBy]);
 
   useEffect(() => {
     Animated.timing(headerBgAnim, {
@@ -397,6 +472,29 @@ export default function CollectionScreen() {
           <SiblingStories siblings={siblings} />
         )}
 
+        {/* Filter + Sort bar */}
+        {!(debouncedQ.trim().length > 0) && (
+          <View style={[styles.filterSortBar, lang === "ar" && { flexDirection: "row-reverse" }]}>
+            <Pressable
+              style={[styles.filterSortBtn, { borderColor: colors.border }, hasActiveFilters && { borderColor: PRIMARY }]}
+              onPress={() => { setMinPriceInput(appliedMinPrice != null ? String(appliedMinPrice) : ""); setMaxPriceInput(appliedMaxPrice != null ? String(appliedMaxPrice) : ""); setFilterSheetOpen(true); }}
+            >
+              <Feather name="sliders" size={14} color={hasActiveFilters ? PRIMARY : colors.foreground} />
+              <Text style={[styles.filterSortText, { color: hasActiveFilters ? PRIMARY : colors.foreground }]}>
+                {lang === "ar" ? "تصفية" : "Filter"}{hasActiveFilters ? ` (${[appliedMinPrice != null || appliedMaxPrice != null ? 1 : 0, selectedColors.length > 0 ? 1 : 0, selectedTags.length > 0 ? 1 : 0].reduce((a, b) => a + b, 0)})` : ""}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.filterSortBtn, { borderColor: colors.border }, sortBy !== "default" && { borderColor: PRIMARY }]}
+              onPress={() => setSortSheetOpen(true)}
+            >
+              <Feather name="arrow-down" size={14} color={sortBy !== "default" ? PRIMARY : colors.foreground} />
+              <Text style={[styles.filterSortText, { color: sortBy !== "default" ? PRIMARY : colors.foreground }]}>
+                {lang === "ar" ? "ترتيب" : "Sort"}
+              </Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* Products / search results grid */}
         {isLoading && !refreshing ? (
@@ -451,6 +549,160 @@ export default function CollectionScreen() {
           });
         }}
       />
+
+      {/* Filter bottom sheet */}
+      <Modal visible={filterSheetOpen} animationType="slide" transparent onRequestClose={() => setFilterSheetOpen(false)}>
+        <Pressable style={styles.sheetBackdrop} onPress={() => setFilterSheetOpen(false)} />
+        <View style={[styles.sheetContainer, { backgroundColor: colors.background, paddingBottom: botPad + 16 }]}>
+          <View style={styles.sheetHandle} />
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <Text style={[styles.sheetTitle, { color: colors.foreground }, lang === "ar" && { textAlign: "right" }]}>
+              {lang === "ar" ? "تصفية" : "Filter"}
+            </Text>
+
+            {/* Price range */}
+            <Text style={[styles.sheetSectionLabel, { color: colors.mutedForeground }, lang === "ar" && { textAlign: "right" }]}>
+              {lang === "ar" ? "نطاق السعر" : "Price range"}
+            </Text>
+            <View style={[styles.priceRowInputs, lang === "ar" && { flexDirection: "row-reverse" }]}>
+              <TextInput
+                style={[styles.priceInput, { borderColor: colors.border, color: colors.foreground }]}
+                placeholder={lang === "ar" ? "الأدنى" : "Min"}
+                placeholderTextColor={colors.mutedForeground}
+                keyboardType="numeric"
+                value={minPriceInput}
+                onChangeText={setMinPriceInput}
+              />
+              <Text style={{ color: colors.mutedForeground }}>–</Text>
+              <TextInput
+                style={[styles.priceInput, { borderColor: colors.border, color: colors.foreground }]}
+                placeholder={lang === "ar" ? "الأقصى" : "Max"}
+                placeholderTextColor={colors.mutedForeground}
+                keyboardType="numeric"
+                value={maxPriceInput}
+                onChangeText={setMaxPriceInput}
+              />
+            </View>
+
+            {/* Color */}
+            {availableColors.length > 0 && (
+              <>
+                <Text style={[styles.sheetSectionLabel, { color: colors.mutedForeground }, lang === "ar" && { textAlign: "right" }]}>
+                  {lang === "ar" ? "اللون" : "Color"}
+                </Text>
+                <View style={[styles.chipsWrap, lang === "ar" && { flexDirection: "row-reverse" }]}>
+                  {availableColors.map(({ name, hex }) => {
+                    const active = selectedColors.includes(name);
+                    return (
+                      <Pressable
+                        key={name}
+                        style={[styles.colorChip, { borderColor: active ? PRIMARY : colors.border }]}
+                        onPress={() => setSelectedColors((prev) => active ? prev.filter((c) => c !== name) : [...prev, name])}
+                      >
+                        <View style={[styles.colorChipSwatch, { backgroundColor: hex }]} />
+                        <Text style={[styles.filterChipText, { color: active ? PRIMARY : colors.foreground }]}>{name}</Text>
+                        {active && <Feather name="check" size={12} color={PRIMARY} />}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            )}
+
+            {/* Tags */}
+            {availableTags.length > 0 && (
+              <>
+                <Text style={[styles.sheetSectionLabel, { color: colors.mutedForeground }, lang === "ar" && { textAlign: "right" }]}>
+                  {lang === "ar" ? "الوسوم" : "Tags"}
+                </Text>
+                <TextInput
+                  style={[styles.priceInput, { borderColor: colors.border, color: colors.foreground, width: "100%" }]}
+                  placeholder={lang === "ar" ? "ابحث عن وسم" : "Search tags"}
+                  placeholderTextColor={colors.mutedForeground}
+                  value={tagInput}
+                  onChangeText={setTagInput}
+                />
+                <View style={[styles.chipsWrap, lang === "ar" && { flexDirection: "row-reverse" }, { marginTop: 8 }]}>
+                  {filteredTagSuggestions.map((t) => {
+                    const active = selectedTags.includes(t);
+                    return (
+                      <Pressable
+                        key={t}
+                        style={[styles.tagChip, { borderColor: active ? PRIMARY : colors.border, backgroundColor: active ? PRIMARY : "transparent" }]}
+                        onPress={() => setSelectedTags((prev) => active ? prev.filter((x) => x !== t) : [...prev, t])}
+                      >
+                        <Text style={[styles.filterChipText, { color: active ? "#FFFFFF" : colors.foreground }]}>{t}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            )}
+          </ScrollView>
+
+          <View style={[styles.sheetActionsRow, lang === "ar" && { flexDirection: "row-reverse" }]}>
+            <Pressable
+              style={[styles.sheetSecondaryBtn, { borderColor: colors.border }]}
+              onPress={() => {
+                setMinPriceInput(""); setMaxPriceInput("");
+                setAppliedMinPrice(null); setAppliedMaxPrice(null);
+                setSelectedColors([]); setSelectedTags([]); setTagInput("");
+              }}
+            >
+              <Text style={[styles.sheetSecondaryText, { color: colors.foreground }]}>
+                {lang === "ar" ? "إعادة تعيين" : "Reset"}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.sheetPrimaryBtn, { backgroundColor: PRIMARY }]}
+              onPress={() => {
+                const min = parseFloat(minPriceInput);
+                const max = parseFloat(maxPriceInput);
+                setAppliedMinPrice(Number.isFinite(min) ? min : null);
+                setAppliedMaxPrice(Number.isFinite(max) ? max : null);
+                setFilterSheetOpen(false);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+            >
+              <Text style={styles.sheetPrimaryText}>{lang === "ar" ? "تطبيق" : "Apply"}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Sort bottom sheet */}
+      <Modal visible={sortSheetOpen} animationType="slide" transparent onRequestClose={() => setSortSheetOpen(false)}>
+        <Pressable style={styles.sheetBackdrop} onPress={() => setSortSheetOpen(false)} />
+        <View style={[styles.sheetContainer, { backgroundColor: colors.background, paddingBottom: botPad + 16 }]}>
+          <View style={styles.sheetHandle} />
+          <Text style={[styles.sheetTitle, { color: colors.foreground }, lang === "ar" && { textAlign: "right" }]}>
+            {lang === "ar" ? "ترتيب حسب" : "Sort by"}
+          </Text>
+          {(
+            [
+              { key: "default", en: "Recommended", ar: "موصى به" },
+              { key: "bestselling", en: "Best selling", ar: "الأكثر مبيعًا" },
+              { key: "newest", en: "Newest", ar: "الأحدث" },
+              { key: "priceDesc", en: "Price: High to Low", ar: "السعر: من الأعلى إلى الأقل" },
+              { key: "priceAsc", en: "Price: Low to High", ar: "السعر: من الأقل إلى الأعلى" },
+            ] as const
+          ).map((opt) => {
+            const active = sortBy === opt.key;
+            return (
+              <Pressable
+                key={opt.key}
+                style={[styles.sortOptionRow, lang === "ar" && { flexDirection: "row-reverse" }]}
+                onPress={() => { setSortBy(opt.key); setSortSheetOpen(false); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+              >
+                <Text style={[styles.sortOptionText, { color: active ? PRIMARY : colors.foreground }]}>
+                  {lang === "ar" ? opt.ar : opt.en}
+                </Text>
+                {active && <Feather name="check" size={16} color={PRIMARY} />}
+              </Pressable>
+            );
+          })}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -665,4 +917,115 @@ const styles = StyleSheet.create({
   retryBtn: { paddingHorizontal: 24, paddingVertical: 10, borderRadius: 8 },
   retryText: { color: "#fff", fontFamily: "Cairo_600SemiBold", fontSize: 14 },
   emptyText: { fontFamily: "Cairo_400Regular", fontSize: 15, textAlign: "center" },
+
+  /* ── Filter / Sort bar ── */
+  filterSortBar: {
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  filterSortBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1.5,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  filterSortText: { fontFamily: "Cairo_600SemiBold", fontSize: 12 },
+
+  /* ── Bottom sheets ── */
+  sheetBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
+  sheetContainer: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    maxHeight: "80%",
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(150,150,150,0.4)",
+    alignSelf: "center",
+    marginBottom: 14,
+  },
+  sheetTitle: { fontFamily: "Cairo_700Bold", fontSize: 18, marginBottom: 14 },
+  sheetSectionLabel: {
+    fontFamily: "Cairo_600SemiBold",
+    fontSize: 12,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  priceRowInputs: { flexDirection: "row", alignItems: "center", gap: 10 },
+  priceInput: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontFamily: "Cairo_400Regular",
+    fontSize: 14,
+  },
+  chipsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  colorChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1.5,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  colorChipSwatch: {
+    width: 14,
+    height: 14,
+    borderRadius: 3,
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.15)",
+  },
+  tagChip: {
+    borderWidth: 1.5,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  filterChipText: { fontFamily: "Cairo_500Medium", fontSize: 12 },
+  sheetActionsRow: {
+    flexDirection: "row",
+    gap: 12,
+    paddingTop: 16,
+  },
+  sheetSecondaryBtn: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 13,
+  },
+  sheetSecondaryText: { fontFamily: "Cairo_600SemiBold", fontSize: 14 },
+  sheetPrimaryBtn: {
+    flex: 2,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 13,
+  },
+  sheetPrimaryText: { color: "#fff", fontFamily: "Cairo_700Bold", fontSize: 14 },
+  sortOptionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(150,150,150,0.25)",
+  },
+  sortOptionText: { fontFamily: "Cairo_500Medium", fontSize: 15 },
 });

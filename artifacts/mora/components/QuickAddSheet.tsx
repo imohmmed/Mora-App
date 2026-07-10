@@ -738,7 +738,7 @@ const styles = StyleSheet.create({
   colorSwatch: {
     width: 34,
     height: 34,
-    borderRadius: 17,
+    borderRadius: 6,
     overflow: "hidden",
     marginRight: 8,
     position: "relative",
@@ -749,7 +749,7 @@ const styles = StyleSheet.create({
     left: 2,
     right: 2,
     bottom: 2,
-    borderRadius: 12,
+    borderRadius: 3,
     borderWidth: 2,
     borderColor: "rgba(255,255,255,0.75)",
   },
