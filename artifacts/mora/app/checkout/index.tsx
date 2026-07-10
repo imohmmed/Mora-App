@@ -83,7 +83,7 @@ const sb = StyleSheet.create({
 });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type FormState    = { name: string; phone: string; city: string; district: string; street: string; note: string };
+type FormState    = { name: string; instagram: string; phone: string; phone2: string; city: string; district: string; landmark: string; street: string; note: string };
 type PayMethod    = "cod" | "online";
 type DeliveryType = "standard" | "express" | "pickup";
 
@@ -109,11 +109,12 @@ function Divider({ color }: { color: string }) {
 }
 
 function FieldRow({
-  label, value, onChangeText, placeholder, keyboardType, textCol, sub, isDark, isAr,
+  label, value, onChangeText, placeholder, keyboardType, textCol, sub, isDark, isAr, autoCapitalize,
 }: {
   label: string; value: string; onChangeText: (t: string) => void;
   placeholder?: string; keyboardType?: any;
   textCol: string; sub: string; isDark: boolean; isAr?: boolean;
+  autoCapitalize?: "none" | "words" | "sentences" | "characters";
 }) {
   const border = isDark ? "#1A1A1A" : "#EBEBEB";
   return (
@@ -127,7 +128,7 @@ function FieldRow({
         keyboardType={keyboardType}
         textAlign={isAr ? "right" : "left"}
         style={[fr.input, { color: textCol }]}
-        autoCapitalize="words"
+        autoCapitalize={autoCapitalize ?? "words"}
       />
     </View>
   );
@@ -150,7 +151,7 @@ export default function CheckoutScreen() {
   const { lang } = useLanguage();
   const isAr = lang === "ar";
 
-  const [form, setForm] = useState<FormState>({ name: "", phone: "", city: "", district: "", street: "", note: "" });
+  const [form, setForm] = useState<FormState>({ name: "", instagram: "", phone: "", phone2: "", city: "", district: "", landmark: "", street: "", note: "" });
   const [payMethod, setPayMethod]     = useState<PayMethod>("cod");
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("standard");
   const [submitting, setSubmitting]   = useState(false);
@@ -189,11 +190,14 @@ export default function CheckoutScreen() {
     if (!user) { router.replace({ pathname: "/auth", params: { returnTo: "/checkout" } } as any); return; }
     setForm((f) => ({
       ...f,
-      name:     f.name     || `${user.firstName} ${user.lastName}`.trim(),
-      phone:    f.phone    || user.phone || "",
-      city:     f.city     || user.address?.city || "",
-      district: f.district || user.address?.district || "",
-      street:   f.street   || user.address?.street || "",
+      name:      f.name      || `${user.firstName} ${user.lastName}`.trim(),
+      instagram: f.instagram || (user.address as any)?.instagram || "",
+      phone:     f.phone     || user.phone || "",
+      phone2:    f.phone2    || (user.address as any)?.phone2 || "",
+      city:      f.city      || user.address?.city || "",
+      district:  f.district  || user.address?.district || "",
+      landmark:  f.landmark  || (user.address as any)?.landmark || "",
+      street:    f.street    || user.address?.street || "",
     }));
   }, [user, isLoading]);
 
@@ -221,7 +225,7 @@ export default function CheckoutScreen() {
     fetch(`${base}/store/auth/me`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ phone: form.phone, address: { city: form.city, district: form.district, street: form.street } }),
+      body: JSON.stringify({ phone: form.phone, address: { city: form.city, district: form.district, street: form.street, instagram: form.instagram, phone2: form.phone2, landmark: form.landmark } }),
     }).catch(() => {});
   };
 
@@ -262,7 +266,7 @@ export default function CheckoutScreen() {
         subtotal, shipping,
         governorate: selectedZone?.governorate ?? "",
         discountCode: discount?.code,
-        shippingAddress: { fullName: form.name, phone: form.phone, city: form.city, district: form.district, street: form.street },
+        shippingAddress: { fullName: form.name, instagram: form.instagram, phone: form.phone, phone2: form.phone2, city: form.city, district: form.district, landmark: form.landmark, street: form.street },
         lineItems: items.map((i) => ({ productId: i.productId, variantId: i.variantId, title: i.title, quantity: i.quantity, price: i.price, size: i.size, color: i.color, image: i.image })),
         paymentMethod: payMethod,
         deliveryType,
@@ -414,7 +418,9 @@ export default function CheckoutScreen() {
         <SectionHeader label={isAr ? "معلومات التوصيل" : "DELIVERY INFO"} isDark={isDark} />
         <View style={{ borderTopWidth: 1, borderTopColor: divider }}>
           <FieldRow label={isAr ? "الاسم الكامل" : "Full Name"} value={form.name} onChangeText={set("name")} placeholder={isAr ? "محمد عبدالكريم" : "Ahmed Al-Rashidi"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} />
-          <FieldRow label={isAr ? "الهاتف" : "Phone"} value={form.phone} onChangeText={set("phone")} placeholder="+964 770 000 0000" textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="phone-pad" />
+          <FieldRow label="Instagram" value={form.instagram} onChangeText={set("instagram")} placeholder="يوزر انستا" textCol={textCol} sub={sub} isDark={isDark} isAr={true} autoCapitalize="none" />
+          <FieldRow label={isAr ? "رقم تلفون أساسي (Primary Phone)" : "Primary Phone (رقم تلفون أساسي)"} value={form.phone} onChangeText={set("phone")} placeholder="+964 770 000 0000" textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="phone-pad" />
+          <FieldRow label={isAr ? "رقم تلفون احتياطي (Backup Phone)" : "Backup Phone (رقم تلفون احتياطي)"} value={form.phone2} onChangeText={set("phone2")} placeholder="+964 770 000 0000" textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="phone-pad" />
 
           {/* Governorate picker */}
           <Pressable
@@ -457,6 +463,7 @@ export default function CheckoutScreen() {
           )}
 
           <FieldRow label={isAr ? "المنطقة / الحي" : "District / Area"} value={form.district} onChangeText={set("district")} placeholder={isAr ? "المنصور" : "Al-Mansour"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} />
+          <FieldRow label={isAr ? "أقرب نقطة دالة" : "Nearest Landmark"} value={form.landmark} onChangeText={set("landmark")} placeholder={isAr ? "مثال: قرب مسجد النور" : "e.g. near Al-Noor mosque"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} />
           <FieldRow label={isAr ? "الشارع (اختياري)" : "Street (optional)"} value={form.street} onChangeText={set("street")} placeholder={isAr ? "شارع 14، مبنى 3" : "Street 14, Bldg 3"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} />
         </View>
 

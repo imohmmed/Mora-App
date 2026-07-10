@@ -400,10 +400,16 @@ export default function OrderDetail() {
                     {addr.phone && (
                       <p className="flex items-center gap-2"><Phone className="w-3.5 h-3.5" /> {addr.phone}</p>
                     )}
+                    {addr.phone2 && (
+                      <p className="flex items-center gap-2"><Phone className="w-3.5 h-3.5" /> {addr.phone2} <span className="text-xs">({t("orders.backupPhone")})</span></p>
+                    )}
+                    {addr.instagram && (
+                      <p className="flex items-center gap-2">Instagram: {addr.instagram}</p>
+                    )}
                     <p className="flex items-start gap-2">
                       <MapPin className="w-3.5 h-3.5 mt-0.5" />
                       <span>
-                        {[addr.street, addr.district, addr.city].filter(Boolean).join("، ") || "—"}
+                        {[addr.street, addr.landmark, addr.district, addr.city].filter(Boolean).join("، ") || "—"}
                       </span>
                     </p>
                   </>

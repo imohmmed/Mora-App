@@ -71,6 +71,7 @@ export const orders = {
     "orders.customer": "العميل",
     "orders.guest": "زائر",
     "orders.noAddress": "لا يوجد عنوان شحن.",
+    "orders.backupPhone": "احتياطي",
 
     "orders.toast.markedPaid": "تم تعليم الطلب كمدفوع",
     "orders.toast.markPaidError": "تعذّر تحديث حالة الدفع",
@@ -157,6 +158,7 @@ export const orders = {
     "orders.customer": "Customer",
     "orders.guest": "Guest",
     "orders.noAddress": "No shipping address provided.",
+    "orders.backupPhone": "backup",
 
     "orders.toast.markedPaid": "Order marked as paid",
     "orders.toast.markPaidError": "Could not update payment status",
