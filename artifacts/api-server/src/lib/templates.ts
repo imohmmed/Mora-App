@@ -24,9 +24,8 @@ const RESTOCK_VARS: TemplateVar[] = [
   { name: "productName",   label: "اسم المنتج" },
 ];
 
-const CART_VARS: TemplateVar[] = [
-  { name: "customerName",  label: "اسم الزبون" },
-  { name: "itemCount",     label: "عدد المنتجات" },
+const CHAT_VARS: TemplateVar[] = [
+  { name: "message",       label: "نص الرسالة" },
 ];
 
 export const TEMPLATE_DEFAULTS: TemplateDefault[] = [
@@ -143,6 +142,20 @@ export const TEMPLATE_DEFAULTS: TemplateDefault[] = [
   },
   // ── الاستبدال والاسترجاع ────────────────────────────────────────────────────
   {
+    key: "exchange:received",
+    label: "استلام طلب الاستبدال",
+    title: "استلمنا طلب الاستبدال 📩",
+    body: "استلمنا طلب الاستبدال للطلب {orderNum} — راح نراجعه ونتواصل وياك خلال يومين كحد أقصى",
+    vars: ALL_VARS,
+  },
+  {
+    key: "refund:received",
+    label: "استلام طلب الاسترجاع",
+    title: "استلمنا طلب الترجيع 📩",
+    body: "استلمنا طلب ترجيع الطلب {orderNum} — راح نراجعه ونتواصل وياك خلال يومين كحد أقصى",
+    vars: ALL_VARS,
+  },
+  {
     key: "exchange:approved",
     label: "تمت الموافقة على الاستبدال",
     title: "تمت الموافقة على طلب الاستبدال ✅",
@@ -170,13 +183,21 @@ export const TEMPLATE_DEFAULTS: TemplateDefault[] = [
     body: "نعتذر، ما كدرنا نوافق على طلب الاسترجاع {orderNum} — تواصل ويانا للتفاصيل",
     vars: ALL_VARS,
   },
-  // ── السلة المتروكة ──────────────────────────────────────────────────────────
+  // ── تحديث عام على الطلب ─────────────────────────────────────────────────────
   {
-    key: "cart:abandoned",
-    label: "نسيت شيء في السلة",
-    title: "نسيت شي بالسلة 🛒",
-    body: "{customerName} عدك {itemCount} منتج بالسلة ينتظرك، كمّل طلبك قبل لا يخلص",
-    vars: CART_VARS,
+    key: "order:updated",
+    label: "تحديث عام على الطلب",
+    title: "تحديث على طلبك",
+    body: "تم تحديث حالة طلبك {orderNum}",
+    vars: ALL_VARS,
+  },
+  // ── الدعم والمحادثة ─────────────────────────────────────────────────────────
+  {
+    key: "chat:reply",
+    label: "رد فريق الدعم",
+    title: "دعم مورا 💬",
+    body: "{message}",
+    vars: CHAT_VARS,
   },
 ];
 
@@ -189,7 +210,8 @@ function replaceVars(s: string, vars: Record<string, string>): string {
     .replace(/\{price\}/g, vars.price ?? "")
     .replace(/\{itemCount\}/g, vars.itemCount ?? "")
     .replace(/\{customerName\}/g, vars.customerName ?? "")
-    .replace(/\{productName\}/g, vars.productName ?? "");
+    .replace(/\{productName\}/g, vars.productName ?? "")
+    .replace(/\{message\}/g, vars.message ?? "");
 }
 
 export function getTemplate(

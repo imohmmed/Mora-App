@@ -99,10 +99,13 @@ const ORDER_STAGES = [
 
 const TEMPLATE_GROUPS = [
   { labelKey: "notifications.group.deliveryStage", keys: ["stage:confirmed","stage:preparing","stage:shipping","stage:delivered","stage:issue","stage:cancelled"] },
-  { labelKey: "notifications.group.orderStatus",   keys: ["status:processing","status:completed","status:cancelled"] },
+  { labelKey: "notifications.group.returns",       keys: ["stage:returned","stage:partial_return"] },
+  { labelKey: "notifications.group.exchange",      keys: ["exchange:received","refund:received","exchange:approved","refund:approved","exchange:rejected","refund:rejected"] },
+  { labelKey: "notifications.group.orderStatus",   keys: ["status:processing","status:completed","status:cancelled","order:updated"] },
   { labelKey: "notifications.group.shipping",      keys: ["fulfill:fulfilled"] },
   { labelKey: "notifications.group.payment",       keys: ["financial:paid","financial:refunded"] },
-  { labelKey: "notifications.group.engagement",    keys: ["restock:available","cart:abandoned"] },
+  { labelKey: "notifications.group.engagement",    keys: ["restock:available"] },
+  { labelKey: "notifications.group.support",       keys: ["chat:reply"] },
 ] as const;
 
 const LINK_OPTIONS = [

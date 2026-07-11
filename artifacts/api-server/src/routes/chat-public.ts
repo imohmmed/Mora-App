@@ -2,6 +2,7 @@ import { Router, type Request } from "express";
 import crypto from "crypto";
 import { db } from "../lib/db.js";
 import { doSendNotification } from "./notifications.js";
+import { getTemplate } from "../lib/templates.js";
 
 const router = Router();
 
@@ -212,9 +213,10 @@ router.post("/webhook", async (req: Request & { rawBody?: Buffer }, res) => {
 
         if (link?.customer_id) {
           console.log(`[chatwoot-webhook] push → customer=${link.customer_id} conv=${convId}`);
+          const copy = getTemplate("chat:reply", { message: content.trim() });
           await doSendNotification({
-            title: "دعم مورا",
-            body: content.trim(),
+            title: copy?.title ?? "دعم مورا",
+            body: copy?.body ?? content.trim(),
             targetAll: false,
             customerIds: [link.customer_id],
           });

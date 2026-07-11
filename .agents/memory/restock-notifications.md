@@ -31,8 +31,8 @@ OOS flow: mora product page shows a "Notify me / ابلغني عند توفره"
 Delivery: rows marked `notified=1` after `doSendNotification`. This is acceptable because the in-app notification is saved unconditionally (guaranteed channel) and a thrown send error skips the marking (await throws → mark loop never runs) → retry-safe for hard failures. Push tickets that "fail soft" are best-effort.
 
 ## Templates (editable in admin)
-- `restock:available` and `cart:abandoned` are editable templates in the admin notification editor (new group; `notifications.group.engagement` i18n key). Both support `{productName}` substitution (replaceVars + PhonePreview).
-- **`cart:abandoned` is template-only** — there is NO server cron/trigger for it (cart is client-side). It exists so copy is ready; wiring a trigger is future work. Communicated to user.
+- `restock:available` is an editable template in the admin notification editor (`notifications.group.engagement` group) with `{productName}` substitution (replaceVars + PhonePreview).
+- `cart:abandoned` was REMOVED (July 2026): it never had a server trigger (cart is client-side) so the dead template was deleted from defaults, admin groups, and the DB customization row. If abandoned-cart pushes are ever wanted, both the template AND a trigger must be built.
 
 ## Schema migration note
 This table was added fresh, so `CREATE TABLE IF NOT EXISTS` adds it (with all columns incl. push_token) on first prod boot. Adding columns later to an EXISTING prod table needs ALTER — CREATE IF NOT EXISTS won't add them. Dev DB is in-memory (reseeds every restart).

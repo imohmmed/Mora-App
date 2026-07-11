@@ -53,10 +53,13 @@ export const notifications = {
     "notifications.stage.issue": "مشكلة",
 
     "notifications.group.deliveryStage": "مرحلة التوصيل",
+    "notifications.group.returns": "المرتجعات",
+    "notifications.group.exchange": "الاستبدال والترجيع",
     "notifications.group.orderStatus": "حالة الطلب",
     "notifications.group.shipping": "الشحن",
     "notifications.group.payment": "الدفع",
     "notifications.group.engagement": "تنبيهات وتذكير الزبائن",
+    "notifications.group.support": "الدعم والمحادثة",
 
     "notifications.tmpl.customized": "مخصص",
     "notifications.tmpl.unsaved": "غير محفوظ",
@@ -138,10 +141,13 @@ export const notifications = {
     "notifications.stage.issue": "Issue",
 
     "notifications.group.deliveryStage": "Delivery stage",
+    "notifications.group.returns": "Returns",
+    "notifications.group.exchange": "Exchange & Refund",
     "notifications.group.orderStatus": "Order status",
     "notifications.group.shipping": "Shipping",
     "notifications.group.payment": "Payment",
     "notifications.group.engagement": "Customer alerts & reminders",
+    "notifications.group.support": "Support & chat",
 
     "notifications.tmpl.customized": "Customized",
     "notifications.tmpl.unsaved": "Unsaved",

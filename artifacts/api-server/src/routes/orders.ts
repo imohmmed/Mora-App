@@ -450,7 +450,7 @@ router.put("/admin/orders/:id", async (req, res) => {
   const notif = notifKey
     ? getTemplate(notifKey, vars)
     : (statusChanged || fulfillChanged || financialChanged)
-      ? { title: "تحديث على طلبك", body: `تم تحديث حالة طلبك ${orderNum}` }
+      ? getTemplate("order:updated", vars)
       : null;
   if (customerId && notif) {
     try {

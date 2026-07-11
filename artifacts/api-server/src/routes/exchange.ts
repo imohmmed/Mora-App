@@ -87,7 +87,7 @@ function parseRequest(row: Row | undefined | null): Record<string, unknown> | nu
 
 // ─── Store: create an exchange / refund request ───────────────────────────────
 
-router.post("/store/exchange-requests", (req, res) => {
+router.post("/store/exchange-requests", async (req, res) => {
   const cust = resolveCustomer(req);
   if (!cust) { res.status(401).json({ data: null, meta: {}, error: "Login required" }); return; }
 
@@ -148,13 +148,30 @@ router.post("/store/exchange-requests", (req, res) => {
     { orderNumber: order["order_number"], type }
   );
 
+  // Refunds are submitted in one shot → confirm receipt right away.
+  // Exchanges wait for the new items (push sent from the /items endpoint).
+  if (type === "refund" && cust.customerId) {
+    const copy = getTemplate("refund:received", { orderNum: (order["order_number"] as string) ?? "" });
+    if (copy) {
+      try {
+        await doSendNotification({
+          title: copy.title,
+          body: copy.body,
+          url: "/orders",
+          targetAll: false,
+          customerIds: [cust.customerId],
+        });
+      } catch { /* non-fatal */ }
+    }
+  }
+
   const row = db.prepare(`SELECT * FROM exchange_requests WHERE id=?`).get(id) as Row;
   res.status(201).json({ data: parseRequest(row), meta: {}, error: null });
 });
 
 // ─── Store: attach the new cart items to an exchange request ─────────────────
 
-router.post("/store/exchange-requests/:id/items", (req, res) => {
+router.post("/store/exchange-requests/:id/items", async (req, res) => {
   const cust = resolveCustomer(req);
   if (!cust) { res.status(401).json({ data: null, meta: {}, error: "Login required" }); return; }
 
@@ -169,6 +186,20 @@ router.post("/store/exchange-requests/:id/items", (req, res) => {
 
   db.prepare(`UPDATE exchange_requests SET new_items=?, status='pending', updated_at=? WHERE id=?`)
     .run(JSON.stringify(items), now(), row["id"]);
+
+  // Exchange request is now fully submitted → confirm receipt.
+  const copy = getTemplate("exchange:received", { orderNum: (row["order_number"] as string) ?? "" });
+  if (copy) {
+    try {
+      await doSendNotification({
+        title: copy.title,
+        body: copy.body,
+        url: "/orders",
+        targetAll: false,
+        customerIds: [cust.customerId],
+      });
+    } catch { /* non-fatal */ }
+  }
 
   const updated = db.prepare(`SELECT * FROM exchange_requests WHERE id=?`).get(row["id"]) as Row;
   res.json({ data: parseRequest(updated), meta: {}, error: null });

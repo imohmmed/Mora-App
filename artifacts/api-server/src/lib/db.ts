@@ -332,6 +332,8 @@ db.exec(`
     updated_at TEXT NOT NULL
   );
 `);
+// Remove customizations for retired template keys (no sender exists in code).
+try { db.exec(`DELETE FROM notification_templates WHERE key = 'cart:abandoned'`); } catch { /* table just created */ }
 
 // ─── Migrations (add columns to existing DBs) ────────────────────────────────
 try { db.exec(`ALTER TABLE customers ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''`); } catch { /* column already exists */ }
