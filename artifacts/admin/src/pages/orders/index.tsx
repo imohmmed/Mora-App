@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { useAdminListOrders, useAdminDeleteOrder } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
@@ -20,7 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PageContainer, PageHeader, EmptyState } from "@/components/ui/page-primitives";
 import {
   Search, Inbox, ChevronLeft, ChevronRight, ArrowUpDown, Trash2,
-  Printer, CheckCircle2, Package, Truck, Home, AlertTriangle, XCircle,
+  Printer, CheckCircle2, Package, Truck, Home, AlertTriangle, XCircle, Bell,
 } from "lucide-react";
 import { fmt } from "@/lib/date";
 import { formatIQD } from "@/lib/format";
@@ -52,69 +53,99 @@ const STAGE_COLORS: Record<string, string> = {
   cancelled: "bg-gray-100 text-gray-600 border-gray-200",
 };
 
-function printReceipts(orders: any[], t: (k: string, p?: any) => string) {
-  const html = `<!DOCTYPE html><html dir="rtl" lang="ar">
-<head><meta charset="utf-8"><title>Mora — Receipts</title>
+// ── Receipt printing (print dialog → save as PDF) ─────────────────────────────
+function printReceipts(orders: any[]) {
+  const rows = orders.map((o) => {
+    const addr  = (o.shippingAddress ?? {}) as Record<string, string>;
+    const items = (o.lineItems ?? []) as any[];
+    return `
+<div class="receipt">
+  <div class="brand">Mora</div>
+  <div class="sub">${fmt(o.createdAt, "MMM d, yyyy — h:mm a")}</div>
+  <div class="divider"></div>
+  <table class="info">
+    <tr><td class="lbl">Order</td><td><b>#${o.orderNumber}</b></td></tr>
+    ${addr["fullName"]  ? `<tr><td class="lbl">Name</td><td>${addr["fullName"]}</td></tr>` : ""}
+    ${addr["phone"]     ? `<tr><td class="lbl">Phone 1</td><td dir="ltr">${addr["phone"]}</td></tr>` : ""}
+    ${addr["phone2"]    ? `<tr><td class="lbl">Phone 2</td><td dir="ltr">${addr["phone2"]}</td></tr>` : ""}
+    ${addr["city"]      ? `<tr><td class="lbl">Governorate</td><td>${addr["city"]}</td></tr>` : ""}
+    ${addr["district"]  ? `<tr><td class="lbl">District</td><td>${addr["district"]}</td></tr>` : ""}
+    ${addr["landmark"]  ? `<tr><td class="lbl">Landmark</td><td>${addr["landmark"]}</td></tr>` : ""}
+    ${addr["instagram"] ? `<tr><td class="lbl">Instagram</td><td>@${addr["instagram"]}</td></tr>` : ""}
+  </table>
+  <div class="divider"></div>
+  <table class="items" width="100%">
+    <thead><tr><th>Item</th><th class="center">Qty</th><th class="right">Price</th></tr></thead>
+    <tbody>
+      ${items.map((item: any) => `
+      <tr>
+        <td>${item.title}${item.variantTitle && item.variantTitle !== "Default Title" ? `<br><span class="variant">${item.variantTitle}</span>` : ""}</td>
+        <td class="center">${item.quantity}</td>
+        <td class="right">${formatIQD(Number(item.price) * Number(item.quantity))}</td>
+      </tr>`).join("")}
+    </tbody>
+  </table>
+  <div class="divider"></div>
+  ${o.shipping > 0 ? `<div class="row"><span>Shipping</span><span>${formatIQD(o.shipping)}</span></div>` : ""}
+  ${o.discountAmount > 0 ? `<div class="row"><span>Discount</span><span class="discount">-${formatIQD(o.discountAmount)}</span></div>` : ""}
+  <div class="row total"><span>TOTAL</span><span>${formatIQD(o.total)}</span></div>
+  <div class="footer">moramoda.tech</div>
+</div>`;
+  }).join("");
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mora Receipts — ${orders.length} order${orders.length !== 1 ? "s" : ""}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, sans-serif; font-size: 12px; background: #fff; }
-  .receipt { width: 72mm; margin: 0 auto; padding: 8mm; page-break-after: always; border: 1px dashed #ccc; }
+  body { font-family: 'Courier New', Courier, monospace; font-size: 11px; background: #fff; color: #111; }
+  .receipt {
+    width: 72mm;
+    padding: 6mm 4mm;
+    margin: 0 auto;
+    page-break-after: always;
+  }
   .receipt:last-child { page-break-after: auto; }
-  h2 { font-size: 15px; text-align: center; margin-bottom: 4px; }
-  .sub { font-size: 10px; color: #666; text-align: center; margin-bottom: 8px; }
-  hr { border: none; border-top: 1px dashed #ccc; margin: 6px 0; }
-  .row { display: flex; justify-content: space-between; margin: 3px 0; }
-  .lbl { color: #666; }
-  .items td { padding: 2px 4px; }
-  .total-row { font-weight: bold; }
+  .brand { font-size: 20px; font-weight: bold; text-align: center; letter-spacing: 2px; margin-bottom: 2px; }
+  .sub { font-size: 9px; text-align: center; color: #555; margin-bottom: 4px; }
+  .divider { border-top: 1px dashed #999; margin: 5px 0; }
+  table.info { width: 100%; border-collapse: collapse; }
+  table.info td { padding: 1.5px 2px; vertical-align: top; }
+  td.lbl { color: #666; width: 80px; white-space: nowrap; }
+  table.items { border-collapse: collapse; }
+  table.items th { font-size: 9px; text-transform: uppercase; color: #666; border-bottom: 1px solid #ddd; padding: 2px; }
+  table.items td { padding: 3px 2px; vertical-align: top; }
+  .center { text-align: center; }
+  .right { text-align: right; }
+  .variant { font-size: 9px; color: #777; }
+  .row { display: flex; justify-content: space-between; padding: 2px 0; }
+  .discount { color: #c00; }
+  .total { font-weight: bold; font-size: 13px; margin-top: 3px; }
+  .footer { text-align: center; font-size: 9px; color: #aaa; margin-top: 6px; }
   @media print {
     @page { size: 72mm auto; margin: 0; }
     body { width: 72mm; }
+    .receipt { padding: 4mm 3mm; }
   }
-</style></head><body>
-${orders.map((o) => {
-  const addr = o.shippingAddress as any ?? {};
-  const items = (o.lineItems as any[] ?? []);
-  return `<div class="receipt">
-    <h2>Mora</h2>
-    <div class="sub">${fmt(o.createdAt, "MMM d, yyyy h:mm a")}</div>
-    <hr/>
-    <div class="row"><span class="lbl">Order</span><span><b>#${o.orderNumber}</b></span></div>
-    ${addr.fullName  ? `<div class="row"><span class="lbl">Name</span><span>${addr.fullName}</span></div>` : ""}
-    ${addr.phone     ? `<div class="row"><span class="lbl">Phone</span><span>${addr.phone}</span></div>` : ""}
-    ${addr.phone2    ? `<div class="row"><span class="lbl">Phone 2</span><span>${addr.phone2}</span></div>` : ""}
-    ${addr.city      ? `<div class="row"><span class="lbl">City</span><span>${addr.city}</span></div>` : ""}
-    ${addr.district  ? `<div class="row"><span class="lbl">District</span><span>${addr.district}</span></div>` : ""}
-    ${addr.landmark  ? `<div class="row"><span class="lbl">Landmark</span><span>${addr.landmark}</span></div>` : ""}
-    ${addr.instagram ? `<div class="row"><span class="lbl">Instagram</span><span>@${addr.instagram}</span></div>` : ""}
-    <hr/>
-    <table class="items" width="100%">
-      <tr><th align="right">Item</th><th align="center">Qty</th><th align="left">Price</th></tr>
-      ${items.map((item: any) => `<tr>
-        <td align="right">${item.title}${item.variantTitle && item.variantTitle !== "Default Title" ? ` (${item.variantTitle})` : ""}</td>
-        <td align="center">${item.quantity}</td>
-        <td align="left">${formatIQD(item.price)}</td>
-      </tr>`).join("")}
-    </table>
-    <hr/>
-    ${o.shipping > 0 ? `<div class="row"><span class="lbl">Shipping</span><span>${formatIQD(o.shipping)}</span></div>` : ""}
-    ${o.discountAmount > 0 ? `<div class="row"><span class="lbl">Discount</span><span>-${formatIQD(o.discountAmount)}</span></div>` : ""}
-    <div class="row total-row"><span>TOTAL</span><span>${formatIQD(o.total)}</span></div>
-    <hr/>
-    <div style="text-align:center;font-size:10px;color:#999;margin-top:4px">moramoda.tech</div>
-  </div>`;
-}).join("")}
-</body></html>`;
-  const w = window.open("", "_blank", "width=600,height=700");
-  if (!w) return;
+</style>
+</head>
+<body>
+${rows}
+<script>window.onload = () => { window.print(); }<\/script>
+</body>
+</html>`;
+
+  const w = window.open("", "_blank", "width=680,height=800,scrollbars=yes");
+  if (!w) { alert("Please allow popups to print receipts"); return; }
   w.document.write(html);
   w.document.close();
-  w.focus();
-  setTimeout(() => w.print(), 400);
 }
 
 export default function Orders() {
   const { t } = useT();
+  const [, navigate] = useLocation();
   const [stageFilter, setStageFilter] = useState<StageFilter>("all");
   const [search, setSearch] = useState("");
   const [sort, setSort]     = useState<string>("newest");
@@ -167,12 +198,13 @@ export default function Orders() {
     return arr;
   }, [allOrders, stageFilter, debouncedSearch, sort]);
 
-  const total     = filtered.length;
-  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const total      = filtered.length;
+  const pageCount  = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageOrders = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const allPageSelected = pageOrders.length > 0 && pageOrders.every((o) => selected.has(o.id));
-  const someSelected    = selected.size > 0;
+  const somePageSelected = pageOrders.some((o) => selected.has(o.id));
+  const someSelected     = selected.size > 0;
 
   const toggleSelectAll = () => {
     if (allPageSelected) {
@@ -197,6 +229,8 @@ export default function Orders() {
     setPage(1);
   };
 
+  // Bulk stage change — calls the same endpoint as single-order detail page,
+  // which automatically sends push notification + in-app notification to each customer.
   const applyBulkStage = async () => {
     if (!bulkStage || selected.size === 0) return;
     setBulkApplying(true);
@@ -224,16 +258,15 @@ export default function Orders() {
   const handleBulkPrint = () => {
     const toPrint = allOrders.filter((o) => selected.has(o.id));
     if (toPrint.length === 0) return;
-    printReceipts(toPrint, t);
+    printReceipts(toPrint);
   };
 
   const stageBadge = (stage: string | undefined) => {
-    const s = stage ?? "confirmed";
+    const s   = stage ?? "confirmed";
     const cls = STAGE_COLORS[s] ?? "bg-muted text-muted-foreground border-border";
-    const labelKey = `orders.stage.${s}`;
     return (
       <Badge variant="outline" className={`text-xs border ${cls}`}>
-        {t(labelKey as any) || s}
+        {t(`orders.stage.${s}` as any) || s}
       </Badge>
     );
   };
@@ -246,7 +279,9 @@ export default function Orders() {
       <div className="flex gap-2 flex-wrap">
         {STAGE_TABS.map(({ key, labelKey, icon: Icon }) => {
           const active = stageFilter === key;
-          const count  = key === "all" ? allOrders.length : allOrders.filter((o) => (o as any).deliveryStage === key).length;
+          const count  = key === "all"
+            ? allOrders.length
+            : allOrders.filter((o) => (o as any).deliveryStage === key).length;
           return (
             <button
               key={key}
@@ -290,7 +325,7 @@ export default function Orders() {
         </Select>
       </div>
 
-      {/* ── Bulk actions bar ── */}
+      {/* ── Bulk actions bar (appears when any row is selected) ── */}
       {someSelected && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
           <span className="text-sm font-semibold text-primary">
@@ -298,7 +333,7 @@ export default function Orders() {
           </span>
           <div className="flex items-center gap-2 flex-1 flex-wrap">
             <Select value={bulkStage} onValueChange={setBulkStage}>
-              <SelectTrigger className="w-44 h-8 text-sm">
+              <SelectTrigger className="w-48 h-8 text-sm">
                 <SelectValue placeholder={t("orders.bulk.changeStage")} />
               </SelectTrigger>
               <SelectContent>
@@ -311,14 +346,16 @@ export default function Orders() {
               size="sm"
               disabled={!bulkStage || bulkApplying}
               onClick={applyBulkStage}
+              className="gap-1.5"
             >
+              <Bell className="w-3.5 h-3.5" />
               {bulkApplying ? t("common.loading") : t("orders.bulk.apply")}
             </Button>
             <Button size="sm" variant="outline" className="gap-1.5" onClick={handleBulkPrint}>
               <Printer className="w-3.5 h-3.5" />
               {t("orders.bulk.print")}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+            <Button size="sm" variant="ghost" className="ms-auto" onClick={() => setSelected(new Set())}>
               {t("action.cancel")}
             </Button>
           </div>
@@ -331,18 +368,18 @@ export default function Orders() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-10">
+                <TableHead className="w-10 ps-4">
                   <Checkbox
                     checked={allPageSelected}
+                    data-state={somePageSelected && !allPageSelected ? "indeterminate" : undefined}
                     onCheckedChange={toggleSelectAll}
-                    aria-label="Select all"
+                    aria-label="Select all on this page"
                   />
                 </TableHead>
                 <TableHead>{t("orders.col.order")}</TableHead>
                 <TableHead>{t("common.date")}</TableHead>
                 <TableHead>{t("orders.col.customer")}</TableHead>
                 <TableHead>{t("common.status")}</TableHead>
-                <TableHead>{t("orders.col.rating")}</TableHead>
                 <TableHead className="text-end">{t("common.total")}</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
@@ -350,11 +387,11 @@ export default function Orders() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">{t("common.loading")}</TableCell>
+                  <TableCell colSpan={7} className="h-24 text-center">{t("common.loading")}</TableCell>
                 </TableRow>
               ) : pageOrders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-48 text-center">
+                  <TableCell colSpan={7} className="h-48 text-center">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <Inbox className="h-8 w-8 mb-2 opacity-50" />
                       <p>{t("orders.empty")}</p>
@@ -365,21 +402,22 @@ export default function Orders() {
                 pageOrders.map((order) => (
                   <TableRow
                     key={order.id}
-                    className={`cursor-pointer group relative ${selected.has(order.id) ? "bg-primary/5" : ""}`}
+                    onClick={() => navigate(`/orders/${order.id}`)}
+                    className={`cursor-pointer ${selected.has(order.id) ? "bg-primary/5" : ""}`}
                   >
-                    <TableCell className="relative z-10" onClick={(e) => { e.stopPropagation(); toggleOne(order.id); }}>
+                    {/* Checkbox — stopPropagation so row click doesn't navigate */}
+                    <TableCell
+                      className="ps-4 w-10"
+                      onClick={(e) => { e.stopPropagation(); toggleOne(order.id); }}
+                    >
                       <Checkbox
                         checked={selected.has(order.id)}
                         onCheckedChange={() => toggleOne(order.id)}
-                        aria-label={`Select ${order.orderNumber}`}
+                        aria-label={`Select order ${order.orderNumber}`}
+                        onClick={(e) => e.stopPropagation()}
                       />
                     </TableCell>
-                    <TableCell className="font-medium">
-                      <Link href={`/orders/${order.id}`} className="absolute inset-0">
-                        <span className="sr-only">{t("orders.view", { n: order.orderNumber })}</span>
-                      </Link>
-                      {order.orderNumber}
-                    </TableCell>
+                    <TableCell className="font-medium">{order.orderNumber}</TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {order.createdAt ? fmt(order.createdAt, "MMM d, h:mm a") : "—"}
                     </TableCell>
@@ -392,37 +430,25 @@ export default function Orders() {
                       </div>
                     </TableCell>
                     <TableCell>{stageBadge((order as any).deliveryStage)}</TableCell>
-                    <TableCell>
-                      {(order as any).reviewRating ? (
-                        <span className="flex gap-0.5 text-amber-400" title={`${(order as any).reviewRating}/5`}>
-                          {[1,2,3,4,5].map((i) => (
-                            <span key={i} style={{ opacity: i <= (order as any).reviewRating ? 1 : 0.2 }}>★</span>
-                          ))}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">—</span>
-                      )}
-                    </TableCell>
                     <TableCell className="text-end font-semibold tabular-nums">{formatIQD(order.total)}</TableCell>
-                    <TableCell className="text-end">
+                    <TableCell
+                      className="text-end"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="relative z-10 h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={(e) => e.stopPropagation()}
-                            data-testid={`btn-delete-order-${order.id}`}
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                        <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle>{t("orders.delete.title", { n: order.orderNumber })}</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {t("orders.delete.desc")}
-                            </AlertDialogDescription>
+                            <AlertDialogDescription>{t("orders.delete.desc")}</AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>{t("action.cancel")}</AlertDialogCancel>
@@ -441,6 +467,26 @@ export default function Orders() {
 
       {/* ── Mobile card list ── */}
       <div className="md:hidden space-y-3">
+        {/* Mobile select-all row */}
+        {!isLoading && pageOrders.length > 0 && (
+          <div
+            className="flex items-center gap-3 px-1 py-1 cursor-pointer select-none"
+            onClick={toggleSelectAll}
+          >
+            <Checkbox
+              checked={allPageSelected}
+              data-state={somePageSelected && !allPageSelected ? "indeterminate" : undefined}
+              onCheckedChange={toggleSelectAll}
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Select all"
+            />
+            <span className="text-sm text-muted-foreground">
+              {allPageSelected ? t("action.deselectAll") : t("action.selectAll")}
+              {someSelected && ` — ${selected.size} ${t("orders.bulk.selectedShort")}`}
+            </span>
+          </div>
+        )}
+
         {isLoading ? (
           <p className="text-center text-muted-foreground py-8">{t("common.loading")}</p>
         ) : pageOrders.length === 0 ? (
@@ -449,38 +495,50 @@ export default function Orders() {
           pageOrders.map((order) => (
             <div
               key={order.id}
-              className={`relative rounded-xl border transition-colors ${selected.has(order.id) ? "border-primary bg-primary/5" : "bg-card"}`}
+              className={`flex items-start gap-3 rounded-xl border p-3 transition-colors ${
+                selected.has(order.id) ? "border-primary bg-primary/5" : "bg-card"
+              }`}
             >
+              {/* Checkbox — tap to toggle */}
               <div
-                className="absolute top-3.5 start-3.5 z-10"
+                className="pt-0.5 shrink-0"
                 onClick={(e) => { e.stopPropagation(); toggleOne(order.id); }}
               >
-                <Checkbox checked={selected.has(order.id)} onCheckedChange={() => toggleOne(order.id)} />
+                <Checkbox
+                  checked={selected.has(order.id)}
+                  onCheckedChange={() => toggleOne(order.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-5 h-5"
+                />
               </div>
-              <Link href={`/orders/${order.id}`}>
-                <Card className="cursor-pointer hover:shadow-sm transition-shadow active:opacity-80 border-0 shadow-none bg-transparent">
-                  <CardContent className="pt-4 ps-10 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold">{order.orderNumber}</span>
-                      <span className="font-semibold tabular-nums">{formatIQD(order.total)}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{order.email}</p>
-                    <div className="flex items-center justify-between gap-2">
-                      {stageBadge((order as any).deliveryStage)}
-                      <span className="text-xs text-muted-foreground">
-                        {order.createdAt ? fmt(order.createdAt, "MMM d, h:mm a") : "—"}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+
+              {/* Order info — tap to open */}
+              <div
+                className="flex-1 min-w-0 cursor-pointer"
+                onClick={() => navigate(`/orders/${order.id}`)}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold">{order.orderNumber}</span>
+                  <span className="font-semibold tabular-nums">{formatIQD(order.total)}</span>
+                </div>
+                <p className="text-sm text-muted-foreground truncate mt-0.5">{order.email}</p>
+                {(order.shippingAddress as any)?.phone && (
+                  <p className="text-xs text-muted-foreground">{(order.shippingAddress as any).phone}</p>
+                )}
+                <div className="flex items-center justify-between gap-2 mt-1.5">
+                  {stageBadge((order as any).deliveryStage)}
+                  <span className="text-xs text-muted-foreground">
+                    {order.createdAt ? fmt(order.createdAt, "MMM d, h:mm a") : "—"}
+                  </span>
+                </div>
+              </div>
             </div>
           ))
         )}
       </div>
 
       {/* ── Pagination ── */}
-      {(pageCount > 1 || total > 0) && (
+      {total > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             {t("orders.pagination", {

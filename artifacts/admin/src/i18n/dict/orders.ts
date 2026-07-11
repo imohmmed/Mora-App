@@ -44,6 +44,7 @@ export const orders = {
     "orders.stage.cancelled": "ملغى",
 
     "orders.bulk.selected": "{n} طلب محدد",
+    "orders.bulk.selectedShort": "محدد",
     "orders.bulk.changeStage": "تغيير الحالة إلى...",
     "orders.bulk.apply": "تطبيق",
     "orders.bulk.print": "طباعة الوصولات",
@@ -139,6 +140,7 @@ export const orders = {
     "orders.stage.cancelled": "Cancelled",
 
     "orders.bulk.selected": "{n} orders selected",
+    "orders.bulk.selectedShort": "selected",
     "orders.bulk.changeStage": "Change status to...",
     "orders.bulk.apply": "Apply",
     "orders.bulk.print": "Print Receipts",
