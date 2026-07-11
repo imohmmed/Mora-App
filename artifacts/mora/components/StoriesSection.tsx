@@ -20,7 +20,6 @@ import { fetchCollectionProducts } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
-import { useRtlScrollToEnd, rtlContentStyle } from "@/lib/rtlScroll";
 import type { Product, StoryRow, StoryItem, Variant } from "@/lib/types";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -179,9 +178,6 @@ function StoryRowSection({
   const { addItem } = useCart();
   const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
 
-  const circlesScroll = useRtlScrollToEnd(isAr);
-  const productsScroll = useRtlScrollToEnd(isAr);
-
   const collectionIds = useMemo(
     () => row.items.filter((i) => i.collectionId).map((i) => i.collectionId as string),
     [row.items]
@@ -223,36 +219,37 @@ function StoryRowSection({
 
       {/* Story circles */}
       <ScrollView
-        ref={circlesScroll.ref as any}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.rowScroll, rtlContentStyle(isAr)]}
+        contentContainerStyle={styles.rowScroll}
         snapToInterval={ITEM_W + 8}
         decelerationRate="fast"
-        onContentSizeChange={circlesScroll.onContentSizeChange}
+        style={isAr ? styles.mirrorScroll : undefined}
       >
         {row.items.map((item) => (
-          <StoryCircle key={item.id} item={item} />
+          <View key={item.id} style={isAr ? styles.mirrorItem : undefined}>
+            <StoryCircle item={item} />
+          </View>
         ))}
       </ScrollView>
 
       {/* Products horizontal scroll — 2.5 visible */}
       {!circlesOnly && hasProducts && (
         <ScrollView
-          ref={productsScroll.ref as any}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[styles.productsScroll, rtlContentStyle(isAr)]}
+          contentContainerStyle={styles.productsScroll}
           decelerationRate="fast"
           snapToInterval={CARD_W + 10}
-          onContentSizeChange={productsScroll.onContentSizeChange}
+          style={isAr ? styles.mirrorScroll : undefined}
         >
           {(products ?? []).map((product) => (
-            <ProductMiniCard
-              key={product.id}
-              product={product}
-              onAddToBag={setQuickAddProduct}
-            />
+            <View key={product.id} style={isAr ? styles.mirrorItem : undefined}>
+              <ProductMiniCard
+                product={product}
+                onAddToBag={setQuickAddProduct}
+              />
+            </View>
           ))}
         </ScrollView>
       )}
@@ -325,6 +322,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     gap: 8,
   },
+  mirrorScroll: { transform: [{ scaleX: -1 }] },
+  mirrorItem:   { transform: [{ scaleX: -1 }] },
 
   /* Story circle */
   circleWrap: {

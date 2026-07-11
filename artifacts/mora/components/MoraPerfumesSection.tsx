@@ -14,7 +14,6 @@ import { fetchCollection } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
-import { useRtlScrollToEnd, rtlContentStyle } from "@/lib/rtlScroll";
 import type { Product, Variant } from "@/lib/types";
 
 const COLLECTION_ID = "col_mora-perfumes";
@@ -113,7 +112,6 @@ export const MoraPerfumesSection = forwardRef<MoraPerfumesSectionHandle, {}>(fun
   });
 
   const products = collection?.products ?? [];
-  const scroll = useRtlScrollToEnd(isAr);
 
   // No-op — this section is now a self-contained horizontal carousel with no
   // pagination-on-scroll behavior; kept so the parent's ref call is harmless.
@@ -139,16 +137,17 @@ export const MoraPerfumesSection = forwardRef<MoraPerfumesSectionHandle, {}>(fun
       </View>
 
       <ScrollView
-        ref={scroll.ref as any}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, rtlContentStyle(isAr)]}
+        contentContainerStyle={styles.scroll}
         snapToInterval={CARD_W + 1}
         decelerationRate="fast"
-        onContentSizeChange={scroll.onContentSizeChange}
+        style={isAr ? styles.mirrorScroll : undefined}
       >
         {products.map((product) => (
-          <PerfumeCard key={product.id} product={product} onQuickAdd={setQuickAddProduct} />
+          <View key={product.id} style={isAr ? styles.mirrorItem : undefined}>
+            <PerfumeCard product={product} onQuickAdd={setQuickAddProduct} />
+          </View>
         ))}
       </ScrollView>
 
@@ -179,6 +178,8 @@ export const MoraPerfumesSection = forwardRef<MoraPerfumesSectionHandle, {}>(fun
 
 const styles = StyleSheet.create({
   container: { marginTop: 0, marginBottom: 0 },
+  mirrorScroll: { transform: [{ scaleX: -1 }] },
+  mirrorItem:   { transform: [{ scaleX: -1 }] },
   header: {
     flexDirection: "row",
     alignItems: "center",
