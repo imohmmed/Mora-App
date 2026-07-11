@@ -475,8 +475,6 @@ export default function CheckoutScreen() {
           )}
 
           <FieldRow label={isAr ? "المنطقة / الحي" : "District / Area"} value={form.district} onChangeText={set("district")} placeholder={isAr ? "المنصور" : "Al-Mansour"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} />
-          <FieldRow label={isAr ? "أقرب نقطة دالة" : "Nearest Landmark"} value={form.landmark} onChangeText={set("landmark")} placeholder={isAr ? "مثال: قرب مسجد النور" : "e.g. near Al-Noor mosque"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} />
-          <FieldRow label={isAr ? "الشارع (اختياري)" : "Street (optional)"} value={form.street} onChangeText={set("street")} placeholder={isAr ? "شارع 14، مبنى 3" : "Street 14, Bldg 3"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} />
         </View>
 
         {/* ── DELIVERY TYPE ── */}
