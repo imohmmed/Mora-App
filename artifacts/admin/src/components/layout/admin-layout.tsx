@@ -17,7 +17,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   }, [collapsed]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex w-full">
+    <div className="h-screen overflow-hidden bg-background text-foreground flex w-full">
       <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((c) => !c)} />
 
       <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
@@ -26,9 +26,9 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         </SheetContent>
       </Sheet>
 
-      <main className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
+      <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
         <TopBar onMenuClick={() => setMobileSidebarOpen(true)} />
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth">
           {children}
         </div>
       </main>
