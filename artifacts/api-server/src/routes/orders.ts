@@ -605,6 +605,33 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
   res.json({ data: { order, apns: apnsResult, hasPushToken: !!laPushToken, ptsUsed: activityWasGone && !!ptsToken }, error: null });
 });
 
+// ─── Admin: Order notes (internal log) ───────────────────────────────────────
+router.get("/admin/orders/:id/notes", (req, res) => {
+  const { id } = req.params;
+  const notes = db.prepare(`SELECT * FROM order_notes WHERE order_id=? ORDER BY created_at ASC`).all(id) as Row[];
+  res.json({ data: notes.map((n) => ({
+    id: n["id"],
+    orderId: n["order_id"],
+    adminEmail: n["admin_email"],
+    text: n["text"],
+    createdAt: n["created_at"],
+  })), meta: { total: notes.length }, error: null });
+});
+
+router.post("/admin/orders/:id/notes", (req, res) => {
+  const { id } = req.params;
+  const order = db.prepare(`SELECT id FROM orders WHERE id=?`).get(id) as Row | undefined;
+  if (!order) { res.status(404).json({ data: null, error: "Order not found" }); return; }
+  const { text, adminEmail } = req.body as { text?: string; adminEmail?: string };
+  if (!text?.trim()) { res.status(400).json({ data: null, error: "text is required" }); return; }
+  const noteId    = `note_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const now       = new Date().toISOString();
+  const email     = adminEmail?.trim() || "Admin";
+  db.prepare(`INSERT INTO order_notes (id, order_id, admin_email, text, created_at) VALUES (?,?,?,?,?)`)
+    .run(noteId, id, email, text.trim(), now);
+  res.status(201).json({ data: { id: noteId, orderId: id, adminEmail: email, text: text.trim(), createdAt: now }, error: null });
+});
+
 router.delete("/admin/orders/:id", (req, res) => {
   const id = req.params["id"];
   const existing = db.prepare(`SELECT order_number FROM orders WHERE id=?`).get(id) as Row | undefined;

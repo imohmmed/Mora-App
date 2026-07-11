@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAdminGetOrder, useAdminUpdateOrder, getAdminGetOrderQueryKey } from "@workspace/api-client-react";
 import { useParams, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -6,11 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { PageContainer } from "@/components/ui/page-primitives";
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, User, CreditCard, Truck, Calendar, CheckCircle2, Package,
   Home, AlertTriangle, XCircle, Banknote, Phone, MapPin, Loader2,
+  Instagram, StickyNote, Send, Clock,
 } from "lucide-react";
 import { fmt } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -29,6 +31,23 @@ const STAGES: { key: StageKey; labelKey: string; icon: typeof Package }[] = [
   { key: "delivered", labelKey: "orders.stage.delivered", icon: Home },
 ];
 
+interface OrderNote {
+  id: string;
+  adminEmail: string;
+  text: string;
+  createdAt: string;
+}
+
+function InfoRow({ label, value, dir }: { label: string; value?: string | null; dir?: "ltr" }) {
+  if (!value) return null;
+  return (
+    <div className="flex gap-3 items-start text-sm">
+      <span className="text-muted-foreground min-w-[110px] shrink-0">{label}</span>
+      <span className={cn("font-medium break-all", dir === "ltr" && "dir-ltr")} dir={dir}>{value}</span>
+    </div>
+  );
+}
+
 export default function OrderDetail() {
   const { t } = useT();
   const { id } = useParams();
@@ -39,12 +58,50 @@ export default function OrderDetail() {
   const updateOrder = useAdminUpdateOrder();
   const [stageLoading, setStageLoading] = useState<string | null>(null);
 
+  // Admin notes
+  const [notes, setNotes]         = useState<OrderNote[]>([]);
+  const [noteText, setNoteText]   = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const notesEndRef = useRef<HTMLDivElement>(null);
+
   const order = response?.data as any;
 
   const refresh = () => {
     if (!id) return;
     queryClient.invalidateQueries({ queryKey: getAdminGetOrderQueryKey(id) });
     queryClient.invalidateQueries({ queryKey: ["/api/admin/orders"] });
+  };
+
+  // Load notes when order id is ready
+  useEffect(() => {
+    if (!id) return;
+    setNotesLoading(true);
+    adminFetch(`/admin/orders/${id}/notes`)
+      .then((res) => { if (!res.error) setNotes(res.data as OrderNote[]); })
+      .finally(() => setNotesLoading(false));
+  }, [id]);
+
+  const submitNote = async () => {
+    if (!noteText.trim() || !id || noteSaving) return;
+    setNoteSaving(true);
+    try {
+      const res = await adminFetch(`/admin/orders/${id}/notes`, {
+        method: "POST",
+        body: JSON.stringify({ text: noteText.trim() }),
+      });
+      if (!res.error) {
+        setNotes((prev) => [...prev, res.data as OrderNote]);
+        setNoteText("");
+        setTimeout(() => notesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      } else {
+        toast({ title: t("orders.notes.error"), variant: "destructive" });
+      }
+    } catch {
+      toast({ title: t("orders.notes.error"), variant: "destructive" });
+    } finally {
+      setNoteSaving(false);
+    }
   };
 
   const markPaid = () => {
@@ -89,48 +146,52 @@ export default function OrderDetail() {
   if (isLoading) return <div className="p-6 md:p-8 text-muted-foreground">{t("orders.loadingOrder")}</div>;
   if (!order) return <div className="p-6 md:p-8">{t("orders.notFound")}</div>;
 
-  const stage: string = order.deliveryStage || "confirmed";
-  const deliveryType: string = order.deliveryType || "standard";
-  const isPickup = deliveryType === "pickup";
-  // Pickup orders skip the shipping stage → 3-step flow.
-  const stages = isPickup ? STAGES.filter((s) => s.key !== "shipping") : STAGES;
-  const currentIndex = stages.findIndex((s) => s.key === stage);
-  const isIssue = stage === "issue";
-  const isCancelled = stage === "cancelled";
-  const isException = isIssue || isCancelled;
+  const stage: string        = order.deliveryStage || "confirmed";
+  const deliveryType: string = order.deliveryType  || "standard";
+  const isPickup             = deliveryType === "pickup";
+  const stages               = isPickup ? STAGES.filter((s) => s.key !== "shipping") : STAGES;
+  const currentIndex         = stages.findIndex((s) => s.key === stage);
+  const isIssue              = stage === "issue";
+  const isCancelled          = stage === "cancelled";
+  const isException          = isIssue || isCancelled;
+  const isDelivered          = stage === "delivered";
 
   const payMethod: string = order.paymentMethod || "cod";
-  const isOnline = payMethod === "online";
-  const isPaid = order.financialStatus === "paid";
+  const isOnline          = payMethod === "online";
+  const isPaid            = order.financialStatus === "paid";
 
-  const addr = order.shippingAddress as any | null;
+  // Green background when Wayl payment received
+  const isWaylPaid = isOnline && isPaid;
+
+  const addr = (order.shippingAddress ?? {}) as Record<string, string>;
 
   const stageBadge = isCancelled
     ? { label: t("orders.badge.cancelled"), cls: "bg-red-100 text-red-700 hover:bg-red-100" }
     : isIssue
-    ? { label: t("orders.badge.issue"), cls: "bg-amber-100 text-amber-700 hover:bg-amber-100" }
+    ? { label: t("orders.badge.issue"),     cls: "bg-amber-100 text-amber-700 hover:bg-amber-100" }
     : { label: t(stages[Math.max(0, currentIndex)]?.labelKey ?? "orders.stage.confirmed"), cls: "" };
 
+  const deliveryLabel =
+    deliveryType === "express" ? t("orders.delivery.express") :
+    deliveryType === "pickup"  ? t("orders.delivery.pickup")  :
+    t("orders.delivery.standard");
+
   return (
-    <PageContainer className="max-w-5xl">
-      {/* ── Header ─────────────────────────────────────────── */}
+    <PageContainer className="max-w-2xl">
+      {/* ── Header ── */}
       <div className="flex items-center gap-4">
-        <Link href="/orders" className="text-muted-foreground hover:text-foreground">
+        <Link href="/orders" className="text-muted-foreground hover:text-foreground shrink-0">
           <ArrowLeft className="w-5 h-5 rtl:rotate-180" />
         </Link>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight flex flex-wrap items-center gap-2">
             {order.orderNumber}
             <Badge className={stageBadge.cls} variant={stageBadge.cls ? undefined : "default"}>
               {stageBadge.label}
             </Badge>
-            <Badge variant="outline" className="gap-1 font-normal">
-              {isPickup ? <MapPin className="w-3 h-3" /> : <Truck className="w-3 h-3" />}
-              {t(`orders.delivery.${deliveryType}`)}
-            </Badge>
           </h1>
           {order.createdAt && (
-            <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+            <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1">
               <Calendar className="w-3 h-3" />
               {fmt(order.createdAt, "MMM d, yyyy 'at' h:mm a")}
             </p>
@@ -138,289 +199,369 @@ export default function OrderDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-          {/* ── Order Status / Progress ───────────────────── */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Truck className="w-5 h-5" />
-                {t("orders.statusTitle")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Progress bar — normal flow */}
-              {!isException && (
-                <div className="flex items-start">
-                  {stages.map((s, i) => {
-                    const reached = currentIndex >= i;
-                    const Icon = s.icon;
-                    return (
-                      <div key={s.key} className="flex-1 flex flex-col items-center relative">
-                        {/* connector */}
-                        {i > 0 && (
-                          <span
-                            className="absolute top-5 end-1/2 h-1 w-full -z-0"
-                            style={{ backgroundColor: currentIndex >= i ? ACCENT : "hsl(var(--muted))" }}
-                          />
-                        )}
-                        <div
-                          className="relative z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors"
-                          style={{
-                            backgroundColor: reached ? ACCENT : "transparent",
-                            borderColor: reached ? ACCENT : "hsl(var(--muted))",
-                            color: reached ? "#fff" : "hsl(var(--muted-foreground))",
-                          }}
-                        >
-                          <Icon className="w-4 h-4" />
-                        </div>
-                        <p className={cn("mt-2 text-xs font-semibold text-center", reached ? "text-foreground" : "text-muted-foreground")}>
-                          {t(s.labelKey)}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+      {/* ══════════════════════════════════════════════════════════
+          SECTION 1 — Customer Info
+          Green bg when Wayl + paid, white otherwise
+      ══════════════════════════════════════════════════════════ */}
+      <Card className={isWaylPaid ? "border-green-300 bg-green-50" : ""}>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2">
+              <User className={cn("w-5 h-5", isWaylPaid ? "text-green-600" : "")} />
+              {t("orders.customer")}
+            </span>
+            {/* Delivery type badge */}
+            <Badge variant="outline" className="gap-1 font-normal text-xs">
+              {isPickup ? <MapPin className="w-3 h-3" /> : <Truck className="w-3 h-3" />}
+              {deliveryLabel}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {/* Name — links to customer profile */}
+          {(addr["fullName"] || order.email) && (
+            <div className="flex gap-3 items-center text-sm">
+              <span className="text-muted-foreground min-w-[110px] shrink-0">{t("orders.customerInfo.name")}</span>
+              <Link
+                href={order.customerId ? `/customers/${order.customerId}` : "#"}
+                className="font-semibold text-primary hover:underline"
+              >
+                {addr["fullName"] || order.email}
+              </Link>
+            </div>
+          )}
+          {addr["fullName"] && order.email && (
+            <InfoRow label={t("common.email")} value={order.email} dir="ltr" />
+          )}
+          {addr["instagram"] && (
+            <div className="flex gap-3 items-center text-sm">
+              <span className="text-muted-foreground min-w-[110px] shrink-0">{t("orders.customerInfo.instagram")}</span>
+              <span className="font-medium flex items-center gap-1">
+                <Instagram className="w-3.5 h-3.5" />
+                @{addr["instagram"]}
+              </span>
+            </div>
+          )}
+          <InfoRow label={t("orders.customerInfo.phone1")} value={addr["phone"]}  dir="ltr" />
+          <InfoRow label={t("orders.customerInfo.phone2")} value={addr["phone2"]} dir="ltr" />
+          <Separator className="my-2" />
+          <InfoRow label={t("orders.customerInfo.governorate")} value={addr["city"]} />
+          <InfoRow label={t("orders.customerInfo.district")}    value={addr["district"]} />
+          <InfoRow label={t("orders.customerInfo.landmark")}    value={addr["landmark"]} />
+          {isWaylPaid && (
+            <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-100 border border-green-300 px-3 py-2 text-green-800 text-sm font-medium">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              {t("orders.customerInfo.waylPaid")}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-              {/* Exception state — replaces the progress bar for issue / cancelled */}
-              {isException && (
-                <div
-                  className="flex items-center gap-3 rounded-xl p-4 text-white"
-                  style={{ backgroundColor: isCancelled ? "#DC2626" : "#D97706" }}
-                >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
-                    {isCancelled ? <XCircle className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+      {/* ══════════════════════════════════════════════════════════
+          SECTION 2 — Order Status
+      ══════════════════════════════════════════════════════════ */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Truck className="w-5 h-5" />
+            {t("orders.statusTitle")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Progress stepper */}
+          {!isException && (
+            <div className="flex items-start">
+              {stages.map((s, i) => {
+                const reached = currentIndex >= i;
+                const Icon = s.icon;
+                return (
+                  <div key={s.key} className="flex-1 flex flex-col items-center relative">
+                    {i > 0 && (
+                      <span
+                        className="absolute top-5 end-1/2 h-1 w-full -z-0"
+                        style={{ backgroundColor: currentIndex >= i ? ACCENT : "hsl(var(--muted))" }}
+                      />
+                    )}
+                    <div
+                      className="relative z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors"
+                      style={{
+                        backgroundColor: reached ? ACCENT : "transparent",
+                        borderColor: reached ? ACCENT : "hsl(var(--muted))",
+                        color: reached ? "#fff" : "hsl(var(--muted-foreground))",
+                      }}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <p className={cn("mt-2 text-xs font-semibold text-center", reached ? "text-foreground" : "text-muted-foreground")}>
+                      {t(s.labelKey)}
+                    </p>
                   </div>
-                  <div>
-                    <p className="font-bold">{isCancelled ? t("orders.cancelledTitle") : t("orders.issueTitle")}</p>
-                    <p className="text-sm text-white/85">
-                      {t("orders.exceptionDesc")}
+                );
+              })}
+            </div>
+          )}
+
+          {isException && (
+            <div
+              className="flex items-center gap-3 rounded-xl p-4 text-white"
+              style={{ backgroundColor: isCancelled ? "#DC2626" : "#D97706" }}
+            >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
+                {isCancelled ? <XCircle className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+              </div>
+              <div>
+                <p className="font-bold">{isCancelled ? t("orders.cancelledTitle") : t("orders.issueTitle")}</p>
+                <p className="text-sm text-white/85">{t("orders.exceptionDesc")}</p>
+              </div>
+            </div>
+          )}
+
+          <Separator />
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground mb-2">{t("orders.changeStageHint")}</p>
+            <div className="flex flex-wrap gap-2">
+              {stages.map((s) => {
+                const active = stage === s.key;
+                return (
+                  <Button
+                    key={s.key}
+                    size="sm"
+                    variant={active ? "default" : "outline"}
+                    disabled={!!stageLoading}
+                    onClick={() => changeStage(s.key)}
+                    style={active ? { backgroundColor: ACCENT } : undefined}
+                  >
+                    {stageLoading === s.key ? <Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" /> : <s.icon className="w-3.5 h-3.5 me-1.5" />}
+                    {t(s.labelKey)}
+                  </Button>
+                );
+              })}
+              <Button
+                size="sm"
+                variant={isIssue ? "default" : "outline"}
+                disabled={!!stageLoading}
+                onClick={() => changeStage("issue")}
+                className={isIssue ? "bg-amber-500 hover:bg-amber-600" : "text-amber-600 border-amber-300 hover:bg-amber-50"}
+              >
+                {stageLoading === "issue" ? <Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5 me-1.5" />}
+                {t("orders.stage.issue")}
+              </Button>
+              <Button
+                size="sm"
+                variant={isCancelled ? "default" : "outline"}
+                disabled={!!stageLoading}
+                onClick={() => changeStage("cancelled")}
+                className={isCancelled ? "bg-red-500 hover:bg-red-600" : "text-red-600 border-red-300 hover:bg-red-50"}
+              >
+                {stageLoading === "cancelled" ? <Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5 me-1.5" />}
+                {t("orders.stage.cancel")}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ══════════════════════════════════════════════════════════
+          SECTION 3 — Order Items
+      ══════════════════════════════════════════════════════════ */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("orders.items")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {order.lineItems?.map((item: any, i: number) => (
+              <div key={i} className="flex justify-between items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  {item.image ? (
+                    <img src={item.image} alt="" className="w-12 h-12 rounded-md object-cover border shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center border text-xs text-muted-foreground shrink-0">
+                      {item.quantity}×
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{item.title}</p>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {[item.size, item.color].filter(Boolean).join(" · ") || item.variantTitle || "—"}
+                      {" · ×"}{item.quantity}
                     </p>
                   </div>
                 </div>
-              )}
-
-              <Separator />
-
-              {/* Stage controls */}
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground mb-2">{t("orders.changeStageHint")}</p>
-                <div className="flex flex-wrap gap-2">
-                  {stages.map((s) => {
-                    const active = stage === s.key;
-                    return (
-                      <Button
-                        key={s.key}
-                        size="sm"
-                        variant={active ? "default" : "outline"}
-                        disabled={!!stageLoading}
-                        onClick={() => changeStage(s.key)}
-                        style={active ? { backgroundColor: ACCENT } : undefined}
-                      >
-                        {stageLoading === s.key ? <Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" /> : <s.icon className="w-3.5 h-3.5 me-1.5" />}
-                        {t(s.labelKey)}
-                      </Button>
-                    );
-                  })}
-                  <Button
-                    size="sm"
-                    variant={isIssue ? "default" : "outline"}
-                    disabled={!!stageLoading}
-                    onClick={() => changeStage("issue")}
-                    className={isIssue ? "bg-amber-500 hover:bg-amber-600" : "text-amber-600 border-amber-300 hover:bg-amber-50"}
-                  >
-                    {stageLoading === "issue" ? <Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5 me-1.5" />}
-                    {t("orders.stage.issue")}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={isCancelled ? "default" : "outline"}
-                    disabled={!!stageLoading}
-                    onClick={() => changeStage("cancelled")}
-                    className={isCancelled ? "bg-red-500 hover:bg-red-600" : "text-red-600 border-red-300 hover:bg-red-50"}
-                  >
-                    {stageLoading === "cancelled" ? <Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5 me-1.5" />}
-                    {t("orders.stage.cancel")}
-                  </Button>
+                <div className="font-medium whitespace-nowrap tabular-nums shrink-0">
+                  {formatIQD((item.price || 0) * (item.quantity || 1))}
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            ))}
+          </div>
+        </CardContent>
+        <Separator />
+        <CardFooter className="flex-col items-stretch p-6 gap-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{t("orders.subtotal")}</span>
+            <span className="tabular-nums">{formatIQD(order.subtotal)}</span>
+          </div>
+          {order.discountAmount > 0 && (
+            <div className="flex justify-between text-sm text-green-700">
+              <span>{t("orders.discount")}{order.discountCode ? ` (${order.discountCode})` : ""}</span>
+              <span className="tabular-nums">-{formatIQD(order.discountAmount)}</span>
+            </div>
+          )}
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{t("orders.shipping")}</span>
+            <span className="tabular-nums">{order.shipping ? formatIQD(order.shipping) : t("orders.free")}</span>
+          </div>
+          <Separator className="my-2" />
+          <div className="flex justify-between font-bold text-lg">
+            <span>{t("common.total")}</span>
+            <span className="tabular-nums">{formatIQD(order.total)}</span>
+          </div>
+        </CardFooter>
+      </Card>
 
-          {/* ── Order Items ──────────────────────────────── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("orders.items")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {order.lineItems?.map((item: any, i: number) => (
-                  <div key={i} className="flex justify-between items-center gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {item.image ? (
-                        <img src={item.image} alt="" className="w-12 h-12 rounded-md object-cover border" />
-                      ) : (
-                        <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center border text-xs text-muted-foreground">
-                          {item.quantity}x
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{item.title}</p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {[item.size, item.color].filter(Boolean).join(" · ") || item.variantTitle || "—"}
-                          {"  ·  ×"}{item.quantity}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="font-medium whitespace-nowrap tabular-nums">
-                      {formatIQD((item.price || 0) * (item.quantity || 1))}
-                    </div>
+      {/* ══════════════════════════════════════════════════════════
+          SECTION 4 — Payment
+      ══════════════════════════════════════════════════════════ */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="w-5 h-5" />
+            {t("orders.payment")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted shrink-0">
+              {isOnline ? <CreditCard className="w-4 h-4" /> : <Banknote className="w-4 h-4" />}
+            </div>
+            <div>
+              <p className="font-medium text-sm">
+                {isOnline ? t("orders.payment.online") : t("orders.payment.cod")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {isOnline ? t("orders.payment.onlineSub") : t("orders.payment.codSub")}
+              </p>
+            </div>
+            <div className="ms-auto">
+              <Badge className={isPaid ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-amber-100 text-amber-700 hover:bg-amber-100"}>
+                {isPaid ? t("orders.payment.paid") : t("orders.payment.unpaid")}
+              </Badge>
+            </div>
+          </div>
+          {!isPaid && (
+            <Button
+              variant="outline"
+              className="w-full"
+              size="sm"
+              disabled={updateOrder.isPending}
+              onClick={markPaid}
+            >
+              {updateOrder.isPending ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 me-2" />}
+              {t("orders.markPaid")}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ══════════════════════════════════════════════════════════
+          SECTION 5 — Customer Review (only when delivered + has rating)
+      ══════════════════════════════════════════════════════════ */}
+      {isDelivered && (order as any).reviewRating ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <span className="text-amber-400 text-lg">★</span>
+              {t("orders.review")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center gap-1 text-amber-400 text-xl">
+              {[1,2,3,4,5].map((i) => (
+                <span key={i} style={{ opacity: i <= (order as any).reviewRating ? 1 : 0.2 }}>★</span>
+              ))}
+              <span className="text-sm text-muted-foreground ms-2 font-medium">
+                {(order as any).reviewRating} / 5
+              </span>
+            </div>
+            {(order as any).reviewText && (
+              <p className="text-sm text-muted-foreground leading-relaxed bg-muted rounded-lg px-3 py-2">
+                {(order as any).reviewText}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {/* ══════════════════════════════════════════════════════════
+          SECTION 6 — Admin Notes (internal log)
+      ══════════════════════════════════════════════════════════ */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <StickyNote className="w-5 h-5" />
+            {t("orders.notes.title")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Existing notes timeline */}
+          {notesLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              {t("common.loading")}
+            </div>
+          ) : notes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("orders.notes.empty")}</p>
+          ) : (
+            <div className="space-y-3">
+              {notes.map((note) => (
+                <div key={note.id} className="flex gap-3 items-start">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted border">
+                    <User className="w-3.5 h-3.5 text-muted-foreground" />
                   </div>
-                ))}
-              </div>
-            </CardContent>
-            <Separator />
-            <CardFooter className="flex-col items-stretch p-6 gap-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t("orders.subtotal")}</span>
-                <span className="tabular-nums">{formatIQD(order.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t("orders.shipping")}</span>
-                <span className="tabular-nums">{order.shipping ? formatIQD(order.shipping) : t("orders.free")}</span>
-              </div>
-              <Separator className="my-2" />
-              <div className="flex justify-between font-bold text-lg">
-                <span>{t("common.total")}</span>
-                <span className="tabular-nums">{formatIQD(order.total)}</span>
-              </div>
-            </CardFooter>
-          </Card>
-        </div>
-
-        {/* ── Sidebar ───────────────────────────────────── */}
-        <div className="space-y-6">
-          {/* Payment */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5" />
-                {t("orders.payment")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                  {isOnline ? <CreditCard className="w-4 h-4" /> : <Banknote className="w-4 h-4" />}
-                </div>
-                <div>
-                  <p className="font-medium text-sm">
-                    {isOnline ? t("orders.payment.online") : t("orders.payment.cod")}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {isOnline ? t("orders.payment.onlineSub") : t("orders.payment.codSub")}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{t("orders.payment.status")}</span>
-                <Badge
-                  className={isPaid ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-amber-100 text-amber-700 hover:bg-amber-100"}
-                >
-                  {isPaid ? t("orders.payment.paid") : t("orders.payment.unpaid")}
-                </Badge>
-              </div>
-              {!isPaid && (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  size="sm"
-                  disabled={updateOrder.isPending}
-                  onClick={markPaid}
-                >
-                  {updateOrder.isPending ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 me-2" />}
-                  {t("orders.markPaid")}
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Review */}
-          {(order as any).reviewRating ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <span className="text-amber-400 text-lg">★</span>
-                  {t("orders.review")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-1 text-amber-400 text-xl">
-                  {[1,2,3,4,5].map((i) => (
-                    <span key={i} style={{ opacity: i <= (order as any).reviewRating ? 1 : 0.2 }}>★</span>
-                  ))}
-                  <span className="text-sm text-muted-foreground ms-2 font-medium">
-                    {(order as any).reviewRating} / 5
-                  </span>
-                </div>
-                {(order as any).reviewText && (
-                  <p className="text-sm text-muted-foreground leading-relaxed bg-muted rounded-lg px-3 py-2">
-                    {(order as any).reviewText}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {/* Customer */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
-                {t("orders.customer")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Link
-                  href={order.customerId ? `/customers/${order.customerId}` : "#"}
-                  className="font-medium hover:underline text-primary"
-                >
-                  {addr?.fullName || order.email || t("orders.guest")}
-                </Link>
-                {order.email && addr?.fullName && (
-                  <p className="text-xs text-muted-foreground">{order.email}</p>
-                )}
-              </div>
-              <Separator />
-              <div className="space-y-1.5 text-sm text-muted-foreground">
-                {addr ? (
-                  <>
-                    {addr.phone && (
-                      <p className="flex items-center gap-2"><Phone className="w-3.5 h-3.5" /> {addr.phone}</p>
-                    )}
-                    {addr.phone2 && (
-                      <p className="flex items-center gap-2"><Phone className="w-3.5 h-3.5" /> {addr.phone2} <span className="text-xs">({t("orders.backupPhone")})</span></p>
-                    )}
-                    {addr.instagram && (
-                      <p className="flex items-center gap-2">Instagram: {addr.instagram}</p>
-                    )}
-                    <p className="flex items-start gap-2">
-                      <MapPin className="w-3.5 h-3.5 mt-0.5" />
-                      <span>
-                        {[addr.street, addr.landmark, addr.district, addr.city].filter(Boolean).join("، ") || "—"}
+                  <div className="flex-1 min-w-0 rounded-xl bg-muted px-3 py-2">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-xs font-semibold text-foreground">{note.adminEmail}</span>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {fmt(note.createdAt, "MMM d, h:mm a")}
                       </span>
-                    </p>
-                  </>
-                ) : (
-                  <p>{t("orders.noAddress")}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+                    </div>
+                    <p className="text-sm whitespace-pre-wrap">{note.text}</p>
+                  </div>
+                </div>
+              ))}
+              <div ref={notesEndRef} />
+            </div>
+          )}
+
+          <Separator />
+
+          {/* Add note */}
+          <div className="space-y-2">
+            <Textarea
+              placeholder={t("orders.notes.placeholder")}
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              rows={3}
+              className="resize-none"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitNote();
+              }}
+            />
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                disabled={!noteText.trim() || noteSaving}
+                onClick={submitNote}
+                className="gap-1.5"
+              >
+                {noteSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                {t("orders.notes.add")}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </PageContainer>
   );
 }

@@ -1294,4 +1294,19 @@ db.exec(`
   );
 `);
 
+// ─── Order admin notes (internal log per order) ───────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS order_notes (
+    id          TEXT PRIMARY KEY,
+    order_id    TEXT NOT NULL,
+    admin_email TEXT NOT NULL DEFAULT 'Admin',
+    text        TEXT NOT NULL,
+    created_at  TEXT NOT NULL
+  );
+`);
+
+// Sync latest shippingAddress fields to customers.address when orders are fetched/saved
+// (migration: ensure customers.address can store full address JSON with instagram + phone2)
+try { db.exec(`UPDATE customers SET address=address WHERE id IS NOT NULL`); } catch { /* noop */ }
+
 export default db;

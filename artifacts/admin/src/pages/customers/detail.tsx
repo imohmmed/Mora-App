@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, User, Mail, MapPin, ShoppingBag, Pencil } from "lucide-react";
+import { ArrowLeft, User, Mail, MapPin, ShoppingBag, Pencil, Phone } from "lucide-react";
 import { useState } from "react";
 import { fmt } from "@/lib/date";
 import { formatIQD } from "@/lib/format";
@@ -160,37 +160,53 @@ export default function CustomerDetail() {
                 </div>
               </div>
               
-              <div className="space-y-3 pt-4 border-t">
-                <div className="flex items-start gap-3">
-                  <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
-                  <div className="text-sm">
-                    <div>{customer.email}</div>
-                    {customer.acceptsMarketing && (
-                      <Badge variant="secondary" className="mt-1 font-normal text-xs">{t("customers.detail.subscribed")}</Badge>
+              {/* Pull full address from the customer's most recent order shippingAddress */}
+              {(() => {
+                const orders = (customerDetail as any)?.orders ?? [];
+                const lastAddr = (orders[0] as any)?.shippingAddress ?? (customer.address as any) ?? {};
+                return (
+                  <div className="space-y-2.5 pt-4 border-t text-sm">
+                    <div className="flex items-start gap-2.5">
+                      <Mail className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <div>{customer.email}</div>
+                        {customer.acceptsMarketing && (
+                          <Badge variant="secondary" className="mt-1 font-normal text-xs">{t("customers.detail.subscribed")}</Badge>
+                        )}
+                      </div>
+                    </div>
+                    {(lastAddr["phone"] || customer.phone) && (
+                      <div className="flex items-center gap-2.5">
+                        <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span dir="ltr">{lastAddr["phone"] || customer.phone}</span>
+                      </div>
+                    )}
+                    {lastAddr["phone2"] && (
+                      <div className="flex items-center gap-2.5">
+                        <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span dir="ltr">{lastAddr["phone2"]}</span>
+                        <span className="text-xs text-muted-foreground">({t("orders.backupPhone")})</span>
+                      </div>
+                    )}
+                    {lastAddr["instagram"] && (
+                      <div className="flex items-center gap-2.5">
+                        <User className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span>@{lastAddr["instagram"]}</span>
+                      </div>
+                    )}
+                    {(lastAddr["city"] || lastAddr["district"] || lastAddr["landmark"]) && (
+                      <div className="flex items-start gap-2.5">
+                        <MapPin className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                        <div className="text-muted-foreground space-y-0.5">
+                          {lastAddr["city"]     && <p>{lastAddr["city"]}</p>}
+                          {lastAddr["district"] && <p>{lastAddr["district"]}</p>}
+                          {lastAddr["landmark"] && <p className="text-xs">{lastAddr["landmark"]}</p>}
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
-                
-                {customer.phone && (
-                  <div className="flex items-start gap-3">
-                    <User className="w-4 h-4 text-muted-foreground mt-0.5" />
-                    <div className="text-sm">{customer.phone}</div>
-                  </div>
-                )}
-                
-                {customer.address && Object.keys(customer.address).length > 0 && (
-                  <div className="flex items-start gap-3">
-                    <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
-                    <div className="text-sm text-muted-foreground">
-                      {(customer.address as any).street && <p>{(customer.address as any).street}</p>}
-                      <p>
-                        {[(customer.address as any).district, (customer.address as any).city]
-                          .filter(Boolean).join(", ") || "—"}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
+                );
+              })()}
             </CardContent>
           </Card>
           
