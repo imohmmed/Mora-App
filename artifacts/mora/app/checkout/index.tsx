@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -109,17 +109,19 @@ function Divider({ color }: { color: string }) {
 }
 
 function FieldRow({
-  label, value, onChangeText, placeholder, keyboardType, textCol, sub, isDark, isAr, autoCapitalize,
+  label, value, onChangeText, placeholder, keyboardType, textCol, sub, isDark, isAr, autoCapitalize, error, onLayout,
 }: {
   label: string; value: string; onChangeText: (t: string) => void;
   placeholder?: string; keyboardType?: any;
   textCol: string; sub: string; isDark: boolean; isAr?: boolean;
   autoCapitalize?: "none" | "words" | "sentences" | "characters";
+  error?: string | null;
+  onLayout?: (e: any) => void;
 }) {
   const border = isDark ? "#1A1A1A" : "#EBEBEB";
   return (
-    <View style={[fr.wrap, { borderBottomColor: border }]}>
-      <Text style={[fr.lbl, { color: sub }]}>{label}</Text>
+    <View style={[fr.wrap, { borderBottomColor: error ? "#EF4444" : border }]} onLayout={onLayout}>
+      <Text style={[fr.lbl, { color: error ? "#EF4444" : sub }]}>{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -130,6 +132,9 @@ function FieldRow({
         style={[fr.input, { color: textCol }]}
         autoCapitalize={autoCapitalize ?? "words"}
       />
+      {!!error && (
+        <Text style={[fr.err, { textAlign: isAr ? "right" : "left" }]}>{error}</Text>
+      )}
     </View>
   );
 }
@@ -137,6 +142,7 @@ const fr = StyleSheet.create({
   wrap:  { borderBottomWidth: 1, paddingHorizontal: 16, paddingVertical: 14, gap: 4 },
   lbl:   { fontSize: 10, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase" },
   input: { fontSize: 15, fontWeight: "600", paddingVertical: 0 },
+  err:   { fontSize: 11, fontWeight: "600", color: "#EF4444", marginTop: 2 },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -152,6 +158,9 @@ export default function CheckoutScreen() {
   const isAr = lang === "ar";
 
   const [form, setForm] = useState<FormState>({ name: "", instagram: "", phone: "", phone2: "", city: "", district: "", landmark: "", street: "", note: "" });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const scrollRef = useRef<ScrollView>(null);
+  const fieldY = useRef<Record<string, number>>({});
   const [payMethod, setPayMethod]     = useState<PayMethod>("cod");
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("standard");
   const [submitting, setSubmitting]   = useState(false);
@@ -218,7 +227,10 @@ export default function CheckoutScreen() {
     }
   }, [deliveryOptionsConfig]);
 
-  const set = (key: keyof FormState) => (val: string) => setForm((f) => ({ ...f, [key]: val }));
+  const set = (key: keyof FormState) => (val: string) => {
+    setForm((f) => ({ ...f, [key]: val }));
+    setFieldErrors((e) => (e[key] ? Object.fromEntries(Object.entries(e).filter(([k]) => k !== key)) : e));
+  };
 
   useEffect(() => {
     if (!zones.length || !form.city) return;
@@ -323,10 +335,21 @@ export default function CheckoutScreen() {
   };
 
   const handlePlaceOrder = async () => {
-    if (!form.name.trim())     { Alert.alert(isAr ? "مطلوب" : "Required", isAr ? "يرجى إدخال اسمك" : "Please enter your name"); return; }
-    if (!form.phone.trim())    { Alert.alert(isAr ? "مطلوب" : "Required", isAr ? "يرجى إدخال رقم هاتفك" : "Please enter your phone"); return; }
-    if (!selectedZone && deliveryType !== "pickup") { Alert.alert(isAr ? "مطلوب" : "Required", isAr ? "يرجى اختيار المحافظة" : "Please select your governorate"); return; }
-    if (!form.district.trim()) { Alert.alert(isAr ? "مطلوب" : "Required", isAr ? "يرجى إدخال المنطقة" : "Please enter your district"); return; }
+    // Inline validation: mark every missing required field in red and
+    // scroll back up to the first one so the customer notices it.
+    const errs: Record<string, string> = {};
+    if (!form.name.trim())     errs.name     = isAr ? "يرجى إدخال اسمك الكامل" : "Please enter your full name";
+    if (!form.phone.trim())    errs.phone    = isAr ? "يرجى إدخال رقم هاتفك" : "Please enter your phone number";
+    if (!selectedZone && deliveryType !== "pickup") errs.city = isAr ? "يرجى اختيار المحافظة" : "Please select your governorate";
+    if (!form.district.trim()) errs.district = isAr ? "يرجى إدخال المنطقة / الحي" : "Please enter your district / area";
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      const firstKey = ["name", "phone", "city", "district"].find((k) => errs[k])!;
+      const y = fieldY.current[firstKey] ?? 0;
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - 60), animated: true });
+      return;
+    }
     if (items.length === 0)    { Alert.alert(isAr ? "السلة فارغة" : "Empty Cart", isAr ? "لا يوجد منتجات" : "Your cart is empty"); return; }
 
     setSubmitting(true);
@@ -419,6 +442,7 @@ export default function CheckoutScreen() {
       <StepBar isDark={isDark} isAr={isAr} />
 
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 130 }}
         keyboardShouldPersistTaps="handled"
@@ -428,24 +452,31 @@ export default function CheckoutScreen() {
 
         {/* ── DELIVERY INFO ── */}
         <SectionHeader label={isAr ? "معلومات التوصيل" : "DELIVERY INFO"} isDark={isDark} />
-        <View style={{ borderTopWidth: 1, borderTopColor: divider }}>
-          <FieldRow label={isAr ? "الاسم الكامل" : "Full Name"} value={form.name} onChangeText={set("name")} placeholder={isAr ? "محمد عبدالكريم" : "Ahmed Al-Rashidi"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} />
+        <View
+          style={{ borderTopWidth: 1, borderTopColor: divider }}
+          onLayout={(e) => { fieldY.current._section = e.nativeEvent.layout.y; }}
+        >
+          <FieldRow label={isAr ? "الاسم الكامل" : "Full Name"} value={form.name} onChangeText={set("name")} placeholder={isAr ? "محمد عبدالكريم" : "Ahmed Al-Rashidi"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} error={fieldErrors.name} onLayout={(e: any) => { fieldY.current.name = (fieldY.current._section ?? 0) + e.nativeEvent.layout.y; }} />
           <FieldRow label="Instagram" value={form.instagram} onChangeText={set("instagram")} placeholder="يوزر انستا" textCol={textCol} sub={sub} isDark={isDark} isAr={true} autoCapitalize="none" />
-          <FieldRow label={isAr ? "رقم تلفون اساسي" : "PRIMARY PHONE"} value={form.phone} onChangeText={set("phone")} placeholder="+964 770 000 0000" textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="phone-pad" />
+          <FieldRow label={isAr ? "رقم تلفون اساسي" : "PRIMARY PHONE"} value={form.phone} onChangeText={set("phone")} placeholder="+964 770 000 0000" textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="phone-pad" error={fieldErrors.phone} onLayout={(e: any) => { fieldY.current.phone = (fieldY.current._section ?? 0) + e.nativeEvent.layout.y; }} />
           <FieldRow label={isAr ? "رقم تلفون احتياطي" : "BACKUP PHONE"} value={form.phone2} onChangeText={set("phone2")} placeholder="+964 770 000 0000" textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="phone-pad" />
 
           {/* Governorate picker */}
           <Pressable
-            style={[fr2.govRow, { borderBottomColor: divider }, isAr && { flexDirection: "row-reverse" }]}
+            style={[fr2.govRow, { borderBottomColor: fieldErrors.city ? "#EF4444" : divider }, isAr && { flexDirection: "row-reverse" }]}
             onPress={() => setShowGovPicker((v) => !v)}
+            onLayout={(e) => { fieldY.current.city = (fieldY.current._section ?? 0) + e.nativeEvent.layout.y; }}
           >
             <View style={{ flex: 1 }}>
-              <Text style={[fr2.govLbl, { color: sub }]}>{isAr ? "المحافظة" : "Governorate"}</Text>
+              <Text style={[fr2.govLbl, { color: fieldErrors.city ? "#EF4444" : sub }]}>{isAr ? "المحافظة" : "Governorate"}</Text>
               <Text style={[fr2.govVal, { color: form.city ? textCol : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)") }]}>
                 {form.city || (isAr ? "اختر المحافظة..." : "Select governorate...")}
               </Text>
+              {!!fieldErrors.city && (
+                <Text style={[fr.err, { textAlign: isAr ? "right" : "left" }]}>{fieldErrors.city}</Text>
+              )}
             </View>
-            <Feather name={showGovPicker ? "chevron-up" : "chevron-down"} size={16} color={sub} />
+            <Feather name={showGovPicker ? "chevron-up" : "chevron-down"} size={16} color={fieldErrors.city ? "#EF4444" : sub} />
           </Pressable>
 
           {showGovPicker && (
@@ -474,7 +505,7 @@ export default function CheckoutScreen() {
             </View>
           )}
 
-          <FieldRow label={isAr ? "المنطقة / الحي" : "District / Area"} value={form.district} onChangeText={set("district")} placeholder={isAr ? "المنصور" : "Al-Mansour"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} />
+          <FieldRow label={isAr ? "المنطقة / الحي" : "District / Area"} value={form.district} onChangeText={set("district")} placeholder={isAr ? "المنصور" : "Al-Mansour"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} error={fieldErrors.district} onLayout={(e: any) => { fieldY.current.district = (fieldY.current._section ?? 0) + e.nativeEvent.layout.y; }} />
         </View>
 
         {/* ── DELIVERY TYPE ── */}
