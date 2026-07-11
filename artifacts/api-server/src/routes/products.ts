@@ -307,8 +307,10 @@ router.post("/admin/products/:id/variants/sync", requireAdmin, (req, res) => {
     const key = [v["option1"], v["option2"]].filter(Boolean).join(" / ") || "Default Title";
     existingByKey.set(key, v);
   }
-  // Sync replaces variant rows (new ids), so we must carry pending restock
-  // requests over to the new id and fire alerts for anything that went 0 → >0.
+  // IMPORTANT: keep existing variant ids when the option combination matches.
+  // Orders, restock requests and returns all reference variants by id — if we
+  // regenerate ids on every save, those references orphan and restocks
+  // silently fail (UPDATE hits 0 rows).
   const restocked: { oldId: string; newId: string }[] = [];
   db.prepare(`DELETE FROM variants WHERE product_id=?`).run(productId);
   const insertMany = db.transaction(() => {
@@ -318,14 +320,12 @@ router.post("/admin/products/:id/variants/sync", requireAdmin, (req, res) => {
       const o2 = (v["option2"] as string | undefined) ?? null;
       const key = [o1, o2].filter(Boolean).join(" / ") || "Default Title";
       const prev = existingByKey.get(key);
-      const vid = `var_${Date.now()}_${i}_${Math.floor(Math.random() * 9999)}`;
+      const vid = prev ? (prev["id"] as string) : `var_${Date.now()}_${i}_${Math.floor(Math.random() * 9999)}`;
       const title = key;
       const inventory = (v["inventory"] as number | undefined) ?? (prev?.["inventory"] as number | undefined) ?? 0;
       db.prepare(`INSERT INTO variants (id,product_id,title,sku,price,compare_price,cost,inventory,option1,option2) VALUES (?,?,?,?,?,?,?,?,?,?)`)
         .run(vid, productId, title, v["sku"] ?? "", v["price"] ?? 0, v["comparePrice"] ?? null, v["cost"] ?? null, inventory, o1, o2);
       if (prev) {
-        // Move any waiting-list rows from the old variant id to the new one.
-        db.prepare(`UPDATE restock_requests SET variant_id=? WHERE variant_id=?`).run(vid, prev["id"]);
         const prevInv = (prev["inventory"] as number | undefined) ?? 0;
         if (prevInv <= 0 && inventory > 0) restocked.push({ oldId: prev["id"] as string, newId: vid });
       }

@@ -24,9 +24,9 @@ OOS flow: mora product page shows a "Notify me / ابلغني عند توفره"
 ## Trigger (the important part)
 `notifyRestock(variantId)` fires on a **0 → >0 inventory transition**, in two places in products.ts:
 1. admin variant update endpoint
-2. **variant sync** — sync DELETEs + reinserts variants with NEW ids, so it must migrate `restock_requests.variant_id` to the new id before/while detecting restocked keys, or pending rows get orphaned.
+2. **variant sync** — sync DELETEs + reinserts variants, but as of July 2026 it **reuses the existing variant id** when the option1/option2 combination matches. The old `restock_requests.variant_id` migration was removed because ids are now stable across saves.
 
-**Why:** because the trigger only fires on the 0→>0 edge, a missed/orphaned migration means the alert never re-fires (it won't repeat unless it goes OOS again). Any future change to variant id handling in sync must keep the restock migration in lockstep.
+**Why:** regenerating ids on every save orphaned every id reference (orders' line_items, restock_requests, returns) — a full return silently restocked nothing (UPDATE hit 0 rows). Stable ids fix the class of bug. If option combos genuinely change (renamed size), old references still orphan — the return route handles that with a product+size/title fallback resolver and 409s if unresolvable.
 
 Delivery: rows marked `notified=1` after `doSendNotification`. This is acceptable because the in-app notification is saved unconditionally (guaranteed channel) and a thrown send error skips the marking (await throws → mark loop never runs) → retry-safe for hard failures. Push tickets that "fail soft" are best-effort.
 

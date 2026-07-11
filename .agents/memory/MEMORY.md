@@ -30,7 +30,7 @@
 - [Favorite heart convention](favorite-heart-convention.md) — favorited = filled Ionicons heart in blue #0274C1, never red Feather outline; header nav hearts are not toggles
 - [Admin i18n + redesign](admin-i18n-redesign.md) — AR-RTL default/EN toggle via useT + per-cluster dict files; PageContainer/PageHeader primitives; ignore tsc (use vite build); DEV auth bypass; scp dist deploy
 - [React version mismatch mora web](react-version-mismatch.md) — react/expo/react-native must NOT be in mora dependencies; catalog: pins react+react-dom to 19.1.0; mismatch = error #527 blank screen
-- [Restock notifications](restock-notifications.md) — OOS "notify me" → auto-push on 0→>0; variant-sync must migrate restock_requests.variant_id (new ids) or alerts orphan; cart:abandoned is template-only
+- [Restock notifications](restock-notifications.md) — OOS "notify me" → auto-push on 0→>0; variant-sync now keeps variant ids stable (was regenerating → orphaned returns/restocks); cart:abandoned is template-only
 - [Checkout keyboard avoidance](checkout-keyboard-avoidance.md) — sticky-footer forms: plain ScrollView + automaticallyAdjustKeyboardInsets(iOS)+keyboardShouldPersistTaps, NOT screen-wrapping KeyboardAvoidingView
 - [Bilingual option names](option-definitions-bilingual.md) — option_definitions JSON stores {nameEn,nameAr,values} (passthrough); display by lang w/ fallback; admin 2 inputs + legacy name migration
 - [Returns system](returns-system.md) — 3 terminal return stages with distinct inventory rules; never bulk-change into/out of them; partial_return still counts as delivered

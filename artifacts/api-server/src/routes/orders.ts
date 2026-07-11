@@ -636,9 +636,26 @@ router.post("/admin/orders/:id/return", async (req, res) => {
     res.status(409).json({ data: null, error: "Order already processed as a return" }); return;
   }
 
-  type OLI = { variantId?: string; quantity?: number; title?: string };
+  type OLI = { variantId?: string; productId?: string; quantity?: number; title?: string; size?: string };
   let lineItems: OLI[] = [];
   try { lineItems = JSON.parse((existing["line_items"] as string) || "[]"); } catch { lineItems = []; }
+
+  // Product saves used to regenerate variant ids, so old orders can point at
+  // variant ids that no longer exist. Resolve each id: use it if it still
+  // exists, otherwise fall back to matching by product + size/title.
+  const resolveVariantId = (variantId: string): string | null => {
+    if (db.prepare(`SELECT id FROM variants WHERE id=?`).get(variantId)) return variantId;
+    const li = lineItems.find((l) => l.variantId === variantId);
+    if (!li?.productId) return null;
+    const size = li.size || li.title;
+    if (size) {
+      const bySize = db.prepare(`SELECT id FROM variants WHERE product_id=? AND title=?`).get(li.productId, size) as { id: string } | undefined;
+      if (bySize) return bySize.id;
+    }
+    // Single-variant product → unambiguous, safe to restock it
+    const all = db.prepare(`SELECT id FROM variants WHERE product_id=?`).all(li.productId) as { id: string }[];
+    return all.length === 1 ? all[0].id : null;
+  };
 
   // Determine which quantities go back into inventory
   let restockItems: { variantId: string; quantity: number }[] = [];
@@ -674,6 +691,27 @@ router.post("/admin/orders/:id/return", async (req, res) => {
     }
   }
   // type === "no_restock" → restockItems stays empty on purpose
+
+  // Resolve stale variant ids; refuse to proceed if a restock target can't be
+  // found — silently skipping it would lose inventory.
+  const unresolved: string[] = [];
+  restockItems = restockItems.map((it) => {
+    const resolved = resolveVariantId(it.variantId);
+    if (!resolved) { unresolved.push(it.variantId); return it; }
+    return { ...it, variantId: resolved };
+  });
+  if (unresolved.length > 0) {
+    const titles = unresolved.map((vid) => lineItems.find((l) => l.variantId === vid)?.title || vid);
+    res.status(409).json({ data: null, error: `Cannot restock — variant(s) no longer exist: ${titles.join(", ")}. Restock manually or use no_restock.` });
+    return;
+  }
+  // Two stale ids can resolve to the same current variant — merge them so we
+  // only update (and notify) once per variant.
+  if (restockItems.length > 1) {
+    const byId = new Map<string, number>();
+    for (const it of restockItems) byId.set(it.variantId, (byId.get(it.variantId) ?? 0) + it.quantity);
+    restockItems = [...byId].map(([variantId, quantity]) => ({ variantId, quantity }));
+  }
 
   const stage =
     type === "full"    ? "returned" :
