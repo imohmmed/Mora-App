@@ -602,7 +602,7 @@ export default function CheckoutScreen() {
               <TextInput
                 value={discountInput}
                 onChangeText={(t) => { setDiscountInput(t.toUpperCase()); if (discountError) setDiscountError(null); }}
-                placeholder={isAr ? "أدخل الرمز" : "ENTER CODE"}
+                placeholder={isAr ? "اذا كان لديك كود خصم اكتبه هنا" : "ENTER CODE"}
                 placeholderTextColor={isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.2)"}
                 autoCapitalize="characters"
                 autoCorrect={false}
@@ -649,24 +649,24 @@ export default function CheckoutScreen() {
           {/* Totals */}
           <View style={{ borderTopWidth: 1, borderTopColor: divider }}>
             <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
-              <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "المجموع الفرعي" : "Subtotal"}</Text>
+              <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "سعر المنتجات" : "Subtotal"}</Text>
               <Text style={[st.totalVal, { color: textCol }]}>{formatIQD(itemDiscount > 0 ? originalSubtotal : subtotal)}</Text>
             </View>
             {itemDiscount > 0 && (
               <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
-                <Text style={[st.totalLbl, { color: PRIMARY }]}>{isAr ? "الخصم" : "Discount"}</Text>
+                <Text style={[st.totalLbl, { color: PRIMARY }]}>{isAr ? "هلكد انخصملك" : "Discount"}</Text>
                 <Text style={[st.totalVal, { color: PRIMARY }]}>−{formatIQD(itemDiscount)}</Text>
               </View>
             )}
             {discount && (
               <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
-                <Text style={[st.totalLbl, { color: PRIMARY }]}>{isAr ? `كود الخصم (${discount.code})` : `Discount (${discount.code})`}</Text>
+                <Text style={[st.totalLbl, { color: PRIMARY }]}>{isAr ? `رمز الخصم (${discount.code})` : `Discount (${discount.code})`}</Text>
                 <Text style={[st.totalVal, { color: PRIMARY }]}>−{formatIQD(discountAmount)}</Text>
               </View>
             )}
             {deliveryType !== "pickup" && (
               <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}>
-                <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "الشحن" : "Shipping"}</Text>
+                <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "سعر التوصيل" : "Shipping"}</Text>
                 {shipping === 0 && selectedZone && selectedZone.price > 0 ? (
                   <View style={[{ flexDirection: "row", alignItems: "center", gap: 6 }, isAr && { flexDirection: "row-reverse" }]}>
                     <Text style={[st.totalVal, { color: "#EF4444", textDecorationLine: "line-through" }]}>
@@ -684,7 +684,7 @@ export default function CheckoutScreen() {
               </View>
             )}
             <View style={[st.totalRow, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider, borderBottomWidth: 0, paddingVertical: 16 }]}>
-              <Text style={[st.totalLblBold, { color: textCol }]}>{isAr ? "المجموع الكلي" : "TOTAL"}</Text>
+              <Text style={[st.totalLblBold, { color: textCol }]}>{isAr ? "سعر الطلب كامل مع التوصيل" : "TOTAL"}</Text>
               <Text style={[st.totalBold, { color: PRIMARY }]}>{formatIQD(grandTotal)}</Text>
             </View>
           </View>

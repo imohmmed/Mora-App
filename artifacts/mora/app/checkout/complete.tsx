@@ -339,7 +339,7 @@ export default function OrderCompleteScreen() {
             <Text style={[s.totalVal, { color: "#22C55E" }]}>{isAr ? "مجاني" : "Free"}</Text>
           </View>
           <View style={[s.totalRow, isAr && { flexDirection: "row-reverse" }]}>
-            <Text style={[s.totalLblBold, { color: textCol }]}>{isAr ? "المجموع الكلي" : "TOTAL"}</Text>
+            <Text style={[s.totalLblBold, { color: textCol }]}>{isAr ? "سعر الطلب كامل مع التوصيل" : "TOTAL"}</Text>
             <Text style={[s.totalBold, { color: PRIMARY }]}>{formatIQD(totalNum)}</Text>
           </View>
         </View>
