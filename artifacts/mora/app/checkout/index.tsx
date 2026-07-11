@@ -431,8 +431,8 @@ export default function CheckoutScreen() {
         <View style={{ borderTopWidth: 1, borderTopColor: divider }}>
           <FieldRow label={isAr ? "الاسم الكامل" : "Full Name"} value={form.name} onChangeText={set("name")} placeholder={isAr ? "محمد عبدالكريم" : "Ahmed Al-Rashidi"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} />
           <FieldRow label="Instagram" value={form.instagram} onChangeText={set("instagram")} placeholder="يوزر انستا" textCol={textCol} sub={sub} isDark={isDark} isAr={true} autoCapitalize="none" />
-          <FieldRow label={isAr ? "رقم تلفون أساسي (Primary Phone)" : "Primary Phone (رقم تلفون أساسي)"} value={form.phone} onChangeText={set("phone")} placeholder="+964 770 000 0000" textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="phone-pad" />
-          <FieldRow label={isAr ? "رقم تلفون احتياطي (Backup Phone)" : "Backup Phone (رقم تلفون احتياطي)"} value={form.phone2} onChangeText={set("phone2")} placeholder="+964 770 000 0000" textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="phone-pad" />
+          <FieldRow label={isAr ? "رقم تلفون اساسي" : "PRIMARY PHONE"} value={form.phone} onChangeText={set("phone")} placeholder="+964 770 000 0000" textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="phone-pad" />
+          <FieldRow label={isAr ? "رقم تلفون احتياطي" : "BACKUP PHONE"} value={form.phone2} onChangeText={set("phone2")} placeholder="+964 770 000 0000" textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="phone-pad" />
 
           {/* Governorate picker */}
           <Pressable

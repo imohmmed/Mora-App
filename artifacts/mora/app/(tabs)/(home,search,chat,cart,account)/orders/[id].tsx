@@ -31,7 +31,10 @@ function getBaseUrl() {
 
 type FullAddress = {
   fullName?: string; firstName?: string; lastName?: string;
-  phone?: string; city?: string; district?: string; street?: string; country?: string;
+  phone?: string; phone2?: string;
+  instagram?: string;
+  city?: string; district?: string; street?: string; landmark?: string;
+  country?: string;
 };
 
 function statusColor(status: string) {
@@ -317,25 +320,22 @@ export default function OrderDetailScreen() {
           <>
             <SectionLabel text={isAr ? "معلومات التوصيل" : "DELIVERY INFO"} sub={sub} isAr={isAr} />
             <View style={[st.group, { backgroundColor: isWeb ? "transparent" : card }, isWeb && { marginHorizontal: 0, borderRadius: 0, borderTopWidth: 1, borderTopColor: divider, borderBottomWidth: 1, borderBottomColor: divider }]}>
-              {displayName !== "—" && (
-                <InfoRow label={isAr ? "الاسم" : "Name"} value={displayName} textCol={textCol} sub={sub} isAr={isAr} />
-              )}
-              {addr.phone && (
-                <>
-                  <View style={[st.divider, { backgroundColor: divClr }, isWeb && { marginHorizontal: 0 }]} />
-                  <InfoRow label={isAr ? "الهاتف" : "Phone"} value={addr.phone} textCol={textCol} sub={sub} isAr={isAr} />
-                </>
-              )}
-              {addr.city && (
-                <>
-                  <View style={[st.divider, { backgroundColor: divClr }, isWeb && { marginHorizontal: 0 }]} />
-                  <InfoRow
-                    label={isAr ? "العنوان" : "Address"}
-                    value={[addr.city, addr.district, addr.street].filter(Boolean).join(", ")}
-                    textCol={textCol} sub={sub} isAr={isAr}
-                  />
-                </>
-              )}
+              {(() => {
+                const rows: { lbl: string; val: string }[] = [];
+                if (displayName !== "—")  rows.push({ lbl: isAr ? "الاسم"               : "NAME",             val: displayName });
+                if (addr.instagram)       rows.push({ lbl: "Instagram",                                        val: addr.instagram });
+                if (addr.phone)           rows.push({ lbl: isAr ? "رقم تلفون اساسي"    : "PRIMARY PHONE",     val: addr.phone });
+                if (addr.phone2)          rows.push({ lbl: isAr ? "رقم تلفون احتياطي"  : "BACKUP PHONE",      val: addr.phone2 });
+                if (addr.city)            rows.push({ lbl: isAr ? "المحافظة"            : "GOVERNORATE",       val: addr.city });
+                if (addr.district)        rows.push({ lbl: isAr ? "المنطقة / الحي"      : "DISTRICT",          val: addr.district });
+                if (addr.landmark)        rows.push({ lbl: isAr ? "أقرب نقطة دالة"      : "LANDMARK",          val: addr.landmark });
+                return rows.map((r, i) => (
+                  <React.Fragment key={r.lbl}>
+                    {i > 0 && <View style={[st.divider, { backgroundColor: divClr }, isWeb && { marginHorizontal: 0 }]} />}
+                    <InfoRow label={r.lbl} value={r.val} textCol={textCol} sub={sub} isAr={isAr} />
+                  </React.Fragment>
+                ));
+              })()}
             </View>
           </>
         )}
@@ -477,7 +477,7 @@ const st = StyleSheet.create({
   itemQty:      { fontSize: 11 },
   itemPrice:    { fontSize: 13, fontWeight: "700", minWidth: 80, textAlign: "right" },
   infoRow:      { flexDirection: "row", alignItems: "flex-start", paddingHorizontal: 16, paddingVertical: 12, gap: 12 },
-  infoLbl:      { fontSize: 12, fontWeight: "500", width: 68, flexShrink: 0 },
+  infoLbl:      { fontSize: 12, fontWeight: "500", width: 130, flexShrink: 0 },
   infoVal:      { flex: 1, fontSize: 13, fontWeight: "500" },
   summaryRow:   { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12 },
   summaryLbl:   { fontSize: 13, fontWeight: "500" },
