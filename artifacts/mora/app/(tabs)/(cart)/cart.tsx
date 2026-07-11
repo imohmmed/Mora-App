@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   LayoutAnimation,
   Platform,
   Pressable,
@@ -22,7 +23,8 @@ import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { fetchProduct, fetchStories, fetchSpecialCollection } from "@/lib/api";
+import { fetchProduct, fetchStories, fetchSpecialCollection, submitExchangeItems } from "@/lib/api";
+import { useExchange } from "@/context/ExchangeContext";
 import { formatIQD } from "@/lib/format";
 import { StoriesSection } from "@/components/StoriesSection";
 import { QuickAddSheet } from "@/components/QuickAddSheet";
@@ -410,8 +412,10 @@ function GiftSection({ lang, isDark }: { lang: string; isDark: boolean }) {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function CartScreen() {
-  const { items, subtotal, removeItem, updateQty, setMaxStock } = useCart();
-  const { user }    = useAuth();
+  const { items, subtotal, removeItem, updateQty, setMaxStock, clearCart } = useCart();
+  const { user, token } = useAuth();
+  const { activeExchange, clearExchange } = useExchange();
+  const [exchangeSubmitting, setExchangeSubmitting] = useState(false);
   const { lang }    = useLanguage();
   const router      = useRouter();
   const insets      = useSafeAreaInsets();
@@ -517,7 +521,56 @@ export default function CartScreen() {
     updateQty(productId, variantId, 1);
   }, [updateQty]);
 
+  const handleSubmitExchange = async () => {
+    if (!activeExchange || !token || items.length === 0 || exchangeSubmitting) return;
+    setExchangeSubmitting(true);
+    try {
+      await submitExchangeItems(
+        token,
+        activeExchange.requestId,
+        items.map((it) => ({
+          variantId: it.variantId,
+          productId: it.productId,
+          title: it.title,
+          variantTitle: [it.size, it.color].filter(Boolean).join(" / "),
+          image: it.image ?? "",
+          price: it.price,
+          quantity: it.quantity,
+        })),
+      );
+      clearExchange();
+      clearCart();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Platform.OS === "web") {
+        window.alert(lang === "ar"
+          ? "تم إرسال طلب الاستبدال — راح نراجعه ونتواصل وياك خلال يومين كحد أقصى"
+          : "Exchange request sent — we'll review it and contact you within 2 days");
+      } else {
+        Alert.alert(
+          lang === "ar" ? "تم الإرسال" : "Sent",
+          lang === "ar"
+            ? "تم إرسال طلب الاستبدال — راح نراجعه ونتواصل وياك خلال يومين كحد أقصى"
+            : "Exchange request sent — we'll review it and contact you within 2 days",
+        );
+      }
+      router.push("/(tabs)/(account)/orders" as any);
+    } catch {
+      const msg = lang === "ar" ? "حدث خطأ، حاول مجدداً" : "Something went wrong. Please try again.";
+      if (Platform.OS === "web") {
+        window.alert(msg);
+      } else {
+        Alert.alert(lang === "ar" ? "خطأ" : "Error", msg);
+      }
+    } finally {
+      setExchangeSubmitting(false);
+    }
+  };
+
   const handleCheckout = () => {
+    if (activeExchange) {
+      handleSubmitExchange();
+      return;
+    }
     if (!user) {
       router.push({ pathname: "/auth", params: { returnTo: "/checkout" } });
       return;
@@ -641,15 +694,28 @@ export default function CartScreen() {
           </Text>
           <Text style={[s.totalAmt, { color: textCol }]}>{formatIQD(subtotal)}</Text>
         </View>
-        {/* Checkout button */}
+        {/* Checkout / Exchange button */}
         <Pressable
           onPress={handleCheckout}
-          style={({ pressed }) => [s.checkBtn, pressed && { opacity: 0.82 }]}
+          disabled={exchangeSubmitting}
+          style={({ pressed }) => [
+            s.checkBtn,
+            activeExchange && { backgroundColor: PRIMARY },
+            (pressed || exchangeSubmitting) && { opacity: 0.82 },
+          ]}
         >
-          <Feather name="lock" size={14} color="#fff" />
-          <Text style={s.checkTxt}>
-            {lang === "ar" ? "إتمام الشراء بأمان" : "SECURE CHECKOUT"}
-          </Text>
+          {exchangeSubmitting ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <>
+              <Feather name={activeExchange ? "refresh-ccw" : "lock"} size={14} color="#fff" />
+              <Text style={s.checkTxt}>
+                {activeExchange
+                  ? (lang === "ar" ? "إرسال الاستبدال" : "EXCHANGE")
+                  : (lang === "ar" ? "إتمام الشراء بأمان" : "SECURE CHECKOUT")}
+              </Text>
+            </>
+          )}
         </Pressable>
       </View>
     </View>

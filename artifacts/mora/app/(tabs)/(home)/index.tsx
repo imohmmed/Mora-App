@@ -39,6 +39,7 @@ import { fetchProducts, fetchForYouProducts, fetchSpecialCollections, fetchBanne
 import { useRtlScrollToEnd, rtlContentStyle } from "@/lib/rtlScroll";
 import { formatIQD } from "@/lib/format";
 import { StoriesSection } from "@/components/StoriesSection";
+import { ExchangeBanner } from "@/components/ExchangeBanner";
 import { HomeSaleCollections } from "@/components/HomeSaleCollections";
 import { MoraPerfumesSection, MoraPerfumesSectionHandle } from "@/components/MoraPerfumesSection";
 import type { Product, Banner, Variant } from "@/lib/types";
@@ -716,6 +717,9 @@ export default function HomeScreen() {
           />
         }
       />
+
+      {/* ── Pinned exchange note — shown while picking replacement items ── */}
+      <ExchangeBanner bottom={bottomPadding + 88} />
 
       {/* ── Floating transparent header overlay — hides on scroll down ── */}
       <Animated.View

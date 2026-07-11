@@ -42,3 +42,4 @@
 - [Checkout delivery options](delivery-options.md) — standard/express/pickup; deliveryMessage rules duplicated in mora lib + api-server (keep identical); deliveryType must ride ALL 4 APNs paths or pickup shows 4-step widget; pickup=3-step flow needs EAS rebuild
 - [Chatwoot custom chat + admin mgmt](chatwoot-custom-chat.md) — in-app chat hits Chatwoot PUBLIC API directly (API-channel inbox only); admin canned/automation via api-server proxy; nginx underscores_in_headers fix for api_access_token 401
 - [App-wide font: Cairo](app-font-cairo.md) — Inter replaced by Cairo everywhere in mora (native+web) for unified AR+EN typography
+- [Exchange & Refund system](exchange-refund-system.md) — one-active-request partial unique index; approval aggregates qty per variant; exchange state customer-scoped; prod API port 3001

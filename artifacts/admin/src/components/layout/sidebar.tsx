@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, ShoppingCart, Package, Users, FolderTree, Tags, FileText,
   Settings, BarChart3, Warehouse, Bell, Truck, UserSearch, Gift, ChevronLeft,
-  PanelLeftClose, PanelLeft, BellRing, MessageSquareText, Zap,
+  PanelLeftClose, PanelLeft, BellRing, MessageSquareText, Zap, RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminAuth, type AdminPermissions } from "@/context/AdminAuthContext";
@@ -26,6 +26,7 @@ const NAV: NavSection[] = [
     permission: "orders",
     items: [
       { href: "/orders", labelKey: "nav.orders", icon: ShoppingCart },
+      { href: "/orders/exchange", labelKey: "nav.exchange", icon: RotateCcw },
       { href: "/products", labelKey: "nav.products", icon: Package },
       { href: "/products/wanted", labelKey: "nav.wanted", icon: BellRing },
       { href: "/collections", labelKey: "nav.collections", icon: FolderTree },

@@ -1295,6 +1295,35 @@ db.exec(`
   );
 `);
 
+// ─── Exchange & Refund requests ───────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS exchange_requests (
+    id               TEXT PRIMARY KEY,
+    order_id         TEXT NOT NULL,
+    order_number     TEXT NOT NULL DEFAULT '',
+    customer_id      TEXT,
+    email            TEXT NOT NULL DEFAULT '',
+    type             TEXT NOT NULL,
+    status           TEXT NOT NULL DEFAULT 'pending',
+    description      TEXT NOT NULL DEFAULT '',
+    images           TEXT NOT NULL DEFAULT '[]',
+    return_items     TEXT NOT NULL DEFAULT '[]',
+    new_items        TEXT NOT NULL DEFAULT '[]',
+    admin_price      REAL,
+    new_order_id     TEXT,
+    new_order_number TEXT,
+    reject_reason    TEXT NOT NULL DEFAULT '',
+    created_at       TEXT NOT NULL,
+    updated_at       TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_xr_customer ON exchange_requests(customer_id);
+  CREATE INDEX IF NOT EXISTS idx_xr_status   ON exchange_requests(status);
+  CREATE INDEX IF NOT EXISTS idx_xr_order    ON exchange_requests(order_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_xr_one_active_per_order
+    ON exchange_requests(order_id)
+    WHERE status IN ('awaiting_items','pending','approved');
+`);
+
 // ─── Order admin notes (internal log per order) ───────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS order_notes (

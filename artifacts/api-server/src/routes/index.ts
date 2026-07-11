@@ -22,6 +22,7 @@ import chatPublicRouter from "./chat-public.js";
 import browseCollectionsRouter from "./browseCollections.js";
 import saleCollectionsRouter from "./saleCollections.js";
 import trackingRouter from "./tracking.js";
+import exchangeRouter from "./exchange.js";
 
 const router: IRouter = Router();
 
@@ -29,6 +30,7 @@ router.use(uploadsRouter);
 router.use(healthRouter);
 router.use(productsRouter);
 router.use(ordersRouter);
+router.use(exchangeRouter);
 router.use(waylRouter);
 router.use(adminAuthRouter);
 router.use(customersRouter);

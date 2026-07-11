@@ -21,6 +21,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { fetchOrder } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { GlassBackButton } from "@/components/GlassBackButton";
+import { ReturnRequestSheet } from "@/components/ReturnRequestSheet";
 
 const PRIMARY = "#0274C1";
 
@@ -137,6 +138,7 @@ export default function OrderDetailScreen() {
   const [reviewText, setReviewText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted,  setSubmitted]  = useState(false);
+  const [returnSheetOpen, setReturnSheetOpen] = useState(false);
 
   const { data: order, isLoading, error } = useQuery({
     queryKey: ["order", id, email],
@@ -484,8 +486,21 @@ export default function OrderDetailScreen() {
           </>
         )}
 
+        {/* ── Return & Refund — delivered orders only ── */}
+        {isDelivered && (
+          <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
+            <Pressable
+              style={({ pressed }) => [st.shopBtn, { backgroundColor: "#DC2626", opacity: pressed ? 0.85 : 1 }, isWeb && { borderRadius: 4 }]}
+              onPress={() => setReturnSheetOpen(true)}
+            >
+              <Feather name="refresh-ccw" size={16} color="#fff" />
+              <Text style={st.shopBtnTxt}>{isAr ? "استبدال وترجيع" : "RETURN & REFUND"}</Text>
+            </Pressable>
+          </View>
+        )}
+
         {/* ── Shop again ── */}
-        <View style={{ paddingHorizontal: isWeb ? 16 : 16, marginTop: 24 }}>
+        <View style={{ paddingHorizontal: isWeb ? 16 : 16, marginTop: isDelivered ? 12 : 24 }}>
           <Pressable
             style={({ pressed }) => [st.shopBtn, { backgroundColor: PRIMARY, opacity: pressed ? 0.85 : 1 }, isWeb && { borderRadius: 4 }]}
             onPress={() => router.push("/" as any)}
@@ -496,6 +511,14 @@ export default function OrderDetailScreen() {
         </View>
 
       </ScrollView>
+
+      <ReturnRequestSheet
+        visible={returnSheetOpen}
+        onClose={() => setReturnSheetOpen(false)}
+        order={order}
+        isAr={isAr}
+        isDark={isDark}
+      />
     </View>
   );
 }

@@ -12,6 +12,7 @@ export const common = {
 
     "nav.dashboard": "الرئيسية",
     "nav.orders": "الطلبات",
+    "nav.exchange": "الاستبدال والترجيع",
     "nav.products": "المنتجات",
     "nav.wanted": "المنتجات المطلوبة",
     "nav.inventory": "المخزون",
@@ -124,6 +125,7 @@ export const common = {
 
     "nav.dashboard": "Dashboard",
     "nav.orders": "Orders",
+    "nav.exchange": "Exchange & Refund",
     "nav.products": "Products",
     "nav.wanted": "Wanted Products",
     "nav.inventory": "Inventory",

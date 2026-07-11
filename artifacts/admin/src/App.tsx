@@ -15,6 +15,7 @@ import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Orders from "@/pages/orders";
 import OrderDetail from "@/pages/orders/detail";
+import ExchangeRequests from "@/pages/orders/exchange";
 import Products from "@/pages/products";
 import NewProduct from "@/pages/products/new";
 import ProductDetail from "@/pages/products/detail";
@@ -82,6 +83,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/analytics" component={Analytics} />
         <Route path="/orders" component={Orders} />
+        <Route path="/orders/exchange" component={ExchangeRequests} />
         <Route path="/orders/:id" component={OrderDetail} />
         <Route path="/products/new" component={NewProduct} />
         <Route path="/products/inventory" component={Inventory} />

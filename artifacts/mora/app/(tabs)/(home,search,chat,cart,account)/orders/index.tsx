@@ -17,7 +17,7 @@ import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { fetchOrders } from "@/lib/api";
+import { fetchOrders, fetchExchangeRequests, type ExchangeRequest } from "@/lib/api";
 import { GlassBackButton } from "@/components/GlassBackButton";
 import { formatIQD } from "@/lib/format";
 
@@ -62,6 +62,17 @@ function stageLabel(stage: string | undefined, status: string, isAr: boolean) {
   return isAr ? entry.ar : entry.en;
 }
 
+function xrStatusMeta(status: string, isAr: boolean): { label: string; color: string } {
+  switch (status) {
+    case "awaiting_items": return { label: isAr ? "بانتظار اختيار القطع" : "Picking items", color: "#F59E0B" };
+    case "pending":        return { label: isAr ? "قيد المراجعة" : "Under review",  color: "#F59E0B" };
+    case "approved":       return { label: isAr ? "تمت الموافقة" : "Approved",       color: "#22C55E" };
+    case "rejected":       return { label: isAr ? "مرفوض" : "Rejected",              color: "#E53935" };
+    case "cancelled":      return { label: isAr ? "ملغى" : "Cancelled",              color: "#888" };
+    default:               return { label: status, color: "#888" };
+  }
+}
+
 function StarDisplay({ rating, size }: { rating: number; size?: number }) {
   const s = size ?? 14;
   return (
@@ -92,6 +103,14 @@ export default function OrdersScreen() {
     queryFn: () => fetchOrders(user?.email ?? ""),
     enabled: !!user?.email,
   });
+
+  const { token } = useAuth();
+  const { data: exchangeRequests } = useQuery({
+    queryKey: ["exchange-requests"],
+    queryFn: () => fetchExchangeRequests(token!),
+    enabled: !!token,
+  });
+  const visibleRequests = (exchangeRequests ?? []).filter((r) => r.status !== "cancelled");
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -126,6 +145,50 @@ export default function OrdersScreen() {
         }
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={PRIMARY} />}
       >
+        {/* ── Exchange & Refund section ── */}
+        {visibleRequests.length > 0 && (
+          <View style={{ gap: 10, marginBottom: 8, paddingHorizontal: Platform.OS === "web" ? 16 : 0, paddingTop: Platform.OS === "web" ? 16 : 0 }}>
+            <Text style={[styles.xrSectionTitle, { color: colors.foreground, textAlign: isAr ? "right" : "left" }]}>
+              {isAr ? "الاستبدال والترجيع" : "EXCHANGE & REFUND"}
+            </Text>
+            {visibleRequests.map((r: ExchangeRequest) => {
+              const meta = xrStatusMeta(r.status, isAr);
+              const typeLabel = r.type === "exchange" ? (isAr ? "استبدال" : "Exchange") : (isAr ? "ترجيع" : "Refund");
+              return (
+                <View key={r.id} style={[styles.orderCard, { backgroundColor: card, padding: 14, gap: 8 }]}>
+                  <View style={{ flexDirection: isAr ? "row-reverse" : "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <View style={{ alignItems: isAr ? "flex-end" : "flex-start" }}>
+                      <Text style={[styles.orderNum, { color: colors.foreground }]}>
+                        {typeLabel} — {isAr ? `طلب #${r.orderNumber}` : `Order #${r.orderNumber}`}
+                      </Text>
+                      <Text style={[styles.orderDate, { color: colors.mutedForeground }]}>{formatDate(r.createdAt, isAr)}</Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: meta.color + "18", borderColor: meta.color + "40", borderWidth: 1 }]}>
+                      <View style={[styles.statusDot, { backgroundColor: meta.color }]} />
+                      <Text style={[styles.statusTxt, { color: meta.color }]}>{meta.label}</Text>
+                    </View>
+                  </View>
+                  {r.status === "approved" && (
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground, textAlign: isAr ? "right" : "left", lineHeight: 18 }}>
+                      {isAr
+                        ? `الطلب الجديد ${r.newOrderNumber ?? ""} — سيتم التواصل معك خلال يومين كحد أقصى`
+                        : `New order ${r.newOrderNumber ?? ""} — we will contact you within 2 days at most`}
+                    </Text>
+                  )}
+                  {r.status === "rejected" && !!r.rejectReason && (
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground, textAlign: isAr ? "right" : "left", lineHeight: 18 }}>
+                      {r.rejectReason}
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
+            <Text style={[styles.xrSectionTitle, { color: colors.foreground, textAlign: isAr ? "right" : "left", marginTop: 8 }]}>
+              {isAr ? "طلباتي" : "MY ORDERS"}
+            </Text>
+          </View>
+        )}
+
         {ordersLoading ? (
           <View style={styles.centeredBox}>
             <ActivityIndicator color={PRIMARY} size="large" />
@@ -261,4 +324,5 @@ const styles = StyleSheet.create({
   rateBtnTxt:      { fontSize: 12, fontWeight: "600", color: "#F59E0B" },
   centeredBox:     { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 60, gap: 12 },
   centeredText:    { fontFamily: "Cairo_400Regular", fontSize: 15 },
+  xrSectionTitle:  { fontFamily: "Cairo_700Bold", fontSize: 12, letterSpacing: 0.8 },
 });

@@ -341,3 +341,100 @@ export async function fetchSaleCollections(): Promise<SaleCollection[]> {
 export async function fetchSaleCollectionProducts(id: string): Promise<Product[]> {
   return apiFetch<Product[]>(`/store/sale-collections/${id}/products`);
 }
+
+// ── Exchange & Refund ─────────────────────────────────────────────────────────
+
+export type ExchangeItem = {
+  variantId: string;
+  productId: string;
+  title: string;
+  variantTitle?: string;
+  image?: string;
+  price: number;
+  quantity: number;
+};
+
+export type ExchangeRequest = {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  type: "exchange" | "refund";
+  status: "awaiting_items" | "pending" | "approved" | "rejected" | "cancelled";
+  description: string;
+  images: string[];
+  returnItems: ExchangeItem[];
+  newItems: ExchangeItem[];
+  adminPrice?: number | null;
+  newOrderNumber?: string | null;
+  rejectReason?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function uploadReturnImage(
+  authToken: string,
+  file: { uri: string; name: string; type: string },
+): Promise<string> {
+  const base = getBaseUrl();
+  const form = new FormData();
+  if (file.uri.startsWith("data:") || file.uri.startsWith("blob:")) {
+    // Web — convert the picked asset into a real Blob
+    const blob = await (await fetch(file.uri)).blob();
+    form.append("image", blob, file.name);
+  } else {
+    form.append("image", { uri: file.uri, name: file.name, type: file.type } as unknown as Blob);
+  }
+  const res = await fetch(`${base}/store/uploads`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${authToken}` },
+    body: form,
+  });
+  const json = (await res.json()) as ApiResponse<{ url: string }>;
+  if (!res.ok || !json.data?.url) throw new Error(json.error ?? "Upload failed");
+  return json.data.url;
+}
+
+export async function createExchangeRequest(
+  authToken: string,
+  payload: {
+    orderId: string;
+    type: "exchange" | "refund";
+    description: string;
+    images: string[];
+    items: ExchangeItem[];
+  },
+): Promise<ExchangeRequest> {
+  return apiFetch<ExchangeRequest>("/store/exchange-requests", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${authToken}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function submitExchangeItems(
+  authToken: string,
+  requestId: string,
+  items: ExchangeItem[],
+): Promise<ExchangeRequest> {
+  return apiFetch<ExchangeRequest>(`/store/exchange-requests/${requestId}/items`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${authToken}` },
+    body: JSON.stringify({ items }),
+  });
+}
+
+export async function cancelExchangeRequest(
+  authToken: string,
+  requestId: string,
+): Promise<void> {
+  await apiFetch<{ ok: boolean }>(`/store/exchange-requests/${requestId}/cancel`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${authToken}` },
+  });
+}
+
+export async function fetchExchangeRequests(authToken: string): Promise<ExchangeRequest[]> {
+  return apiFetch<ExchangeRequest[]>("/store/exchange-requests", {
+    headers: { Authorization: `Bearer ${authToken}` },
+  });
+}

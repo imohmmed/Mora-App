@@ -17,6 +17,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LiveActivityBanner } from "@/components/LiveActivityBanner";
 import { useAuth, AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
+import { ExchangeProvider } from "@/context/ExchangeContext";
 import { useLanguage, LanguageProvider } from "@/context/LanguageContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -244,12 +245,14 @@ export default function RootLayout() {
                 <SessionTracking />
                 <NotificationProvider>
                   <CartProvider>
+                    <ExchangeProvider>
                     <WishlistProvider>
                       <GestureHandlerRootView style={{ flex: 1 }}>
                         <RootLayoutNav />
                         <LiveActivityBanner />
                       </GestureHandlerRootView>
                     </WishlistProvider>
+                    </ExchangeProvider>
                   </CartProvider>
                 </NotificationProvider>
               </AuthProvider>
