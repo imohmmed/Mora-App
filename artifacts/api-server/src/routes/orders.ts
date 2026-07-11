@@ -3,7 +3,7 @@ import db, { parseRows, parseOne, logActivity, getDeliveryOptions } from "../lib
 import { requireAdmin } from "../middlewares/auth.js";
 import type { Row } from "../lib/types.js";
 import { sendLiveActivityPush, sendLiveActivityStartPush } from "../lib/apns.js";
-import { doSendNotification } from "./notifications.js";
+import { doSendNotification, notifyRestock } from "./notifications.js";
 import { validateDiscount, redeemDiscount } from "../lib/discounts.js";
 import { getTemplate } from "../lib/templates.js";
 
@@ -603,6 +603,182 @@ router.post("/admin/orders/:id/delivery-stage", async (req, res) => {
 
   const order = parseOne(db.prepare(`SELECT * FROM orders WHERE id=?`).get(id) as Row | undefined);
   res.json({ data: { order, apns: apnsResult, hasPushToken: !!laPushToken, ptsUsed: activityWasGone && !!ptsToken }, error: null });
+});
+
+// ─── Admin: process order return (full / partial / no-restock) ───────────────
+// type: "full"       → restock ALL line items, stage='returned', status='cancelled'
+//       "partial"    → restock ONLY the given items, stage='partial_return' (still counts as delivered)
+//       "no_restock" → NO inventory change, stage='returned_no_restock', status='cancelled'
+const RETURN_STAGES = ["returned", "partial_return", "returned_no_restock"];
+
+router.post("/admin/orders/:id/return", async (req, res) => {
+  const id = req.params["id"];
+  const { type, items } = req.body as {
+    type: "full" | "partial" | "no_restock";
+    items?: { variantId: string; quantity: number }[];
+  };
+  if (!type || !["full", "partial", "no_restock"].includes(type)) {
+    res.status(400).json({ data: null, error: "type must be full, partial or no_restock" }); return;
+  }
+
+  const existing = db.prepare(`
+    SELECT o.order_number, o.customer_id, o.live_activity_push_token, o.financial_status, o.total,
+           o.delivery_type, o.delivery_stage, o.line_items,
+           c.first_name, c.last_name, c.live_activity_pts_token
+    FROM orders o LEFT JOIN customers c ON c.id = o.customer_id
+    WHERE o.id = ?
+  `).get(id) as Row | undefined;
+  if (!existing) { res.status(404).json({ data: null, error: "Order not found" }); return; }
+
+  // Guard: never process a return twice — that would double-add inventory
+  const currentStage = (existing["delivery_stage"] as string) ?? "confirmed";
+  if (RETURN_STAGES.includes(currentStage)) {
+    res.status(409).json({ data: null, error: "Order already processed as a return" }); return;
+  }
+
+  type OLI = { variantId?: string; quantity?: number; title?: string };
+  let lineItems: OLI[] = [];
+  try { lineItems = JSON.parse((existing["line_items"] as string) || "[]"); } catch { lineItems = []; }
+
+  // Determine which quantities go back into inventory
+  let restockItems: { variantId: string; quantity: number }[] = [];
+  if (type === "full") {
+    restockItems = lineItems
+      .filter((it) => it.variantId && (it.quantity ?? 0) > 0)
+      .map((it) => ({ variantId: it.variantId!, quantity: Number(it.quantity) }));
+  } else if (type === "partial") {
+    if (!Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ data: null, error: "items array required for partial return" }); return;
+    }
+    // Merge duplicates first so the same variant can't be counted twice,
+    // then validate the total against the order's line items
+    const merged = new Map<string, number>();
+    for (const it of items) {
+      const qty = Math.round(Number(it?.quantity));
+      if (!it?.variantId || !qty || qty < 1) {
+        res.status(400).json({ data: null, error: "each item needs variantId and quantity >= 1" }); return;
+      }
+      merged.set(it.variantId, (merged.get(it.variantId) ?? 0) + qty);
+    }
+    for (const [variantId, qty] of merged) {
+      const ordered = lineItems
+        .filter((li) => li.variantId === variantId)
+        .reduce((n, li) => n + (Number(li.quantity) || 0), 0);
+      if (ordered === 0) {
+        res.status(400).json({ data: null, error: `variant ${variantId} is not part of this order` }); return;
+      }
+      if (qty > ordered) {
+        res.status(400).json({ data: null, error: `cannot return ${qty} of variant ${variantId} — only ${ordered} ordered` }); return;
+      }
+      restockItems.push({ variantId, quantity: qty });
+    }
+  }
+  // type === "no_restock" → restockItems stays empty on purpose
+
+  const stage =
+    type === "full"    ? "returned" :
+    type === "partial" ? "partial_return" :
+    "returned_no_restock";
+  const now = new Date().toISOString();
+
+  // Track pre-restock inventory so we can fire "back in stock" alerts on 0→>0
+  const prevInventory = new Map<string, number>();
+  for (const it of restockItems) {
+    const v = db.prepare(`SELECT inventory FROM variants WHERE id=?`).get(it.variantId) as { inventory: number } | undefined;
+    if (v) prevInventory.set(it.variantId, v.inventory ?? 0);
+  }
+
+  // Atomic: restock + order update together (all-or-nothing)
+  const applyReturn = db.transaction(() => {
+    for (const it of restockItems) {
+      db.prepare(`UPDATE variants SET inventory = inventory + ? WHERE id=?`).run(it.quantity, it.variantId);
+    }
+    if (type === "partial") {
+      db.prepare(`UPDATE orders SET delivery_stage=?, returned_items=?, updated_at=? WHERE id=?`)
+        .run(stage, JSON.stringify(restockItems), now, id);
+    } else {
+      db.prepare(`UPDATE orders SET delivery_stage=?, status='cancelled', returned_items=?, updated_at=? WHERE id=?`)
+        .run(stage, JSON.stringify(restockItems), now, id);
+    }
+  });
+  try {
+    applyReturn();
+  } catch {
+    res.status(500).json({ data: null, error: "Return processing failed" }); return;
+  }
+
+  // Back-in-stock alerts for variants that went 0 → >0 (non-fatal)
+  for (const it of restockItems) {
+    const prev = prevInventory.get(it.variantId) ?? 0;
+    if (prev <= 0 && it.quantity > 0) void notifyRestock(it.variantId).catch(() => {});
+  }
+
+  const orderNum = existing["order_number"] as string;
+  logActivity("order.returned", "Orders", "order", id, `Order ${orderNum}`, "Admin",
+    { orderNumber: orderNum, returnType: type, restocked: restockItems });
+
+  // ── Notify the customer ──
+  const templateKey = type === "partial" ? "stage:partial_return" : "stage:returned";
+  const customerId  = existing["customer_id"] as string | null;
+  const copy        = getTemplate(templateKey, buildVars(id, orderNum, customerId));
+
+  // Live Activity: the widget only knows the base stages — map returns onto them
+  const laStage       = type === "partial" ? "delivered" : "cancelled";
+  const deliveryType  = normalizeDeliveryType(existing["delivery_type"]);
+  const laPushToken   = existing["live_activity_push_token"] as string | null;
+  const ptsToken      = existing["live_activity_pts_token"] as string | null;
+  const isPaid        = (existing["financial_status"] as string | null) === "paid";
+  const GONE = new Set(["BadDeviceToken", "Gone", "Unregistered", "ExpiredToken"]);
+  let apnsResult: { ok: boolean; error?: string } = { ok: true };
+  let activityWasGone = !laPushToken;
+
+  if (laPushToken) {
+    try {
+      apnsResult = await sendLiveActivityPush(laPushToken, { stage: laStage as any, message: "", isPaid, deliveryType });
+    } catch (e: unknown) {
+      apnsResult = { ok: false, error: String(e) };
+    }
+    if (!apnsResult.ok && GONE.has(apnsResult.error ?? "")) {
+      activityWasGone = true;
+      db.prepare(`UPDATE orders SET live_activity_push_token=NULL, updated_at=? WHERE id=?`).run(now, id);
+    }
+  }
+  if (activityWasGone && ptsToken) {
+    try {
+      const customerName = `${existing["first_name"] ?? ""} ${existing["last_name"] ?? ""}`.trim();
+      const startResult = await sendLiveActivityStartPush(ptsToken, {
+        orderNumber:  orderNum,
+        customerName,
+        stage:        laStage as any,
+        message:      "",
+        priceText:    formatIQD(Number(existing["total"] ?? 0)),
+        isPaid,
+        deliveryType,
+        alertTitle:   copy?.title ?? "Mora",
+        alertBody:    copy?.body ?? "",
+      });
+      if (startResult.ok) apnsResult = startResult;
+    } catch { /* non-fatal */ }
+  }
+
+  // Push + in-app notification (returns always deep-link to support chat)
+  if (customerId && copy) {
+    try {
+      await doSendNotification({
+        title: copy.title,
+        body: copy.body,
+        url: "/(tabs)/chat",
+        targetAll: false,
+        customerIds: [customerId],
+      });
+    } catch { /* non-fatal */ }
+  }
+
+  const order = parseOne(db.prepare(`SELECT * FROM orders WHERE id=?`).get(id) as Row | undefined);
+  res.json({
+    data: { order, restocked: restockItems, apns: apnsResult, hasPushToken: !!laPushToken },
+    error: null,
+  });
 });
 
 // ─── Admin: Order notes (internal log) ───────────────────────────────────────

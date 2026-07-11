@@ -39,6 +39,8 @@ type FullAddress = {
 
 function statusColor(status: string) {
   if (status === "completed" || status === "delivered") return "#22C55E";
+  if (status === "partial_return") return "#EA580C";
+  if (status === "returned" || status === "returned_no_restock") return "#E11D48";
   if (status === "processing") return PRIMARY;
   if (status === "cancelled") return "#EF4444";
   return "#F59E0B";
@@ -55,6 +57,9 @@ function statusLabel(status: string, isAr: boolean) {
     preparing:  { en: "Preparing",  ar: "يتم التجهيز" },
     shipping:   { en: "Shipping",   ar: "يتم الشحن" },
     issue:      { en: "Issue",      ar: "مشكلة" },
+    returned:            { en: "Returned",            ar: "تم الإرجاع" },
+    partial_return:      { en: "Delivered (partial)", ar: "تم التوصيل (جزئي)" },
+    returned_no_restock: { en: "Returned",            ar: "تم الإرجاع" },
   };
   const entry = map[status];
   if (!entry) return status;
@@ -142,7 +147,10 @@ export default function OrderDetailScreen() {
   const addr        = (order?.shippingAddress ?? {}) as FullAddress;
   const displayName = addr.fullName || [addr.firstName, addr.lastName].filter(Boolean).join(" ") || "—";
 
-  const isDelivered    = (order as any)?.deliveryStage === "delivered";
+  const deliveryStage  = (order as any)?.deliveryStage as string | undefined;
+  const isPartialReturn = deliveryStage === "partial_return";
+  // Partial returns still count as delivered — the customer can rate the order
+  const isDelivered    = deliveryStage === "delivered" || isPartialReturn;
   const existingRating: number = (order as any)?.reviewRating ?? 0;
   const existingText: string   = (order as any)?.reviewText ?? "";
   const hasReview      = submitted || existingRating > 0;
@@ -358,6 +366,41 @@ export default function OrderDetailScreen() {
             <Text style={[st.summaryTotal, { color: PRIMARY }]}>{formatIQD(order.total)}</Text>
           </View>
         </View>
+
+        {/* ── Partial return notice + contact us ── */}
+        {isPartialReturn && (
+          <View style={{ marginHorizontal: 16, marginTop: 20, borderRadius: 16, borderWidth: 1, borderColor: "#EA580C40", backgroundColor: isDark ? "#EA580C18" : "#EA580C12", padding: 16, gap: 12 }}>
+            <View style={{ flexDirection: isAr ? "row-reverse" : "row", alignItems: "center", gap: 10 }}>
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(234,88,12,0.18)", alignItems: "center", justifyContent: "center" }}>
+                <Feather name="rotate-ccw" size={17} color="#EA580C" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: "#EA580C", textAlign: isAr ? "right" : "left" }}>
+                  {isAr ? "تم إرجاع جزء من الطلب" : "Part of this order was returned"}
+                </Text>
+                <Text style={{ fontSize: 11, color: sub, marginTop: 2, lineHeight: 16, textAlign: isAr ? "right" : "left" }}>
+                  {isAr
+                    ? "إذا شفت أي خلل أو مشكلة بالقطع، تواصل ويانا ونساعدك"
+                    : "If anything is wrong with your items, contact us and we'll help"}
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              onPress={() => router.push("/(tabs)/chat" as any)}
+              style={({ pressed }) => ({
+                flexDirection: isAr ? "row-reverse" : "row",
+                alignItems: "center", justifyContent: "center", gap: 8,
+                backgroundColor: "#EA580C", borderRadius: 12, paddingVertical: 12,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Feather name="message-circle" size={16} color="#fff" />
+              <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>
+                {isAr ? "تواصل معنا" : "Contact Us"}
+              </Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* ── Review section — only after delivery ── */}
         {isDelivered && (

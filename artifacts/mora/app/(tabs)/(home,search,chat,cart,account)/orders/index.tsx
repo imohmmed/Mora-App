@@ -35,7 +35,8 @@ function statusColor(s: string) {
   const l = s.toLowerCase();
   if (l === "delivered" || l === "fulfilled") return "#43A047";
   if (l === "shipped" || l === "in_transit" || l === "shipping" || l === "preparing") return PRIMARY;
-  if (l === "cancelled" || l === "refunded") return "#E53935";
+  if (l === "cancelled" || l === "refunded" || l === "returned" || l === "returned_no_restock") return "#E53935";
+  if (l === "partial_return") return "#EA580C";
   if (l === "delivered") return "#43A047";
   return "#888";
 }
@@ -51,6 +52,9 @@ function stageLabel(stage: string | undefined, status: string, isAr: boolean) {
     pending:    { ar: "قيد الانتظار",   en: "Pending" },
     processing: { ar: "يجري التجهيز",   en: "Processing" },
     completed:  { ar: "مكتمل",          en: "Completed" },
+    returned:            { ar: "تم الإرجاع",           en: "Returned" },
+    partial_return:      { ar: "تم التوصيل (جزئي)",    en: "Delivered (partial)" },
+    returned_no_restock: { ar: "تم الإرجاع",           en: "Returned" },
   };
   const key = stage || status;
   const entry = map[key];

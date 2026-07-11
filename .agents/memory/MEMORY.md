@@ -33,6 +33,7 @@
 - [Restock notifications](restock-notifications.md) — OOS "notify me" → auto-push on 0→>0; variant-sync must migrate restock_requests.variant_id (new ids) or alerts orphan; cart:abandoned is template-only
 - [Checkout keyboard avoidance](checkout-keyboard-avoidance.md) — sticky-footer forms: plain ScrollView + automaticallyAdjustKeyboardInsets(iOS)+keyboardShouldPersistTaps, NOT screen-wrapping KeyboardAvoidingView
 - [Bilingual option names](option-definitions-bilingual.md) — option_definitions JSON stores {nameEn,nameAr,values} (passthrough); display by lang w/ fallback; admin 2 inputs + legacy name migration
+- [Returns system](returns-system.md) — 3 terminal return stages with distinct inventory rules; never bulk-change into/out of them; partial_return still counts as delivered
 - [Search collections + trending](search-collections-trending.md) — search-page BROWSE grid + trending chips driven by content_sections keys; admin-edited; browse nav via collection/[slug] bt/bttl params
 - [RTL horizontal scroll carousels](rtl-horizontal-scroll.md) — never use `inverted`; use row-reverse + scroll-to-end so item[0] shows on right without mirroring content
 - [Collection filter/sort](collection-filter-sort.md) — price/color/tag filter + bestselling/price/newest sort done client-side over fetched product list; color chips use optionDefinitions colorEntries hex

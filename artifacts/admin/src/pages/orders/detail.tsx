@@ -12,8 +12,11 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, User, CreditCard, Truck, Calendar, CheckCircle2, Package,
   Home, AlertTriangle, XCircle, Banknote, Phone, MapPin, Loader2,
-  Instagram, StickyNote, Send, Clock,
+  Instagram, StickyNote, Send, Clock, RotateCcw, PackageX, Minus, Plus,
 } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import { fmt } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { formatIQD } from "@/lib/format";
@@ -57,6 +60,12 @@ export default function OrderDetail() {
   const { data: response, isLoading } = useAdminGetOrder(id!);
   const updateOrder = useAdminUpdateOrder();
   const [stageLoading, setStageLoading] = useState<string | null>(null);
+
+  // Returns
+  const [returnOpen, setReturnOpen]       = useState(false);
+  const [returnMode, setReturnMode]       = useState<"menu" | "full" | "partial" | "no_restock">("menu");
+  const [returnQty, setReturnQty]         = useState<Record<string, number>>({});
+  const [returnLoading, setReturnLoading] = useState(false);
 
   // Admin notes
   const [notes, setNotes]         = useState<OrderNote[]>([]);
@@ -143,6 +152,48 @@ export default function OrderDetail() {
     }
   };
 
+  const openReturnDialog = () => {
+    setReturnMode("menu");
+    setReturnQty({});
+    setReturnOpen(true);
+  };
+
+  const doReturn = async (type: "full" | "partial" | "no_restock") => {
+    if (!id || returnLoading) return;
+    let items: { variantId: string; quantity: number }[] | undefined;
+    if (type === "partial") {
+      items = Object.entries(returnQty)
+        .filter(([, q]) => q > 0)
+        .map(([variantId, quantity]) => ({ variantId, quantity }));
+      if (items.length === 0) return;
+    }
+    setReturnLoading(true);
+    try {
+      const res = await adminFetch(`/admin/orders/${id}/return`, {
+        method: "POST",
+        body: JSON.stringify({ type, ...(items ? { items } : {}) }),
+      });
+      if (res.error) {
+        toast({ title: t("orders.return.error"), description: String(res.error), variant: "destructive" });
+      } else {
+        const restocked = ((res.data as any)?.restocked ?? []) as { quantity: number }[];
+        const totalQty  = restocked.reduce((n, r) => n + r.quantity, 0);
+        toast({
+          title: t("orders.return.success"),
+          description: type === "no_restock"
+            ? t("orders.return.successNoRestock")
+            : t("orders.return.successRestocked", { n: totalQty }),
+        });
+        setReturnOpen(false);
+        refresh();
+      }
+    } catch {
+      toast({ title: t("orders.return.error"), variant: "destructive" });
+    } finally {
+      setReturnLoading(false);
+    }
+  };
+
   if (isLoading) return <div className="p-6 md:p-8 text-muted-foreground">{t("orders.loadingOrder")}</div>;
   if (!order) return <div className="p-6 md:p-8">{t("orders.notFound")}</div>;
 
@@ -153,8 +204,12 @@ export default function OrderDetail() {
   const currentIndex         = stages.findIndex((s) => s.key === stage);
   const isIssue              = stage === "issue";
   const isCancelled          = stage === "cancelled";
-  const isException          = isIssue || isCancelled;
-  const isDelivered          = stage === "delivered";
+  const isFullReturn         = stage === "returned";
+  const isPartialReturn      = stage === "partial_return";
+  const isNoRestockReturn    = stage === "returned_no_restock";
+  const isReturned           = isFullReturn || isPartialReturn || isNoRestockReturn;
+  const isException          = isIssue || isCancelled || isReturned;
+  const isDelivered          = stage === "delivered" || isPartialReturn;
 
   const payMethod: string = order.paymentMethod || "cod";
   const isOnline          = payMethod === "online";
@@ -169,6 +224,12 @@ export default function OrderDetail() {
     ? { label: t("orders.badge.cancelled"), cls: "bg-red-100 text-red-700 hover:bg-red-100" }
     : isIssue
     ? { label: t("orders.badge.issue"),     cls: "bg-amber-100 text-amber-700 hover:bg-amber-100" }
+    : isFullReturn
+    ? { label: t("orders.stage.returned"), cls: "bg-rose-100 text-rose-700 hover:bg-rose-100" }
+    : isPartialReturn
+    ? { label: t("orders.stage.partial_return"), cls: "bg-orange-100 text-orange-700 hover:bg-orange-100" }
+    : isNoRestockReturn
+    ? { label: t("orders.stage.returned_no_restock"), cls: "bg-stone-200 text-stone-700 hover:bg-stone-200" }
     : { label: t(stages[Math.max(0, currentIndex)]?.labelKey ?? "orders.stage.confirmed"), cls: "" };
 
   const deliveryLabel =
@@ -304,14 +365,32 @@ export default function OrderDetail() {
           {isException && (
             <div
               className="flex items-center gap-3 rounded-xl p-4 text-white"
-              style={{ backgroundColor: isCancelled ? "#DC2626" : "#D97706" }}
+              style={{
+                backgroundColor:
+                  isFullReturn      ? "#E11D48" :
+                  isPartialReturn   ? "#EA580C" :
+                  isNoRestockReturn ? "#57534E" :
+                  isCancelled       ? "#DC2626" : "#D97706",
+              }}
             >
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
-                {isCancelled ? <XCircle className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+                {isReturned
+                  ? (isNoRestockReturn ? <PackageX className="w-6 h-6" /> : <RotateCcw className="w-6 h-6" />)
+                  : isCancelled ? <XCircle className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
               </div>
               <div>
-                <p className="font-bold">{isCancelled ? t("orders.cancelledTitle") : t("orders.issueTitle")}</p>
-                <p className="text-sm text-white/85">{t("orders.exceptionDesc")}</p>
+                <p className="font-bold">
+                  {isFullReturn      ? t("orders.return.bannerFull")
+                  : isPartialReturn   ? t("orders.return.bannerPartial")
+                  : isNoRestockReturn ? t("orders.return.bannerNoRestock")
+                  : isCancelled       ? t("orders.cancelledTitle") : t("orders.issueTitle")}
+                </p>
+                <p className="text-sm text-white/85">
+                  {isFullReturn      ? t("orders.return.bannerFullDesc")
+                  : isPartialReturn   ? t("orders.return.bannerPartialDesc")
+                  : isNoRestockReturn ? t("orders.return.bannerNoRestockDesc")
+                  : t("orders.exceptionDesc")}
+                </p>
               </div>
             </div>
           )}
@@ -358,6 +437,26 @@ export default function OrderDetail() {
               </Button>
             </div>
           </div>
+
+          {/* ── Returns ── */}
+          {!isReturned && (
+            <>
+              <Separator />
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">{t("orders.return.hint")}</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!!stageLoading}
+                  onClick={openReturnDialog}
+                  className="text-rose-600 border-rose-300 hover:bg-rose-50"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 me-1.5" />
+                  {t("orders.return.button")}
+                </Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -562,6 +661,151 @@ export default function OrderDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ══════════════════════════════════════════════════════════
+          Return dialog — 3 options (full / partial / no restock)
+      ══════════════════════════════════════════════════════════ */}
+      <Dialog open={returnOpen} onOpenChange={(o) => { if (!returnLoading) setReturnOpen(o); }}>
+        <DialogContent className="sm:max-w-md">
+          {returnMode === "menu" && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <RotateCcw className="w-5 h-5 text-rose-600" />
+                  {t("orders.return.title")}
+                </DialogTitle>
+                <DialogDescription>{t("orders.return.desc")}</DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-3 py-2">
+                <button
+                  onClick={() => setReturnMode("full")}
+                  className="flex items-center gap-3 rounded-xl border-2 border-rose-200 bg-rose-50 hover:bg-rose-100 p-4 text-start transition-colors"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-600 text-white">
+                    <RotateCcw className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-rose-700">{t("orders.return.fullTitle")}</p>
+                    <p className="text-xs text-rose-600/80 mt-0.5">{t("orders.return.fullDesc")}</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setReturnMode("partial")}
+                  className="flex items-center gap-3 rounded-xl border-2 border-orange-200 bg-orange-50 hover:bg-orange-100 p-4 text-start transition-colors"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white">
+                    <Package className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-orange-700">{t("orders.return.partialTitle")}</p>
+                    <p className="text-xs text-orange-600/80 mt-0.5">{t("orders.return.partialDesc")}</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setReturnMode("no_restock")}
+                  className="flex items-center gap-3 rounded-xl border-2 border-stone-300 bg-stone-100 hover:bg-stone-200 p-4 text-start transition-colors"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-stone-600 text-white">
+                    <PackageX className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-stone-700">{t("orders.return.noRestockTitle")}</p>
+                    <p className="text-xs text-stone-600/80 mt-0.5">{t("orders.return.noRestockDesc")}</p>
+                  </div>
+                </button>
+              </div>
+            </>
+          )}
+
+          {(returnMode === "full" || returnMode === "no_restock") && (
+            <>
+              <DialogHeader>
+                <DialogTitle className={returnMode === "full" ? "text-rose-700" : "text-stone-700"}>
+                  {returnMode === "full" ? t("orders.return.fullTitle") : t("orders.return.noRestockTitle")}
+                </DialogTitle>
+                <DialogDescription>
+                  {returnMode === "full"
+                    ? t("orders.return.fullConfirm", { n: order.orderNumber })
+                    : t("orders.return.noRestockConfirm", { n: order.orderNumber })}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button variant="outline" disabled={returnLoading} onClick={() => setReturnMode("menu")}>
+                  {t("action.back")}
+                </Button>
+                <Button
+                  disabled={returnLoading}
+                  onClick={() => doReturn(returnMode)}
+                  className={returnMode === "full" ? "bg-rose-600 hover:bg-rose-700" : "bg-stone-600 hover:bg-stone-700"}
+                >
+                  {returnLoading && <Loader2 className="w-4 h-4 me-2 animate-spin" />}
+                  {t("orders.return.confirmBtn")}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {returnMode === "partial" && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-orange-700">{t("orders.return.partialTitle")}</DialogTitle>
+                <DialogDescription>{t("orders.return.partialPick")}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-1 max-h-72 overflow-y-auto">
+                {(order.lineItems ?? []).filter((it: any) => it.variantId).map((item: any, i: number) => {
+                  const qty = returnQty[item.variantId] ?? 0;
+                  return (
+                    <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
+                      {item.image ? (
+                        <img src={item.image} alt="" className="w-10 h-10 rounded-md object-cover border shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 bg-muted rounded-md border shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{item.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {item.variantTitle && item.variantTitle !== "Default Title" ? `${item.variantTitle} · ` : ""}
+                          {t("orders.return.ordered", { n: item.quantity })}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          size="icon" variant="outline" className="h-7 w-7"
+                          disabled={qty <= 0}
+                          onClick={() => setReturnQty((p) => ({ ...p, [item.variantId]: Math.max(0, qty - 1) }))}
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </Button>
+                        <span className={cn("w-6 text-center text-sm font-bold tabular-nums", qty > 0 && "text-orange-600")}>{qty}</span>
+                        <Button
+                          size="icon" variant="outline" className="h-7 w-7"
+                          disabled={qty >= item.quantity}
+                          onClick={() => setReturnQty((p) => ({ ...p, [item.variantId]: Math.min(item.quantity, qty + 1) }))}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button variant="outline" disabled={returnLoading} onClick={() => setReturnMode("menu")}>
+                  {t("action.back")}
+                </Button>
+                <Button
+                  disabled={returnLoading || Object.values(returnQty).every((q) => !q)}
+                  onClick={() => doReturn("partial")}
+                  className="bg-orange-500 hover:bg-orange-600"
+                >
+                  {returnLoading && <Loader2 className="w-4 h-4 me-2 animate-spin" />}
+                  {t("orders.return.partialConfirmBtn", { n: Object.values(returnQty).reduce((a, b) => a + b, 0) })}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   );
 }

@@ -22,6 +22,7 @@ import { PageContainer, PageHeader, EmptyState } from "@/components/ui/page-prim
 import {
   Search, Inbox, ChevronLeft, ChevronRight, ArrowUpDown, Trash2,
   Printer, CheckCircle2, Package, Truck, Home, AlertTriangle, XCircle, Bell,
+  RotateCcw, PackageX,
 } from "lucide-react";
 import { fmt } from "@/lib/date";
 import { formatIQD } from "@/lib/format";
@@ -32,7 +33,9 @@ import { useT } from "@/i18n/LanguageContext";
 
 const PAGE_SIZE = 20;
 
-type StageFilter = "all" | "confirmed" | "preparing" | "shipping" | "delivered" | "issue" | "cancelled";
+type StageFilter =
+  | "all" | "confirmed" | "preparing" | "shipping" | "delivered" | "issue" | "cancelled"
+  | "returned" | "partial_return" | "returned_no_restock";
 
 const STAGE_TABS: { key: StageFilter; labelKey: string; icon?: React.ComponentType<{ className?: string }> }[] = [
   { key: "all",       labelKey: "common.all" },
@@ -42,7 +45,13 @@ const STAGE_TABS: { key: StageFilter; labelKey: string; icon?: React.ComponentTy
   { key: "delivered", labelKey: "orders.stage.delivered", icon: Home },
   { key: "issue",     labelKey: "orders.stage.issue",     icon: AlertTriangle },
   { key: "cancelled", labelKey: "orders.stage.cancelled", icon: XCircle },
+  { key: "returned",            labelKey: "orders.stage.returned",            icon: RotateCcw },
+  { key: "partial_return",      labelKey: "orders.stage.partial_return",      icon: RotateCcw },
+  { key: "returned_no_restock", labelKey: "orders.stage.returned_no_restock", icon: PackageX },
 ];
+
+// Return stages are terminal — item quantities matter, so they can't be set via bulk change
+const BULK_EXCLUDED_STAGES = new Set<StageFilter>(["all", "returned", "partial_return", "returned_no_restock"]);
 
 const STAGE_COLORS: Record<string, string> = {
   confirmed: "bg-blue-100 text-blue-700 border-blue-200",
@@ -51,6 +60,9 @@ const STAGE_COLORS: Record<string, string> = {
   delivered: "bg-green-100 text-green-700 border-green-200",
   issue:     "bg-red-100 text-red-700 border-red-200",
   cancelled: "bg-gray-100 text-gray-600 border-gray-200",
+  returned:            "bg-rose-100 text-rose-700 border-rose-200",
+  partial_return:      "bg-orange-100 text-orange-700 border-orange-200",
+  returned_no_restock: "bg-stone-200 text-stone-700 border-stone-300",
 };
 
 // ── Receipt printing (print dialog → save as PDF) ─────────────────────────────
@@ -337,7 +349,7 @@ export default function Orders() {
                 <SelectValue placeholder={t("orders.bulk.changeStage")} />
               </SelectTrigger>
               <SelectContent>
-                {STAGE_TABS.filter((s) => s.key !== "all").map(({ key, labelKey }) => (
+                {STAGE_TABS.filter((s) => !BULK_EXCLUDED_STAGES.has(s.key)).map(({ key, labelKey }) => (
                   <SelectItem key={key} value={key}>{t(labelKey as any)}</SelectItem>
                 ))}
               </SelectContent>

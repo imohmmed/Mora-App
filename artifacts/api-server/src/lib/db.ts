@@ -1124,6 +1124,7 @@ runMigration(`ALTER TABLE orders ADD COLUMN discount_code TEXT`);
 runMigration(`ALTER TABLE orders ADD COLUMN discount_amount REAL NOT NULL DEFAULT 0`);
 runMigration(`ALTER TABLE orders ADD COLUMN review_rating INTEGER`);
 runMigration(`ALTER TABLE orders ADD COLUMN review_text TEXT`);
+runMigration(`ALTER TABLE orders ADD COLUMN returned_items TEXT`);
 
 // ─── In-app notifications per customer ────────────────────────────────────────
 db.exec(`
