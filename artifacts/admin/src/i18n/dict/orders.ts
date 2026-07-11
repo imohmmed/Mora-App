@@ -41,6 +41,14 @@ export const orders = {
     "orders.stage.delivered": "تم التوصيل",
     "orders.stage.issue": "مشكلة",
     "orders.stage.cancel": "إلغاء الطلب",
+    "orders.stage.cancelled": "ملغى",
+
+    "orders.bulk.selected": "{n} طلب محدد",
+    "orders.bulk.changeStage": "تغيير الحالة إلى...",
+    "orders.bulk.apply": "تطبيق",
+    "orders.bulk.print": "طباعة الوصولات",
+    "orders.bulk.stageSuccess": "تم تحديث {n} طلب",
+    "orders.bulk.stagePartial": "تم تحديث {ok} — فشل {fail}",
 
     "orders.statusTitle": "حالة الطلب",
     "orders.delivery.standard": "توصيل عادي",
@@ -128,6 +136,14 @@ export const orders = {
     "orders.stage.delivered": "Delivered",
     "orders.stage.issue": "Issue",
     "orders.stage.cancel": "Cancel order",
+    "orders.stage.cancelled": "Cancelled",
+
+    "orders.bulk.selected": "{n} orders selected",
+    "orders.bulk.changeStage": "Change status to...",
+    "orders.bulk.apply": "Apply",
+    "orders.bulk.print": "Print Receipts",
+    "orders.bulk.stageSuccess": "{n} orders updated",
+    "orders.bulk.stagePartial": "{ok} updated — {fail} failed",
 
     "orders.statusTitle": "Order Status",
     "orders.delivery.standard": "Standard Delivery",
