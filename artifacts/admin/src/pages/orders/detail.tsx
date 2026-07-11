@@ -646,6 +646,19 @@ export default function OrderDetail() {
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitNote();
               }}
+              onFocus={(e) => {
+                // On mobile the on-screen keyboard covers this bottom-of-page
+                // textarea — scroll it above the keyboard once it opens.
+                const el = e.currentTarget;
+                const scroll = () => el.scrollIntoView({ block: "center", behavior: "smooth" });
+                setTimeout(scroll, 300);
+                const vv = window.visualViewport;
+                if (vv) {
+                  const onResize = () => { scroll(); vv.removeEventListener("resize", onResize); };
+                  vv.addEventListener("resize", onResize);
+                  setTimeout(() => vv.removeEventListener("resize", onResize), 1500);
+                }
+              }}
             />
             <div className="flex justify-end">
               <Button
