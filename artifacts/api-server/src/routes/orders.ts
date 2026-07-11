@@ -382,7 +382,20 @@ router.get("/admin/orders", (req, res) => {
 router.get("/admin/orders/:id", (req, res) => {
   const order = parseOne(db.prepare(`SELECT * FROM orders WHERE id=?`).get(req.params["id"]) as Row | undefined);
   if (!order) { res.status(404).json({ data: null, meta: {}, error: "Order not found" }); return; }
-  res.json({ data: order, meta: {}, error: null });
+
+  const xrRow = db.prepare(
+    `SELECT id, type, status, return_items, new_items FROM exchange_requests WHERE order_id=? ORDER BY created_at DESC LIMIT 1`
+  ).get(req.params["id"]) as Row | undefined;
+
+  const exchangeRequest = xrRow ? {
+    id:          xrRow["id"],
+    type:        xrRow["type"],
+    status:      xrRow["status"],
+    returnItems: (() => { try { return JSON.parse((xrRow["return_items"] as string) || "[]"); } catch { return []; } })(),
+    newItems:    (() => { try { return JSON.parse((xrRow["new_items"] as string) || "[]"); } catch { return []; } })(),
+  } : null;
+
+  res.json({ data: { ...(order as object), exchangeRequest }, meta: {}, error: null });
 });
 
 router.post("/admin/orders", (req, res) => {

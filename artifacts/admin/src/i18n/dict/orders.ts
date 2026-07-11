@@ -134,6 +134,10 @@ export const orders = {
     "orders.changeStageHint": "تغيير الحالة (يُحدّث Live Activity ويُشعر العميل فوراً)",
 
     "orders.items": "أصناف الطلب",
+    "orders.xr.exchangeBadge": "طلب استبدال",
+    "orders.xr.refundBadge": "طلب استرجاع",
+    "orders.xr.returnItemsLabel": "القطع المرجعة",
+    "orders.xr.newItemsLabel": "القطع الجديدة (الاستبدال)",
     "orders.subtotal": "المجموع الفرعي",
     "orders.shipping": "الشحن",
     "orders.free": "مجاني",
@@ -317,6 +321,10 @@ export const orders = {
     "orders.changeStageHint": "Change status (updates Live Activity and notifies the customer instantly)",
 
     "orders.items": "Order Items",
+    "orders.xr.exchangeBadge": "Exchange Request",
+    "orders.xr.refundBadge": "Refund Request",
+    "orders.xr.returnItemsLabel": "Items Being Returned",
+    "orders.xr.newItemsLabel": "New Items (Exchange)",
     "orders.subtotal": "Subtotal",
     "orders.shipping": "Shipping",
     "orders.free": "Free",

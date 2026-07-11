@@ -13,6 +13,7 @@ import {
   ArrowLeft, User, CreditCard, Truck, Calendar, CheckCircle2, Package,
   Home, AlertTriangle, XCircle, Banknote, Phone, MapPin, Loader2,
   Instagram, StickyNote, Send, Clock, RotateCcw, PackageX, Minus, Plus,
+  ArrowLeftRight, RefreshCcw,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -463,60 +464,147 @@ export default function OrderDetail() {
       {/* ══════════════════════════════════════════════════════════
           SECTION 3 — Order Items
       ══════════════════════════════════════════════════════════ */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("orders.items")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {order.lineItems?.map((item: any, i: number) => (
-              <div key={i} className="flex justify-between items-center gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  {item.image ? (
-                    <img src={item.image} alt="" className="w-12 h-12 rounded-md object-cover border shrink-0" />
-                  ) : (
-                    <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center border text-xs text-muted-foreground shrink-0">
-                      {item.quantity}×
+      {(() => {
+        const xr = order.exchangeRequest as { type: "exchange" | "refund"; status: string; returnItems: any[]; newItems: any[] } | null | undefined;
+        const isExchange = xr?.type === "exchange";
+        const isRefund   = xr?.type === "refund";
+        const cardBorder = isExchange ? "border-blue-300" : isRefund ? "border-red-300" : "";
+        const cardBg     = isExchange ? "bg-blue-50 dark:bg-blue-950/30" : isRefund ? "bg-red-50 dark:bg-red-950/30" : "";
+        return (
+          <Card className={cn(cardBorder, cardBg)}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between gap-2">
+                <span>{t("orders.items")}</span>
+                {isExchange && (
+                  <span className="flex items-center gap-1.5 text-sm font-semibold text-blue-700 bg-blue-100 border border-blue-200 rounded-full px-3 py-0.5">
+                    <ArrowLeftRight className="w-3.5 h-3.5 shrink-0" />
+                    {t("orders.xr.exchangeBadge")}
+                  </span>
+                )}
+                {isRefund && (
+                  <span className="flex items-center gap-1.5 text-sm font-semibold text-red-700 bg-red-100 border border-red-200 rounded-full px-3 py-0.5">
+                    <RefreshCcw className="w-3.5 h-3.5 shrink-0" />
+                    {t("orders.xr.refundBadge")}
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Original order items */}
+              <div className="space-y-3">
+                {order.lineItems?.map((item: any, i: number) => (
+                  <div key={i} className="flex justify-between items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {item.image ? (
+                        <img src={item.image} alt="" className="w-12 h-12 rounded-md object-cover border shrink-0" />
+                      ) : (
+                        <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center border text-xs text-muted-foreground shrink-0">
+                          {item.quantity}×
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{item.title}</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {[item.size, item.color].filter(Boolean).join(" · ") || item.variantTitle || "—"}
+                          {" · ×"}{item.quantity}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="font-medium whitespace-nowrap tabular-nums shrink-0">
+                      {formatIQD((item.price || 0) * (item.quantity || 1))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Exchange / Refund request items */}
+              {xr && (xr.returnItems?.length > 0 || xr.newItems?.length > 0) && (
+                <>
+                  <Separator className={isExchange ? "bg-blue-200" : "bg-red-200"} />
+
+                  {/* Items being returned */}
+                  {xr.returnItems?.length > 0 && (
+                    <div>
+                      <p className={cn("text-xs font-semibold mb-2", isExchange ? "text-blue-700" : "text-red-700")}>
+                        {t("orders.xr.returnItemsLabel")}
+                      </p>
+                      <div className="space-y-2">
+                        {xr.returnItems.map((it: any, i: number) => (
+                          <div key={i} className={cn("flex items-center gap-3 rounded-lg border p-2", isExchange ? "border-blue-200 bg-blue-50/60 dark:bg-blue-900/20" : "border-red-200 bg-red-50/60 dark:bg-red-900/20")}>
+                            {it.image ? (
+                              <img src={it.image} alt="" className="h-12 w-10 rounded object-cover shrink-0" />
+                            ) : (
+                              <div className="h-12 w-10 rounded bg-muted shrink-0" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">{it.title}</p>
+                              {it.variantTitle ? <p className="text-xs text-muted-foreground">{it.variantTitle}</p> : null}
+                            </div>
+                            <div className="text-xs text-muted-foreground whitespace-nowrap">×{it.quantity ?? 1}</div>
+                            <div className="text-sm font-semibold whitespace-nowrap tabular-nums">
+                              {formatIQD((it.price ?? 0) * (it.quantity ?? 1))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{item.title}</p>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {[item.size, item.color].filter(Boolean).join(" · ") || item.variantTitle || "—"}
-                      {" · ×"}{item.quantity}
-                    </p>
-                  </div>
-                </div>
-                <div className="font-medium whitespace-nowrap tabular-nums shrink-0">
-                  {formatIQD((item.price || 0) * (item.quantity || 1))}
-                </div>
+
+                  {/* New items (exchange only) */}
+                  {xr.newItems?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold mb-2 text-blue-700">
+                        {t("orders.xr.newItemsLabel")}
+                      </p>
+                      <div className="space-y-2">
+                        {xr.newItems.map((it: any, i: number) => (
+                          <div key={i} className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50/60 dark:bg-blue-900/20 p-2">
+                            {it.image ? (
+                              <img src={it.image} alt="" className="h-12 w-10 rounded object-cover shrink-0" />
+                            ) : (
+                              <div className="h-12 w-10 rounded bg-muted shrink-0" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">{it.title}</p>
+                              {it.variantTitle ? <p className="text-xs text-muted-foreground">{it.variantTitle}</p> : null}
+                            </div>
+                            <div className="text-xs text-muted-foreground whitespace-nowrap">×{it.quantity ?? 1}</div>
+                            <div className="text-sm font-semibold whitespace-nowrap tabular-nums">
+                              {formatIQD((it.price ?? 0) * (it.quantity ?? 1))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+            <Separator />
+            <CardFooter className="flex-col items-stretch p-6 gap-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t("orders.subtotal")}</span>
+                <span className="tabular-nums">{formatIQD(order.subtotal)}</span>
               </div>
-            ))}
-          </div>
-        </CardContent>
-        <Separator />
-        <CardFooter className="flex-col items-stretch p-6 gap-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{t("orders.subtotal")}</span>
-            <span className="tabular-nums">{formatIQD(order.subtotal)}</span>
-          </div>
-          {order.discountAmount > 0 && (
-            <div className="flex justify-between text-sm text-green-700">
-              <span>{t("orders.discount")}{order.discountCode ? ` (${order.discountCode})` : ""}</span>
-              <span className="tabular-nums">-{formatIQD(order.discountAmount)}</span>
-            </div>
-          )}
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{t("orders.shipping")}</span>
-            <span className="tabular-nums">{order.shipping ? formatIQD(order.shipping) : t("orders.free")}</span>
-          </div>
-          <Separator className="my-2" />
-          <div className="flex justify-between font-bold text-lg">
-            <span>{t("common.total")}</span>
-            <span className="tabular-nums">{formatIQD(order.total)}</span>
-          </div>
-        </CardFooter>
-      </Card>
+              {order.discountAmount > 0 && (
+                <div className="flex justify-between text-sm text-green-700">
+                  <span>{t("orders.discount")}{order.discountCode ? ` (${order.discountCode})` : ""}</span>
+                  <span className="tabular-nums">-{formatIQD(order.discountAmount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t("orders.shipping")}</span>
+                <span className="tabular-nums">{order.shipping ? formatIQD(order.shipping) : t("orders.free")}</span>
+              </div>
+              <Separator className="my-2" />
+              <div className="flex justify-between font-bold text-lg">
+                <span>{t("common.total")}</span>
+                <span className="tabular-nums">{formatIQD(order.total)}</span>
+              </div>
+            </CardFooter>
+          </Card>
+        );
+      })()}
 
       {/* ══════════════════════════════════════════════════════════
           SECTION 4 — Payment
