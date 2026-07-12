@@ -307,7 +307,8 @@ function AlsoBoughtSection({ lang, isDark }: { lang: string; isDark: boolean }) 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[ab.scroll, isAr && { flexDirection: "row-reverse" }]}
+        contentContainerStyle={ab.scroll}
+        style={isAr ? { transform: [{ scaleX: -1 }] } : undefined}
         decelerationRate="fast"
         snapToInterval={130}
       >
@@ -316,7 +317,7 @@ function AlsoBoughtSection({ lang, isDark }: { lang: string; isDark: boolean }) 
           return (
             <Pressable
               key={product.id}
-              style={[ab.card, { backgroundColor: cardBg }]}
+              style={[ab.card, { backgroundColor: cardBg }, isAr && { transform: [{ scaleX: -1 }] }]}
               onPress={() => router.push(`/product/${product.id}` as any)}
             >
               <Image
@@ -402,13 +403,14 @@ function GiftSection({ lang, isDark }: { lang: string; isDark: boolean }) {
         <Text style={[ab.hdr, { color: textCol }]}>{isAr ? "ارسل كهدية" : "BUY AS A GIFT"}</Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[ab.scroll, isAr && { flexDirection: "row-reverse" }]}
+        contentContainerStyle={ab.scroll}
+        style={isAr ? { transform: [{ scaleX: -1 }] } : undefined}
         decelerationRate="fast" snapToInterval={130}
       >
         {products.map((p) => {
           const inCart = cartItems.some((i) => i.productId === p.id);
           return (
-            <View key={p.id} style={[ab.card, { backgroundColor: bg }]}>
+            <View key={p.id} style={[ab.card, { backgroundColor: bg }, isAr && { transform: [{ scaleX: -1 }] }]}>
               <Image source={{ uri: p.images?.[0] ?? "" }} style={ab.cardImg} contentFit="cover" />
               <View style={ab.cardBody}>
                 <Text style={[ab.cardPrice, { color: textCol }]}>{formatIQD(p.price)}</Text>
