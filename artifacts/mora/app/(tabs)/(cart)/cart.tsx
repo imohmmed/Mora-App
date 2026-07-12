@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   LayoutAnimation,
   Platform,
   Pressable,
@@ -18,13 +19,13 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import ReanimatedSwipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, { interpolate, useAnimatedStyle, type SharedValue } from "react-native-reanimated";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useWishlist } from "@/context/WishlistContext";
-import { fetchProduct, fetchStories, fetchSpecialCollection, submitExchangeItems } from "@/lib/api";
+import { fetchProduct, fetchRecommendations, fetchStories, fetchSpecialCollection, submitExchangeItems } from "@/lib/api";
 import { useExchange } from "@/context/ExchangeContext";
 import { formatIQD } from "@/lib/format";
 import { StoriesSection } from "@/components/StoriesSection";
@@ -261,22 +262,43 @@ function AlsoBoughtSection({ lang, isDark }: { lang: string; isDark: boolean }) 
 
   const [sheetProduct, setSheetProduct] = useState<Product | null>(null);
 
-  const { data } = useQuery({
-    queryKey: ["also-bought"],
-    queryFn:  () => fetchSpecialCollection("trends"),
-    retry: false,
-    staleTime: 300_000,
+  // Stable sorted list of cart product IDs — used as query key so recommendations
+  // refresh automatically whenever the cart changes.
+  const cartProductIds = useMemo(
+    () => [...new Set(cartItems.map((i) => i.productId))].sort(),
+    [cartItems]
+  );
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery({
+    queryKey: ["recommendations", ...cartProductIds],
+    queryFn: ({ pageParam }) =>
+      fetchRecommendations({ productIds: cartProductIds, page: pageParam as number, limit: 12 }),
+    initialPageParam: 1,
+    getNextPageParam: (last, all) => {
+      const fetched = all.flatMap((p) => p.products).length;
+      if (fetched >= last.total) return undefined;
+      return all.length + 1;
+    },
+    staleTime: 120_000,
   });
 
-  const products = (data?.products ?? []).slice(0, 8);
-  if (!products.length) return null;
+  const products = useMemo(
+    () => data?.pages.flatMap((p) => p.products) ?? [],
+    [data]
+  );
 
   const textCol    = isDark ? "#FFFFFF" : "#111111";
   const cardBg     = isDark ? "#141414" : "#F7F7F7";
   const divider    = isDark ? "#1A1A1A" : "#EBEBEB";
   const hdrDivider = isDark ? "#1F1F1F" : "#DCDCDC";
 
-  const handleConfirm = (variant: Variant, qty: number) => {
+  const handleConfirm = useCallback((variant: Variant, qty: number) => {
     const p = sheetProduct;
     if (!p) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -294,7 +316,9 @@ function AlsoBoughtSection({ lang, isDark }: { lang: string; isDark: boolean }) 
       color:     variant.color,
     });
     setSheetProduct(null);
-  };
+  }, [sheetProduct, addItem]);
+
+  if (!isLoading && products.length === 0) return null;
 
   return (
     <View style={{ marginTop: 6 }}>
@@ -304,45 +328,64 @@ function AlsoBoughtSection({ lang, isDark }: { lang: string; isDark: boolean }) 
         </Text>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={ab.scroll}
-        style={isAr ? { transform: [{ scaleX: -1 }] } : undefined}
-        decelerationRate="fast"
-        snapToInterval={130}
-      >
-        {products.map((product) => {
-          const inCart = cartItems.some((i) => i.productId === product.id);
-          return (
-            <Pressable
-              key={product.id}
-              style={[ab.card, { backgroundColor: cardBg }, isAr && { transform: [{ scaleX: -1 }] }]}
-              onPress={() => router.push(`/product/${product.id}` as any)}
-            >
-              <Image
-                source={{ uri: product.images?.[0] ?? "" }}
-                style={ab.cardImg}
-                contentFit="cover"
-              />
-              <View style={ab.cardBody}>
-                <Text style={[ab.cardPrice, { color: textCol }]}>{formatIQD(product.price)}</Text>
-                <Pressable
-                  onPress={(e) => { e.stopPropagation?.(); if (!inCart) setSheetProduct(product); }}
-                  hitSlop={10}
-                  style={ab.addIconBtn}
-                >
-                  <Feather
-                    name={inCart ? "check" : "plus"}
-                    size={18}
-                    color={inCart ? "#22C55E" : PRIMARY}
-                  />
-                </Pressable>
-              </View>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      {isLoading ? (
+        <View style={ab.scroll}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <View key={i} style={[ab.card, { backgroundColor: cardBg, opacity: 0.4 }]}>
+              <View style={[ab.cardImg, { backgroundColor: isDark ? "#222" : "#E8E8E8" }]} />
+            </View>
+          ))}
+        </View>
+      ) : (
+        <FlatList
+          horizontal
+          data={products}
+          keyExtractor={(item) => item.id}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={ab.scroll}
+          style={isAr ? { transform: [{ scaleX: -1 }] } : undefined}
+          decelerationRate="fast"
+          snapToInterval={130}
+          onEndReachedThreshold={0.4}
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+          }}
+          ListFooterComponent={isFetchingNextPage ? (
+            <View style={{ width: 50, justifyContent: "center", alignItems: "center" }}>
+              <ActivityIndicator size="small" color={PRIMARY} />
+            </View>
+          ) : null}
+          renderItem={({ item: product }) => {
+            const inCart = cartItems.some((i) => i.productId === product.id);
+            return (
+              <Pressable
+                style={[ab.card, { backgroundColor: cardBg }, isAr && { transform: [{ scaleX: -1 }] }]}
+                onPress={() => router.push(`/product/${product.id}` as any)}
+              >
+                <Image
+                  source={{ uri: product.images?.[0] ?? "" }}
+                  style={ab.cardImg}
+                  contentFit="cover"
+                />
+                <View style={ab.cardBody}>
+                  <Text style={[ab.cardPrice, { color: textCol }]}>{formatIQD(product.price)}</Text>
+                  <Pressable
+                    onPress={(e) => { e.stopPropagation?.(); if (!inCart) setSheetProduct(product); }}
+                    hitSlop={10}
+                    style={ab.addIconBtn}
+                  >
+                    <Feather
+                      name={inCart ? "check" : "plus"}
+                      size={18}
+                      color={inCart ? "#22C55E" : PRIMARY}
+                    />
+                  </Pressable>
+                </View>
+              </Pressable>
+            );
+          }}
+        />
+      )}
 
       <View style={{ height: 1, backgroundColor: divider, marginTop: 4 }} />
 

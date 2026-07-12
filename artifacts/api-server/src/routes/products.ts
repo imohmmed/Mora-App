@@ -131,6 +131,99 @@ router.get("/store/products/:id", (req, res) => {
   res.json({ data: { ...product, variants, completeTheSet }, meta: {}, error: null });
 });
 
+router.get("/store/products/recommendations", (req, res) => {
+  const { productIds = "", page = "1", limit = "12" } = req.query as Record<string, string>;
+  const cartIds = productIds.split(",").map((s) => s.trim()).filter(Boolean);
+
+  const pageNum  = Math.max(1, parseInt(page));
+  const limitNum = Math.min(30, Math.max(1, parseInt(limit)));
+
+  // ── Load cart product details ────────────────────────────────────────────
+  const cartDetails = cartIds.length
+    ? (db.prepare(`SELECT * FROM products WHERE id IN (${cartIds.map(() => "?").join(",")})`).all(...cartIds) as Row[])
+    : [];
+  const cartParsed = parseRows(cartDetails);
+
+  // Build cart profile
+  const profileCategories = new Set<string>();
+  const profileVendors    = new Set<string>();
+  const profileGenders    = new Set<string>();
+  const profileTags       = new Set<string>();
+  let   totalPrice        = 0;
+
+  for (const cp of cartParsed) {
+    if (cp["category"]) profileCategories.add(cp["category"] as string);
+    if (cp["vendor"])   profileVendors.add(cp["vendor"] as string);
+    const g = cp["gender"] as string | undefined;
+    if (g && g !== "all") profileGenders.add(g);
+    try {
+      const t = JSON.parse((cp["tags"] as string) || "[]") as string[];
+      t.forEach((tag) => profileTags.add(tag));
+    } catch {}
+    totalPrice += (cp["price"] as number) || 0;
+  }
+  const avgPrice = cartParsed.length ? totalPrice / cartParsed.length : 0;
+
+  // ── Score all active products, excluding cart items ──────────────────────
+  const excludeClause = cartIds.length
+    ? `AND id NOT IN (${cartIds.map(() => "?").join(",")})`
+    : "";
+  const allRows = db.prepare(
+    `SELECT * FROM products WHERE status='active' ${excludeClause} ORDER BY sold_count DESC`
+  ).all(...(cartIds.length ? cartIds : [])) as Row[];
+  const candidates = parseRows(allRows);
+
+  // If cart is empty — just return newest/popular products
+  if (cartParsed.length === 0) {
+    const total = candidates.length;
+    const sliced = candidates.slice((pageNum - 1) * limitNum, pageNum * limitNum);
+    const getV = db.prepare(`SELECT * FROM variants WHERE product_id=?`);
+    const withV = sliced.map((p) => ({ ...p, variants: parseRows(getV.all(p["id"] as string) as Row[]) }));
+    res.json({ data: withV, meta: { total, page: pageNum, pages: Math.ceil(total / limitNum), limit: limitNum }, error: null });
+    return;
+  }
+
+  const scored = candidates.map((p) => {
+    let score = 0;
+    let pTags: string[] = [];
+    try { pTags = JSON.parse((p["tags"] as string) || "[]"); } catch {}
+
+    // Category match
+    if (profileCategories.has(p["category"] as string)) score += 4;
+    // Vendor match
+    if (profileVendors.has(p["vendor"] as string)) score += 3;
+    // Gender match
+    const pGender = p["gender"] as string | undefined;
+    if (pGender && pGender !== "all" && profileGenders.has(pGender)) score += 2;
+    // Tag matches
+    const sharedTags = pTags.filter((t) => profileTags.has(t));
+    score += sharedTags.length * 2;
+    // Price proximity
+    if (avgPrice > 0) {
+      const ratio = Math.abs((p["price"] as number) - avgPrice) / avgPrice;
+      if (ratio <= 0.4) score += 1;
+    }
+
+    return { product: p, score };
+  });
+
+  // Sort by score DESC, then sold_count DESC (already sorted by sold_count in SQL)
+  scored.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return (b.product["sold_count"] as number) - (a.product["sold_count"] as number);
+  });
+
+  const all   = scored.map((s) => s.product);
+  const total = all.length;
+  const sliced = all.slice((pageNum - 1) * limitNum, pageNum * limitNum);
+  const getVariants = db.prepare(`SELECT * FROM variants WHERE product_id=?`);
+  const withVariants = sliced.map((p) => ({
+    ...p,
+    variants: parseRows(getVariants.all(p["id"] as string) as Row[]),
+  }));
+  res.json({ data: withVariants, meta: { total, page: pageNum, pages: Math.ceil(total / limitNum), limit: limitNum }, error: null });
+});
+
 router.get("/store/products/related/:id", (req, res) => {
   const target = parseOne(db.prepare(`SELECT * FROM products WHERE id=?`).get(req.params["id"]) as Row | undefined);
   if (!target) { res.status(404).json({ data: [], meta: {}, error: "Product not found" }); return; }
