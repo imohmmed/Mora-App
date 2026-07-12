@@ -132,53 +132,39 @@ function CartItemRow({
   const sub     = isDark ? "rgba(255,255,255,0.45)" : "#888888";
   const divClr  = isDark ? "#1A1A1A" : "#EBEBEB";
 
-  const renderDeleteAction = (progress: SharedValue<number>) => {
+  const renderBothActions = (progress: SharedValue<number>, reversed?: boolean) => {
     const AnimatedContent = () => {
-      const style = useAnimatedStyle(() => ({
+      const animStyle = useAnimatedStyle(() => ({
         transform: [{ scale: interpolate(progress.value, [0, 1], [0.6, 1], "clamp") }],
         opacity: interpolate(progress.value, [0, 0.5], [0, 1], "clamp"),
         alignItems: "center" as const,
       }));
-      return (
-        <View style={ci.swipeOuter}>
+      const deleteBtn = (
+        <View style={ci.swipeOuter} key="del">
           <Pressable style={ci.swipeDeleteBtn} onPress={() => { swipeRef.current?.close(); onRemove(); }}>
-            <Animated.View style={style}>
+            <Animated.View style={animStyle}>
               <Feather name="x" size={18} color="#fff" />
               <Text style={ci.swipeLbl}>{isAr ? "حذف" : "REMOVE"}</Text>
             </Animated.View>
           </Pressable>
         </View>
       );
-    };
-    return <AnimatedContent />;
-  };
-
-  const renderFavoriteAction = (progress: SharedValue<number>) => {
-    const AnimatedContent = () => {
-      const style = useAnimatedStyle(() => ({
-        transform: [{ scale: interpolate(progress.value, [0, 1], [0.6, 1], "clamp") }],
-        opacity: interpolate(progress.value, [0, 0.5], [0, 1], "clamp"),
-        alignItems: "center" as const,
-      }));
-      return (
-        <View style={ci.swipeOuter}>
+      const favBtn = (
+        <View style={ci.swipeOuter} key="fav">
           <Pressable
             style={ci.swipeFavBtn}
-            onPress={() => {
-              swipeRef.current?.close();
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              onFavorite();
-            }}
+            onPress={() => { swipeRef.current?.close(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onFavorite(); }}
           >
-            <Animated.View style={style}>
-              <Ionicons
-                name={isFavorited ? "heart" : "heart-outline"}
-                size={20}
-                color="#fff"
-              />
+            <Animated.View style={animStyle}>
+              <Ionicons name={isFavorited ? "heart" : "heart-outline"} size={20} color="#fff" />
               <Text style={ci.swipeLbl}>{isAr ? "مفضلة" : "SAVE"}</Text>
             </Animated.View>
           </Pressable>
+        </View>
+      );
+      return (
+        <View style={{ flexDirection: "row" }}>
+          {reversed ? [favBtn, deleteBtn] : [deleteBtn, favBtn]}
         </View>
       );
     };
@@ -190,10 +176,10 @@ function CartItemRow({
   return (
     <ReanimatedSwipeable
       ref={swipeRef}
-      renderRightActions={isAr ? renderDeleteAction : renderFavoriteAction}
-      renderLeftActions={isAr ? renderFavoriteAction : renderDeleteAction}
-      rightThreshold={48}
-      leftThreshold={48}
+      renderRightActions={(p) => renderBothActions(p, false)}
+      renderLeftActions={(p) => renderBothActions(p, true)}
+      rightThreshold={80}
+      leftThreshold={80}
       overshootRight={false}
       overshootLeft={false}
     >
