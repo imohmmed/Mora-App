@@ -842,7 +842,7 @@ export default function CheckoutScreen() {
                 <Text style={[st.totalLbl, { color: sub }]}>{isAr ? "سعر التوصيل" : "Shipping"}</Text>
                 {shipping === 0 && selectedZone && selectedZone.price > 0 ? (
                   <View style={[{ flexDirection: "row", alignItems: "center", gap: 6 }, isAr && { flexDirection: "row-reverse" }]}>
-                    <Text style={[st.totalVal, { color: "#EF4444", textDecorationLine: "line-through" }]}>
+                    <Text style={[st.totalVal, { color: sub, textDecorationLine: "line-through" }]}>
                       {formatIQD(selectedZone.price)}
                     </Text>
                     <Text style={[st.totalVal, { color: PRIMARY, fontWeight: "800" }]}>
