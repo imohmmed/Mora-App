@@ -101,8 +101,6 @@ function WishlistSection({
   const { ids } = useWishlist();
   const { items: cartItems } = useCart();
   const isAr = lang === "ar";
-  const scrollRef = useRef<ScrollView>(null);
-
   const wishlistIds = useMemo(() => [...ids].slice(0, 10), [ids]);
 
   const queries = useQueries({
@@ -115,13 +113,6 @@ function WishlistSection({
   });
 
   const products = queries.map((q) => q.data).filter((p): p is Product => !!p);
-
-  // In Arabic, row-reverse places item[0] at the far right — scroll there on load
-  useEffect(() => {
-    if (isAr && products.length > 0) {
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 80);
-    }
-  }, [isAr, products.length]);
 
   if (!ids.size) return null;
 
@@ -148,20 +139,22 @@ function WishlistSection({
       </View>
 
       {products.length > 0 && (
+        /* scaleX:-1 on ScrollView mirrors it so item[0] appears on the RIGHT in Arabic.
+           Each card gets scaleX:-1 again to un-mirror its contents. */
         <ScrollView
-          ref={scrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[ws.scroll, isAr && { flexDirection: "row-reverse" }]}
+          contentContainerStyle={ws.scroll}
           decelerationRate="fast"
           snapToInterval={130}
+          style={isAr ? { transform: [{ scaleX: -1 }] } : undefined}
         >
           {products.map((product) => {
             const inCart = cartItems.some((i) => i.productId === product.id);
             return (
               <Pressable
                 key={product.id}
-                style={[ws.card, { backgroundColor: cardBg }]}
+                style={[ws.card, { backgroundColor: cardBg }, isAr && { transform: [{ scaleX: -1 }] }]}
                 onPress={() => router.push(`/product/${product.id}` as any)}
               >
                 <Image
