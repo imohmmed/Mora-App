@@ -52,6 +52,15 @@ function getBaseUrl() {
   return d ? `https://${d}/api` : "/api";
 }
 
+function normalizePhone(text: string): string {
+  const west = text.replace(/[٠١٢٣٤٥٦٧٨٩]/g, (ch) => String("٠١٢٣٤٥٦٧٨٩".indexOf(ch)));
+  const digits = west.replace(/\D/g, "").slice(0, 11);
+  if (!digits) return "";
+  if (digits.startsWith("07")) return digits;
+  if (digits.startsWith("0")) return "07" + digits.slice(1);
+  return "07" + digits;
+}
+
 // ─── Step Bar ─────────────────────────────────────────────────────────────────
 function StepBar({ isDark, isAr }: { isDark: boolean; isAr: boolean }) {
   const steps = isAr ? ["السلة", "الدفع", "تم"] : ["CART", "CHECKOUT", "DONE"];
@@ -299,6 +308,12 @@ export default function CheckoutScreen() {
 
   const set = (key: keyof FormState) => (val: string) => {
     setForm((f) => ({ ...f, [key]: val }));
+    setFieldErrors((e) => (e[key] ? Object.fromEntries(Object.entries(e).filter(([k]) => k !== key)) : e));
+  };
+
+  const setPhone = (key: "phone" | "phone2") => (val: string) => {
+    const n = normalizePhone(val);
+    setForm((f) => ({ ...f, [key]: n }));
     setFieldErrors((e) => (e[key] ? Object.fromEntries(Object.entries(e).filter(([k]) => k !== key)) : e));
   };
 
@@ -581,8 +596,8 @@ export default function CheckoutScreen() {
         >
           <FieldRow label={isAr ? "الاسم الكامل" : "Full Name"} value={form.name} onChangeText={set("name")} placeholder={isAr ? "محمد عبدالكريم" : "Ahmed Al-Rashidi"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} error={fieldErrors.name} onLayout={(e: any) => { fieldY.current.name = (fieldY.current._section ?? 0) + e.nativeEvent.layout.y; }} />
           <FieldRow label="Instagram" value={form.instagram} onChangeText={set("instagram")} placeholder="يوزر انستا" textCol={textCol} sub={sub} isDark={isDark} isAr={true} autoCapitalize="none" />
-          <FieldRow label={isAr ? "رقم تلفون اساسي" : "PRIMARY PHONE"} value={form.phone} onChangeText={set("phone")} placeholder="+964 770 000 0000" textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="phone-pad" error={fieldErrors.phone} onLayout={(e: any) => { fieldY.current.phone = (fieldY.current._section ?? 0) + e.nativeEvent.layout.y; }} />
-          <FieldRow label={isAr ? "رقم تلفون احتياطي" : "BACKUP PHONE"} value={form.phone2} onChangeText={set("phone2")} placeholder="+964 770 000 0000" textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="phone-pad" />
+          <FieldRow label={isAr ? "رقم اساسي" : "PRIMARY PHONE"} value={form.phone} onChangeText={setPhone("phone")} placeholder="0770 000 0000" textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="number-pad" error={fieldErrors.phone} onLayout={(e: any) => { fieldY.current.phone = (fieldY.current._section ?? 0) + e.nativeEvent.layout.y; }} />
+          <FieldRow label={isAr ? "رقم احتياطي" : "BACKUP PHONE"} value={form.phone2} onChangeText={setPhone("phone2")} placeholder="0770 000 0000" textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} keyboardType="number-pad" />
 
           {/* Governorate picker */}
           <Pressable
