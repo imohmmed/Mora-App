@@ -100,6 +100,7 @@ function WishlistSection({
   const { ids } = useWishlist();
   const { items: cartItems } = useCart();
   const isAr = lang === "ar";
+  const scrollRef = useRef<ScrollView>(null);
 
   const wishlistIds = useMemo(() => [...ids].slice(0, 10), [ids]);
 
@@ -114,6 +115,13 @@ function WishlistSection({
 
   const products = queries.map((q) => q.data).filter((p): p is Product => !!p);
 
+  // In Arabic, row-reverse places item[0] at the far right — scroll there on load
+  useEffect(() => {
+    if (isAr && products.length > 0) {
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 80);
+    }
+  }, [isAr, products.length]);
+
   if (!ids.size) return null;
 
   const textCol    = colors.foreground;
@@ -123,7 +131,8 @@ function WishlistSection({
 
   return (
     <View style={{ marginTop: 6 }}>
-      <View style={[ws.hdrRow, { borderTopColor: hdrDivider, borderBottomColor: hdrDivider }]}>
+      {/* In Arabic: row-reverse → "المفضلة" right, "عرض الكل" left */}
+      <View style={[ws.hdrRow, { borderTopColor: hdrDivider, borderBottomColor: hdrDivider }, isAr && { flexDirection: "row-reverse" }]}>
         <Text style={[ws.hdr, { color: textCol }]}>
           {isAr ? "المفضلة" : "WISHLIST"}
         </Text>
@@ -139,6 +148,7 @@ function WishlistSection({
 
       {products.length > 0 && (
         <ScrollView
+          ref={scrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={[ws.scroll, isAr && { flexDirection: "row-reverse" }]}
