@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   count: { fontFamily: "Cairo_400Regular", fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 2 },
   productCard: { width: CARD_W, flex: 1 },
   productImage: { width: "100%", height: CARD_W * 1.4, borderRadius: 0 },
-  productInfo: { paddingTop: 8, gap: 3, paddingHorizontal: 2 },
+  productInfo: { paddingTop: 8, gap: 3, paddingHorizontal: 3 },
   productTitle: { fontFamily: "Cairo_500Medium", fontSize: 12, lineHeight: 17 },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   price: { fontFamily: "Cairo_700Bold", fontSize: 13 },

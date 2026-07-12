@@ -895,7 +895,7 @@ const styles = StyleSheet.create({
   plusBtn: { position: "absolute", bottom: 10, zIndex: 2 },
   plusBtnEn: { right: 10 },
   plusBtnAr: { left: 10 },
-  productInfo: { paddingTop: 8, gap: 3 },
+  productInfo: { paddingTop: 8, gap: 3, paddingHorizontal: 3 },
   productTitle: { fontFamily: "Cairo_500Medium", fontSize: 13, lineHeight: 18 },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
   price: { fontFamily: "Cairo_700Bold", fontSize: 14 },

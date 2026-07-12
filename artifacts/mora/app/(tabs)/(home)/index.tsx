@@ -868,7 +868,7 @@ const styles = StyleSheet.create({
   addToBagBtnAr: { left: 10 },
 
   /* Product info */
-  productInfo: { paddingTop: 8, gap: 3 },
+  productInfo: { paddingTop: 8, gap: 3, paddingHorizontal: 3 },
   productInfoAr: { alignItems: "flex-end" },
   productTitle: { fontFamily: "Cairo_500Medium", fontSize: 12, lineHeight: 16 },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
