@@ -12,10 +12,11 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
@@ -28,6 +29,15 @@ import { fetchShippingZones, fetchShippingRules, fetchDeliveryOptions, type Ship
 import { GlassBackButton } from "@/components/GlassBackButton";
 
 const PRIMARY = "#0274C1";
+const SAVED_ADDRESSES_KEY = "mora_saved_addresses_v1";
+
+type SavedAddress = {
+  id: string;
+  name: string; phone: string; phone2: string;
+  city: string; district: string; landmark: string;
+  street: string; instagram: string;
+  savedAt: string;
+};
 
 const PAYMENT_LOGOS = [
   { key: "mastercard", src: require("@/assets/payment/visa.webp")      as number },
@@ -166,6 +176,11 @@ export default function CheckoutScreen() {
   const [submitting, setSubmitting]   = useState(false);
   const [showGovPicker, setShowGovPicker] = useState(false);
 
+  // ── Saved addresses ────────────────────────────────────────────────────────
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [saveAddress, setSaveAddress]       = useState(false);
+  const [addressLoaded, setAddressLoaded]   = useState(false);
+
   const [zones, setZones]             = useState<ShippingZone[]>([]);
   const [rules, setRules]             = useState<ShippingRule[]>([]);
   const [selectedZone, setSelectedZone] = useState<ShippingZone | null>(null);
@@ -197,6 +212,61 @@ export default function CheckoutScreen() {
   const textCol = isDark ? "#FFFFFF" : "#111111";
   const sub     = isDark ? "rgba(255,255,255,0.38)" : "#888888";
   const divider = isDark ? "#1A1A1A" : "#EBEBEB";
+
+  // Load saved addresses from AsyncStorage
+  useEffect(() => {
+    AsyncStorage.getItem(SAVED_ADDRESSES_KEY).then((raw) => {
+      if (raw) {
+        try {
+          const list = JSON.parse(raw) as SavedAddress[];
+          setSavedAddresses(list);
+          // Auto-fill if exactly one saved address
+          if (list.length === 1) {
+            const a = list[0];
+            setForm((f) => ({
+              ...f,
+              name:      f.name      || a.name,
+              phone:     f.phone     || a.phone,
+              phone2:    f.phone2    || a.phone2,
+              city:      f.city      || a.city,
+              district:  f.district  || a.district,
+              landmark:  f.landmark  || a.landmark,
+              street:    f.street    || a.street,
+              instagram: f.instagram || a.instagram,
+            }));
+          }
+        } catch {}
+      }
+      setAddressLoaded(true);
+    }).catch(() => setAddressLoaded(true));
+  }, []);
+
+  const applySavedAddress = (a: SavedAddress, zonesArr: ShippingZone[]) => {
+    setForm((f) => ({
+      ...f,
+      name: a.name, phone: a.phone, phone2: a.phone2,
+      city: a.city, district: a.district, landmark: a.landmark,
+      street: a.street, instagram: a.instagram,
+    }));
+    if (a.city && zonesArr.length) {
+      const z = zonesArr.find((zo) => zo.governorate === a.city || zo.governorateAr === a.city);
+      if (z) setSelectedZone(z);
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const persistSavedAddress = async (addr: Omit<SavedAddress, "id" | "savedAt">) => {
+    try {
+      const raw = await AsyncStorage.getItem(SAVED_ADDRESSES_KEY);
+      const list: SavedAddress[] = raw ? (JSON.parse(raw) as SavedAddress[]) : [];
+      const newAddr: SavedAddress = { ...addr, id: `addr_${Date.now()}`, savedAt: new Date().toISOString() };
+      // Replace existing entry with same city+district if exists, otherwise append
+      const idx = list.findIndex((a) => a.city === addr.city && a.district === addr.district && a.phone === addr.phone);
+      if (idx >= 0) { list[idx] = newAddr; } else { list.push(newAddr); }
+      await AsyncStorage.setItem(SAVED_ADDRESSES_KEY, JSON.stringify(list));
+      setSavedAddresses(list);
+    } catch {}
+  };
 
   useEffect(() => {
     if (isLoading) return;
@@ -370,6 +440,7 @@ export default function CheckoutScreen() {
           if (wayl.paid) {
             startOrderActivity({ orderId: info.orderId, orderNumber: info.orderNumber, customerName: form.name || user?.firstName || "Customer", stage: "confirmed", message: deliveryMessage(deliveryType, "confirmed"), deliveryType, priceText: formatIQD(info.orderTotal), isPaid: true });
             trackCartEvent("purchased", info.orderTotal, items.map((i) => ({ productId: i.productId, title: i.title, quantity: i.quantity, price: i.price, size: i.size, color: i.color })));
+            if (saveAddress) persistSavedAddress({ name: form.name, phone: form.phone, phone2: form.phone2, city: form.city, district: form.district, landmark: form.landmark, street: form.street, instagram: form.instagram });
             clearCart(); setPendingOnline(null);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             router.replace({ pathname: "/checkout/complete", params: { orderNumber: info.orderNumber, total: String(info.orderTotal), name: form.name, city: form.city, district: form.district, phone: form.phone, items: info.snapshot, paymentMethod: "online", paid: "1", waylUrl: "" } } as any);
@@ -403,6 +474,7 @@ export default function CheckoutScreen() {
         }
         startOrderActivity({ orderId: info.orderId, orderNumber: info.orderNumber, customerName: form.name || user?.firstName || "Customer", stage: "confirmed", message: deliveryMessage(deliveryType, "confirmed"), deliveryType, priceText: formatIQD(info.orderTotal), isPaid: true });
         trackCartEvent("purchased", info.orderTotal, items.map((i) => ({ productId: i.productId, title: i.title, quantity: i.quantity, price: i.price, size: i.size, color: i.color })));
+        if (saveAddress) persistSavedAddress({ name: form.name, phone: form.phone, phone2: form.phone2, city: form.city, district: form.district, landmark: form.landmark, street: form.street, instagram: form.instagram });
         clearCart(); setPendingOnline(null);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         router.replace({ pathname: "/checkout/complete", params: { orderNumber: info.orderNumber, total: String(info.orderTotal), name: form.name, city: form.city, district: form.district, phone: form.phone, items: info.snapshot, paymentMethod: "online", paid: "1", waylUrl: "" } } as any);
@@ -415,6 +487,9 @@ export default function CheckoutScreen() {
       trackCartEvent("purchased", created.orderTotal, items.map((i) => ({ productId: i.productId, title: i.title, quantity: i.quantity, price: i.price, size: i.size, color: i.color })));
       clearCart();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (saveAddress) {
+        persistSavedAddress({ name: form.name, phone: form.phone, phone2: form.phone2, city: form.city, district: form.district, landmark: form.landmark, street: form.street, instagram: form.instagram });
+      }
       saveAddressToProfile(base);
       router.replace({ pathname: "/checkout/complete", params: { orderNumber: created.orderNumber, total: String(created.orderTotal), name: form.name, city: form.city, district: form.district, phone: form.phone, items: created.snapshot, paymentMethod: "cod", waylUrl: "" } } as any);
     } catch (err: any) {
@@ -452,6 +527,54 @@ export default function CheckoutScreen() {
 
         {/* ── DELIVERY INFO ── */}
         <SectionHeader label={isAr ? "معلومات التوصيل" : "DELIVERY INFO"} isDark={isDark} />
+
+        {/* ── Saved addresses quick-pick (2+ addresses) ── */}
+        {savedAddresses.length >= 2 && (
+          <View style={{ borderTopWidth: 1, borderTopColor: divider, paddingVertical: 12 }}>
+            <Text style={{ fontSize: 11, fontWeight: "700", letterSpacing: 0.7, color: sub, paddingHorizontal: 16, marginBottom: 8, textAlign: isAr ? "right" : "left" }}>
+              {isAr ? "عناوينك المحفوظة" : "Saved Addresses"}
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 8, flexDirection: isAr ? "row-reverse" : "row" }}>
+              {savedAddresses.map((a) => {
+                const isCurrent = form.phone === a.phone && form.city === a.city && form.district === a.district;
+                return (
+                  <Pressable
+                    key={a.id}
+                    onPress={() => applySavedAddress(a, zones)}
+                    style={({ pressed }) => [{
+                      borderWidth: 1.5,
+                      borderColor: isCurrent ? PRIMARY : (isDark ? "rgba(255,255,255,0.12)" : "#E0E0E0"),
+                      borderRadius: 12,
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      backgroundColor: isCurrent ? (isDark ? "rgba(2,116,193,0.12)" : "rgba(2,116,193,0.06)") : (isDark ? "#111" : "#FAFAFA"),
+                      minWidth: 130,
+                      maxWidth: 190,
+                      opacity: pressed ? 0.75 : 1,
+                    }]}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: isCurrent ? PRIMARY : textCol, textAlign: isAr ? "right" : "left" }} numberOfLines={1}>
+                      {a.name || a.phone}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: sub, marginTop: 2, textAlign: isAr ? "right" : "left" }} numberOfLines={1}>
+                      {[a.city, a.district].filter(Boolean).join(" · ")}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: sub, marginTop: 1, textAlign: isAr ? "right" : "left" }} numberOfLines={1}>
+                      {a.phone}
+                    </Text>
+                    {isCurrent && (
+                      <View style={{ flexDirection: isAr ? "row-reverse" : "row", alignItems: "center", gap: 3, marginTop: 4 }}>
+                        <Ionicons name="checkmark-circle" size={12} color={PRIMARY} />
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: PRIMARY }}>{isAr ? "مفعّل" : "Active"}</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
         <View
           style={{ borderTopWidth: 1, borderTopColor: divider }}
           onLayout={(e) => { fieldY.current._section = e.nativeEvent.layout.y; }}
@@ -506,6 +629,27 @@ export default function CheckoutScreen() {
           )}
 
           <FieldRow label={isAr ? "المنطقة / الحي" : "District / Area"} value={form.district} onChangeText={set("district")} placeholder={isAr ? "المنصور" : "Al-Mansour"} textCol={textCol} sub={sub} isDark={isDark} isAr={isAr} error={fieldErrors.district} onLayout={(e: any) => { fieldY.current.district = (fieldY.current._section ?? 0) + e.nativeEvent.layout.y; }} />
+
+          {/* ── Save address toggle ── */}
+          <Pressable
+            onPress={() => { setSaveAddress((v) => !v); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            style={[sa.row, isAr && { flexDirection: "row-reverse" }, { borderBottomColor: divider }]}
+          >
+            <View style={[sa.checkbox, {
+              borderColor: saveAddress ? PRIMARY : (isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.2)"),
+              backgroundColor: saveAddress ? PRIMARY : "transparent",
+            }]}>
+              {saveAddress && <Ionicons name="checkmark" size={13} color="#fff" />}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[sa.label, { color: saveAddress ? PRIMARY : textCol }]}>
+                {isAr ? "حفظ كعنوان اساسي" : "Save as primary address"}
+              </Text>
+              <Text style={[sa.sub, { color: sub }]}>
+                {isAr ? "يتملأ تلقائياً في طلباتك الجاية" : "Auto-fill on your next orders"}
+              </Text>
+            </View>
+          </Pressable>
         </View>
 
         {/* ── DELIVERY TYPE ── */}
@@ -787,4 +931,11 @@ const st = StyleSheet.create({
   footer:       { paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1 },
   placeBtn:     { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#111111", height: 52, borderRadius: 4 },
   placeTxt:     { color: "#fff", fontSize: 14, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase" },
+});
+
+const sa = StyleSheet.create({
+  row:      { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 12, borderBottomWidth: 1 },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  label:    { fontSize: 14, fontWeight: "700" },
+  sub:      { fontSize: 11, marginTop: 2 },
 });
