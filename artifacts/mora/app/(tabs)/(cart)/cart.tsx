@@ -23,6 +23,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useWishlist } from "@/context/WishlistContext";
 import { fetchProduct, fetchStories, fetchSpecialCollection, submitExchangeItems } from "@/lib/api";
 import { useExchange } from "@/context/ExchangeContext";
 import { formatIQD } from "@/lib/format";
@@ -117,10 +118,12 @@ const fs = StyleSheet.create({
 // ─── Cart Item Row ────────────────────────────────────────────────────────────
 
 function CartItemRow({
-  item, isDark, onRemove, onInc, onDec, onPress, lang, isLast,
+  item, isDark, onRemove, onInc, onDec, onPress, onFavorite, isFavorited, lang, isLast,
 }: {
   item: CartItem; isDark: boolean;
-  onRemove: () => void; onInc: () => void; onDec: () => void; onPress: () => void; lang: string; isLast?: boolean;
+  onRemove: () => void; onInc: () => void; onDec: () => void; onPress: () => void;
+  onFavorite: () => void; isFavorited: boolean;
+  lang: string; isLast?: boolean;
 }) {
   const atMaxStock = item.maxStock != null && item.quantity >= item.maxStock;
   const isAr = lang === "ar";
@@ -129,7 +132,7 @@ function CartItemRow({
   const sub     = isDark ? "rgba(255,255,255,0.45)" : "#888888";
   const divClr  = isDark ? "#1A1A1A" : "#EBEBEB";
 
-  const renderSwipeAction = (progress: SharedValue<number>) => {
+  const renderDeleteAction = (progress: SharedValue<number>) => {
     const AnimatedContent = () => {
       const style = useAnimatedStyle(() => ({
         transform: [{ scale: interpolate(progress.value, [0, 1], [0.6, 1], "clamp") }],
@@ -138,10 +141,42 @@ function CartItemRow({
       }));
       return (
         <View style={ci.swipeOuter}>
-          <Pressable style={ci.swipeBtn} onPress={() => { swipeRef.current?.close(); onRemove(); }}>
+          <Pressable style={ci.swipeDeleteBtn} onPress={() => { swipeRef.current?.close(); onRemove(); }}>
             <Animated.View style={style}>
               <Feather name="x" size={18} color="#fff" />
               <Text style={ci.swipeLbl}>{isAr ? "حذف" : "REMOVE"}</Text>
+            </Animated.View>
+          </Pressable>
+        </View>
+      );
+    };
+    return <AnimatedContent />;
+  };
+
+  const renderFavoriteAction = (progress: SharedValue<number>) => {
+    const AnimatedContent = () => {
+      const style = useAnimatedStyle(() => ({
+        transform: [{ scale: interpolate(progress.value, [0, 1], [0.6, 1], "clamp") }],
+        opacity: interpolate(progress.value, [0, 0.5], [0, 1], "clamp"),
+        alignItems: "center" as const,
+      }));
+      return (
+        <View style={ci.swipeOuter}>
+          <Pressable
+            style={ci.swipeFavBtn}
+            onPress={() => {
+              swipeRef.current?.close();
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onFavorite();
+            }}
+          >
+            <Animated.View style={style}>
+              <Ionicons
+                name={isFavorited ? "heart" : "heart-outline"}
+                size={20}
+                color="#fff"
+              />
+              <Text style={ci.swipeLbl}>{isAr ? "مفضلة" : "SAVE"}</Text>
             </Animated.View>
           </Pressable>
         </View>
@@ -155,8 +190,8 @@ function CartItemRow({
   return (
     <ReanimatedSwipeable
       ref={swipeRef}
-      renderRightActions={isAr ? undefined : renderSwipeAction}
-      renderLeftActions={isAr ? renderSwipeAction : undefined}
+      renderRightActions={isAr ? renderDeleteAction : renderFavoriteAction}
+      renderLeftActions={isAr ? renderFavoriteAction : renderDeleteAction}
       rightThreshold={48}
       leftThreshold={48}
       overshootRight={false}
@@ -225,9 +260,10 @@ const ci = StyleSheet.create({
   qtyCol:      { alignItems: "center", justifyContent: "space-between", paddingVertical: 4, gap: 6, minWidth: 32 },
   qColBtn:     { width: 30, height: 30, alignItems: "center", justifyContent: "center" },
   qColNum:     { fontSize: 14, fontWeight: "800", textAlign: "center", minWidth: 24 },
-  swipeOuter:  { width: 76, marginBottom: 1 },
-  swipeBtn:    { flex: 1, backgroundColor: "#000000", borderRadius: 0, alignItems: "center", justifyContent: "center" },
-  swipeLbl:    { color: "#fff", fontSize: 9, fontWeight: "700", letterSpacing: 0.5, marginTop: 4 },
+  swipeOuter:     { width: 76, marginBottom: 1 },
+  swipeDeleteBtn: { flex: 1, backgroundColor: "#111111", borderRadius: 0, alignItems: "center", justifyContent: "center" },
+  swipeFavBtn:    { flex: 1, backgroundColor: "#0274C1", borderRadius: 0, alignItems: "center", justifyContent: "center" },
+  swipeLbl:       { color: "#fff", fontSize: 9, fontWeight: "700", letterSpacing: 0.5, marginTop: 4 },
 });
 
 // ─── Also Bought Section ──────────────────────────────────────────────────────
@@ -413,6 +449,7 @@ function GiftSection({ lang, isDark }: { lang: string; isDark: boolean }) {
 
 export default function CartScreen() {
   const { items, subtotal, removeItem, updateQty, setMaxStock, clearCart } = useCart();
+  const { toggle: toggleWishlist, isWishlisted } = useWishlist();
   const { user, token } = useAuth();
   const { activeExchange, clearExchange } = useExchange();
   const [exchangeSubmitting, setExchangeSubmitting] = useState(false);
@@ -667,6 +704,8 @@ export default function CartScreen() {
             onInc={() => handleInc(item.productId, item.variantId)}
             onDec={() => handleDec(item.productId, item.variantId, item.quantity)}
             onPress={() => router.push(`/product/${item.productId}`)}
+            onFavorite={() => toggleWishlist(item.productId)}
+            isFavorited={isWishlisted(item.productId)}
           />
         ))}
 
