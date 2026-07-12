@@ -129,7 +129,7 @@ function WishlistSection({
           {isAr ? "المفضلة" : "WISHLIST"}
         </Text>
         <Pressable
-          onPress={() => router.push("/account" as any)}
+          onPress={() => router.push("/wishlist" as any)}
           hitSlop={10}
         >
           <Text style={[ws.viewAll, { color: PRIMARY }]}>

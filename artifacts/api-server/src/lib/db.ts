@@ -1119,6 +1119,7 @@ runMigration(`ALTER TABLE products ADD COLUMN gender TEXT NOT NULL DEFAULT 'all'
 runMigration(`ALTER TABLE story_items ADD COLUMN gender TEXT NOT NULL DEFAULT 'all'`);
 runMigration(`ALTER TABLE story_items ADD COLUMN collection_id TEXT`);
 runMigration(`ALTER TABLE customers ADD COLUMN live_activity_pts_token TEXT`);
+runMigration(`ALTER TABLE customers ADD COLUMN wishlist TEXT NOT NULL DEFAULT '[]'`);
 runMigration(`ALTER TABLE discounts ADD COLUMN min_subtotal REAL`);
 runMigration(`ALTER TABLE discounts ADD COLUMN min_items INTEGER`);
 runMigration(`ALTER TABLE discounts ADD COLUMN max_discount REAL`);

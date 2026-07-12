@@ -95,6 +95,34 @@ router.post("/store/auth/logout", (req, res) => {
   res.json({ data: null, meta: {}, error: null });
 });
 
+function getCustomerId(token: string): string | null {
+  const sess = db.prepare(`SELECT customer_id FROM sessions WHERE token=?`).get(token) as Row | undefined;
+  return sess ? (sess["customer_id"] as string) : null;
+}
+
+router.get("/store/auth/wishlist", (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith("Bearer ")) { res.status(401).json({ data: null, meta: {}, error: "Unauthorized" }); return; }
+  const custId = getCustomerId(auth.slice(7));
+  if (!custId) { res.status(401).json({ data: null, meta: {}, error: "Invalid token" }); return; }
+  const row = db.prepare(`SELECT wishlist FROM customers WHERE id=?`).get(custId) as Row | undefined;
+  let ids: string[] = [];
+  try { ids = JSON.parse((row?.["wishlist"] as string) || "[]"); } catch {}
+  res.json({ data: ids, meta: {}, error: null });
+});
+
+router.put("/store/auth/wishlist", (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith("Bearer ")) { res.status(401).json({ data: null, meta: {}, error: "Unauthorized" }); return; }
+  const custId = getCustomerId(auth.slice(7));
+  if (!custId) { res.status(401).json({ data: null, meta: {}, error: "Invalid token" }); return; }
+  const ids = req.body?.["ids"];
+  if (!Array.isArray(ids)) { res.status(400).json({ data: null, meta: {}, error: "ids must be an array" }); return; }
+  const clean = ids.filter((x): x is string => typeof x === "string");
+  db.prepare(`UPDATE customers SET wishlist=? WHERE id=?`).run(JSON.stringify(clean), custId);
+  res.json({ data: clean, meta: {}, error: null });
+});
+
 /**
  * POST /store/auth/firebase
  * Called after Firebase phone OTP or Google/Apple sign-in on the client.
