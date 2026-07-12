@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import { useNativeReady } from "@/hooks/useNativeReady";
 import {
@@ -16,10 +16,10 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
-import { searchProducts, fetchContentSections, fetchBrowseCollections } from "@/lib/api";
+import { searchProducts, fetchContentSections, fetchBrowseCollections, fetchProduct } from "@/lib/api";
 import type { SearchCollection, TrendingKeyword } from "@/lib/api";
 import { useLanguage } from "@/context/LanguageContext";
 import { useWishlist } from "@/context/WishlistContext";
@@ -85,6 +85,119 @@ function ResultSkeleton() {
     </View>
   );
 }
+
+// ─── WishlistSection ──────────────────────────────────────────────────────────
+
+function WishlistSection({
+  lang,
+  onAddToBag,
+}: {
+  lang: string;
+  onAddToBag: (product: Product) => void;
+}) {
+  const colors = useColors();
+  const router = useRouter();
+  const { ids } = useWishlist();
+  const { items: cartItems } = useCart();
+  const isAr = lang === "ar";
+
+  const wishlistIds = useMemo(() => [...ids].slice(0, 10), [ids]);
+
+  const queries = useQueries({
+    queries: wishlistIds.map((id) => ({
+      queryKey: ["product", id],
+      queryFn:  () => fetchProduct(id),
+      staleTime: 300_000,
+      retry: false,
+    })),
+  });
+
+  const products = queries.map((q) => q.data).filter((p): p is Product => !!p);
+
+  if (!ids.size) return null;
+
+  const textCol    = colors.foreground;
+  const cardBg     = colors.secondary;
+  const hdrDivider = colors.border;
+  const divider    = colors.border;
+
+  return (
+    <View style={{ marginTop: 6 }}>
+      <View style={[ws.hdrRow, { borderTopColor: hdrDivider, borderBottomColor: hdrDivider }]}>
+        <Text style={[ws.hdr, { color: textCol }]}>
+          {isAr ? "المفضلة" : "WISHLIST"}
+        </Text>
+        <Pressable
+          onPress={() => router.push("/account" as any)}
+          hitSlop={10}
+        >
+          <Text style={[ws.viewAll, { color: PRIMARY }]}>
+            {isAr ? "عرض الكل" : "VIEW ALL"}
+          </Text>
+        </Pressable>
+      </View>
+
+      {products.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[ws.scroll, isAr && { flexDirection: "row-reverse" }]}
+          decelerationRate="fast"
+          snapToInterval={130}
+        >
+          {products.map((product) => {
+            const inCart = cartItems.some((i) => i.productId === product.id);
+            return (
+              <Pressable
+                key={product.id}
+                style={[ws.card, { backgroundColor: cardBg }]}
+                onPress={() => router.push(`/product/${product.id}` as any)}
+              >
+                <Image
+                  source={{ uri: product.images?.[0] ?? "" }}
+                  style={ws.cardImg}
+                  contentFit="cover"
+                />
+                <View style={ws.cardBody}>
+                  <Text style={[ws.cardPrice, { color: textCol }]}>{formatIQD(product.price)}</Text>
+                  <Pressable
+                    onPress={(e) => { e.stopPropagation?.(); if (!inCart) onAddToBag(product); }}
+                    hitSlop={10}
+                    style={ws.addIconBtn}
+                  >
+                    <Feather
+                      name={inCart ? "check" : "plus"}
+                      size={18}
+                      color={inCart ? "#22C55E" : PRIMARY}
+                    />
+                  </Pressable>
+                </View>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
+
+      <View style={{ height: 1, backgroundColor: divider, marginTop: 4 }} />
+    </View>
+  );
+}
+
+const ws = StyleSheet.create({
+  hdrRow:    {
+    borderTopWidth: 1, borderBottomWidth: 1,
+    paddingHorizontal: 16, paddingVertical: 12,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  },
+  hdr:       { fontSize: 12, fontFamily: "Cairo_700Bold", letterSpacing: 1, textTransform: "uppercase" },
+  viewAll:   { fontSize: 12, fontFamily: "Cairo_500Medium" },
+  scroll:    { paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
+  card:      { width: 118, borderRadius: 0, overflow: "hidden" },
+  cardImg:   { width: 118, height: 140 },
+  cardBody:  { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 8, paddingVertical: 8 },
+  cardPrice: { fontSize: 12, fontFamily: "Cairo_700Bold" },
+  addIconBtn:{ padding: 4, alignItems: "center", justifyContent: "center" },
+});
 
 // ─── SearchResultCard ─────────────────────────────────────────────────────────
 // Outer View (not Pressable) — image+text Pressable is separate from ADD TO BAG
@@ -440,6 +553,9 @@ export default function SearchScreen() {
                 }
               </View>
             </View>
+
+            {/* ── Wishlist section ── */}
+            <WishlistSection lang={lang} onAddToBag={handleAddToBag} />
 
             {/* ── Browse categories ── */}
             <View style={styles.section}>
