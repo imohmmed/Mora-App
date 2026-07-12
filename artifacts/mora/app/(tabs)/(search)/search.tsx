@@ -317,6 +317,7 @@ export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { lang } = useLanguage();
+  const isAr = lang === "ar";
   const isWeb = Platform.OS === "web";
 
   // ── Editable trending keywords + browse collections (admin-managed) ──────────
