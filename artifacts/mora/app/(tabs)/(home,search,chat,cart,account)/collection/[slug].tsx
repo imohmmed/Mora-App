@@ -502,7 +502,7 @@ export default function CollectionScreen() {
         {!(debouncedQ.trim().length > 0) && (
           <View style={[styles.filterSortBar, lang === "ar" && { flexDirection: "row-reverse" }]}>
             <Pressable
-              style={[styles.filterSortBtn, { borderColor: colors.border }, hasActiveFilters && { borderColor: PRIMARY }]}
+              style={styles.filterSortBtn}
               onPress={() => {
                 setMinPriceInput(appliedMinPrice != null ? String(appliedMinPrice) : "");
                 setMaxPriceInput(appliedMaxPrice != null ? String(appliedMaxPrice) : "");
@@ -517,7 +517,7 @@ export default function CollectionScreen() {
               </Text>
             </Pressable>
             <Pressable
-              style={[styles.filterSortBtn, { borderColor: colors.border }, sortBy !== "default" && { borderColor: PRIMARY }]}
+              style={styles.filterSortBtn}
               onPress={() => setSortSheetOpen(true)}
             >
               <Feather name="arrow-down" size={14} color={sortBy !== "default" ? PRIMARY : colors.foreground} />
@@ -1037,9 +1037,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    borderWidth: 1.5,
-    borderRadius: 8,
-    paddingHorizontal: 14,
+    paddingHorizontal: 4,
     paddingVertical: 8,
   },
   filterSortText: { fontFamily: "Cairo_600SemiBold", fontSize: 12 },
