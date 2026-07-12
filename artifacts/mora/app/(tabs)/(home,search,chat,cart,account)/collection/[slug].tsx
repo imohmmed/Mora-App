@@ -142,7 +142,7 @@ function ProductCard({ product, onQuickAdd }: { product: Product; onQuickAdd: (p
           return (
             <View style={{ flexDirection: isAr ? "row-reverse" : "row", gap: 4, marginBottom: 2 }}>
               {hexes.slice(0, 7).map((hex, i) => (
-                <View key={i} style={{ width: 11, height: 11, borderRadius: 3, backgroundColor: hex, borderWidth: 0.5, borderColor: "rgba(0,0,0,0.15)" }} />
+                <View key={i} style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: hex, borderWidth: 0.5, borderColor: "rgba(0,0,0,0.15)" }} />
               ))}
             </View>
           );
