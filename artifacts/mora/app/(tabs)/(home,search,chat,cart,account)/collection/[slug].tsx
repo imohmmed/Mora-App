@@ -77,6 +77,13 @@ const CARD_COLORS = [
   "#EBF0F5", "#F5EBF5", "#FFF3E0", "#F0F0F0",
 ];
 const PRIMARY = "#0274C1";
+
+const PRICE_RANGES = [
+  { label: "0 - 10,000",       min: 0,      max: 10_000  },
+  { label: "10,000 - 20,000",  min: 10_000, max: 20_000  },
+  { label: "20,000 - 50,000",  min: 20_000, max: 50_000  },
+  { label: "50,000 - 100,000", min: 50_000, max: 100_000 },
+];
 const SCROLL_THRESHOLD = HERO_H - 70;
 
 function isProductInStock(p: Product): boolean {
@@ -200,9 +207,13 @@ export default function CollectionScreen() {
   const [sortSheetOpen, setSortSheetOpen] = useState(false);
   const [minPriceInput, setMinPriceInput] = useState("");
   const [maxPriceInput, setMaxPriceInput] = useState("");
+  const [minChip, setMinChip] = useState<number | "custom" | null>(null);
+  const [maxChip, setMaxChip] = useState<number | "custom" | null>(null);
   const [appliedMinPrice, setAppliedMinPrice] = useState<number | null>(null);
   const [appliedMaxPrice, setAppliedMaxPrice] = useState<number | null>(null);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [appliedSizes, setAppliedSizes] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<"default" | "bestselling" | "priceAsc" | "priceDesc" | "newest">("default");
@@ -270,6 +281,16 @@ export default function CollectionScreen() {
     return Array.from(map.entries()).map(([name, hex]) => ({ name, hex }));
   }, [allProducts]);
 
+  const availableSizes = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of allProducts) {
+      for (const v of p.variants ?? []) {
+        if (v.option1) set.add(v.option1);
+      }
+    }
+    return Array.from(set);
+  }, [allProducts]);
+
   const availableTags = useMemo(() => {
     const set = new Set<string>();
     for (const p of allProducts) {
@@ -284,7 +305,7 @@ export default function CollectionScreen() {
     return availableTags.filter((t) => t.toLowerCase().includes(q)).slice(0, 12);
   }, [tagInput, availableTags]);
 
-  const hasActiveFilters = appliedMinPrice != null || appliedMaxPrice != null || selectedColors.length > 0 || selectedTags.length > 0;
+  const hasActiveFilters = appliedMinPrice != null || appliedMaxPrice != null || selectedColors.length > 0 || selectedTags.length > 0 || appliedSizes.length > 0;
 
   const displayProducts = useMemo(() => {
     let list = stockSortedProducts;
@@ -300,6 +321,11 @@ export default function CollectionScreen() {
     }
     if (selectedTags.length > 0) {
       list = list.filter((p) => selectedTags.every((t) => (p.tags ?? []).includes(t)));
+    }
+    if (appliedSizes.length > 0) {
+      list = list.filter((p) =>
+        (p.variants ?? []).some((v) => v.option1 && appliedSizes.includes(v.option1))
+      );
     }
 
     if (sortBy !== "default") {
@@ -477,7 +503,13 @@ export default function CollectionScreen() {
           <View style={[styles.filterSortBar, lang === "ar" && { flexDirection: "row-reverse" }]}>
             <Pressable
               style={[styles.filterSortBtn, { borderColor: colors.border }, hasActiveFilters && { borderColor: PRIMARY }]}
-              onPress={() => { setMinPriceInput(appliedMinPrice != null ? String(appliedMinPrice) : ""); setMaxPriceInput(appliedMaxPrice != null ? String(appliedMaxPrice) : ""); setFilterSheetOpen(true); }}
+              onPress={() => {
+                setMinPriceInput(appliedMinPrice != null ? String(appliedMinPrice) : "");
+                setMaxPriceInput(appliedMaxPrice != null ? String(appliedMaxPrice) : "");
+                setMinChip(null); setMaxChip(null);
+                setSelectedSizes(appliedSizes);
+                setFilterSheetOpen(true);
+              }}
             >
               <Feather name="sliders" size={14} color={hasActiveFilters ? PRIMARY : colors.foreground} />
               <Text style={[styles.filterSortText, { color: hasActiveFilters ? PRIMARY : colors.foreground }]}>
@@ -562,27 +594,76 @@ export default function CollectionScreen() {
 
             {/* Price range */}
             <Text style={[styles.sheetSectionLabel, { color: colors.mutedForeground }, lang === "ar" && { textAlign: "right" }]}>
-              {lang === "ar" ? "نطاق السعر" : "Price range"}
+              {lang === "ar" ? "الأدنى" : "Min price"}
             </Text>
-            <View style={[styles.priceRowInputs, lang === "ar" && { flexDirection: "row-reverse" }]}>
+            <View style={[styles.chipsWrap, lang === "ar" && { flexDirection: "row-reverse" }]}>
+              {PRICE_RANGES.map((r, i) => {
+                const active = minChip === i;
+                return (
+                  <Pressable
+                    key={i}
+                    style={[styles.priceChip, { borderColor: active ? PRIMARY : colors.border, backgroundColor: active ? PRIMARY : "transparent" }]}
+                    onPress={() => { setMinChip(i); setMinPriceInput(String(r.min)); }}
+                  >
+                    <Text style={[styles.priceChipText, { color: active ? "#fff" : colors.foreground }]}>{r.label}</Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable
+                style={[styles.priceChip, { borderColor: minChip === "custom" ? PRIMARY : colors.border, backgroundColor: minChip === "custom" ? PRIMARY : "transparent" }]}
+                onPress={() => { setMinChip("custom"); setMinPriceInput(""); }}
+              >
+                <Text style={[styles.priceChipText, { color: minChip === "custom" ? "#fff" : colors.foreground }]}>
+                  {lang === "ar" ? "مخصص" : "Custom"}
+                </Text>
+              </Pressable>
+            </View>
+            {minChip === "custom" && (
               <TextInput
-                style={[styles.priceInput, { borderColor: colors.border, color: colors.foreground }]}
-                placeholder={lang === "ar" ? "الأدنى" : "Min"}
+                style={[styles.priceInputSm, { borderColor: colors.border, color: colors.foreground, marginTop: 8 }]}
+                placeholder={lang === "ar" ? "أدخل الأدنى" : "Enter min"}
                 placeholderTextColor={colors.mutedForeground}
                 keyboardType="numeric"
                 value={minPriceInput}
                 onChangeText={setMinPriceInput}
               />
-              <Text style={{ color: colors.mutedForeground }}>–</Text>
+            )}
+
+            <Text style={[styles.sheetSectionLabel, { color: colors.mutedForeground }, lang === "ar" && { textAlign: "right" }]}>
+              {lang === "ar" ? "الأقصى" : "Max price"}
+            </Text>
+            <View style={[styles.chipsWrap, lang === "ar" && { flexDirection: "row-reverse" }]}>
+              {PRICE_RANGES.map((r, i) => {
+                const active = maxChip === i;
+                return (
+                  <Pressable
+                    key={i}
+                    style={[styles.priceChip, { borderColor: active ? PRIMARY : colors.border, backgroundColor: active ? PRIMARY : "transparent" }]}
+                    onPress={() => { setMaxChip(i); setMaxPriceInput(String(r.max)); }}
+                  >
+                    <Text style={[styles.priceChipText, { color: active ? "#fff" : colors.foreground }]}>{r.label}</Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable
+                style={[styles.priceChip, { borderColor: maxChip === "custom" ? PRIMARY : colors.border, backgroundColor: maxChip === "custom" ? PRIMARY : "transparent" }]}
+                onPress={() => { setMaxChip("custom"); setMaxPriceInput(""); }}
+              >
+                <Text style={[styles.priceChipText, { color: maxChip === "custom" ? "#fff" : colors.foreground }]}>
+                  {lang === "ar" ? "مخصص" : "Custom"}
+                </Text>
+              </Pressable>
+            </View>
+            {maxChip === "custom" && (
               <TextInput
-                style={[styles.priceInput, { borderColor: colors.border, color: colors.foreground }]}
-                placeholder={lang === "ar" ? "الأقصى" : "Max"}
+                style={[styles.priceInputSm, { borderColor: colors.border, color: colors.foreground, marginTop: 8 }]}
+                placeholder={lang === "ar" ? "أدخل الأقصى" : "Enter max"}
                 placeholderTextColor={colors.mutedForeground}
                 keyboardType="numeric"
                 value={maxPriceInput}
                 onChangeText={setMaxPriceInput}
               />
-            </View>
+            )}
 
             {/* Color */}
             {availableColors.length > 0 && (
@@ -602,6 +683,29 @@ export default function CollectionScreen() {
                         <View style={[styles.colorChipSwatch, { backgroundColor: hex }]} />
                         <Text style={[styles.filterChipText, { color: active ? PRIMARY : colors.foreground }]}>{name}</Text>
                         {active && <Feather name="check" size={12} color={PRIMARY} />}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            )}
+
+            {/* Sizes */}
+            {availableSizes.length > 0 && (
+              <>
+                <Text style={[styles.sheetSectionLabel, { color: colors.mutedForeground }, lang === "ar" && { textAlign: "right" }]}>
+                  {lang === "ar" ? "المقاس" : "Size"}
+                </Text>
+                <View style={[styles.chipsWrap, lang === "ar" && { flexDirection: "row-reverse" }]}>
+                  {availableSizes.map((sz) => {
+                    const active = selectedSizes.includes(sz);
+                    return (
+                      <Pressable
+                        key={sz}
+                        style={[styles.sizeChip, { borderColor: active ? PRIMARY : colors.border, backgroundColor: active ? PRIMARY : "transparent" }]}
+                        onPress={() => setSelectedSizes((prev) => active ? prev.filter((s) => s !== sz) : [...prev, sz])}
+                      >
+                        <Text style={[styles.filterChipText, { color: active ? "#fff" : colors.foreground }]}>{sz}</Text>
                       </Pressable>
                     );
                   })}
@@ -645,8 +749,10 @@ export default function CollectionScreen() {
               style={[styles.sheetSecondaryBtn, { borderColor: colors.border }]}
               onPress={() => {
                 setMinPriceInput(""); setMaxPriceInput("");
+                setMinChip(null); setMaxChip(null);
                 setAppliedMinPrice(null); setAppliedMaxPrice(null);
-                setSelectedColors([]); setSelectedTags([]); setTagInput("");
+                setSelectedColors([]); setSelectedSizes([]); setAppliedSizes([]);
+                setSelectedTags([]); setTagInput("");
               }}
             >
               <Text style={[styles.sheetSecondaryText, { color: colors.foreground }]}>
@@ -660,6 +766,7 @@ export default function CollectionScreen() {
                 const max = parseFloat(maxPriceInput);
                 setAppliedMinPrice(Number.isFinite(min) ? min : null);
                 setAppliedMaxPrice(Number.isFinite(max) ? max : null);
+                setAppliedSizes(selectedSizes);
                 setFilterSheetOpen(false);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
@@ -995,6 +1102,30 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 7,
+  },
+  priceChip: {
+    borderWidth: 1.5,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  priceChipText: { fontFamily: "Cairo_500Medium", fontSize: 11 },
+  priceInputSm: {
+    borderWidth: 1.5,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontFamily: "Cairo_400Regular",
+    fontSize: 13,
+  },
+  sizeChip: {
+    borderWidth: 1.5,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    minWidth: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   filterChipText: { fontFamily: "Cairo_500Medium", fontSize: 12 },
   sheetActionsRow: {
