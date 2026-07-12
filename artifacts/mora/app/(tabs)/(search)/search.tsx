@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import { useNativeReady } from "@/hooks/useNativeReady";
 import {
@@ -30,6 +30,7 @@ import { QuickAddSheet } from "@/components/QuickAddSheet";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import { ProductPreviewModal } from "@/components/ProductPreviewModal";
 import { ShippingRulesNote } from "@/components/ShippingRulesNote";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Product, Variant } from "@/lib/types";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -345,6 +346,37 @@ export default function SearchScreen() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [focused, setFocused] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
+  // Load recent searches from storage on mount
+  useEffect(() => {
+    AsyncStorage.getItem("mora_recent_searches").then((val) => {
+      if (val) setRecentSearches(JSON.parse(val));
+    }).catch(() => {});
+  }, []);
+
+  const saveSearch = useCallback((term: string) => {
+    const t = term.trim();
+    if (!t) return;
+    setRecentSearches((prev) => {
+      const next = [t, ...prev.filter((s) => s !== t)].slice(0, 10);
+      AsyncStorage.setItem("mora_recent_searches", JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  const removeSearch = useCallback((term: string) => {
+    setRecentSearches((prev) => {
+      const next = prev.filter((s) => s !== term);
+      AsyncStorage.setItem("mora_recent_searches", JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  const clearAllSearches = useCallback(() => {
+    setRecentSearches([]);
+    AsyncStorage.removeItem("mora_recent_searches").catch(() => {});
+  }, []);
   const [glassKey, setGlassKey] = useState(0);
   const inputRef = useRef<TextInput>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -433,7 +465,8 @@ export default function SearchScreen() {
     if (lastLoggedSearch.current === q) return;
     lastLoggedSearch.current = q;
     trackSearch(q, results.length);
-  }, [debouncedQuery, results, isLoading, isFetching]);
+    saveSearch(q);
+  }, [debouncedQuery, results, isLoading, isFetching, saveSearch]);
 
   const showResults = query.trim().length > 0;
   const isSearching = (isLoading || isFetching) && debouncedQuery.trim().length > 0;
@@ -504,6 +537,7 @@ export default function SearchScreen() {
               onChangeText={handleChangeText}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
+              onSubmitEditing={() => { if (query.trim()) saveSearch(query.trim()); }}
               returnKeyType="search"
               testID="search-input"
             />
@@ -530,6 +564,36 @@ export default function SearchScreen() {
       >
         <ShippingRulesNote style={styles.shippingRules} />
         {!showResults ? (
+          focused && recentSearches.length > 0 ? (
+            /* ── Recent searches (shown only when bar is focused & empty) ── */
+            <View style={[styles.section, { paddingHorizontal: 20 }]}>
+              <View style={[styles.recentHdr, isAr && { flexDirection: "row-reverse" }]}>
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                  {isAr ? "عمليات البحث الأخيرة" : "RECENT SEARCHES"}
+                </Text>
+                <Pressable onPress={clearAllSearches} hitSlop={10}>
+                  <Text style={{ fontFamily: "Cairo_500Medium", fontSize: 12, color: colors.mutedForeground }}>
+                    {isAr ? "مسح الكل" : "Clear all"}
+                  </Text>
+                </Pressable>
+              </View>
+              {recentSearches.map((term) => (
+                <Pressable
+                  key={term}
+                  style={[styles.recentRow, { borderBottomColor: colors.border }, isAr && { flexDirection: "row-reverse" }]}
+                  onPress={() => handleChangeText(term)}
+                >
+                  <View style={[{ flexDirection: "row", alignItems: "center", gap: 12 }, isAr && { flexDirection: "row-reverse" }]}>
+                    <Feather name="clock" size={15} color={colors.mutedForeground} />
+                    <Text style={[styles.recentText, { color: colors.foreground }]}>{term}</Text>
+                  </View>
+                  <Pressable onPress={() => removeSearch(term)} hitSlop={12}>
+                    <Feather name="x" size={15} color={colors.mutedForeground} />
+                  </Pressable>
+                </Pressable>
+              ))}
+            </View>
+          ) : (
           <>
             {/* ── Trending keywords ── */}
             <View style={styles.section}>
@@ -610,6 +674,7 @@ export default function SearchScreen() {
               </View>
             </View>
           </>
+          )
         ) : isSearching ? (
           <View style={styles.grid}>
             {Array.from({ length: 4 }).map((_, i) => <ResultSkeleton key={i} />)}
@@ -692,6 +757,9 @@ const styles = StyleSheet.create({
 
   section: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8 },
   sectionTitle: { fontFamily: "Cairo_700Bold", fontSize: 13, letterSpacing: 1, marginBottom: 12 },
+  recentHdr: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
+  recentRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+  recentText: { fontFamily: "Cairo_400Regular", fontSize: 15 },
 
   tagsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" },
   tag: {
