@@ -601,7 +601,7 @@ export default function ProductDetailScreen() {
             )}
             {/* Wishlist button — no background, just icon */}
             <Pressable
-              style={[styles.wishlistBtnWrap, { top: topPadding + 66 }]}
+              style={[styles.wishlistBtnWrap, { top: topPadding + 10 }]}
               onPress={() => {
                 toggle(product.id);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
