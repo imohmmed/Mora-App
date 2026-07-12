@@ -382,6 +382,7 @@ const styles = StyleSheet.create({
   productInfo: {
     paddingTop: 8,
     gap: 3,
+    paddingHorizontal: 3,
   },
   productTitle: {
     fontFamily: "Cairo_500Medium",

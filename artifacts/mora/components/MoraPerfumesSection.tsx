@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   scroll: { gap: 1, paddingHorizontal: 1 },
   card: { width: CARD_W },
   cardImage: { width: CARD_W, height: CARD_H, borderRadius: 0, overflow: "hidden", position: "relative" },
-  info: { paddingTop: 8, gap: 3 },
+  info: { paddingTop: 8, gap: 3, paddingHorizontal: 3 },
   title: { fontFamily: "Cairo_500Medium", fontSize: 12, lineHeight: 16 },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
   price: { fontFamily: "Cairo_700Bold", fontSize: 13 },
