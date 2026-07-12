@@ -480,12 +480,30 @@ export default function HomeScreen() {
   });
 
   // ── NEW IN — fixed, independent of the ALL/WOMEN/MEN/FOR YOU tabs below ──
-  const { data: newInData, isLoading: isNewInLoading, isError: isNewInError } = useQuery({
+  // Loads 15 at a time, up to 80 total; more load as user scrolls right.
+  const {
+    data: newInData,
+    isLoading: isNewInLoading,
+    isError: isNewInError,
+    fetchNextPage: fetchNewInNextPage,
+    hasNextPage: hasNewInNextPage,
+    isFetchingNextPage: isFetchingNewInNextPage,
+  } = useInfiniteQuery({
     queryKey: ["new-in-products"],
-    queryFn: () => fetchProducts({ sort: "newest", limit: 20, page: 1 }),
+    queryFn: ({ pageParam }) => fetchProducts({ sort: "newest", limit: 15, page: pageParam as number }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const fetched = allPages.flatMap((p) => p.products).length;
+      const total = lastPage.total ?? 0;
+      if (fetched >= 80 || fetched >= total) return undefined;
+      return allPages.length + 1;
+    },
     staleTime: 60_000,
   });
-  const newInProducts = newInData?.products ?? [];
+  const newInProducts = useMemo(
+    () => newInData?.pages.flatMap((p) => p.products) ?? [],
+    [newInData]
+  );
 
   const { data: specialCollections, isLoading: isCollectionsLoading } = useQuery({
     queryKey: ["special-collections"],
@@ -579,7 +597,7 @@ export default function HomeScreen() {
       />
 
       {/* ── NEW IN — fixed section, always shows newest arrivals ── */}
-      <View style={styles.sectionHeader}>
+      <View style={[styles.sectionHeader, isAr && { justifyContent: "flex-end" }]}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
           {lang === "ar" ? "جديد" : "NEW IN"}
         </Text>
@@ -601,7 +619,7 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* ── Horizontal product slide ── */}
+      {/* ── Horizontal product slide — lazy loads up to 80 ── */}
       {!isNewInLoading && !isNewInError && (
         <FlatList
           ref={newInScroll.ref as any}
@@ -615,12 +633,21 @@ export default function HomeScreen() {
           )}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={[
-            { paddingHorizontal: 1, paddingBottom: bottomPadding + 80, gap: 1 },
+            { paddingHorizontal: 1, gap: 1 },
             rtlContentStyle(isAr),
           ]}
           snapToInterval={CARD_WIDTH + 1}
           decelerationRate="fast"
           onContentSizeChange={newInScroll.onContentSizeChange}
+          onEndReachedThreshold={0.4}
+          onEndReached={() => {
+            if (hasNewInNextPage && !isFetchingNewInNextPage) fetchNewInNextPage();
+          }}
+          ListFooterComponent={isFetchingNewInNextPage ? (
+            <View style={{ width: 48, justifyContent: "center", alignItems: "center" }}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : null}
         />
       )}
 
@@ -684,6 +711,7 @@ export default function HomeScreen() {
     specialCollections, storyRows, totalCount, activeFilter, bannerHeight,
     products, isFetchingNextPage, handleEndReached, bottomPadding, isAr,
     handleAddToBag, handleLongPress, newInProducts, isNewInLoading, isNewInError, lang,
+    fetchNewInNextPage, hasNewInNextPage, isFetchingNewInNextPage,
   ]);
 
   return (
