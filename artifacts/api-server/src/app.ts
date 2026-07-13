@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import compression from "compression";
 import pinoHttp from "pino-http";
 import path from "path";
 import fs from "fs";
@@ -8,6 +9,8 @@ import { logger } from "./lib/logger";
 import { uploadsDir } from "./routes/uploads.js";
 
 const app: Express = express();
+
+app.use(compression({ level: 6, threshold: 1024 }));
 
 app.use(
   pinoHttp({

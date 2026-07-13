@@ -1,12 +1,26 @@
-import { readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync, readdirSync } from "fs";
 import { join } from "path";
 
 const distDir = process.argv[2] || "dist";
 const indexPath = join(distDir, "index.html");
 let html = readFileSync(indexPath, "utf8");
 
+// Find the hashed JS entry file for preload
+const jsDir = join(distDir, "_expo/static/js/web");
+let entryJs = "";
+try {
+  const files = readdirSync(jsDir);
+  const entry = files.find((f) => f.startsWith("entry-") && f.endsWith(".js"));
+  if (entry) entryJs = `/_expo/static/js/web/${entry}`;
+} catch {}
+
+const preloadHint = entryJs
+  ? `\n    <link rel="preload" href="${entryJs}" as="script" />`
+  : "";
+
 const seoHead = `
-    <meta name="theme-color" content="#0274C1" />
+    <meta name="theme-color" content="#0274C1" />${preloadHint}
+    <link rel="dns-prefetch" href="https://moramoda.tech" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -33,4 +47,5 @@ html = html
   .replace("</head>", `${seoHead}\n  </head>`);
 
 writeFileSync(indexPath, html, "utf8");
-console.log("✓ SEO injected into", indexPath);
+console.log("✓ SEO + performance hints injected into", indexPath);
+if (entryJs) console.log("✓ Preload added for:", entryJs);
