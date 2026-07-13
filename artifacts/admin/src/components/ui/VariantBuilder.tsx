@@ -201,32 +201,39 @@ export function VariantBuilder({
     syncVariants(next);
   };
 
+  /** Only include model entries that have a real name — unnamed entries don't generate variants yet */
+  const modelValues = (entries: ModelEntry[]) =>
+    entries.filter((m) => m.nameEn.trim()).map((m) => m.nameEn.trim());
+
   const addModelEntry = (gi: number) => {
     const next = optionGroups.map((g, idx) => {
       if (idx !== gi) return g;
       const newEntry: ModelEntry = { id: `m_${Date.now()}`, nameEn: "", nameAr: "", image: "" };
       const newEntries = [...(g.modelEntries ?? []), newEntry];
-      return { ...g, modelEntries: newEntries, values: newEntries.map((m) => m.nameEn || m.id) };
+      return { ...g, modelEntries: newEntries, values: modelValues(newEntries) };
     });
     onOptionGroupsChange(next);
+    syncVariants(next);
   };
 
   const updateModelEntry = (gi: number, id: string, patch: Partial<ModelEntry>) => {
     const next = optionGroups.map((g, idx) => {
       if (idx !== gi || !g.modelEntries) return g;
       const newEntries = g.modelEntries.map((m) => m.id === id ? { ...m, ...patch } : m);
-      return { ...g, modelEntries: newEntries, values: newEntries.map((m) => m.nameEn || m.id) };
+      return { ...g, modelEntries: newEntries, values: modelValues(newEntries) };
     });
     onOptionGroupsChange(next);
+    syncVariants(next);
   };
 
   const removeModelEntry = (gi: number, id: string) => {
     const next = optionGroups.map((g, idx) => {
       if (idx !== gi || !g.modelEntries) return g;
       const newEntries = g.modelEntries.filter((m) => m.id !== id);
-      return { ...g, modelEntries: newEntries, values: newEntries.map((m) => m.nameEn || m.id) };
+      return { ...g, modelEntries: newEntries, values: modelValues(newEntries) };
     });
     onOptionGroupsChange(next);
+    syncVariants(next);
     if (modelPickerFor) setModelPickerFor(null);
   };
 
