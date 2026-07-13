@@ -746,95 +746,184 @@ export default function ProductDetailScreen() {
             </View>
           </View>
 
-          {/* ── Option Selectors (Model / Color / Size) — all square chips ── */}
-          {optGroups.length > 0 && product.variants?.some((v) => v.option1 && v.option1 !== "Default Title") && (
-            <>
-              {optGroups.map((group, gi) => {
-                const available = availableFor(gi);
-                const selectedVal = selValues[gi] ?? null;
-                const fallbackName = group.type === "model"
-                  ? (lang === "ar" ? "الموديل" : "MODEL")
-                  : group.type === "color"
-                    ? (lang === "ar" ? "اللون" : "COLOR")
-                    : (lang === "ar" ? "القياس" : "SIZE");
-                const groupName = (
-                  lang === "ar"
-                    ? (group.nameAr || group.nameEn || group.name || "")
-                    : (group.nameEn || group.nameAr || group.name || "")
-                ) || fallbackName;
+          {/* ── Option Selectors: Model → Color → Size ── */}
+          {optGroups.length > 0 && product.variants?.some((v) => v.option1 && v.option1 !== "Default Title") && (() => {
+            // Sort groups: model first, color second, size/variant last
+            const typeOrder = (t?: string) => t === "model" ? 0 : t === "color" ? 1 : 2;
+            const sortedGroups = [...optGroups.map((g, gi) => ({ ...g, gi }))].sort(
+              (a, b) => typeOrder(a.type) - typeOrder(b.type),
+            );
 
-                /* resolve display label for each value */
-                const displayLabel = (val: string): string => {
+            return (
+              <>
+                {sortedGroups.map(({ gi, ...group }) => {
+                  const available = availableFor(gi);
+                  const selectedVal = selValues[gi] ?? null;
+                  const fallbackName = group.type === "model"
+                    ? (lang === "ar" ? "الموديل" : "MODEL")
+                    : group.type === "color"
+                      ? (lang === "ar" ? "اللون" : "COLOR")
+                      : (lang === "ar" ? "القياس" : "SIZE");
+                  const groupName = (
+                    lang === "ar"
+                      ? (group.nameAr || group.nameEn || group.name || "")
+                      : (group.nameEn || group.nameAr || group.name || "")
+                  ) || fallbackName;
+
+                  const isOOS = (val: string) =>
+                    (product.variants ?? []).filter((v) => {
+                      for (let j = 0; j < gi; j++) {
+                        if (selValues[j] != null && getGroupValue(v, j, totalOptGroups) !== selValues[j]) return false;
+                      }
+                      return getGroupValue(v, gi, totalOptGroups) === val;
+                    }).every((v) => (v.inventory ?? 0) <= 0);
+
+                  if (available.length === 0) return null;
+
+                  /* ── MODEL: image squares ── */
                   if (group.type === "model") {
-                    const entry = (group.modelEntries ?? []).find((m) => m.nameEn === val || m.id === val);
-                    if (entry) return lang === "ar" ? (entry.nameAr || entry.nameEn) : (entry.nameEn || entry.nameAr);
+                    const selEntry = (group.modelEntries ?? []).find(
+                      (m) => m.nameEn === selectedVal || m.id === selectedVal,
+                    );
+                    const selLabel = selEntry
+                      ? (lang === "ar" ? (selEntry.nameAr || selEntry.nameEn) : (selEntry.nameEn || selEntry.nameAr))
+                      : selectedVal;
+                    return (
+                      <View key={gi} style={[styles.variantsSection, { borderTopColor: colors.border }]}>
+                        <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
+                          {groupName}{selLabel ? ` — ${selLabel}` : ""}
+                        </Text>
+                        <View style={styles.variantsRow}>
+                          {available.map((val) => {
+                            const isActive = selectedVal === val;
+                            const oos = isOOS(val);
+                            const entry = (group.modelEntries ?? []).find((m) => m.nameEn === val || m.id === val);
+                            const label = entry
+                              ? (lang === "ar" ? (entry.nameAr || entry.nameEn) : (entry.nameEn || entry.nameAr))
+                              : val;
+                            return (
+                              <Pressable
+                                key={val}
+                                style={[styles.modelSquareWrap, { opacity: oos ? 0.35 : 1 }]}
+                                onPress={() => !oos && selectGroupValue(gi, val)}
+                                disabled={oos}
+                              >
+                                <View style={[
+                                  styles.modelSquare,
+                                  {
+                                    borderColor: isActive ? PRIMARY : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"),
+                                    borderWidth: isActive ? 3 : 1.5,
+                                    backgroundColor: colors.muted,
+                                  },
+                                ]}>
+                                  {entry?.image ? (
+                                    <Image source={{ uri: entry.image }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                                  ) : (
+                                    <Feather name="user" size={26} color={colors.mutedForeground} />
+                                  )}
+                                  {oos && <View style={styles.modelSquareOOS} />}
+                                </View>
+                                <Text
+                                  style={[styles.modelSquareLabel, { color: isActive ? PRIMARY : colors.mutedForeground }]}
+                                  numberOfLines={1}
+                                >
+                                  {label}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    );
                   }
+
+                  /* ── COLOR: filled color squares ── */
                   if (group.type === "color") {
-                    const entry = (group.colorEntries ?? []).find((c) => c.nameEn === val || c.hex === val);
-                    if (entry) return lang === "ar" ? (entry.nameAr || entry.nameEn) : (entry.nameEn || entry.nameAr);
+                    const colorEntries = group.colorEntries ?? [];
+                    const selEntry = colorEntries.find((c) => c.nameEn === selectedVal || c.hex === selectedVal);
+                    const selLabel = selEntry
+                      ? (lang === "ar" ? (selEntry.nameAr || selEntry.nameEn) : (selEntry.nameEn || selEntry.nameAr))
+                      : selectedVal;
+                    return (
+                      <View key={gi} style={[styles.variantsSection, { borderTopColor: colors.border }]}>
+                        <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
+                          {groupName}{selLabel ? ` — ${selLabel}` : ""}
+                        </Text>
+                        <View style={styles.variantsRow}>
+                          {available.map((val) => {
+                            const isActive = selectedVal === val;
+                            const oos = isOOS(val);
+                            const entry = colorEntries.find((c) => c.nameEn === val || c.hex === val);
+                            const hex = entry?.hex || "#888888";
+                            return (
+                              <Pressable
+                                key={val}
+                                style={[
+                                  styles.colorSquare,
+                                  {
+                                    backgroundColor: hex,
+                                    borderColor: isActive ? PRIMARY : (isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.15)"),
+                                    borderWidth: isActive ? 3 : 1.5,
+                                    opacity: oos ? 0.35 : 1,
+                                  },
+                                ]}
+                                onPress={() => !oos && selectGroupValue(gi, val)}
+                                disabled={oos}
+                              >
+                                {isActive && <View style={styles.colorSquareInner} />}
+                                {oos && <View style={styles.colorSquareOOS} />}
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    );
                   }
-                  return val;
-                };
 
-                /* is the entire value OOS given upstream selections? */
-                const isOOS = (val: string) =>
-                  (product.variants ?? []).filter((v) => {
-                    for (let j = 0; j < gi; j++) {
-                      if (selValues[j] != null && getGroupValue(v, j, totalOptGroups) !== selValues[j]) return false;
-                    }
-                    return getGroupValue(v, gi, totalOptGroups) === val;
-                  }).every((v) => (v.inventory ?? 0) <= 0);
-
-                if (available.length === 0) return null;
-
-                return (
-                  <View key={gi} style={[styles.variantsSection, { borderTopColor: colors.border }]}>
-                    <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
-                      {groupName}
-                      {selectedVal ? ` — ${displayLabel(selectedVal)}` : ""}
-                    </Text>
-                    <View style={styles.variantsRow}>
-                      {available.map((val) => {
-                        const isActive = selectedVal === val;
-                        const oos = isOOS(val);
-                        const label = displayLabel(val);
-                        return (
-                          <Pressable
-                            key={val}
-                            style={[
-                              styles.variantChip,
-                              {
-                                borderColor: isActive ? "transparent" : (isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.13)"),
-                                backgroundColor: isActive ? PRIMARY : "transparent",
-                                opacity: oos ? 0.35 : 1,
-                              },
-                            ]}
-                            onPress={() => !oos && selectGroupValue(gi, val)}
-                            disabled={oos}
-                          >
-                            {!isActive && Platform.OS !== "web" && (
-                              <View style={styles.chipGlassBg}>
-                                {isIOS26Plus
-                                  ? <LiquidGlassBg />
-                                  : <BlurView style={StyleSheet.absoluteFill} intensity={55} tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"} />
-                                }
-                              </View>
-                            )}
-                            <Text style={[styles.variantText, { color: isActive ? "#FFFFFF" : colors.foreground }]} numberOfLines={1}>
-                              {label}
-                            </Text>
-                            {oos && (
-                              <View style={styles.chipStrikethrough} />
-                            )}
-                          </Pressable>
-                        );
-                      })}
+                  /* ── SIZE / VARIANT: text chips ── */
+                  return (
+                    <View key={gi} style={[styles.variantsSection, { borderTopColor: colors.border }]}>
+                      <Text style={[styles.sectionLabel, { color: colors.foreground }]}>{groupName}</Text>
+                      <View style={styles.variantsRow}>
+                        {available.map((val) => {
+                          const isActive = selectedVal === val;
+                          const oos = isOOS(val);
+                          return (
+                            <Pressable
+                              key={val}
+                              style={[
+                                styles.variantChip,
+                                {
+                                  borderColor: isActive ? "transparent" : (isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.13)"),
+                                  backgroundColor: isActive ? PRIMARY : "transparent",
+                                  opacity: oos ? 0.35 : 1,
+                                },
+                              ]}
+                              onPress={() => !oos && selectGroupValue(gi, val)}
+                              disabled={oos}
+                            >
+                              {!isActive && Platform.OS !== "web" && (
+                                <View style={styles.chipGlassBg}>
+                                  {isIOS26Plus
+                                    ? <LiquidGlassBg />
+                                    : <BlurView style={StyleSheet.absoluteFill} intensity={55} tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"} />
+                                  }
+                                </View>
+                              )}
+                              <Text style={[styles.variantText, { color: isActive ? "#FFFFFF" : colors.foreground }]} numberOfLines={1}>
+                                {val}
+                              </Text>
+                              {oos && <View style={styles.chipStrikethrough} />}
+                            </Pressable>
+                          );
+                        })}
+                      </View>
                     </View>
-                  </View>
-                );
-              })}
-            </>
-          )}
+                  );
+                })}
+              </>
+            );
+          })()}
 
           {/* ── Add to Bag / Notify me ── */}
           <View style={[styles.addBagSection, { borderTopColor: colors.border }]}>
@@ -1193,6 +1282,57 @@ const styles = StyleSheet.create({
   /* Variants */
   variantsSection: { paddingHorizontal: 20, paddingVertical: 16, gap: 12, borderTopWidth: 1 },
   variantsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  /* Model image squares */
+  modelSquareWrap: { alignItems: "center", gap: 5, width: 76 },
+  modelSquare: {
+    width: 72,
+    height: 72,
+    borderRadius: 4,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modelSquareOOS: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  modelSquareLabel: {
+    fontFamily: "Cairo_500Medium",
+    fontSize: 11,
+    textAlign: "center",
+    width: 76,
+  },
+
+  /* Color filled squares */
+  colorSquare: {
+    width: 40,
+    height: 40,
+    borderRadius: 4,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  colorSquareInner: {
+    position: "absolute",
+    top: 4,
+    left: 4,
+    right: 4,
+    bottom: 4,
+    borderRadius: 1,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.6)",
+  },
+  colorSquareOOS: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: "50%",
+    height: 1.5,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    transform: [{ rotate: "45deg" }],
+  },
+
+  /* Size / variant chips */
   variantChip: {
     paddingHorizontal: 18,
     paddingVertical: 9,
