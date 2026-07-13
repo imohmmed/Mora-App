@@ -203,44 +203,41 @@ export default function SettingsScreen() {
               <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? SURFACE_TINT_DARK : SURFACE_TINT_LIGHT }]} />
             )}
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.settingsRow,
-                { borderBottomColor: colors.border },
-                pressed && { backgroundColor: colors.secondary },
-                isAr && { flexDirection: "row-reverse" },
-              ]}
-            >
-              <View style={[styles.settingsLeft, isAr && { flexDirection: "row-reverse" }]}>
-                <View style={[styles.settingsIcon, { backgroundColor: isDark ? "#1C1C1E" : "#EBF5FF" }]}>
-                  <Feather name="info" size={16} color={PRIMARY} />
+            {[
+              { id: "about",   icon: "info" as const,           labelEn: "About Mora",         labelAr: "عن مورا" },
+              { id: "faq",     icon: "help-circle" as const,    labelEn: "FAQ",                labelAr: "أسئلة شائعة" },
+              { id: "support", icon: "message-circle" as const, labelEn: "Support",            labelAr: "الدعم" },
+              { id: "privacy", icon: "shield" as const,         labelEn: "Privacy Policy",     labelAr: "سياسة الخصوصية" },
+              { id: "terms",   icon: "file-text" as const,      labelEn: "Terms & Conditions", labelAr: "الشروط والأحكام" },
+            ].map((item, i, arr) => (
+              <Pressable
+                key={item.id}
+                onPress={() => {
+                  if (item.id === "about")   router.push("/about" as any);
+                  else if (item.id === "faq")     router.push("/faq" as any);
+                  else if (item.id === "support") router.push("/support" as any);
+                  else if (item.id === "privacy") router.push("/privacy" as any);
+                  else if (item.id === "terms")   router.push("/terms" as any);
+                }}
+                style={({ pressed }) => [
+                  styles.settingsRow,
+                  i === arr.length - 1 && styles.lastRow,
+                  { borderBottomColor: colors.border },
+                  pressed && { backgroundColor: colors.secondary },
+                  isAr && { flexDirection: "row-reverse" },
+                ]}
+              >
+                <View style={[styles.settingsLeft, isAr && { flexDirection: "row-reverse" }]}>
+                  <View style={[styles.settingsIcon, { backgroundColor: isDark ? "#1C1C1E" : "#EBF5FF" }]}>
+                    <Feather name={item.icon} size={16} color={PRIMARY} />
+                  </View>
+                  <Text style={[styles.settingsLabel, { color: colors.foreground }]}>
+                    {isAr ? item.labelAr : item.labelEn}
+                  </Text>
                 </View>
-                <Text style={[styles.settingsLabel, { color: colors.foreground }]}>
-                  {isAr ? "عن مورا" : "About Mora"}
-                </Text>
-              </View>
-              <Feather name={isAr ? "chevron-left" : "chevron-right"} size={16} color={colors.mutedForeground} />
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.settingsRow,
-                styles.lastRow,
-                { borderBottomColor: colors.border },
-                pressed && { backgroundColor: colors.secondary },
-                isAr && { flexDirection: "row-reverse" },
-              ]}
-            >
-              <View style={[styles.settingsLeft, isAr && { flexDirection: "row-reverse" }]}>
-                <View style={[styles.settingsIcon, { backgroundColor: isDark ? "#1C1C1E" : "#EBF5FF" }]}>
-                  <Feather name="shield" size={16} color={PRIMARY} />
-                </View>
-                <Text style={[styles.settingsLabel, { color: colors.foreground }]}>
-                  {isAr ? "سياسة الخصوصية" : "Privacy Policy"}
-                </Text>
-              </View>
-              <Feather name={isAr ? "chevron-left" : "chevron-right"} size={16} color={colors.mutedForeground} />
-            </Pressable>
+                <Feather name={isAr ? "chevron-left" : "chevron-right"} size={16} color={colors.mutedForeground} />
+              </Pressable>
+            ))}
           </View>
         </View>
 

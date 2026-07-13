@@ -194,12 +194,14 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
       ],
     },
     {
-      titleEn: "SUPPORT",
-      titleAr: "الدعم",
+      titleEn: "INFORMATION",
+      titleAr: "معلومات",
       items: [
-        { id: "help",    icon: "help-circle",    labelEn: "Help & FAQs",    labelAr: "المساعدة والأسئلة",       arrow: true },
-        { id: "contact", icon: "message-circle", labelEn: "Contact Us",     labelAr: "تواصل معنا",              arrow: true },
-        { id: "privacy", icon: "shield",         labelEn: "Privacy Policy", labelAr: "سياسة الخصوصية",         arrow: true },
+        { id: "about",   icon: "info",           labelEn: "About Mora",      labelAr: "عن مورا",                arrow: true },
+        { id: "faq",     icon: "help-circle",    labelEn: "FAQ",             labelAr: "أسئلة شائعة",            arrow: true },
+        { id: "support", icon: "message-circle", labelEn: "Support",         labelAr: "الدعم",                  arrow: true },
+        { id: "privacy", icon: "shield",         labelEn: "Privacy Policy",  labelAr: "سياسة الخصوصية",        arrow: true },
+        { id: "terms",   icon: "file-text",      labelEn: "Terms & Conditions", labelAr: "الشروط والأحكام",    arrow: true },
       ],
     },
   ];
@@ -306,10 +308,15 @@ function AccountMain({ insets, onOpenSettings }: { insets: any; onOpenSettings: 
                       isAr && { flexDirection: "row-reverse" },
                     ]}
                     onPress={() => {
-                      if (item.id === "orders")   router.push("/orders");
+                      if (item.id === "orders")        router.push("/orders");
                       else if (item.id === "wishlist") router.push("/wishlist");
                       else if (item.id === "address")  router.push("/address");
                       else if (item.id === "mysize")   router.push("/my-size");
+                      else if (item.id === "about")    router.push("/about" as any);
+                      else if (item.id === "faq")      router.push("/faq" as any);
+                      else if (item.id === "support")  router.push("/support" as any);
+                      else if (item.id === "privacy")  router.push("/privacy" as any);
+                      else if (item.id === "terms")    router.push("/terms" as any);
                     }}
                     testID={`menu-${item.id}`}
                   >
