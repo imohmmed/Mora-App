@@ -42,11 +42,19 @@ import { ShippingRulesNote } from "@/components/ShippingRulesNote";
 import { ReelPlayer } from "@/components/ReelPlayer";
 import RenderHtml from "react-native-render-html";
 import type { ContentSectionItem } from "@/lib/api";
-import type { Variant, Product, ColorEntry } from "@/lib/types";
+import type { Variant, Product, ColorEntry, OptionDefinition, ModelEntry } from "@/lib/types";
 
 const PRIMARY = "#0274C1";
 const GOLD = "#C9922A";
 const SILVER = "#7D8A9A";
+
+/** Extract the value for group `gi` from a variant, given total number of groups */
+function getGroupValue(v: Variant, gi: number, total: number): string | null {
+  if (gi === 0) return v.option1 ?? null;
+  if (gi === 1) return total <= 2 ? (v.option2 ?? null) : (v.option2?.split(" / ")[0] ?? null);
+  if (gi === 2) return v.option2?.split(" / ").slice(1).join(" / ") ?? null;
+  return null;
+}
 
 const CARD_COLORS = [
   "#E8EDF5", "#F0EBE3", "#E8F0E8", "#F5EDEB",
@@ -413,7 +421,7 @@ export default function ProductDetailScreen() {
   const { width: screenWidth } = useWindowDimensions();
   const imgSize = Math.min(screenWidth, 600);
   const [activeImgIdx, setActiveImgIdx] = useState(0);
-  const [activeModelId, setActiveModelId] = useState<string | null>(null);
+  const [selValues, setSelValues] = useState<(string | null)[]>([]);
   const imgListRef = useRef<FlatList>(null);
   const imageUri = product?.images?.[0];
 
@@ -501,6 +509,63 @@ export default function ProductDetailScreen() {
     } finally {
       setNotifyingVariant(null);
     }
+  };
+
+  // ── selValues initialisation ────────────────────────────────────────────────
+  const optGroups = (product?.optionDefinitions ?? []) as OptionDefinition[];
+  const totalOptGroups = optGroups.length;
+
+  // Compute selValues from the active variant whenever the product or selectedVariant changes
+  React.useEffect(() => {
+    if (!product || !optGroups.length) return;
+    const v = selectedVariant ?? product.variants?.[0];
+    if (!v) return;
+    setSelValues(optGroups.map((_, gi) => getGroupValue(v, gi, optGroups.length)));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id, selectedVariant?.id]);
+
+  /** Available (unique) values for group gi given upstream selValues */
+  const availableFor = (gi: number): string[] => {
+    if (!product?.variants) return [];
+    const filtered = product.variants.filter((v) => {
+      for (let j = 0; j < gi; j++) {
+        if (selValues[j] != null && getGroupValue(v, j, totalOptGroups) !== selValues[j]) return false;
+      }
+      return true;
+    });
+    return [...new Set(filtered.map((v) => getGroupValue(v, gi, totalOptGroups)).filter((x): x is string => x !== null))];
+  };
+
+  /** Select a value for group gi, reset downstream, find best variant */
+  const selectGroupValue = (gi: number, val: string) => {
+    const next = [...selValues];
+    next[gi] = val;
+    for (let j = gi + 1; j < optGroups.length; j++) next[j] = null;
+    setSelValues(next);
+
+    const matched = (product?.variants ?? []).filter((v) => {
+      for (let j = 0; j <= gi; j++) {
+        if (next[j] != null && getGroupValue(v, j, totalOptGroups) !== next[j]) return false;
+      }
+      return true;
+    });
+    if (matched.length > 0) {
+      const best = matched.find((v) => (v.inventory ?? 0) > 0) ?? matched[0];
+      setSelectedVariant(best);
+    }
+
+    // If model group: scroll image list to model's image
+    if (optGroups[gi]?.type === "model") {
+      const entry = optGroups[gi].modelEntries?.find((m) => m.nameEn === val || m.nameAr === val || m.id === val);
+      if (entry?.image && product?.images) {
+        const idx = product.images.indexOf(entry.image);
+        if (idx >= 0) {
+          imgListRef.current?.scrollToIndex({ index: idx, animated: true });
+          setActiveImgIdx(idx);
+        }
+      }
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   return (
@@ -681,189 +746,94 @@ export default function ProductDetailScreen() {
             </View>
           </View>
 
-          {/* ── Models strip ── */}
-          {(() => {
-            const productModels = (product as unknown as Record<string, unknown>).models as Array<{ id: string; nameEn: string; nameAr: string; image: string }> | undefined;
-            if (!productModels || productModels.length === 0) return null;
-            return (
-              <View style={[styles.modelsSection, { borderTopColor: colors.border }]}>
-                <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
-                  {lang === "ar" ? "الموديل" : "MODEL"}
-                </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modelsRow}>
-                  {productModels.map((m) => {
-                    const isActive = activeModelId === m.id;
-                    const label = lang === "ar" ? (m.nameAr || m.nameEn) : (m.nameEn || m.nameAr);
-                    return (
-                      <Pressable
-                        key={m.id}
-                        style={styles.modelItem}
-                        onPress={() => {
-                          setActiveModelId(isActive ? null : m.id);
-                          if (m.image) {
-                            const idx = product.images?.indexOf(m.image) ?? -1;
-                            if (idx >= 0) {
-                              imgListRef.current?.scrollToIndex({ index: idx, animated: true });
-                              setActiveImgIdx(idx);
-                            }
-                          }
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        }}
-                      >
-                        <View style={[
-                          styles.modelThumbWrap,
-                          { borderColor: isActive ? PRIMARY : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)") },
-                          isActive && styles.modelThumbActive,
-                        ]}>
-                          {m.image ? (
-                            <Image
-                              source={{ uri: m.image }}
-                              style={styles.modelThumb}
-                              contentFit="cover"
-                            />
-                          ) : (
-                            <View style={[styles.modelThumb, { backgroundColor: colors.muted, alignItems: "center", justifyContent: "center" }]}>
-                              <Feather name="user" size={22} color={colors.mutedForeground} />
-                            </View>
-                          )}
-                        </View>
-                        {label ? (
-                          <Text style={[styles.modelLabel, { color: isActive ? PRIMARY : colors.mutedForeground }]} numberOfLines={1}>
-                            {label}
-                          </Text>
-                        ) : null}
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            );
-          })()}
+          {/* ── Option Selectors (Model / Color / Size) — all square chips ── */}
+          {optGroups.length > 0 && product.variants?.some((v) => v.option1 && v.option1 !== "Default Title") && (
+            <>
+              {optGroups.map((group, gi) => {
+                const available = availableFor(gi);
+                const selectedVal = selValues[gi] ?? null;
+                const fallbackName = group.type === "model"
+                  ? (lang === "ar" ? "الموديل" : "MODEL")
+                  : group.type === "color"
+                    ? (lang === "ar" ? "اللون" : "COLOR")
+                    : (lang === "ar" ? "القياس" : "SIZE");
+                const groupName = (
+                  lang === "ar"
+                    ? (group.nameAr || group.nameEn || group.name || "")
+                    : (group.nameEn || group.nameAr || group.name || "")
+                ) || fallbackName;
 
-          {/* ── Variants / SIZE / COLOR ── */}
-          {product.variants && product.variants.some((v) => v.option1 && v.option1 !== "Default Title") && (
-            <View style={[styles.variantsSection, { borderTopColor: colors.border }]}>
-              {(() => {
-                const opt1Def = product.optionDefinitions?.[0];
-                const isColorGroup = opt1Def?.type === "color";
-                const colorEntries: ColorEntry[] = opt1Def?.colorEntries ?? [];
-                const named = opt1Def
-                  ? (lang === "ar"
-                      ? (opt1Def.nameAr || opt1Def.nameEn || opt1Def.name)
-                      : (opt1Def.nameEn || opt1Def.nameAr || opt1Def.name))
-                  : null;
-                const sectionTitle = (named && named.trim())
-                  ? named.trim()
-                  : (isColorGroup
-                      ? (lang === "ar" ? "اللون" : "COLOR")
-                      : (lang === "ar" ? "القياس" : "SIZE"));
+                /* resolve display label for each value */
+                const displayLabel = (val: string): string => {
+                  if (group.type === "model") {
+                    const entry = (group.modelEntries ?? []).find((m) => m.nameEn === val || m.id === val);
+                    if (entry) return lang === "ar" ? (entry.nameAr || entry.nameEn) : (entry.nameEn || entry.nameAr);
+                  }
+                  if (group.type === "color") {
+                    const entry = (group.colorEntries ?? []).find((c) => c.nameEn === val || c.hex === val);
+                    if (entry) return lang === "ar" ? (entry.nameAr || entry.nameEn) : (entry.nameEn || entry.nameAr);
+                  }
+                  return val;
+                };
 
-                if (isColorGroup) {
-                  const uniqueColors = [...new Map(
-                    product.variants
-                      .filter((v) => v.option1 && v.option1 !== "Default Title")
-                      .map((v) => [v.option1, v])
-                  ).values()];
-                  const activeColorName = activeVariant?.option1 ?? null;
-                  const selEntry = colorEntries.find((c) => c.nameEn === activeColorName || c.hex === activeColorName);
-                  const selLabel = selEntry
-                    ? (lang === "ar" ? (selEntry.nameAr || selEntry.nameEn) : (selEntry.nameEn || selEntry.nameAr))
-                    : activeColorName;
+                /* is the entire value OOS given upstream selections? */
+                const isOOS = (val: string) =>
+                  (product.variants ?? []).filter((v) => {
+                    for (let j = 0; j < gi; j++) {
+                      if (selValues[j] != null && getGroupValue(v, j, totalOptGroups) !== selValues[j]) return false;
+                    }
+                    return getGroupValue(v, gi, totalOptGroups) === val;
+                  }).every((v) => (v.inventory ?? 0) <= 0);
 
-                  return (
-                    <>
-                      <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
-                        {sectionTitle}{selLabel ? ` — ${selLabel}` : ""}
-                      </Text>
-                      <View style={[styles.variantsRow, { gap: 10 }]}>
-                        {uniqueColors.map((v) => {
-                          const isActive = activeVariant?.option1 === v.option1;
-                          const outOfStock = v.inventory <= 0;
-                          const entry = colorEntries.find((c) => c.nameEn === v.option1 || c.hex === v.option1);
-                          const hex = entry?.hex || "#888888";
-                          return (
-                            <Pressable
-                              key={v.id}
-                              style={[
-                                styles.colorSwatchBtn,
-                                {
-                                  backgroundColor: hex,
-                                  borderWidth: isActive ? 3 : 1.5,
-                                  borderColor: isActive ? PRIMARY : (isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.18)"),
-                                  opacity: outOfStock ? 0.4 : 1,
-                                },
-                              ]}
-                              onPress={() => {
-                                if (!outOfStock) {
-                                  setSelectedVariant(v);
-                                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                }
-                              }}
-                              disabled={outOfStock}
-                            >
-                              {isActive && <View style={styles.colorSwatchRing} />}
-                            </Pressable>
-                          );
-                        })}
-                      </View>
-                    </>
-                  );
-                }
+                if (available.length === 0) return null;
 
                 return (
-                  <>
+                  <View key={gi} style={[styles.variantsSection, { borderTopColor: colors.border }]}>
                     <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
-                      {sectionTitle}
+                      {groupName}
+                      {selectedVal ? ` — ${displayLabel(selectedVal)}` : ""}
                     </Text>
                     <View style={styles.variantsRow}>
-                      {product.variants.map((v) => {
-                        const isActive = activeVariant?.id === v.id;
-                        const outOfStock = v.inventory <= 0;
+                      {available.map((val) => {
+                        const isActive = selectedVal === val;
+                        const oos = isOOS(val);
+                        const label = displayLabel(val);
                         return (
                           <Pressable
-                            key={v.id}
+                            key={val}
                             style={[
                               styles.variantChip,
                               {
-                                borderColor: isActive
-                                  ? "transparent"
-                                  : (isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.13)"),
+                                borderColor: isActive ? "transparent" : (isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.13)"),
                                 backgroundColor: isActive ? PRIMARY : "transparent",
-                                opacity: outOfStock ? 0.4 : 1,
+                                opacity: oos ? 0.35 : 1,
                               },
                             ]}
-                            onPress={() => {
-                              if (!outOfStock) {
-                                setSelectedVariant(v);
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                              }
-                            }}
-                            disabled={outOfStock}
+                            onPress={() => !oos && selectGroupValue(gi, val)}
+                            disabled={oos}
                           >
                             {!isActive && Platform.OS !== "web" && (
                               <View style={styles.chipGlassBg}>
                                 {isIOS26Plus
                                   ? <LiquidGlassBg />
-                                  : <BlurView
-                                      style={StyleSheet.absoluteFill}
-                                      intensity={55}
-                                      tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"}
-                                    />
+                                  : <BlurView style={StyleSheet.absoluteFill} intensity={55} tint={isDark ? "systemThinMaterialDark" : "systemThinMaterial"} />
                                 }
                               </View>
                             )}
-                            <Text style={[styles.variantText, { color: isActive ? "#FFFFFF" : colors.foreground }]}>
-                              {v.option1 ?? v.title}
+                            <Text style={[styles.variantText, { color: isActive ? "#FFFFFF" : colors.foreground }]} numberOfLines={1}>
+                              {label}
                             </Text>
+                            {oos && (
+                              <View style={styles.chipStrikethrough} />
+                            )}
                           </Pressable>
                         );
                       })}
                     </View>
-                  </>
+                  </View>
                 );
-              })()}
-
-            </View>
+              })}
+            </>
           )}
 
           {/* ── Add to Bag / Notify me ── */}
@@ -1237,6 +1207,14 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   variantText: { fontFamily: "Cairo_500Medium", fontSize: 14 },
+  chipStrikethrough: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: "50%",
+    height: 1.5,
+    backgroundColor: "rgba(150,150,150,0.5)",
+  },
   colorSwatchBtn: {
     width: 36,
     height: 36,

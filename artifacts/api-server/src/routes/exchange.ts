@@ -317,21 +317,20 @@ router.post("/admin/exchange-requests/:id/approve", requireAdmin, async (req, re
   const ts = now();
   let stockErrMsg: string | null = null;
 
-  // Aggregate quantities per variant so duplicate lines can't slip past the
-  // stock check, and so decrements are applied once per variant.
+  // Aggregate quantities per variant (for exchange: stock check + decrement;
+  // for refund: stock restoration back to the exact returned variant).
   const variantQty = new Map<string, { qty: number; title: string }>();
-  if (isExchange) {
-    for (const item of lineItems) {
-      const qty = Number(item.quantity ?? 0);
-      if (!item.variantId || qty <= 0) {
-        res.status(400).json({ data: null, meta: {}, error: "Exchange items must have a variant and quantity" }); return;
-      }
-      const prev = variantQty.get(item.variantId);
-      variantQty.set(item.variantId, {
-        qty: (prev?.qty ?? 0) + qty,
-        title: item.title ?? prev?.title ?? item.variantId,
-      });
+  for (const item of lineItems) {
+    const qty = Number(item.quantity ?? 0);
+    if (isExchange && (!item.variantId || qty <= 0)) {
+      res.status(400).json({ data: null, meta: {}, error: "Exchange items must have a variant and quantity" }); return;
     }
+    if (!item.variantId || qty <= 0) continue;
+    const prev = variantQty.get(item.variantId);
+    variantQty.set(item.variantId, {
+      qty: (prev?.qty ?? 0) + qty,
+      title: item.title ?? prev?.title ?? item.variantId,
+    });
   }
 
   const approve = db.transaction(() => {
@@ -372,9 +371,18 @@ router.post("/admin/exchange-requests/:id/approve", requireAdmin, async (req, re
     );
 
     if (isExchange) {
+      // Exchange: decrement inventory for outgoing new items
       for (const [variantId, { qty }] of variantQty) {
         db.prepare(`UPDATE variants SET inventory = MAX(0, inventory - ?) WHERE id=?`)
           .run(qty, variantId);
+      }
+    } else {
+      // Refund: restore inventory for every returned variant (partial return support)
+      for (const [variantId, { qty }] of variantQty) {
+        const exists = db.prepare(`SELECT id FROM variants WHERE id=?`).get(variantId);
+        if (exists) {
+          db.prepare(`UPDATE variants SET inventory = inventory + ? WHERE id=?`).run(qty, variantId);
+        }
       }
     }
 

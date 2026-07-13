@@ -34,7 +34,7 @@ export type VariantRow = {
 };
 
 function cartesian(groups: OptionGroup[]): Array<[string | null, string | null]> {
-  const active = groups.filter((g) => g.type !== "model" && optionGroupName(g) && g.values.length > 0);
+  const active = groups.filter((g) => optionGroupName(g) && g.values.length > 0);
   if (active.length === 0) return [];
   if (active.length === 1) return active[0].values.map((v) => [v, null]);
   if (active[1]) {

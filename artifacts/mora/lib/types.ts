@@ -1,12 +1,14 @@
 export type ColorEntry = { nameEn: string; nameAr: string; hex: string };
+export type ModelEntry = { id: string; nameEn: string; nameAr: string; image: string };
 
 export type OptionDefinition = {
   name?: string;
   nameEn?: string;
   nameAr?: string;
   values: string[];
-  type?: "variant" | "color";
+  type?: "variant" | "color" | "model";
   colorEntries?: ColorEntry[];
+  modelEntries?: ModelEntry[];
 };
 
 export type Product = {
