@@ -413,6 +413,8 @@ export default function ProductDetailScreen() {
   const { width: screenWidth } = useWindowDimensions();
   const imgSize = Math.min(screenWidth, 600);
   const [activeImgIdx, setActiveImgIdx] = useState(0);
+  const [activeModelId, setActiveModelId] = useState<string | null>(null);
+  const imgListRef = useRef<FlatList>(null);
   const imageUri = product?.images?.[0];
 
   const warranty = contentSections?.warranty;
@@ -580,6 +582,7 @@ export default function ProductDetailScreen() {
           <View style={{ width: imgSize, height: imgSize * 1.35, alignSelf: "center", backgroundColor: bg }}>
             {(product.images?.length ?? 0) > 0 ? (
               <FlatList
+                ref={imgListRef}
                 data={product.images}
                 keyExtractor={(_, i) => String(i)}
                 horizontal
@@ -677,6 +680,65 @@ export default function ProductDetailScreen() {
               )}
             </View>
           </View>
+
+          {/* ── Models strip ── */}
+          {(() => {
+            const productModels = (product as unknown as Record<string, unknown>).models as Array<{ id: string; nameEn: string; nameAr: string; image: string }> | undefined;
+            if (!productModels || productModels.length === 0) return null;
+            return (
+              <View style={[styles.modelsSection, { borderTopColor: colors.border }]}>
+                <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
+                  {lang === "ar" ? "الموديل" : "MODEL"}
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modelsRow}>
+                  {productModels.map((m) => {
+                    const isActive = activeModelId === m.id;
+                    const label = lang === "ar" ? (m.nameAr || m.nameEn) : (m.nameEn || m.nameAr);
+                    return (
+                      <Pressable
+                        key={m.id}
+                        style={styles.modelItem}
+                        onPress={() => {
+                          setActiveModelId(isActive ? null : m.id);
+                          if (m.image) {
+                            const idx = product.images?.indexOf(m.image) ?? -1;
+                            if (idx >= 0) {
+                              imgListRef.current?.scrollToIndex({ index: idx, animated: true });
+                              setActiveImgIdx(idx);
+                            }
+                          }
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                      >
+                        <View style={[
+                          styles.modelThumbWrap,
+                          { borderColor: isActive ? PRIMARY : (isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)") },
+                          isActive && styles.modelThumbActive,
+                        ]}>
+                          {m.image ? (
+                            <Image
+                              source={{ uri: m.image }}
+                              style={styles.modelThumb}
+                              contentFit="cover"
+                            />
+                          ) : (
+                            <View style={[styles.modelThumb, { backgroundColor: colors.muted, alignItems: "center", justifyContent: "center" }]}>
+                              <Feather name="user" size={22} color={colors.mutedForeground} />
+                            </View>
+                          )}
+                        </View>
+                        {label ? (
+                          <Text style={[styles.modelLabel, { color: isActive ? PRIMARY : colors.mutedForeground }]} numberOfLines={1}>
+                            {label}
+                          </Text>
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            );
+          })()}
 
           {/* ── Variants / SIZE / COLOR ── */}
           {product.variants && product.variants.some((v) => v.option1 && v.option1 !== "Default Title") && (
@@ -1148,6 +1210,15 @@ const styles = StyleSheet.create({
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 2 },
   tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 0, borderWidth: 1 },
   tagText: { fontFamily: "Cairo_400Regular", fontSize: 12 },
+
+  /* Models */
+  modelsSection: { paddingHorizontal: 0, paddingVertical: 16, gap: 10, borderTopWidth: 1 },
+  modelsRow: { paddingHorizontal: 20, gap: 12 },
+  modelItem: { alignItems: "center", gap: 6, width: 72 },
+  modelThumbWrap: { width: 64, height: 80, borderRadius: 10, overflow: "hidden", borderWidth: 2.5 },
+  modelThumbActive: { borderWidth: 3 },
+  modelThumb: { width: "100%", height: "100%" },
+  modelLabel: { fontFamily: "Cairo_500Medium", fontSize: 11, textAlign: "center" },
 
   /* Variants */
   variantsSection: { paddingHorizontal: 20, paddingVertical: 16, gap: 12, borderTopWidth: 1 },

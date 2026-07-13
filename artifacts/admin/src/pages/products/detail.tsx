@@ -19,6 +19,7 @@ import { ArrowLeft, Save, Plus, X, Search, Star, Upload, Image as ImageIcon, Loa
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { SortableImageGrid } from "@/components/ui/SortableImageGrid";
 import { VariantBuilder, type OptionGroup, type VariantRow } from "@/components/ui/VariantBuilder";
+import { ModelBuilder, type ProductModel } from "@/components/ui/ModelBuilder";
 import { CollectionMultiSelect } from "@/components/ui/CollectionMultiSelect";
 import { adminFetch, getAdminToken } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
@@ -96,6 +97,7 @@ export default function ProductDetail() {
   const [urlSlug, setUrlSlug] = useState("");
   const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
   const [variants, setVariants] = useState<VariantRow[]>([]);
+  const [models, setModels] = useState<ProductModel[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [collectionsLoaded, setCollectionsLoaded] = useState(false);
   const [browseSections, setBrowseSections] = useState<{ slug: string; titleEn: string; titleAr: string; image: string }[]>([]);
@@ -135,6 +137,8 @@ export default function ProductDetail() {
     } else if (apiVariants.length > 0) {
       setOptionGroups(deriveOptionGroups(apiVariants));
     }
+    const rawModels = (product as unknown as Record<string, unknown>).models;
+    setModels(Array.isArray(rawModels) ? rawModels as ProductModel[] : []);
   }, [product?.id]);
 
   useEffect(() => {
@@ -245,6 +249,7 @@ export default function ProductDetail() {
               tags,
               status,
               optionDefinitions: optionGroups,
+              models,
               seoTitle,
               seoDescription,
               urlSlug,
@@ -357,6 +362,19 @@ export default function ProductDetail() {
             </CardHeader>
             <CardContent>
               <SortableImageGrid images={images} onChange={setImages} />
+            </CardContent>
+          </Card>
+
+          {/* Models */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Models</CardTitle>
+              <CardDescription>
+                Add models to show different looks. Each model gets a name (EN + AR) and a photo from the product images above.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ModelBuilder models={models} onChange={setModels} productImages={images} />
             </CardContent>
           </Card>
 

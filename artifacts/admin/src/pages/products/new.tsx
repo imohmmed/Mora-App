@@ -15,6 +15,7 @@ import { ArrowLeft, Plus, X, Search, Star } from "lucide-react";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { SortableImageGrid } from "@/components/ui/SortableImageGrid";
 import { VariantBuilder, type OptionGroup, type VariantRow } from "@/components/ui/VariantBuilder";
+import { ModelBuilder, type ProductModel } from "@/components/ui/ModelBuilder";
 import { CollectionMultiSelect } from "@/components/ui/CollectionMultiSelect";
 import { adminFetch } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
@@ -49,6 +50,7 @@ export default function NewProduct() {
   const [urlSlug, setUrlSlug] = useState("");
   const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
   const [variants, setVariants] = useState<VariantRow[]>([]);
+  const [models, setModels] = useState<ProductModel[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   const priceNum = parseFloat(price) || 0;
@@ -88,6 +90,7 @@ export default function NewProduct() {
               tags,
               status,
               optionDefinitions: optionGroups,
+              models,
               seoTitle: seoTitle || title,
               seoDescription,
               urlSlug: urlSlug || autoSlug(title),
@@ -184,6 +187,19 @@ export default function NewProduct() {
             </CardHeader>
             <CardContent>
               <SortableImageGrid images={images} onChange={setImages} />
+            </CardContent>
+          </Card>
+
+          {/* Models */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Models</CardTitle>
+              <CardDescription>
+                Add models to show different looks. Each model gets a name (EN + AR) and a photo from the product images above.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ModelBuilder models={models} onChange={setModels} productImages={images} />
             </CardContent>
           </Card>
 

@@ -254,6 +254,7 @@ function ensureColumn(table: string, column: string, decl: string) {
 ensureColumn("products", "cost", "REAL");
 ensureColumn("variants", "cost", "REAL");
 ensureColumn("products", "option_definitions", "TEXT NOT NULL DEFAULT '[]'");
+ensureColumn("products", "models", "TEXT NOT NULL DEFAULT '[]'");
 ensureColumn("products", "seo_title", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("products", "seo_description", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("products", "url_slug", "TEXT NOT NULL DEFAULT ''");
