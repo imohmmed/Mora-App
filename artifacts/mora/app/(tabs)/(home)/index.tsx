@@ -37,7 +37,7 @@ import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { fetchProducts, fetchForYouProducts, fetchSpecialCollections, fetchBanners, fetchStories, fetchContentSections } from "@/lib/api";
-import { useRtlScrollToEnd, rtlContentStyle } from "@/lib/rtlScroll";
+import { rtlMirrorScroll, rtlMirrorItem } from "@/lib/rtlScroll";
 import { formatIQD } from "@/lib/format";
 import { StoriesSection } from "@/components/StoriesSection";
 import { ExchangeBanner } from "@/components/ExchangeBanner";
@@ -384,7 +384,6 @@ export default function HomeScreen() {
 
   const flatListRef  = useRef<FlatList>(null);
   const bannerRef    = useRef<FlatList>(null);
-  const newInScroll  = useRtlScrollToEnd(isAr);
   useEffect(() => {
     const scrollTop = () => flatListRef.current?.scrollToOffset?.({ offset: 0, animated: true });
     // Native: TabEvents bus
@@ -623,23 +622,19 @@ export default function HomeScreen() {
       {/* ── Horizontal product slide — lazy loads up to 80 ── */}
       {!isNewInLoading && !isNewInError && (
         <FlatList
-          ref={newInScroll.ref as any}
           horizontal
+          style={rtlMirrorScroll(isAr)}
           data={newInProducts}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <View style={styles.slideCard}>
+            <View style={[styles.slideCard, rtlMirrorItem(isAr)]}>
               <ProductCard item={item} onAddToBag={handleAddToBag} onLongPress={handleLongPress} />
             </View>
           )}
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[
-            { paddingHorizontal: 1, gap: 1 },
-            rtlContentStyle(isAr),
-          ]}
+          contentContainerStyle={{ paddingHorizontal: 1, gap: 1 }}
           snapToInterval={CARD_WIDTH + 1}
           decelerationRate="fast"
-          onContentSizeChange={newInScroll.onContentSizeChange}
           onEndReachedThreshold={0.4}
           onEndReached={() => {
             if (hasNewInNextPage && !isFetchingNewInNextPage) fetchNewInNextPage();
