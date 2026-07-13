@@ -42,7 +42,7 @@ const seoHead = `
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"ClothingStore","name":"Mora","alternateName":"مورا","url":"https://moramoda.tech","logo":"https://moramoda.tech/assets/images/icon.4ff908a75140deec9616d161ba26bd91.png","image":"https://moramoda.tech/assets/images/icon.4ff908a75140deec9616d161ba26bd91.png","description":"Mora — متجر أزياء وعطور في العراق","sameAs":["https://www.instagram.com/moramoda"],"address":{"@type":"PostalAddress","addressCountry":"IQ"},"areaServed":"IQ","currenciesAccepted":"IQD","paymentAccepted":"Cash, Online Payment","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://moramoda.tech/search?q={search_term_string}"},"query-input":"required name=search_term_string"}}</script>`;
 
 html = html
-  .replace('<html lang="en">', '<html lang="ar" dir="rtl">')
+  .replace('<html lang="en">', '<html lang="ar">')
   .replace("<title>Mora</title>", "<title>مورا | Mora — أزياء وعطور</title>")
   .replace("</head>", `${seoHead}\n  </head>`);
 
