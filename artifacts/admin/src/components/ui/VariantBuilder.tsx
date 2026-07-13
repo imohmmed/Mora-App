@@ -36,21 +36,26 @@ export type VariantRow = {
 function cartesian(groups: OptionGroup[]): Array<[string | null, string | null]> {
   const active = groups.filter((g) => optionGroupName(g) && g.values.length > 0);
   if (active.length === 0) return [];
-  if (active.length === 1) return active[0].values.map((v) => [v, null]);
-  if (active[1]) {
-    const pairs: Array<[string | null, string | null]> = [];
-    for (const v1 of active[0].values) {
-      for (const v2 of active[1].values) {
-        const rest = active
-          .slice(2)
-          .flatMap((g) => g.values)
-          .join(" / ");
-        pairs.push([v1, rest ? `${v2} / ${rest}` : v2]);
-      }
-    }
-    return pairs;
+
+  // Full cartesian product across all active groups
+  let combos: string[][] = [[]];
+  for (const group of active) {
+    combos = combos.flatMap((combo) => group.values.map((v) => [...combo, v]));
   }
-  return active[0].values.map((v) => [v, null]);
+
+  // Encode: option1 = first group value, option2 = rest joined by " / "
+  return combos.map((combo) => {
+    const [o1, ...rest] = combo;
+    return [o1 ?? null, rest.length > 0 ? rest.join(" / ") : null];
+  });
+}
+
+/** Decode a variant's value for group gi given total number of active groups */
+function getVariantGroupValue(v: VariantRow, gi: number, total: number): string | null {
+  if (gi === 0) return v.option1 ?? null;
+  if (gi === 1) return total <= 2 ? (v.option2 ?? null) : (v.option2?.split(" / ")[0] ?? null);
+  if (gi === 2) return v.option2?.split(" / ").slice(1).join(" / ") ?? null;
+  return null;
 }
 
 export function variantKey(row: { option1: string | null; option2: string | null }) {
@@ -239,6 +244,27 @@ export function VariantBuilder({
     if (next.has(key)) next.delete(key);
     else next.add(key);
     setSelected(next);
+  };
+
+  /** Toggle-select all variants where group gi equals value */
+  const quickSelect = (gi: number, value: string) => {
+    const matching = variants
+      .filter((v) => getVariantGroupValue(v, gi, optionGroups.length) === value)
+      .map(variantKey);
+    const allMatch = matching.length > 0 && matching.every((k) => selected.has(k));
+    const next = new Set(selected);
+    if (allMatch) matching.forEach((k) => next.delete(k));
+    else matching.forEach((k) => next.add(k));
+    setSelected(next);
+  };
+
+  /** Quick-select all variants for a group's value AND open bulk edit */
+  const quickSelectAndEdit = (gi: number, value: string) => {
+    const matching = variants
+      .filter((v) => getVariantGroupValue(v, gi, optionGroups.length) === value)
+      .map(variantKey);
+    setSelected(new Set(matching));
+    setBulkOpen(true);
   };
 
   const applyBulk = () => {
@@ -589,16 +615,19 @@ export function VariantBuilder({
 
       {hasCombos && (
         <div className="space-y-2">
+          {/* ── Header: count + Bulk edit button ── */}
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-medium">
               {variants.length} variant{variants.length !== 1 ? "s" : ""}
+              {someSelected && (
+                <span className="ml-2 text-xs text-muted-foreground">({selected.size} selected)</span>
+              )}
             </p>
             <Button
               type="button"
               variant={someSelected ? "default" : "outline"}
               size="sm"
-              disabled={!someSelected}
-              onClick={() => { setBulkOpen(true); }}
+              onClick={() => setBulkOpen((o) => !o)}
               className="gap-1.5 text-xs h-8"
             >
               <PencilLine className="w-3.5 h-3.5" />
@@ -606,16 +635,81 @@ export function VariantBuilder({
             </Button>
           </div>
 
+          {/* ── Quick-select filter chips ── */}
+          {optionGroups.some((g) => g.values.length > 0) && (
+            <div className="border rounded-lg px-3 py-2.5 bg-muted/5 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Quick select by
+              </p>
+              {optionGroups.map((group, gi) => {
+                if (group.values.length === 0) return null;
+                const groupLabel = optionGroupName(group) || (group.type === "model" ? "Model" : group.type === "color" ? "Color" : "Size");
+                return (
+                  <div key={gi} className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-medium text-muted-foreground shrink-0 min-w-[48px]">{groupLabel}:</span>
+                    {group.values.map((val) => {
+                      const matching = variants.filter(
+                        (v) => getVariantGroupValue(v, gi, optionGroups.length) === val,
+                      );
+                      const allMatch = matching.length > 0 && matching.every((v) => selected.has(variantKey(v)));
+                      const colorEntry = group.type === "color"
+                        ? (group.colorEntries ?? []).find((c) => c.nameEn === val || c.hex === val)
+                        : null;
+                      const modelEntry = group.type === "model"
+                        ? (group.modelEntries ?? []).find((m) => m.nameEn === val || m.id === val)
+                        : null;
+                      const displayName = modelEntry
+                        ? (modelEntry.nameEn || modelEntry.nameAr || val)
+                        : colorEntry ? (colorEntry.nameEn || val) : val;
+                      return (
+                        <div key={val} className="flex items-center">
+                          <button
+                            type="button"
+                            onClick={() => quickSelect(gi, val)}
+                            className={cn(
+                              "flex items-center gap-1.5 px-2 py-0.5 rounded-l border text-xs font-medium transition-colors",
+                              allMatch
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background hover:bg-muted border-border",
+                            )}
+                          >
+                            {colorEntry?.hex && (
+                              <span className="w-2.5 h-2.5 rounded-full border border-black/10 shrink-0" style={{ backgroundColor: colorEntry.hex }} />
+                            )}
+                            {displayName}
+                            <span className="opacity-50 text-[10px]">({matching.length})</span>
+                          </button>
+                          <button
+                            type="button"
+                            title={`Select & edit all ${displayName}`}
+                            onClick={() => quickSelectAndEdit(gi, val)}
+                            className="px-1.5 py-[3px] rounded-r border border-l-0 border-border bg-background hover:bg-primary hover:text-primary-foreground transition-colors"
+                          >
+                            <PencilLine className="w-3 h-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── Bulk edit panel ── */}
           {bulkOpen && (
             <div className="border rounded-lg bg-muted/10 overflow-hidden">
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/20">
                 <div>
                   <p className="text-sm font-semibold text-foreground">
-                    Bulk Edit — {selected.size} variant{selected.size !== 1 ? "s" : ""} selected
+                    Bulk Edit
+                    {someSelected
+                      ? ` — ${selected.size} variant${selected.size !== 1 ? "s" : ""} selected`
+                      : " — select variants above first"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Leave a field blank to keep each variant's existing value.
+                    Leave a field blank to keep each variant&apos;s existing value.
                   </p>
                 </div>
                 <button
@@ -660,7 +754,6 @@ export function VariantBuilder({
                       />
                     </div>
                   </div>
-                  {/* Live margin preview */}
                   {bulkFields.price && bulkFields.cost && parseFloat(bulkFields.price) > 0 && (
                     <p className="text-xs text-muted-foreground">
                       Margin:{" "}
@@ -674,9 +767,9 @@ export function VariantBuilder({
                   )}
                 </div>
 
-                {/* Inventory */}
+                {/* Stock & SKU */}
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">📦 Inventory</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">📦 Stock & SKU</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Stock Quantity</Label>
@@ -701,7 +794,11 @@ export function VariantBuilder({
 
                 {/* Actions */}
                 <div className="flex items-center gap-2 pt-1 border-t">
-                  <Button type="button" size="sm" className="gap-1.5 text-xs" onClick={applyBulk}>
+                  <Button
+                    type="button" size="sm" className="gap-1.5 text-xs"
+                    disabled={!someSelected}
+                    onClick={applyBulk}
+                  >
                     <Check className="w-3.5 h-3.5" />
                     Apply to {selected.size} variant{selected.size !== 1 ? "s" : ""}
                   </Button>
