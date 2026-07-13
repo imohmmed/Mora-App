@@ -18,8 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Plus, X, Search, Star, Upload, Image as ImageIcon, Loader2 as Loader2Icon } from "lucide-react";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { SortableImageGrid } from "@/components/ui/SortableImageGrid";
-import { VariantBuilder, type OptionGroup, type VariantRow } from "@/components/ui/VariantBuilder";
-import { ModelBuilder, type ProductModel } from "@/components/ui/ModelBuilder";
+import { VariantBuilder, type OptionGroup, type VariantRow, type ModelEntry } from "@/components/ui/VariantBuilder";
 import { CollectionMultiSelect } from "@/components/ui/CollectionMultiSelect";
 import { adminFetch, getAdminToken } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
@@ -97,7 +96,6 @@ export default function ProductDetail() {
   const [urlSlug, setUrlSlug] = useState("");
   const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
   const [variants, setVariants] = useState<VariantRow[]>([]);
-  const [models, setModels] = useState<ProductModel[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [collectionsLoaded, setCollectionsLoaded] = useState(false);
   const [browseSections, setBrowseSections] = useState<{ slug: string; titleEn: string; titleAr: string; image: string }[]>([]);
@@ -132,13 +130,24 @@ export default function ProductDetail() {
 
     const rawOpts = (product as unknown as Record<string, unknown>).optionDefinitions;
     const parsedOpts: OptionGroup[] = Array.isArray(rawOpts) ? rawOpts as OptionGroup[] : [];
+    let groups: OptionGroup[] = [];
     if (parsedOpts.length > 0) {
-      setOptionGroups(normalizeOptionGroups(parsedOpts));
+      groups = normalizeOptionGroups(parsedOpts);
     } else if (apiVariants.length > 0) {
-      setOptionGroups(deriveOptionGroups(apiVariants));
+      groups = deriveOptionGroups(apiVariants);
     }
+    // Migrate legacy models column into a model-type option group if not already present
     const rawModels = (product as unknown as Record<string, unknown>).models;
-    setModels(Array.isArray(rawModels) ? rawModels as ProductModel[] : []);
+    const legacyModels = Array.isArray(rawModels) ? rawModels as ModelEntry[] : [];
+    const hasModelGroup = groups.some((g) => g.type === "model");
+    if (legacyModels.length > 0 && !hasModelGroup) {
+      groups = [...groups, {
+        nameEn: "Models", nameAr: "الموديلات", type: "model" as const,
+        values: legacyModels.map((m) => m.nameEn || m.id),
+        modelEntries: legacyModels,
+      }];
+    }
+    setOptionGroups(groups);
   }, [product?.id]);
 
   useEffect(() => {
@@ -249,7 +258,7 @@ export default function ProductDetail() {
               tags,
               status,
               optionDefinitions: optionGroups,
-              models,
+              models: optionGroups.filter((g) => g.type === "model").flatMap((g) => g.modelEntries ?? []),
               seoTitle,
               seoDescription,
               urlSlug,
@@ -362,19 +371,6 @@ export default function ProductDetail() {
             </CardHeader>
             <CardContent>
               <SortableImageGrid images={images} onChange={setImages} />
-            </CardContent>
-          </Card>
-
-          {/* Models */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Models</CardTitle>
-              <CardDescription>
-                Add models to show different looks. Each model gets a name (EN + AR) and a photo from the product images above.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ModelBuilder models={models} onChange={setModels} productImages={images} />
             </CardContent>
           </Card>
 
@@ -601,6 +597,7 @@ export default function ProductDetail() {
                 variants={variants}
                 onVariantsChange={setVariants}
                 basePrice={price}
+                images={images}
               />
             </CardContent>
           </Card>

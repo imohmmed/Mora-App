@@ -3,18 +3,20 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Plus, X, Trash2, PencilLine, Check, Palette, AlignJustify } from "lucide-react";
+import { Plus, X, Trash2, PencilLine, Check, Palette, AlignJustify, User, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type ColorEntry = { nameEn: string; nameAr: string; hex: string };
+export type ModelEntry = { id: string; nameEn: string; nameAr: string; image: string };
 
 export type OptionGroup = {
   name?: string;
   nameEn?: string;
   nameAr?: string;
   values: string[];
-  type?: "variant" | "color";
+  type?: "variant" | "color" | "model";
   colorEntries?: ColorEntry[];
+  modelEntries?: ModelEntry[];
 };
 
 export function optionGroupName(g: OptionGroup): string {
@@ -32,7 +34,7 @@ export type VariantRow = {
 };
 
 function cartesian(groups: OptionGroup[]): Array<[string | null, string | null]> {
-  const active = groups.filter((g) => optionGroupName(g) && g.values.length > 0);
+  const active = groups.filter((g) => g.type !== "model" && optionGroupName(g) && g.values.length > 0);
   if (active.length === 0) return [];
   if (active.length === 1) return active[0].values.map((v) => [v, null]);
   if (active[1]) {
@@ -69,15 +71,17 @@ interface VariantBuilderProps {
   variants: VariantRow[];
   onVariantsChange: (variants: VariantRow[]) => void;
   basePrice?: string;
+  images?: string[];
 }
 
 export function VariantBuilder({
-  optionGroups, onOptionGroupsChange, variants, onVariantsChange, basePrice = "",
+  optionGroups, onOptionGroupsChange, variants, onVariantsChange, basePrice = "", images = [],
 }: VariantBuilderProps) {
   const [valueInputs, setValueInputs] = useState<string[]>(optionGroups.map(() => ""));
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [modelPickerFor, setModelPickerFor] = useState<string | null>(null);
   const [bulkFields, setBulkFields] = useState<BulkFields>({
     price: "", comparePrice: "", inventory: "", sku: "", cost: "",
   });
@@ -184,6 +188,43 @@ export function VariantBuilder({
     syncVariants(next);
   };
 
+  const addModelGroup = () => {
+    if (optionGroups.length >= 3) return;
+    const next = [...optionGroups, { nameEn: "Models", nameAr: "الموديلات", values: [], type: "model" as const, modelEntries: [] }];
+    onOptionGroupsChange(next);
+    setValueInputs([...valueInputs, ""]);
+    syncVariants(next);
+  };
+
+  const addModelEntry = (gi: number) => {
+    const next = optionGroups.map((g, idx) => {
+      if (idx !== gi) return g;
+      const newEntry: ModelEntry = { id: `m_${Date.now()}`, nameEn: "", nameAr: "", image: "" };
+      const newEntries = [...(g.modelEntries ?? []), newEntry];
+      return { ...g, modelEntries: newEntries, values: newEntries.map((m) => m.nameEn || m.id) };
+    });
+    onOptionGroupsChange(next);
+  };
+
+  const updateModelEntry = (gi: number, id: string, patch: Partial<ModelEntry>) => {
+    const next = optionGroups.map((g, idx) => {
+      if (idx !== gi || !g.modelEntries) return g;
+      const newEntries = g.modelEntries.map((m) => m.id === id ? { ...m, ...patch } : m);
+      return { ...g, modelEntries: newEntries, values: newEntries.map((m) => m.nameEn || m.id) };
+    });
+    onOptionGroupsChange(next);
+  };
+
+  const removeModelEntry = (gi: number, id: string) => {
+    const next = optionGroups.map((g, idx) => {
+      if (idx !== gi || !g.modelEntries) return g;
+      const newEntries = g.modelEntries.filter((m) => m.id !== id);
+      return { ...g, modelEntries: newEntries, values: newEntries.map((m) => m.nameEn || m.id) };
+    });
+    onOptionGroupsChange(next);
+    if (modelPickerFor) setModelPickerFor(null);
+  };
+
   const allKeys = variants.map(variantKey);
   const allSelected = allKeys.length > 0 && allKeys.every((k) => selected.has(k));
   const someSelected = selected.size > 0;
@@ -229,9 +270,9 @@ export function VariantBuilder({
       {optionGroups.length === 0 ? (
         <div className="border-2 border-dashed rounded-lg p-6 text-center">
           <p className="text-sm text-muted-foreground mb-3">
-            Add options like size or color
+            Add options like size, color, or models
           </p>
-          <div className="flex gap-2 justify-center">
+          <div className="flex flex-wrap gap-2 justify-center">
             <Button type="button" variant="outline" size="sm" onClick={addVariantGroup}>
               <AlignJustify className="w-4 h-4 mr-2" />
               Add variant
@@ -239,6 +280,10 @@ export function VariantBuilder({
             <Button type="button" variant="outline" size="sm" onClick={addColorGroup}>
               <Palette className="w-4 h-4 mr-2" />
               Add color
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={addModelGroup}>
+              <User className="w-4 h-4 mr-2" />
+              Add models
             </Button>
           </div>
         </div>
@@ -252,22 +297,22 @@ export function VariantBuilder({
                   <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs mb-1 block">
-                        {group.type === "color" ? "Color option name (EN)" : "Name (English)"}
+                        {group.type === "color" ? "Color option name (EN)" : group.type === "model" ? "Section name (EN)" : "Name (English)"}
                       </Label>
                       <Input
                         dir="ltr"
-                        placeholder={group.type === "color" ? "Color" : "e.g. Size, Color"}
+                        placeholder={group.type === "color" ? "Color" : group.type === "model" ? "Models" : "e.g. Size, Color"}
                         value={group.nameEn ?? ""}
                         onChange={(e) => setGroupField(gi, "nameEn", e.target.value)}
                       />
                     </div>
                     <div>
                       <Label className="text-xs mb-1 block">
-                        {group.type === "color" ? "اسم خيار اللون (عربي)" : "الاسم (عربي)"}
+                        {group.type === "color" ? "اسم خيار اللون (عربي)" : group.type === "model" ? "اسم القسم (عربي)" : "الاسم (عربي)"}
                       </Label>
                       <Input
                         dir="rtl"
-                        placeholder={group.type === "color" ? "اللون" : "مثال: القياس، اللون"}
+                        placeholder={group.type === "color" ? "اللون" : group.type === "model" ? "الموديلات" : "مثال: القياس، اللون"}
                         value={group.nameAr ?? ""}
                         onChange={(e) => setGroupField(gi, "nameAr", e.target.value)}
                       />
@@ -277,6 +322,11 @@ export function VariantBuilder({
                     {group.type === "color" && (
                       <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded px-1.5 py-0.5 font-medium">
                         Color
+                      </span>
+                    )}
+                    {group.type === "model" && (
+                      <span className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded px-1.5 py-0.5 font-medium">
+                        Models
                       </span>
                     )}
                     <Button
@@ -298,7 +348,6 @@ export function VariantBuilder({
                     <div className="space-y-2 mb-3">
                       {(group.colorEntries ?? []).map((entry, ci) => (
                         <div key={ci} className="flex items-center gap-2">
-                          {/* Color circle picker */}
                           <div className="relative w-9 h-9 shrink-0 cursor-pointer">
                             <input
                               type="color"
@@ -344,6 +393,113 @@ export function VariantBuilder({
                     >
                       <Plus className="w-3.5 h-3.5 mr-1.5" />
                       Add color
+                    </Button>
+                  </div>
+                ) : group.type === "model" ? (
+                  <div className="space-y-3">
+                    <Label className="text-xs mb-1 block">Models</Label>
+                    {(group.modelEntries ?? []).map((model, mi) => (
+                      <div key={model.id} className="border rounded-lg overflow-hidden">
+                        <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b">
+                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            Model {mi + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeModelEntry(gi, model.id)}
+                            className="text-muted-foreground hover:text-destructive p-0.5 rounded"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="p-3 space-y-3">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Name (EN)</Label>
+                              <Input
+                                placeholder="e.g. Ahmed"
+                                value={model.nameEn}
+                                onChange={(e) => updateModelEntry(gi, model.id, { nameEn: e.target.value })}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">الاسم (AR)</Label>
+                              <Input
+                                dir="rtl"
+                                placeholder="مثال: أحمد"
+                                value={model.nameAr}
+                                onChange={(e) => updateModelEntry(gi, model.id, { nameAr: e.target.value })}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Model photo</Label>
+                            <button
+                              type="button"
+                              onClick={() => setModelPickerFor(modelPickerFor === model.id ? null : model.id)}
+                              className="w-full flex items-center gap-3 border rounded-lg p-2 hover:bg-muted/40 transition-colors text-start"
+                            >
+                              {model.image ? (
+                                <img src={model.image} alt="" className="w-10 h-12 object-cover rounded-md shrink-0" />
+                              ) : (
+                                <div className="w-10 h-12 rounded-md bg-muted flex items-center justify-center shrink-0">
+                                  <ImageIcon className="w-4 h-4 text-muted-foreground/40" />
+                                </div>
+                              )}
+                              <span className="text-sm text-muted-foreground">
+                                {model.image
+                                  ? modelPickerFor === model.id ? "Hide picker" : "Change photo"
+                                  : images.length === 0
+                                    ? "Upload product images first"
+                                    : "Select from product images"}
+                              </span>
+                            </button>
+                            {modelPickerFor === model.id && (
+                              <div className="border rounded-xl p-3 bg-muted/20 mt-2">
+                                {images.length === 0 ? (
+                                  <p className="text-sm text-muted-foreground text-center py-2">
+                                    No images yet — add product images in the Media section above first
+                                  </p>
+                                ) : (
+                                  <div className="grid grid-cols-4 gap-2">
+                                    {images.map((url, ii) => (
+                                      <button
+                                        key={ii}
+                                        type="button"
+                                        onClick={() => {
+                                          updateModelEntry(gi, model.id, { image: url });
+                                          setModelPickerFor(null);
+                                        }}
+                                        className="relative rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary"
+                                      >
+                                        <img src={url} alt={`Image ${ii + 1}`} className="w-full aspect-[3/4] object-cover" />
+                                        <div className={`absolute inset-0 border-2 rounded-lg transition-colors ${model.image === url ? "border-primary" : "border-transparent hover:border-muted-foreground/40"}`} />
+                                        {model.image === url && (
+                                          <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                                            <Check className="w-3 h-3 text-white" />
+                                          </div>
+                                        )}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addModelEntry(gi)}
+                      className="w-full gap-2"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add model
                     </Button>
                   </div>
                 ) : (
@@ -415,6 +571,14 @@ export function VariantBuilder({
                   >
                     <Palette className="w-4 h-4 text-muted-foreground" />
                     Add color
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/60 text-left"
+                    onClick={() => { addModelGroup(); setAddMenuOpen(false); }}
+                  >
+                    <User className="w-4 h-4 text-muted-foreground" />
+                    Add models
                   </button>
                 </div>
               )}
