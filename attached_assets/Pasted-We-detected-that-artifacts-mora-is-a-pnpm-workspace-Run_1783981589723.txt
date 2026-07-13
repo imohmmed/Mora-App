@@ -1,0 +1,40 @@
+We detected that 'artifacts/mora' is a pnpm workspace
+Running "pnpm install --frozen-lockfile" in /Users/expo/workingdir/build directory
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.onlyBuiltDependencies". See https://pnpm.io/settings for the new home of each setting.
+Scope: all 11 workspace projects
+? Verifying lockfile against supply-chain policies (1287 entries)...
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +1283
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 1283, reused 0, downloaded 63, added 0
+Progress: resolved 1283, reused 0, downloaded 244, added 53
+Progress: resolved 1283, reused 0, downloaded 386, added 64
+Progress: resolved 1283, reused 0, downloaded 639, added 89
+Progress: resolved 1283, reused 0, downloaded 848, added 107
+Progress: resolved 1283, reused 0, downloaded 970, added 117
+✓ Lockfile passes supply-chain policies (1287 entries in 6.6s)
+Progress: resolved 1283, reused 0, downloaded 1132, added 130
+Progress: resolved 1283, reused 0, downloaded 1256, added 267
+Progress: resolved 1283, reused 0, downloaded 1256, added 339
+Progress: resolved 1283, reused 0, downloaded 1256, added 887
+Progress: resolved 1283, reused 0, downloaded 1256, added 1055
+Progress: resolved 1283, reused 0, downloaded 1256, added 1248
+Progress: resolved 1283, reused 0, downloaded 1256, added 1283, done
+devDependencies:
++ prettier 3.8.3
++ typescript 5.9.3
+. preinstall$ node preinstall.cjs
+. preinstall: Done
+[ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: @firebase/util@1.15.1, better-sqlite3@12.10.0, esbuild@0.28.1, protobufjs@7.6.4
+Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.
+pnpm install --frozen-lockfile exited with non-zero code: 1
+
+Fail job
+
+0ms
+
+
+Build failed
+
+pnpm install --frozen-lockfile exited with non-zero code: 1
