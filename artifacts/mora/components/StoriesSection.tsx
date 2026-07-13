@@ -134,15 +134,29 @@ function ProductMiniCard({
           {product.title}
         </Text>
         {(() => {
-          const colorDef = product.optionDefinitions?.find((d) => d.type === "color");
-          const hexes = colorDef?.colorEntries?.map((e) => e.hex).filter(Boolean) ?? [];
-          if (!hexes.length) return null;
+          const modelDef = product.optionDefinitions?.find((d: any) => d.type === "model");
+          const colorDef = product.optionDefinitions?.find((d: any) => d.type === "color");
+          const models = modelDef?.modelEntries?.filter((m: any) => m.nameEn?.trim()) ?? [];
+          const hexes = colorDef?.colorEntries?.map((e: any) => e.hex).filter(Boolean) ?? [];
           return (
-            <View style={{ flexDirection: isAr ? "row-reverse" : "row", gap: 4, marginBottom: 2 }}>
-              {hexes.slice(0, 7).map((hex, i) => (
-                <View key={i} style={{ width: 11, height: 11, borderRadius: 6, backgroundColor: hex, borderWidth: 0.5, borderColor: "rgba(0,0,0,0.15)" }} />
-              ))}
-            </View>
+            <>
+              {models.length > 0 && (
+                <View style={{ flexDirection: isAr ? "row-reverse" : "row", flexWrap: "wrap", gap: 4, marginBottom: 4 }}>
+                  {models.slice(0, 5).map((m: any) => (
+                    <View key={m.id} style={{ width: 34, height: 34, borderRadius: 3, overflow: "hidden", backgroundColor: "#E0E0E0", borderWidth: 0.5, borderColor: "rgba(0,0,0,0.12)" }}>
+                      {m.image ? <Image source={{ uri: m.image }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+                    </View>
+                  ))}
+                </View>
+              )}
+              {hexes.length > 0 && (
+                <View style={{ flexDirection: isAr ? "row-reverse" : "row", flexWrap: "wrap", gap: 4, marginBottom: 3 }}>
+                  {hexes.slice(0, 7).map((hex: string, i: number) => (
+                    <View key={i} style={{ width: 16, height: 16, borderRadius: 2, backgroundColor: hex, borderWidth: 0.5, borderColor: "rgba(0,0,0,0.15)" }} />
+                  ))}
+                </View>
+              )}
+            </>
           );
         })()}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>

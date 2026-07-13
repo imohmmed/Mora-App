@@ -1332,10 +1332,10 @@ const styles = StyleSheet.create({
     transform: [{ rotate: "45deg" }],
   },
 
-  /* Size / variant chips */
+  /* Size / variant chips — same 40×40 as color squares */
   variantChip: {
-    paddingHorizontal: 18,
-    paddingVertical: 9,
+    width: 40,
+    height: 40,
     borderRadius: 0,
     borderWidth: 1.5,
     alignItems: "center",
