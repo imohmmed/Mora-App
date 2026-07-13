@@ -75,9 +75,12 @@ packageExtensions:
       "@expo/image-utils": "*"
 
 onlyBuiltDependencies:
+  - '@firebase/util'
   - '@swc/core'
+  - better-sqlite3
   - esbuild
   - msw
+  - protobufjs
   - unrs-resolver
 
 overrides:
