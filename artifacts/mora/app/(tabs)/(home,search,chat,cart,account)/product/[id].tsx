@@ -33,6 +33,7 @@ import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 import { requestRestockNotify, fetchRestockRequests } from "@/lib/api";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 import { BlurView } from "expo-blur";
@@ -502,6 +503,28 @@ export default function ProductDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SeoHead
+        page="product"
+        title={product ? `${product.title} | مورا` : undefined}
+        description={product?.description?.replace(/<[^>]*>/g, "").slice(0, 160) ?? undefined}
+        image={product?.images?.[0] ?? undefined}
+        url={id ? `/product/${id}` : undefined}
+        type="product"
+        structuredData={product ? JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": product.title,
+          "image": product.images ?? [],
+          "brand": { "@type": "Brand", "name": product.vendor ?? "Mora" },
+          "offers": {
+            "@type": "Offer",
+            "price": String(product.price ?? 0),
+            "priceCurrency": "IQD",
+            "availability": "https://schema.org/InStock",
+            "seller": { "@type": "Organization", "name": "Mora" }
+          }
+        }) : undefined}
+      />
       {/* ── Header — floats over image, hides on scroll-down ── */}
       <Animated.View
         style={[

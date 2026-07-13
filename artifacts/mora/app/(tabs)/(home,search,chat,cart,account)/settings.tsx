@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useTheme, type ThemeMode } from "@/context/ThemeContext";
 import { useLanguage, LANGUAGES } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 import { AppleActionSheet } from "@/components/AppleActionSheet";
 import { GlassBackButton } from "@/components/GlassBackButton";
 import { BlurView } from "expo-blur";
@@ -68,6 +69,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
+      <SeoHead page="settings" noIndex />
       {/* ── Header ── */}
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         {Platform.OS === "web" ? (

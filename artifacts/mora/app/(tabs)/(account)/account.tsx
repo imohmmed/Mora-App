@@ -17,6 +17,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 import { BlurView } from "expo-blur";
 import { LiquidGlassBg, isIOS26Plus } from "@/components/LiquidGlassBg";
 
@@ -406,16 +407,24 @@ export default function AccountScreen() {
   }
 
   if (user) {
-    return <AccountMain insets={insets} onOpenSettings={() => router.push("/settings")} />;
+    return (
+      <>
+        <SeoHead page="account" noIndex />
+        <AccountMain insets={insets} onOpenSettings={() => router.push("/settings")} />
+      </>
+    );
   }
 
   return (
-    <GuestScreen
-      onSignIn={() => router.push("/auth")}
-      onJoin={() => router.push("/auth")}
-      onOpenSettings={() => router.push("/settings")}
-      insets={insets}
-    />
+    <>
+      <SeoHead page="account" noIndex />
+      <GuestScreen
+        onSignIn={() => router.push("/auth")}
+        onJoin={() => router.push("/auth")}
+        onOpenSettings={() => router.push("/settings")}
+        insets={insets}
+      />
+    </>
   );
 }
 

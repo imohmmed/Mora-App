@@ -1,4 +1,5 @@
 import { Link, Stack } from "expo-router";
+import { SeoHead } from "@/components/SeoHead";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
@@ -8,6 +9,7 @@ export default function NotFoundScreen() {
 
   return (
     <>
+      <SeoHead page="notFound" noIndex />
       <Stack.Screen options={{ title: "Oops!" }} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Text style={[styles.title, { color: colors.foreground }]}>

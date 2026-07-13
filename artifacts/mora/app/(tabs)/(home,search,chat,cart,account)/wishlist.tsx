@@ -18,6 +18,7 @@ import { useQueries } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useLanguage } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 import { GlassBackButton } from "@/components/GlassBackButton";
 import { formatIQD } from "@/lib/format";
 import { useWishlist } from "@/context/WishlistContext";
@@ -198,6 +199,7 @@ export default function WishlistScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SeoHead page="wishlist" noIndex />
       {/* ── Header ── */}
       <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         {isWeb ? (

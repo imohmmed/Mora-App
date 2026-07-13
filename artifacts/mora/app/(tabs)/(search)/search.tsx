@@ -22,6 +22,7 @@ import { useColors } from "@/hooks/useColors";
 import { searchProducts, fetchContentSections, fetchBrowseCollections, fetchProduct } from "@/lib/api";
 import type { SearchCollection, TrendingKeyword } from "@/lib/api";
 import { useLanguage } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCart } from "@/context/CartContext";
 import { formatIQD } from "@/lib/format";
@@ -467,6 +468,7 @@ export default function SearchScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SeoHead page="search" />
       {/* ── Search header ── */}
       <View style={[
         styles.header,

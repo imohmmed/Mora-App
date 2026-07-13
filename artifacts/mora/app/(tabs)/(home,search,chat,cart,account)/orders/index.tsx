@@ -17,6 +17,7 @@ import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 import { fetchOrders, fetchExchangeRequests, type ExchangeRequest } from "@/lib/api";
 import { GlassBackButton } from "@/components/GlassBackButton";
 import { formatIQD } from "@/lib/format";
@@ -114,6 +115,7 @@ export default function OrdersScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SeoHead page="orders" noIndex />
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         {Platform.OS === "web" ? (
           <>

@@ -70,8 +70,12 @@ function ArabicLetterSpacingEffect() {
     }
     if (lang === "ar") {
       document.body.classList.add("lang-ar");
+      document.documentElement.lang = "ar";
+      document.documentElement.dir = "rtl";
     } else {
       document.body.classList.remove("lang-ar");
+      document.documentElement.lang = "en";
+      document.documentElement.dir = "ltr";
     }
   }, [lang]);
   return null;

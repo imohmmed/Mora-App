@@ -22,6 +22,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useNotification } from "@/context/NotificationContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 import { formatIQD } from "@/lib/format";
 import { deliveryMessage } from "@/lib/deliveryMessage";
 import { trackCartEvent } from "@/lib/tracking";
@@ -522,6 +523,7 @@ export default function CheckoutScreen() {
 
   return (
     <View style={[{ flex: 1 }, { backgroundColor: bg }]}>
+      <SeoHead page="checkout" noIndex />
       {/* Header */}
       <View style={[st.header, { paddingTop: insets.top + 6, borderBottomColor: divider }]}>
         <GlassBackButton onPress={() => { if (router.canGoBack()) router.back(); else router.replace("/cart" as any); }} />

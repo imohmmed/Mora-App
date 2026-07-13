@@ -24,6 +24,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 import { useWishlist } from "@/context/WishlistContext";
 import { fetchProduct, fetchRecommendations, fetchStories, fetchSpecialCollection, submitExchangeItems } from "@/lib/api";
 import { useExchange } from "@/context/ExchangeContext";
@@ -693,6 +694,7 @@ export default function CartScreen() {
   // ── Filled cart ────────────────────────────────────────────────────────────
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
+      <SeoHead page="cart" noIndex />
       {/* Header */}
       <View style={[s.header, { paddingTop: insets.top + 6, borderBottomColor: divider }]}>
         <View style={[s.headerInner, lang === "ar" && { flexDirection: "row-reverse" }]}>

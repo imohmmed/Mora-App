@@ -29,6 +29,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 import {
   ChatMessage,
   ChatSession,
@@ -1158,6 +1159,7 @@ export default function ChatScreen() {
 
   return (
     <RNAnimated.View style={[styles.fill, { backgroundColor: p.bg, paddingBottom: kbAnim }]}>
+      <SeoHead page="chat" />
       <Header
         p={p}
         t={t}

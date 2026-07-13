@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useLanguage } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { fetchSaleCollections, fetchSaleCollectionProducts } from "@/lib/api";
@@ -127,6 +128,11 @@ export default function SaleCollectionScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SeoHead
+        page="saleCollection"
+        title={title ? `${title} | مورا` : undefined}
+        description={desc || undefined}
+      />
       <GlassBackButton top={insets.top + 8} />
       <FlatList
         data={products ?? []}

@@ -18,6 +18,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 import { fetchOrder } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
 import { GlassBackButton } from "@/components/GlassBackButton";
@@ -235,6 +236,7 @@ export default function OrderDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: bg }}>
+      <SeoHead page="orderDetail" noIndex />
       {/* ── Header — back button always left ── */}
       <View style={[st.header, { paddingTop: insets.top + 6, paddingHorizontal: 16, borderBottomColor: divider, borderBottomWidth: isWeb ? 1 : 0 }]}>
         {isWeb ? (

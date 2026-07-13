@@ -20,6 +20,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 import { GlassBackButton } from "@/components/GlassBackButton";
+import { SeoHead } from "@/components/SeoHead";
 import { useAuth } from "@/context/AuthContext";
 import { verifyOTP, sendPhoneOTP } from "@/lib/firebase";
 
@@ -146,6 +147,7 @@ export default function VerifyScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: bg, paddingTop: topPad }]}>
+      <SeoHead page="verify" noIndex />
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <View style={styles.header}>
         <GlassBackButton onPress={() => router.back()} />

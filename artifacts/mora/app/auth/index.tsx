@@ -20,6 +20,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage, LANGUAGES } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 import { AppleActionSheet } from "@/components/AppleActionSheet";
 import {
   isFirebaseConfigured,
@@ -181,6 +182,7 @@ export default function AuthScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: bg }]}>
+      <SeoHead page="auth" noIndex />
       <Stack.Screen options={{ title: "", headerShown: false }} />
 
       <Pressable

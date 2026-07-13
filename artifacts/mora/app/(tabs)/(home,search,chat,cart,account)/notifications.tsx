@@ -16,6 +16,7 @@ import { useColors } from "@/hooks/useColors";
 import { GlassBackButton } from "@/components/GlassBackButton";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 
 const T = {
   en: {
@@ -118,6 +119,7 @@ export default function NotificationsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SeoHead page="notifications" noIndex />
       <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         <GlassBackButton onPress={() => router.back()} />
         <Text style={[styles.title, { color: colors.foreground }]}>{t.title}</Text>

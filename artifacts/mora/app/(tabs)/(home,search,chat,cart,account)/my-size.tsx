@@ -15,6 +15,7 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
 import { GlassBackButton } from "@/components/GlassBackButton";
+import { SeoHead } from "@/components/SeoHead";
 
 const PRIMARY = "#0274C1";
 const STORAGE_KEY = "mora.mysize.v1";
@@ -102,6 +103,7 @@ export default function MySizeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
+      <SeoHead page="mySize" noIndex />
       <View style={[styles.acctHeader, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         <GlassBackButton onPress={() => router.back()} />
         <Text style={[styles.acctTitle, { color: colors.foreground }]}>MY SIZE</Text>

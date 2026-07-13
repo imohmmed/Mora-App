@@ -24,6 +24,7 @@ import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
 import { useCart } from "@/context/CartContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 import { useWishlist } from "@/context/WishlistContext";
 import { fetchSpecialCollection, fetchCollection, searchProducts, fetchBrowseProducts, fetchStorySiblings } from "@/lib/api";
 import { formatIQD } from "@/lib/format";
@@ -410,6 +411,11 @@ export default function CollectionScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SeoHead
+        page="collection"
+        title={bttl ? `${bttl} | مورا` : collection?.title ? `${collection.title} | مورا` : undefined}
+        url={slug ? `/collection/${slug}` : undefined}
+      />
       {/* ───── Fixed header overlay ───── */}
       <Animated.View
         style={[

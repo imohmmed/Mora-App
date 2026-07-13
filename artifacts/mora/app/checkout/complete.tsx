@@ -16,6 +16,7 @@ import { Feather } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 import { formatIQD } from "@/lib/format";
 import { trackCartEvent } from "@/lib/tracking";
 
@@ -227,6 +228,7 @@ export default function OrderCompleteScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
+      <SeoHead page="complete" noIndex />
       {/* Header */}
       <View style={[s.header, { paddingTop: insets.top + 10, borderBottomColor: divider }]}>
         <Text style={[s.headTitle, { color: textCol }]}>

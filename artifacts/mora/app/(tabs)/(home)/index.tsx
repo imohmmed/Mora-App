@@ -28,6 +28,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useColors } from "@/hooks/useColors";
 import { useNativeReady } from "@/hooks/useNativeReady";
 import { useLanguage } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 import { HomeHeader } from "@/components/HomeHeader";
 import { CategoryTabs } from "@/components/CategoryTabs";
 import { SpecialCollectionsGrid } from "@/components/SpecialCollectionsGrid";
@@ -716,6 +717,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SeoHead page="home" />
       <FlatList
         ref={flatListRef}
         data={!isLoading && !isError ? products : []}

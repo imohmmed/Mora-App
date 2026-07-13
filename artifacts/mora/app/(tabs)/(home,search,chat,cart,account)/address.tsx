@@ -17,6 +17,7 @@ import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { SeoHead } from "@/components/SeoHead";
 import { GlassBackButton } from "@/components/GlassBackButton";
 import { fetchShippingZones, type ShippingZone } from "@/lib/api";
 
@@ -132,6 +133,7 @@ export default function AddressScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
+      <SeoHead page="address" noIndex />
       {/* Header */}
       <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: divider }]}>
         <GlassBackButton onPress={() => router.back()} />
