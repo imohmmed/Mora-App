@@ -1,5 +1,24 @@
 import { useRef, useCallback } from "react";
-import type { ScrollView, FlatList } from "react-native";
+import type { ScrollView, FlatList, ViewStyle } from "react-native";
+
+// ─── Mirror approach (RECOMMENDED for new sections) ───────────────────────────
+// Flips the ScrollView and each item using scaleX:-1 transform.
+// Zero jump, zero snap issue — the smoothest RTL approach.
+//
+// Usage:
+//   <ScrollView horizontal style={rtlMirrorScroll(isAr)}>
+//     {items.map(item => (
+//       <View key={item.id} style={rtlMirrorItem(isAr)}>
+//         <YourCard item={item} />
+//       </View>
+//     ))}
+//   </ScrollView>
+//
+export const rtlMirrorScroll = (isAr: boolean): ViewStyle | undefined =>
+  isAr ? { transform: [{ scaleX: -1 }] } : undefined;
+
+export const rtlMirrorItem = (isAr: boolean): ViewStyle | undefined =>
+  isAr ? { transform: [{ scaleX: -1 }] } : undefined;
 
 // Shared helper for horizontal ScrollView/FlatList carousels so that, in
 // Arabic, the FIRST item in the data ends up visually on the RIGHT and
