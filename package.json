@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "preinstall": "node preinstall.cjs",
-    "eas-build-pre-install": "pnpm install --no-frozen-lockfile",
+    "eas-build-pre-install": "pnpm install --no-frozen-lockfile --ignore-scripts",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
