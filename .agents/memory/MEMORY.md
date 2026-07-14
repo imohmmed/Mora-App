@@ -35,6 +35,7 @@
 - [Bilingual option names](option-definitions-bilingual.md) — option_definitions JSON stores {nameEn,nameAr,values} (passthrough); display by lang w/ fallback; admin 2 inputs + legacy name migration
 - [Returns system](returns-system.md) — 3 terminal return stages with distinct inventory rules; never bulk-change into/out of them; partial_return still counts as delivered
 - [EAS pnpm 11 build approvals](eas-pnpm-ignored-builds.md) — pnpm 11 reads .pnpm-approved-builds.json (workspace root); onlyBuiltDependencies in yaml/npmrc is ignored by runDepsStatusCheck
+- [EAS Metro transformFile crash](eas-worklets-transformfile.md) — worklets 0.9.x needs RN 0.83+/Metro 0.82+; pin to ~0.8.0 for RN 0.81; also remove darwin esbuild overrides + set esbuild:true
 - [Search collections + trending](search-collections-trending.md) — search-page BROWSE grid + trending chips driven by content_sections keys; admin-edited; browse nav via collection/[slug] bt/bttl params
 - [RTL horizontal scroll carousels](rtl-horizontal-scroll.md) — never use `inverted`; use row-reverse + scroll-to-end so item[0] shows on right without mirroring content
 - [Collection filter/sort](collection-filter-sort.md) — price/color/tag filter + bestselling/price/newest sort done client-side over fetched product list; color chips use optionDefinitions colorEntries hex
