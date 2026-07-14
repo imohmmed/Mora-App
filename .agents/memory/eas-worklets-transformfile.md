@@ -1,26 +1,24 @@
 ---
 name: EAS iOS Metro transformFile crash
-description: react-native-worklets@0.9.x incompatible with RN 0.81; caused Metro bundling crash
+description: Root cause was missing esbuild binary on macOS EAS, NOT worklets version mismatch
 ---
 
 ## Rule
-Pin `react-native-worklets` to `~0.8.0` when using RN 0.81.
+`react-native-reanimated@4.4.1` REQUIRES `react-native-worklets@0.9.x` — enforced in Ruby
+podspec at CocoaPods install time (not pnpm). Downgrading worklets to 0.8.x breaks pod install.
 
-`react-native-worklets@0.9.x` targets RN 0.83+ and calls `metro-transform-worker.transformFile`,
-an API that only exists in Metro 0.82+ (shipped with RN 0.83+). On RN 0.81 / Metro 0.80.x,
-`transformFile` is undefined → `Cannot read properties of undefined (reading 'transformFile')`
-during "Bundle React Native code and images" EAS step.
+The `Cannot read properties of undefined (reading 'transformFile')` Metro error was caused by
+**missing esbuild binary on EAS macOS**, not worklets version incompatibility.
 
-**Why:** The compatibility.json inside the worklets package explicitly lists:
-- `0.9.x`: react-native ["0.83", "0.84", "0.85", "0.86"]
-- `0.8.x`: react-native ["0.81", "0.82", "0.83", "0.84", "0.85"]
-
-`react-native-reanimated@4.4.1` requires `^0.7.4 || ^0.8.0` (NOT 0.9.x) so 0.8.x is correct.
+**Why:** worklets 0.9.x depends on `metro-transform-worker@0.83+` which uses esbuild to
+implement `transformFile`. When esbuild binary is absent (darwin-arm64 excluded + install script
+skipped), `transformFile` is undefined and Metro crashes during bundling.
 
 **How to apply:**
-- `artifacts/mora/package.json`: `"react-native-worklets": "~0.8.0"`
-- `pnpm-workspace.yaml` overrides: `react-native-worklets: "~0.8.0"` (force all packages)
-- If upgrading to RN 0.83+, then upgrading worklets to 0.9.x becomes safe
-
-Also: remove `"esbuild>@esbuild/darwin-arm64"` and `"esbuild>@esbuild/darwin-x64"` overrides
-from pnpm-workspace.yaml and set `esbuild: true` in allowBuilds so EAS macOS can get esbuild binary.
+- Keep `react-native-worklets: "0.9.2"` in artifacts/mora/package.json
+- Do NOT add workspace override for react-native-worklets (reanimated podspec checks the version)
+- In pnpm-workspace.yaml `allowBuilds`: set `esbuild: true` (NOT false)
+- In pnpm-workspace.yaml `overrides`: do NOT exclude `esbuild>@esbuild/darwin-arm64` or
+  `esbuild>@esbuild/darwin-x64` — EAS macOS needs these to function
+- worklets 0.9.x + RN 0.81 mismatch (compatibility.json says 0.83+) is a warning only;
+  it does not prevent successful builds in practice with Expo SDK 56
