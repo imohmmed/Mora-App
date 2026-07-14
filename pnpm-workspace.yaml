@@ -136,10 +136,11 @@ overrides:
   "@expo/ngrok-bin>@expo/ngrok-bin-sunos-x64": "-"
   "@expo/ngrok-bin>@expo/ngrok-bin-win32-ia32": "-"
   "@expo/ngrok-bin>@expo/ngrok-bin-win32-x64": "-"
-  # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
-  # Scoped to drizzle-kit only — global override breaks Metro's transformFile pipeline
+  # drizzle-kit uses @esbuild-kit/esm-loader (vulnerable old esbuild); replace with tsx.
+  # IMPORTANT: do NOT add a global esbuild override — it forces metro-transform-worker@0.83
+  # (dependency of react-native-worklets@0.9.x) onto an incompatible esbuild version and
+  # breaks Metro's transformFile pipeline with: Cannot read properties of undefined (reading 'transformFile')
   "drizzle-kit>@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
-  esbuild: ">=0.28.1"
   # Security CVE overrides — transitive deps pinned to patched versions
   "@xmldom/xmldom": ">=0.8.13"
   uuid: ">=11.1.1"

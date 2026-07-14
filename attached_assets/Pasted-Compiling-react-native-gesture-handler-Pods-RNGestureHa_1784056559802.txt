@@ -1,0 +1,231 @@
+Compiling react-native-gesture-handler Pods/RNGestureHandler » RNGestureHandler-dummy.m
+› Compiling @react-native-masked-view/masked-view Pods/RNCMaskedView » RNCMaskedViewManager.m
+› Compiling @react-native-masked-view/masked-view Pods/RNCMaskedView » RNCMaskedView.m
+
+⚠️  (modules/MoraLiveActivity/ios/MoraLiveActivityModule.swift:72:39)
+
+  70 |             for activity in Activity<MoraOrderActivityAttributes>.activities
+  71 |             where activity.attributes.orderNumber == "#TEST" {
+> 72 |                 Task { await activity.end(dismissalPolicy: .immediate) }
+     |                                       ^ 'end' was deprecated in iOS 16.2: Use end(content:dismissalPolicy:) instead
+  73 |             }
+  74 |             do {
+  75 |                 let attrs = MoraOrderActivityAttributes(orderNumber: "#TEST", customerName: "Diagnostic", priceText: "75,000 IQD")
+
+⚠️  (modules/MoraLiveActivity/ios/MoraLiveActivityModule.swift:81:74)
+
+  79 |                     isPaid: false
+  80 |                 )
+> 81 |                 let activity = try Activity<MoraOrderActivityAttributes>.request(
+     |                                                                          ^ 'request' was deprecated in iOS 16.2: Use request(attributes:content:pushType:) instead
+  82 |                     attributes: attrs,
+  83 |                     contentState: state,
+  84 |                     pushType: .token
+
+⚠️  (modules/MoraLiveActivity/ios/MoraLiveActivityModule.swift:118:74)
+
+  116 |                     deliveryType: deliveryType
+  117 |                 )
+> 118 |                 let activity = try Activity<MoraOrderActivityAttributes>.request(
+      |                                                                          ^ 'request' was deprecated in iOS 16.2: Use request(attributes:content:pushType:) instead
+  119 |                     attributes: attrs,
+  120 |                     contentState: state,
+  121 |                     pushType: .token
+
+⚠️  (modules/MoraLiveActivity/ios/MoraLiveActivityModule.swift:135:39)
+
+  133 |             if let activity = self.activities[activityId] as? Activity<MoraOrderActivityAttributes> {
+  134 |                 let state = MoraOrderActivityAttributes.ContentState(stage: stage, message: message, isPaid: isPaid, deliveryType: deliveryType)
+> 135 |                 Task { await activity.update(using: state) }
+      |                                       ^ 'update' was deprecated in iOS 16.2: Use update(_:) instead
+  136 |             }
+  137 |         }
+  138 |
+
+⚠️  (modules/MoraLiveActivity/ios/MoraLiveActivityModule.swift:144:39)
+
+  142 |             if let activity = self.activities[activityId] as? Activity<MoraOrderActivityAttributes> {
+  143 |                 let state = MoraOrderActivityAttributes.ContentState(stage: stage, message: message, isPaid: isPaid, deliveryType: deliveryType)
+> 144 |                 Task { await activity.end(using: state, dismissalPolicy: .default) }
+      |                                       ^ 'end' was deprecated in iOS 16.2: Use end(content:dismissalPolicy:) instead
+  145 |                 self.activities.removeValue(forKey: activityId)
+  146 |             }
+  147 |         }
+› Signing   Mora/MoraOrderWidget » MoraOrderWidget.appex
+› Compiling @react-native-masked-view/masked-view Pods/RNCMaskedView » RNCMaskedView-dummy.m
+› Packaging @react-native-masked-view/masked-view Pods/RNCMaskedView » libRNCMaskedView.a
+› Creating  Mora/MoraOrderWidget » MoraOrderWidget.appex
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNTapHandler.m
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNRotationHandler.m
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNRootViewGestureRecognizer.m
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNPinchHandler.m
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNPanHandler.m
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNManualHandler.m
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNManualActivationRecognizer.m
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNLongPressHandler.m
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNHoverHandler.m
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNGestureHandlerRegistry.m
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNGHVector.m
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNGHStylusData.m
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNForceTouchHandler.m
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNFlingHandler.m
+› Packaging react-native-gesture-handler Pods/RNGestureHandler » libRNGestureHandler.a
+› Executing expo-modules-core Pods/ExpoModulesWorklets » [CP-User] [Expo] Resolve ExpoModulesWorklets dSYM source maps
+› Executing expo-location Pods/ExpoLocation » [CP-User] [Expo] Resolve ExpoLocation dSYM source maps
+› Executing expo-image Pods/ExpoImage » [CP-User] [Expo] Resolve ExpoImage dSYM source maps
+› Executing expo-font Pods/ExpoFont » [CP-User] [Expo] Resolve ExpoFont dSYM source maps
+› Executing expo-file-system Pods/ExpoFileSystem » [CP-User] [Expo] Resolve ExpoFileSystem dSYM source maps
+› Executing expo-modules-core Pods/ExpoModulesWorklets » [CP-User] [Expo] Switch ExpoModulesWorklets XCFramework for build configuration
+› Executing expo-image Pods/ExpoImage » [CP-User] [Expo] Switch ExpoImage XCFramework for build configuration
+› Executing expo-font Pods/ExpoFont » [CP-User] [Expo] Switch ExpoFont XCFramework for build configuration
+› Executing expo-file-system Pods/ExpoFileSystem » [CP-User] [Expo] Switch ExpoFileSystem XCFramework for build configuration
+› Compiling expo-system-ui Pods/ExpoSystemUI » ExpoSystemUI-dummy.m
+› Packaging expo-system-ui Pods/ExpoSystemUI » libExpoSystemUI.a
+› Executing expo-system-ui Pods/ExpoSystemUI » Copy generated compatibility header
+› Compiling expo-symbols Pods/ExpoSymbols » ExpoSymbols-dummy.m
+› Packaging expo-symbols Pods/ExpoSymbols » libExpoSymbols.a
+› Executing expo-symbols Pods/ExpoSymbols » Copy generated compatibility header
+› Compiling @workspace/mora Pods/MoraLiveActivity » MoraLiveActivity-dummy.m
+› Packaging @workspace/mora Pods/MoraLiveActivity » libMoraLiveActivity.a
+› Executing @workspace/mora Pods/MoraLiveActivity » Copy generated compatibility header
+› Compiling expo-web-browser Pods/ExpoWebBrowser » ExpoWebBrowser-dummy.m
+› Packaging expo-web-browser Pods/ExpoWebBrowser » libExpoWebBrowser.a
+› Executing expo-web-browser Pods/ExpoWebBrowser » Copy generated compatibility header
+› Executing expo-modules-core Pods/ExpoModulesWorklets » [CP] Copy XCFrameworks
+› Compiling expo-splash-screen Pods/ExpoSplashScreen » ExpoSplashScreen-dummy.m
+› Executing expo-location Pods/ExpoLocation » [CP] Copy XCFrameworks
+› Packaging expo-splash-screen Pods/ExpoSplashScreen » libExpoSplashScreen.a
+› Executing expo-image Pods/ExpoImage » [CP] Copy XCFrameworks
+› Executing expo-font Pods/ExpoFont » [CP] Copy XCFrameworks
+› Executing expo-file-system Pods/ExpoFileSystem » [CP] Copy XCFrameworks
+› Executing expo-splash-screen Pods/ExpoSplashScreen » Copy generated compatibility header
+› Compiling expo-modules-core Pods/ExpoModulesWorkletsAdapter » ExpoWorkletsBridgeProvider.mm
+› Compiling expo-modules-core Pods/ExpoModulesWorkletsAdapter » ExpoModulesWorkletsAdapter-dummy.m
+› Packaging expo-modules-core Pods/ExpoModulesWorkletsAdapter » libExpoModulesWorkletsAdapter.a
+› Compiling expo-router Pods/ExpoRouter » ExpoRouter-dummy.m
+› Packaging expo-router Pods/ExpoRouter » libExpoRouter.a
+› Executing expo-router Pods/ExpoRouter » Copy generated compatibility header
+› Compiling expo-linking Pods/ExpoLinking » ExpoLinking-dummy.m
+› Packaging expo-linking Pods/ExpoLinking » libExpoLinking.a
+› Executing expo-linking Pods/ExpoLinking » Copy generated compatibility header
+› Compiling expo-notifications Pods/ExpoNotifications » ExpoNotifications-dummy.m
+› Packaging expo-notifications Pods/ExpoNotifications » libExpoNotifications.a
+› Compiling expo-linear-gradient Pods/ExpoLinearGradient » ExpoLinearGradient-dummy.m
+› Packaging expo-linear-gradient Pods/ExpoLinearGradient » libExpoLinearGradient.a
+› Compiling expo-keep-awake Pods/ExpoKeepAwake » ExpoKeepAwake-dummy.m
+› Packaging expo-keep-awake Pods/ExpoKeepAwake » libExpoKeepAwake.a
+› Compiling expo-haptics Pods/ExpoHaptics » ExpoHaptics-dummy.m
+› Packaging expo-haptics Pods/ExpoHaptics » libExpoHaptics.a
+› Executing expo-notifications Pods/ExpoNotifications » Copy generated compatibility header
+› Compiling expo-glass-effect Pods/ExpoGlassEffect » ExpoGlassEffect-dummy.m
+› Packaging expo-glass-effect Pods/ExpoGlassEffect » libExpoGlassEffect.a
+› Executing expo-linear-gradient Pods/ExpoLinearGradient » Copy generated compatibility header
+› Executing expo-keep-awake Pods/ExpoKeepAwake » Copy generated compatibility header
+› Compiling @expo/dom-webview Pods/ExpoDomWebView » ExpoDomWebView-dummy.m
+› Packaging @expo/dom-webview Pods/ExpoDomWebView » libExpoDomWebView.a
+› Executing expo-haptics Pods/ExpoHaptics » Copy generated compatibility header
+› Executing expo-glass-effect Pods/ExpoGlassEffect » Copy generated compatibility header
+› Executing @expo/dom-webview Pods/ExpoDomWebView » Copy generated compatibility header
+› Compiling expo-image-picker Pods/ExpoImagePicker » ExpoImagePicker-dummy.m
+› Compiling expo-crypto Pods/ExpoCrypto » ExpoCrypto-dummy.m
+› Packaging expo-image-picker Pods/ExpoImagePicker » libExpoImagePicker.a
+› Packaging expo-crypto Pods/ExpoCrypto » libExpoCrypto.a
+› Executing expo-crypto Pods/ExpoCrypto » Copy generated compatibility header
+› Executing expo-image-picker Pods/ExpoImagePicker » Copy generated compatibility header
+› Compiling expo-clipboard Pods/ExpoClipboard » ExpoClipboard-dummy.m
+› Packaging expo-clipboard Pods/ExpoClipboard » libExpoClipboard.a
+› Executing expo-clipboard Pods/ExpoClipboard » Copy generated compatibility header
+› Compiling expo-blur Pods/ExpoBlur » ExpoBlur-dummy.m
+› Packaging expo-blur Pods/ExpoBlur » libExpoBlur.a
+› Executing expo-blur Pods/ExpoBlur » Copy generated compatibility header
+› Executing expo-constants Pods/EXConstants » [CP-User] Generate app.config for prebuilt Constants.manifest
+
+⚠️  (../../../../../../React_RCTAppDelegate/RCTUIConfiguratorProtocol.h:40:28)
+
+- (void)customizeRootView:(RCTRootView *)rootView;
+                           ^ 'RCTRootView' is deprecated: This API will be removed along with the legacy architecture.
+› Compiling expo-asset Pods/ExpoAsset » ExpoAsset-dummy.m
+› Compiling expo-application Pods/EXApplication » EXProvisioningProfile.m
+› Compiling expo-application Pods/EXApplication » EXApplication-dummy.m
+› Packaging expo-asset Pods/ExpoAsset » libExpoAsset.a
+› Executing expo-asset Pods/ExpoAsset » Copy generated compatibility header
+› Packaging expo-application Pods/EXApplication » libEXApplication.a
+› Executing expo-application Pods/EXApplication » Copy generated compatibility header
+› Compiling expo-apple-authentication Pods/ExpoAppleAuthentication » ExpoAppleAuthentication-dummy.m
+› Compiling expo-constants Pods/EXConstants » EXConstantsInstallationIdProvider.m
+› Compiling expo-constants Pods/EXConstants » EXConstants-dummy.m
+› Packaging expo-apple-authentication Pods/ExpoAppleAuthentication » libExpoAppleAuthentication.a
+› Executing expo-apple-authentication Pods/ExpoAppleAuthentication » Copy generated compatibility header
+› Compiling expo-constants Pods/EXConstants » EXConstantsService.m
+› Packaging expo-constants Pods/EXConstants » libEXConstants.a
+› Executing expo-constants Pods/EXConstants » Copy generated compatibility header
+› Compiling expo Pods/Expo » ExpoReactNativeFactory.mm
+› Compiling expo Pods/Expo » EXReactRootViewFactory.mm
+› Compiling expo Pods/Expo » Expo-dummy.m
+› Compiling @expo/ui Pods/ExpoUI » ExpoUITouchHandlerHelper.mm
+› Compiling @expo/ui Pods/ExpoUI » ExpoUI-dummy.m
+› Packaging @expo/ui Pods/ExpoUI » libExpoUI.a
+› Executing @expo/ui Pods/ExpoUI » Copy generated compatibility header
+› Compiling expo Pods/Expo » EXAppDelegatesLoader.m
+› Compiling expo Pods/Expo » EXLegacyAppDelegateWrapper.m
+› Compiling expo Pods/Expo » EXAppDefinesLoader.m
+› Packaging expo Pods/Expo » libExpo.a
+› Executing expo Pods/Expo » Copy generated compatibility header
+› Compiling Pods/Pods-Mora » Pods-Mora-dummy.m
+› Packaging Pods/Pods-Mora » libPods-Mora.a
+› Executing Mora » [CP] Check Pods Manifest.lock
+› Executing Mora » [Expo] Configure project
+› Copying   ios/build/Build/Intermediates.noindex/ArchiveIntermediates/Mora/InstallationBuildProductsLocation/Applications/Mora.app/PrivacyInfo.xcprivacy ➜ ../../../Users/expo/workingdir/build/artifacts/mora/ios/Mora/PrivacyInfo.xcprivacy
+› Copying   ios/Mora/Supporting/Expo.plist ➜ ./Expo.plist
+› Compiling Mora » SplashScreen.storyboard
+› Compiling Mora » Mora_vers.c
+› Linking   Mora » Mora
+
+⚠️  (ios/Mora.xcodeproj:)
+
+LinkStoryboards (in target 'Mora' from project 'Mora')
+                    ^ search path '/var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.109.0.l1JaL9/Metal.xctoolchain/usr/lib/swift/iphoneos' not found
+› Executing Mora » Bundle React Native code and images
+
+❌  error: Cannot read properties of undefined (reading 'transformFile')
+
+⚠️  Pods/RNCAsyncStorage-RNCAsyncStorage_resources: iOS@9.0 deployment version mismatch, expected >= 2.0 <= 26.5.99
+▸ ** ARCHIVE FAILED **
+▸ The following build commands failed:
+▸ 	PhaseScriptExecution Bundle\ React\ Native\ code\ and\ images /Users/expo/workingdir/build/artifacts/mora/ios/build/Build/Intermediates.noindex/ArchiveIntermediates/Mora/IntermediateBuildFilesPath/Mora.build/Release-iphoneos/Mora.build/Script-00DD1BFF1BD5951E006B06BC.sh (in target 'Mora' from project 'Mora')
+▸ 	Archiving workspace Mora with scheme Mora
+▸ (2 failures)
+Exit status: 65
++---------------------------------------+
+|           Build environment           |
++-------------+-------------------------+
+| xcode_path  | /Applications/Xcode.app |
+| gym_version | 2.236.1                 |
+| sdk         | iPhoneOS26.5.sdk        |
++-------------+-------------------------+
+Looks like fastlane ran into a build/archive error with your project
+It's hard to tell what's causing the error, so we wrote some guides on how
+to troubleshoot build and signing issues: https://docs.fastlane.tools/codesigning/getting-started/
+Before submitting an issue on GitHub, please follow the guide above and make
+sure your project is set up correctly.
+fastlane uses `xcodebuild` commands to generate your binary, you can see the
+the full commands printed out in yellow in the above log.
+Make sure to inspect the output above, as usually you'll find more error information there
+WARNING: Support for your Ruby version (3.2.11) is going away. fastlane will soon require Ruby 3.3.0 or newer.
+[!] Error building the application - see the log above
+Error: The "Run fastlane" step failed because of an error in the Xcode build process. We automatically detected following errors in your Xcode build logs:
+- Cannot read properties of undefined (reading 'transformFile')
+Refer to "Xcode Logs" below for additional, more detailed logs.
+Clean up credentials
+
+1s
+
+
+Fail job
+
+1ms
+
+
+Build failed: The "Run fastlane" step failed because of an error in the Xcode build process. We automatically detected following errors in your Xcode build logs:
+- Cannot read properties of undefined (reading 'transformFile')
+Refer to "Xcode Logs" below for additional, more detailed logs.
