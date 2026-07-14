@@ -149,3 +149,9 @@ overrides:
   js-yaml: "^4.2.0"
   markdown-it: ">=14.2.0"
   "@babel/core": "^7.29.6"
+  # Pin Expo metro packages to the exact versions in our lockfile.
+  # pnpm 11 on EAS re-resolves everything when migrating lockfile v9→v10; newer
+  # patch releases of @expo/metro-config call patchTransformFileForPackedMaps(bundler)
+  # with bundler=undefined, producing "Cannot read properties of undefined (reading 'transformFile')".
+  "@expo/metro-config": "56.0.14"
+  "@expo/cli": "56.1.15"
