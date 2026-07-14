@@ -1,0 +1,105 @@
+Script 'eas-build-pre-install' is present in package.json, running it...
+Scope: all 11 workspace projects
+? Verifying lockfile against supply-chain policies (1287 entries)...
+../..                                    | Progress: resolved 1, reused 0, downloaded 0, added 0
+../..                                    |    +1283 ++++++++++++++++++++++++++++
+../..                                    | Progress: resolved 1283, reused 0, downloaded 63, added 3
+../..                                    | Progress: resolved 1283, reused 0, downloaded 174, added 12
+../..                                    | Progress: resolved 1283, reused 0, downloaded 249, added 20
+../..                                    | Progress: resolved 1283, reused 0, downloaded 480, added 40
+../..                                    | Progress: resolved 1283, reused 0, downloaded 710, added 60
+../..                                    | Progress: resolved 1283, reused 0, downloaded 864, added 73
+✓ Lockfile passes supply-chain policies (1287 entries in 6.4s)
+../..                                    | Progress: resolved 1283, reused 0, downloaded 1055, added 90
+../..                                    | Progress: resolved 1283, reused 0, downloaded 1192, added 99
+../..                                    | Progress: resolved 1283, reused 0, downloaded 1256, added 286
+../..                                    | Progress: resolved 1283, reused 0, downloaded 1256, added 554
+../..                                    | Progress: resolved 1283, reused 0, downloaded 1256, added 924
+../..                                    | Progress: resolved 1283, reused 0, downloaded 1256, added 1111
+../..                                    | Progress: resolved 1283, reused 0, downloaded 1256, added 1282
+../..                                    | Progress: resolved 1283, reused 0, downloaded 1256, added 1283, done
+dependencies:
++ @expo-google-fonts/cairo 0.4.2
++ @expo/image-utils 0.10.1
++ @expo/ui 56.0.17
++ @lottiefiles/dotlottie-react 0.19.4
++ expo-apple-authentication 56.0.4
++ expo-auth-session 56.0.14
++ expo-clipboard 56.0.4
++ expo-notifications 56.0.17
++ firebase 12.14.0
++ lottie-react-native 7.3.8
++ react-native-render-html 6.3.4
++ react-native-video 6.19.2
++ react-native-webview 13.16.1
+devDependencies:
++ @babel/core 7.29.7
++ @expo-google-fonts/inter 0.4.2
++ @expo/cli 56.1.15
++ @expo/ngrok 4.1.3
++ @expo/vector-icons 15.1.1
++ @react-native-async-storage/async-storage 2.2.0
++ @stardazed/streams-text-encoding 1.0.2
++ @tanstack/react-query 5.100.9
++ @types/react 19.1.17
++ @types/react-dom 19.1.11
++ @ungap/structured-clone 1.3.1
++ @workspace/api-client-react 0.0.0 <- ../../lib/api-client-react
++ babel-plugin-react-compiler 19.0.0-beta-ebf51a3-20250411
++ expo 56.0.11
++ expo-blur 56.0.3
++ expo-build-properties 56.0.18
++ expo-constants 56.0.18
++ expo-font 56.0.6
++ expo-haptics 56.0.3
++ expo-image 56.0.11
++ expo-image-picker 56.0.17
++ expo-linear-gradient 56.0.4
++ expo-linking 56.0.14
++ expo-location 56.0.17
++ expo-router 56.2.10
++ expo-splash-screen 56.0.10
++ expo-status-bar 56.0.4
++ expo-symbols 56.0.6
++ expo-system-ui 56.0.5
++ expo-web-browser 56.0.5
++ react 19.1.0
++ react-dom 19.1.0
++ react-native 0.81.5
++ react-native-gesture-handler 3.0.1
++ react-native-keyboard-controller 1.18.5
++ react-native-reanimated 4.4.1
++ react-native-safe-area-context 5.8.0
++ react-native-screens 4.25.2
++ react-native-svg 15.15.5
++ react-native-web 0.21.2
++ react-native-worklets 0.9.2
++ typescript 5.9.3
++ zod 3.25.76
++ zod-validation-error 3.5.4
+../.. preinstall$ node preinstall.cjs
+../.. preinstall: Done
+[ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: @firebase/util@1.15.1, better-sqlite3@12.10.0, esbuild@0.28.1, protobufjs@7.6.4
+Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.
+[ERROR] Command failed with exit code 1: pnpm install
+pnpm: Command failed with exit code 1: pnpm install
+    at getFinalError (file:///Users/expo/.nvm/versions/node/v22.23.1/lib/node_modules/pnpm/dist/pnpm.mjs:34291:14)
+    at makeError (file:///Users/expo/.nvm/versions/node/v22.23.1/lib/node_modules/pnpm/dist/pnpm.mjs:36598:21)
+    at getSyncResult (file:///Users/expo/.nvm/versions/node/v22.23.1/lib/node_modules/pnpm/dist/pnpm.mjs:38442:10)
+    at spawnSubprocessSync (file:///Users/expo/.nvm/versions/node/v22.23.1/lib/node_modules/pnpm/dist/pnpm.mjs:38402:14)
+    at execaCoreSync (file:///Users/expo/.nvm/versions/node/v22.23.1/lib/node_modules/pnpm/dist/pnpm.mjs:38332:23)
+    at callBoundExeca (file:///Users/expo/.nvm/versions/node/v22.23.1/lib/node_modules/pnpm/dist/pnpm.mjs:40860:23)
+    at boundExeca (file:///Users/expo/.nvm/versions/node/v22.23.1/lib/node_modules/pnpm/dist/pnpm.mjs:40837:49)
+    at sync (file:///Users/expo/.nvm/versions/node/v22.23.1/lib/node_modules/pnpm/dist/pnpm.mjs:40992:14)
+    at runPnpmCli (file:///Users/expo/.nvm/versions/node/v22.23.1/lib/node_modules/pnpm/dist/pnpm.mjs:247128:5)
+    at runDepsStatusCheck (file:///Users/expo/.nvm/versions/node/v22.23.1/lib/node_modules/pnpm/dist/pnpm.mjs:248869:7)
+pnpm run eas-build-pre-install exited with non-zero code: 1
+
+Fail job
+
+1ms
+
+
+Build failed
+
+pnpm run eas-build-pre-install exited with non-zero code: 1
