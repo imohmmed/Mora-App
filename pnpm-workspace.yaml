@@ -74,6 +74,12 @@ packageExtensions:
       "@expo/plist": "*"
       "@expo/image-utils": "*"
 
+ignoredBuiltDependencies:
+  - '@firebase/util'
+  - better-sqlite3
+  - esbuild
+  - protobufjs
+
 onlyBuiltDependencies:
   - '@firebase/util'
   - '@swc/core'
