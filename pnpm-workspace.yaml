@@ -47,6 +47,15 @@ onlyBuiltDependencies:
   - protobufjs
   - unrs-resolver
 
+allowBuilds:
+  '@firebase/util': false
+  '@swc/core': true
+  better-sqlite3: false
+  esbuild: false
+  msw: true
+  protobufjs: false
+  unrs-resolver: true
+
 overrides:
   # replit uses linux-x64 only, we can exclude all other platforms
   "esbuild>@esbuild/darwin-arm64": "-"
