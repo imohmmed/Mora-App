@@ -34,7 +34,7 @@
 - [Checkout keyboard avoidance](checkout-keyboard-avoidance.md) — sticky-footer forms: plain ScrollView + automaticallyAdjustKeyboardInsets(iOS)+keyboardShouldPersistTaps, NOT screen-wrapping KeyboardAvoidingView
 - [Bilingual option names](option-definitions-bilingual.md) — option_definitions JSON stores {nameEn,nameAr,values} (passthrough); display by lang w/ fallback; admin 2 inputs + legacy name migration
 - [Returns system](returns-system.md) — 3 terminal return stages with distinct inventory rules; never bulk-change into/out of them; partial_return still counts as delivered
-- [EAS pnpm ERR_PNPM_IGNORED_BUILDS fix](eas-pnpm-ignored-builds.md) — requiresBuild:true in lockfile snapshots section is the real fix; config files alone don't work
+- [EAS pnpm 11 build approvals](eas-pnpm-ignored-builds.md) — pnpm 11 reads .pnpm-approved-builds.json (workspace root); onlyBuiltDependencies in yaml/npmrc is ignored by runDepsStatusCheck
 - [Search collections + trending](search-collections-trending.md) — search-page BROWSE grid + trending chips driven by content_sections keys; admin-edited; browse nav via collection/[slug] bt/bttl params
 - [RTL horizontal scroll carousels](rtl-horizontal-scroll.md) — never use `inverted`; use row-reverse + scroll-to-end so item[0] shows on right without mirroring content
 - [Collection filter/sort](collection-filter-sort.md) — price/color/tag filter + bestselling/price/newest sort done client-side over fetched product list; color chips use optionDefinitions colorEntries hex
