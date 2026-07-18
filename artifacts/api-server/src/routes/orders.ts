@@ -86,6 +86,20 @@ const FINANCIAL_KEYS: Record<string, string> = { paid: "financial:paid", refunde
 
 const router = Router();
 
+// ─── Public: receipt page — no auth, lookup by orderNumber ──────────────────
+// Accepts with or without # prefix (URLs can't contain # as path segment)
+router.get("/public/orders/:orderNumber", (req, res) => {
+  const raw = req.params["orderNumber"];
+  const withHash    = raw.startsWith("#") ? raw : `#${raw}`;
+  const withoutHash = raw.startsWith("#") ? raw.slice(1) : raw;
+  const order = parseOne(
+    (db.prepare(`SELECT * FROM orders WHERE order_number=?`).get(withHash) ??
+     db.prepare(`SELECT * FROM orders WHERE order_number=?`).get(withoutHash)) as Row | undefined
+  );
+  if (!order) { res.status(404).json({ data: null, meta: {}, error: "Order not found" }); return; }
+  res.json({ data: order, meta: {}, error: null });
+});
+
 // ─── Public: customer order lookup ────────────────────────────────────────────
 
 router.get("/store/orders", (req, res) => {

@@ -1343,4 +1343,26 @@ db.exec(`
 // (migration: ensure customers.address can store full address JSON with instagram + phone2)
 try { db.exec(`UPDATE customers SET address=address WHERE id IS NOT NULL`); } catch { /* noop */ }
 
+// ─── Seed store_contact content section if not exists ────────────────────────
+{
+  const existing = db.prepare(`SELECT id FROM content_sections WHERE key='store_contact'`).get();
+  if (!existing) {
+    db.prepare(`INSERT INTO content_sections (id,key,title,items,sort_order,status,updated_at) VALUES (?,?,?,?,?,?,?)`)
+      .run(
+        "sc_store_contact",
+        "store_contact",
+        "Store Contact Info",
+        JSON.stringify([
+          { key: "phone1",     value: "07700000000" },
+          { key: "phone2",     value: "07800000000" },
+          { key: "instagram1", value: "moramoda.iq" },
+          { key: "instagram2", value: "" },
+        ]),
+        999,
+        "active",
+        new Date().toISOString()
+      );
+  }
+}
+
 export default db;

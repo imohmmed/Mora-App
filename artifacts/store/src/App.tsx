@@ -21,6 +21,7 @@ import AccountOrders from "@/pages/account-orders";
 import AccountProfile from "@/pages/account-profile";
 import OrderDetail from "@/pages/order-detail";
 import Wishlist from "@/pages/wishlist";
+import OrderReceipt from "@/pages/order-receipt";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -54,6 +55,7 @@ function Router() {
       <Route path="/account/orders/:id" component={OrderDetail} />
       <Route path="/account/profile" component={AccountProfile} />
       <Route path="/account" component={Account} />
+      <Route path="/order/:orderNumber" component={OrderReceipt} />
       <Route path="/wishlist" component={Wishlist} />
       <Route component={NotFound} />
     </Switch>

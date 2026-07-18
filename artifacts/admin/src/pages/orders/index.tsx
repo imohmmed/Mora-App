@@ -11,6 +11,9 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Input }    from "@/components/ui/input";
@@ -22,10 +25,11 @@ import { PageContainer, PageHeader, EmptyState } from "@/components/ui/page-prim
 import {
   Search, Inbox, ChevronLeft, ChevronRight, ArrowUpDown, Trash2,
   Printer, CheckCircle2, Package, Truck, Home, AlertTriangle, XCircle, Bell,
-  RotateCcw, PackageX,
+  RotateCcw, PackageX, FileText, Thermometer,
 } from "lucide-react";
 import { fmt } from "@/lib/date";
 import { formatIQD } from "@/lib/format";
+import { printReceipts } from "@/lib/print-receipt";
 import { adminFetch } from "@/lib/api";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useToast } from "@/hooks/use-toast";
@@ -65,95 +69,6 @@ const STAGE_COLORS: Record<string, string> = {
   returned_no_restock: "bg-stone-200 text-stone-700 border-stone-300",
 };
 
-// ── Receipt printing (print dialog → save as PDF) ─────────────────────────────
-function printReceipts(orders: any[]) {
-  const rows = orders.map((o) => {
-    const addr  = (o.shippingAddress ?? {}) as Record<string, string>;
-    const items = (o.lineItems ?? []) as any[];
-    return `
-<div class="receipt">
-  <div class="brand">Mora</div>
-  <div class="sub">${fmt(o.createdAt, "MMM d, yyyy — h:mm a")}</div>
-  <div class="divider"></div>
-  <table class="info">
-    <tr><td class="lbl">Order</td><td><b>#${o.orderNumber}</b></td></tr>
-    ${addr["fullName"]  ? `<tr><td class="lbl">Name</td><td>${addr["fullName"]}</td></tr>` : ""}
-    ${addr["phone"]     ? `<tr><td class="lbl">Phone 1</td><td dir="ltr">${addr["phone"]}</td></tr>` : ""}
-    ${addr["phone2"]    ? `<tr><td class="lbl">Phone 2</td><td dir="ltr">${addr["phone2"]}</td></tr>` : ""}
-    ${addr["city"]      ? `<tr><td class="lbl">Governorate</td><td>${addr["city"]}</td></tr>` : ""}
-    ${addr["district"]  ? `<tr><td class="lbl">District</td><td>${addr["district"]}</td></tr>` : ""}
-    ${addr["landmark"]  ? `<tr><td class="lbl">Landmark</td><td>${addr["landmark"]}</td></tr>` : ""}
-    ${addr["instagram"] ? `<tr><td class="lbl">Instagram</td><td>@${addr["instagram"]}</td></tr>` : ""}
-  </table>
-  <div class="divider"></div>
-  <table class="items" width="100%">
-    <thead><tr><th>Item</th><th class="center">Qty</th><th class="right">Price</th></tr></thead>
-    <tbody>
-      ${items.map((item: any) => `
-      <tr>
-        <td>${item.title}${item.variantTitle && item.variantTitle !== "Default Title" ? `<br><span class="variant">${item.variantTitle}</span>` : ""}</td>
-        <td class="center">${item.quantity}</td>
-        <td class="right">${formatIQD(Number(item.price) * Number(item.quantity))}</td>
-      </tr>`).join("")}
-    </tbody>
-  </table>
-  <div class="divider"></div>
-  ${o.shipping > 0 ? `<div class="row"><span>Shipping</span><span>${formatIQD(o.shipping)}</span></div>` : ""}
-  ${o.discountAmount > 0 ? `<div class="row"><span>Discount</span><span class="discount">-${formatIQD(o.discountAmount)}</span></div>` : ""}
-  <div class="row total"><span>TOTAL</span><span>${formatIQD(o.total)}</span></div>
-  <div class="footer">moramoda.tech</div>
-</div>`;
-  }).join("");
-
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Mora Receipts — ${orders.length} order${orders.length !== 1 ? "s" : ""}</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Courier New', Courier, monospace; font-size: 11px; background: #fff; color: #111; }
-  .receipt {
-    width: 72mm;
-    padding: 6mm 4mm;
-    margin: 0 auto;
-    page-break-after: always;
-  }
-  .receipt:last-child { page-break-after: auto; }
-  .brand { font-size: 20px; font-weight: bold; text-align: center; letter-spacing: 2px; margin-bottom: 2px; }
-  .sub { font-size: 9px; text-align: center; color: #555; margin-bottom: 4px; }
-  .divider { border-top: 1px dashed #999; margin: 5px 0; }
-  table.info { width: 100%; border-collapse: collapse; }
-  table.info td { padding: 1.5px 2px; vertical-align: top; }
-  td.lbl { color: #666; width: 80px; white-space: nowrap; }
-  table.items { border-collapse: collapse; }
-  table.items th { font-size: 9px; text-transform: uppercase; color: #666; border-bottom: 1px solid #ddd; padding: 2px; }
-  table.items td { padding: 3px 2px; vertical-align: top; }
-  .center { text-align: center; }
-  .right { text-align: right; }
-  .variant { font-size: 9px; color: #777; }
-  .row { display: flex; justify-content: space-between; padding: 2px 0; }
-  .discount { color: #c00; }
-  .total { font-weight: bold; font-size: 13px; margin-top: 3px; }
-  .footer { text-align: center; font-size: 9px; color: #aaa; margin-top: 6px; }
-  @media print {
-    @page { size: 72mm auto; margin: 0; }
-    body { width: 72mm; }
-    .receipt { padding: 4mm 3mm; }
-  }
-</style>
-</head>
-<body>
-${rows}
-<script>window.onload = () => { window.print(); }<\/script>
-</body>
-</html>`;
-
-  const w = window.open("", "_blank", "width=680,height=800,scrollbars=yes");
-  if (!w) { alert("Please allow popups to print receipts"); return; }
-  w.document.write(html);
-  w.document.close();
-}
 
 export default function Orders() {
   const { t } = useT();
@@ -165,6 +80,7 @@ export default function Orders() {
   const [selected, setSelected]       = useState<Set<string>>(new Set());
   const [bulkStage, setBulkStage]     = useState<string>("");
   const [bulkApplying, setBulkApplying] = useState(false);
+  const [printModal, setPrintModal]   = useState<{ open: boolean; orders: any[] }>({ open: false, orders: [] });
 
   const debouncedSearch = useDebounce(search, 300);
   const queryClient     = useQueryClient();
@@ -270,7 +186,20 @@ export default function Orders() {
   const handleBulkPrint = () => {
     const toPrint = allOrders.filter((o) => selected.has(o.id));
     if (toPrint.length === 0) return;
-    printReceipts(toPrint);
+    setPrintModal({ open: true, orders: toPrint });
+  };
+
+  const handlePrintPdf = (orders: any[]) => {
+    setPrintModal({ open: false, orders: [] });
+    for (const o of orders) {
+      const num = (o.orderNumber ?? "").replace(/^#/, "");
+      window.open(`https://moramoda.tech/order/${num}`, "_blank", "noopener");
+    }
+  };
+
+  const handlePrintThermal = (orders: any[]) => {
+    setPrintModal({ open: false, orders: [] });
+    printReceipts(orders);
   };
 
   const stageBadge = (stage: string | undefined) => {
@@ -570,6 +499,51 @@ export default function Orders() {
           </div>
         </div>
       )}
+
+      {/* ── Print Choice Modal ── */}
+      <Dialog open={printModal.open} onOpenChange={(v) => setPrintModal((s) => ({ ...s, open: v }))}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center text-lg font-bold">
+              {t("orders.print.title")}
+              {printModal.orders.length > 1 && (
+                <span className="block text-sm font-normal text-muted-foreground mt-1">
+                  {printModal.orders.length} {t("orders.bulk.selectedShort")}
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 pt-2 pb-2">
+            {/* PDF option */}
+            <button
+              onClick={() => handlePrintPdf(printModal.orders)}
+              className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all group"
+            >
+              <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                <FileText className="w-7 h-7 text-blue-600" />
+              </div>
+              <div className="text-center">
+                <p className="font-bold text-base leading-tight">{t("orders.print.pdf")}</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-snug">{t("orders.print.pdf.desc")}</p>
+              </div>
+            </button>
+
+            {/* Thermal option */}
+            <button
+              onClick={() => handlePrintThermal(printModal.orders)}
+              className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all group"
+            >
+              <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
+                <Thermometer className="w-7 h-7 text-orange-600" />
+              </div>
+              <div className="text-center">
+                <p className="font-bold text-base leading-tight">{t("orders.print.thermal")}</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-snug">{t("orders.print.thermal.desc")}</p>
+              </div>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   );
 }

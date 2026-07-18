@@ -13,7 +13,7 @@ import {
   ArrowLeft, User, CreditCard, Truck, Calendar, CheckCircle2, Package,
   Home, AlertTriangle, XCircle, Banknote, Phone, MapPin, Loader2,
   Instagram, StickyNote, Send, Clock, RotateCcw, PackageX, Minus, Plus,
-  ArrowLeftRight, RefreshCcw,
+  ArrowLeftRight, RefreshCcw, Printer, FileText, Thermometer,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -21,6 +21,7 @@ import {
 import { fmt } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { formatIQD } from "@/lib/format";
+import { printReceipts } from "@/lib/print-receipt";
 import { adminFetch } from "@/lib/api";
 import { useT } from "@/i18n/LanguageContext";
 
@@ -61,6 +62,7 @@ export default function OrderDetail() {
   const { data: response, isLoading } = useAdminGetOrder(id!);
   const updateOrder = useAdminUpdateOrder();
   const [stageLoading, setStageLoading] = useState<string | null>(null);
+  const [printModal, setPrintModal]     = useState(false);
 
   // Returns
   const [returnOpen, setReturnOpen]       = useState(false);
@@ -259,6 +261,15 @@ export default function OrderDetail() {
             </p>
           )}
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 shrink-0"
+          onClick={() => setPrintModal(true)}
+        >
+          <Printer className="w-4 h-4" />
+          {t("orders.bulk.print")}
+        </Button>
       </div>
 
       {/* ══════════════════════════════════════════════════════════
@@ -905,6 +916,52 @@ export default function OrderDetail() {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+      {/* ── Print Choice Modal ── */}
+      <Dialog open={printModal} onOpenChange={setPrintModal}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center text-lg font-bold">
+              {t("orders.print.title")}
+              <span className="block text-sm font-normal text-muted-foreground mt-1">
+                {order.orderNumber}
+              </span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 pt-2 pb-2">
+            <button
+              onClick={() => {
+                setPrintModal(false);
+                const num = (order.orderNumber ?? "").replace(/^#/, "");
+                window.open(`https://moramoda.tech/order/${num}`, "_blank", "noopener");
+              }}
+              className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all group"
+            >
+              <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                <FileText className="w-7 h-7 text-blue-600" />
+              </div>
+              <div className="text-center">
+                <p className="font-bold text-base leading-tight">{t("orders.print.pdf")}</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-snug">{t("orders.print.pdf.desc")}</p>
+              </div>
+            </button>
+            <button
+              onClick={() => {
+                setPrintModal(false);
+                printReceipts([order]);
+              }}
+              className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all group"
+            >
+              <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
+                <Thermometer className="w-7 h-7 text-orange-600" />
+              </div>
+              <div className="text-center">
+                <p className="font-bold text-base leading-tight">{t("orders.print.thermal")}</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-snug">{t("orders.print.thermal.desc")}</p>
+              </div>
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
     </PageContainer>

@@ -119,6 +119,11 @@ export const orders = {
     "orders.bulk.changeStage": "تغيير الحالة إلى...",
     "orders.bulk.apply": "تطبيق",
     "orders.bulk.print": "طباعة الوصولات",
+    "orders.print.title": "اختر نوع الطباعة",
+    "orders.print.pdf": "PDF وصل",
+    "orders.print.pdf.desc": "افتح الوصل على المتصفح — قابل للمشاركة والحفظ",
+    "orders.print.thermal": "حراري 72mm",
+    "orders.print.thermal.desc": "طباعة فورية على طابعة الفاتورة الحرارية",
     "orders.bulk.stageSuccess": "تم تحديث {n} طلب",
     "orders.bulk.stagePartial": "تم تحديث {ok} — فشل {fail}",
 
@@ -306,6 +311,11 @@ export const orders = {
     "orders.bulk.changeStage": "Change status to...",
     "orders.bulk.apply": "Apply",
     "orders.bulk.print": "Print Receipts",
+    "orders.print.title": "Choose Print Type",
+    "orders.print.pdf": "PDF Receipt",
+    "orders.print.pdf.desc": "Open receipt in browser — shareable & saveable",
+    "orders.print.thermal": "Thermal 72mm",
+    "orders.print.thermal.desc": "Instant print on thermal receipt printer",
     "orders.bulk.stageSuccess": "{n} orders updated",
     "orders.bulk.stagePartial": "{ok} updated — {fail} failed",
 
