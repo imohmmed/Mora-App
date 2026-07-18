@@ -91,7 +91,7 @@ export default function OrderReceipt() {
   const [notFound, setNotFound] = useState(false);
 
   const cleanNum = orderNumber.replace(/^#/, "");
-  const receiptUrl = `https://moramoda.tech/order/${cleanNum}`;
+  const receiptUrl = `https://moramoda.tech/store/order/${cleanNum}`;
 
   useEffect(() => {
     setLoading(true);

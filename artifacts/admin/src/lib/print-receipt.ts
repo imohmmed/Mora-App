@@ -104,5 +104,5 @@ ${rows}
 export function openPdfReceipt(order: { orderNumber?: string | null }) {
   if (!order.orderNumber) return;
   const num = order.orderNumber.replace(/^#/, "");
-  window.open(`https://moramoda.tech/order/${num}`, "_blank", "noopener");
+  window.open(`https://moramoda.tech/store/order/${num}`, "_blank", "noopener");
 }

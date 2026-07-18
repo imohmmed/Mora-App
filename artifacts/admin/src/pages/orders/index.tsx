@@ -193,7 +193,7 @@ export default function Orders() {
     setPrintModal({ open: false, orders: [] });
     for (const o of orders) {
       const num = (o.orderNumber ?? "").replace(/^#/, "");
-      window.open(`https://moramoda.tech/order/${num}`, "_blank", "noopener");
+      window.open(`https://moramoda.tech/store/order/${num}`, "_blank", "noopener");
     }
   };
 

@@ -934,7 +934,7 @@ export default function OrderDetail() {
               onClick={() => {
                 setPrintModal(false);
                 const num = (order.orderNumber ?? "").replace(/^#/, "");
-                window.open(`https://moramoda.tech/order/${num}`, "_blank", "noopener");
+                window.open(`https://moramoda.tech/store/order/${num}`, "_blank", "noopener");
               }}
               className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all group"
             >
