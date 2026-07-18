@@ -37,7 +37,31 @@ The returned hash should match the local `dist/_expo/static/js/web/` filename.
 
 ## /var/www/mora is NOT a git repo — deploy by scp'ing built dist
 There is no remote/branch on the VPS checkout; you cannot `git pull` there. Build locally, tar the dist, scp, extract.
-nginx routes (`/etc/nginx/sites-available/mora`), all `/api/` → `127.0.0.1:3001`:
+
+## CRITICAL: nginx reads sites-enabled/mora — NOT sites-available/mora
+`/etc/nginx/sites-enabled/mora` is a **standalone regular file** (NOT a symlink to sites-available/). nginx only reads `sites-enabled/`. Any edits to `sites-available/mora` are silently ignored. Always edit `/etc/nginx/sites-enabled/mora` directly, then `nginx -t && systemctl reload nginx`. **Why:** spent hours debugging a routing fix that applied to the wrong file while nginx kept serving the old config untouched.
+
+## Store SPA nginx routing at /store/*
+Store SPA index is at `/var/www/mora/artifacts/mora/dist/store.html` (a copy of store's index.html placed in the Expo root). The nginx block in `sites-enabled/mora` (inside the moramoda.tech server):
+```nginx
+location ^~ /store/assets/ {
+    root /var/www/mora/artifacts/mora/dist;
+    expires max;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+}
+location /store {
+    root /var/www/mora/artifacts/mora/dist;
+    try_files $uri $uri/ @store_spa;
+}
+location @store_spa {
+    root /var/www/mora/artifacts/mora/dist;
+    add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+    rewrite ^ /store.html break;
+}
+```
+`rewrite ^ /store.html break` in a named location serves the file without re-entering location matching (unlike `try_files ... /store.html` which does re-enter and hit wrong locations).
+
+nginx routes (`/etc/nginx/sites-enabled/mora`), all `/api/` → `127.0.0.1:3001`:
 - `moramoda.tech` / `app.moramoda.tech` → root `artifacts/mora/dist` (Expo web)
 - `admin.moramoda.tech` → root `artifacts/admin/dist/public` (admin SPA, build with `PORT=<any> BASE_PATH=/`)
 - `expo.moramoda.tech` → proxy to dev server :8081
